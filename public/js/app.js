@@ -1,0 +1,704 @@
+const socket = io();
+
+const lotListEl = document.getElementById("lot-list");
+const emptyStateEl = document.getElementById("empty-state");
+const donorListEl = document.getElementById("donor-list");
+const donorEmptyEl = document.getElementById("donor-empty");
+const historyListEl = document.getElementById("history-list");
+const historyEmptyEl = document.getElementById("history-empty");
+const statusEl = document.getElementById("status");
+const statusTextEl = document.getElementById("status-text");
+const titleEl = document.getElementById("title");
+const hostNameEl = document.getElementById("host-name");
+const hostAvatarEl = document.getElementById("host-avatar");
+const timerEl = document.getElementById("timer");
+const timerClockEl = document.getElementById("timer-clock");
+const timerLabelEl = document.getElementById("timer-label");
+const statTotalEl = document.getElementById("stat-total");
+const lotCountEl = document.getElementById("lot-count");
+const donorCountEl = document.getElementById("donor-count");
+const presenterToggleEl = document.getElementById("presenter-toggle");
+const presenterDrawerEl = document.getElementById("presenter-drawer");
+const timerRingFillEl = document.getElementById("timer-ring-fill");
+const hostEditBtn = document.getElementById("host-edit-btn");
+const hostInputEl = document.getElementById("p-host-input");
+const boardEl = document.querySelector(".board");
+const soldOverlayEl = document.getElementById("sold-overlay");
+const soldMarkEl = document.getElementById("sold-mark");
+
+const lotModalEl = document.getElementById("lot-modal");
+const lotModalThumb = document.getElementById("lot-modal-thumb");
+const lotModalEyebrow = document.getElementById("lot-modal-eyebrow");
+const lotModalTitle = document.getElementById("lot-modal-title");
+const lotModalCurrent = document.getElementById("lot-modal-current");
+const lotModalActionSeg = document.getElementById("lot-modal-action");
+const lotModalAmount = document.getElementById("lot-modal-amount");
+const lotModalDonor = document.getElementById("lot-modal-donor");
+const lotModalSubmit = document.getElementById("lot-modal-submit");
+const lotModalCancel = document.getElementById("lot-modal-cancel");
+const lotModalClose = document.getElementById("lot-modal-close");
+const donorInputEl = document.getElementById("lot-modal-donor");
+const donorSuggestionsEl = document.getElementById("donor-suggestions");
+
+const TIMER_TOTAL_MS = 5 * 60 * 1000; // espelha AUTO_CLOSE_MS do server.js, só pro anel visual
+const TIMER_RING_CIRCUMFERENCE = 2 * Math.PI * 28;
+
+let timerEndsAt = null;
+let isOpenState = null; // null = ainda não recebemos a primeira atualização
+let historyItems = [];
+let currentLeaderKey = null;
+let previousTotals = new Map();
+let currentItems = [];
+let donorNames = [];
+let modalGame = null;
+
+const totalOdometer = window.Odometer
+  ? new Odometer({ el: statTotalEl, value: 0, format: "(.ddd)", theme: "minimal" })
+  : null;
+
+function formatBRL(value) {
+  return value.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+}
+
+function escapeHtml(str) {
+  return String(str).replace(/[&<>"']/g, (c) => ({
+    "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;",
+  }[c]));
+}
+
+function bumpValue(el, text) {
+  if (el.textContent === text) return;
+  el.textContent = text;
+  el.classList.remove("tick");
+  void el.offsetWidth;
+  el.classList.add("tick");
+}
+
+function setStatus(online) {
+  statusEl.classList.toggle("online", online);
+  statusTextEl.textContent = online ? "ao vivo" : "reconectando…";
+}
+
+socket.on("connect", () => {
+  setStatus(true);
+  loadInitialHistory();
+});
+socket.on("disconnect", () => setStatus(false));
+
+function setRingFraction(fraction) {
+  const offset = TIMER_RING_CIRCUMFERENCE * (1 - Math.max(0, Math.min(1, fraction)));
+  timerRingFillEl.style.strokeDashoffset = String(offset);
+}
+
+const FINAL_COUNTDOWN_SECONDS = 15;
+
+function tickTimer() {
+  if (!isOpenState || !timerEndsAt) {
+    timerEl.classList.add("closed");
+    timerEl.classList.remove("urgent");
+    boardEl.classList.remove("final-countdown");
+    timerLabelEl.textContent = "leilão";
+    timerClockEl.textContent = "ENCERRADO";
+    setRingFraction(0);
+    return;
+  }
+  timerEl.classList.remove("closed");
+  const msLeft = timerEndsAt - Date.now();
+  if (msLeft <= 0) {
+    timerLabelEl.textContent = "leilão";
+    timerClockEl.textContent = "ENCERRADO";
+    timerEl.classList.add("closed");
+    boardEl.classList.remove("final-countdown");
+    setRingFraction(0);
+    return;
+  }
+  const totalSeconds = Math.ceil(msLeft / 1000);
+  const m = Math.floor(totalSeconds / 60);
+  const s = totalSeconds % 60;
+  timerLabelEl.textContent = "encerra em";
+  timerClockEl.textContent = `${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
+  timerEl.classList.toggle("urgent", totalSeconds <= 60);
+  boardEl.classList.toggle("final-countdown", totalSeconds <= FINAL_COUNTDOWN_SECONDS);
+  setRingFraction(msLeft / TIMER_TOTAL_MS);
+}
+setInterval(tickTimer, 1000);
+
+function thumbHtml(item, className) {
+  return item.image
+    ? `<img class="${className}" src="${item.image}" alt="" loading="lazy" onerror="this.replaceWith(Object.assign(document.createElement('div'),{className:'${className} ${className}-placeholder',textContent:'${escapeHtml((item.name[0] || "?").toUpperCase())}'}))" />`
+    : `<div class="${className} ${className}-placeholder">${escapeHtml((item.name[0] || "?").toUpperCase())}</div>`;
+}
+
+function lotCardInnerHtml(item, barPct, hitBadge, changed) {
+  const thumb = thumbHtml(item, "lot-thumb");
+  const bg = item.image
+    ? `<div class="lot-card-bg" style="background-image:url('${escapeHtml(item.image)}')"></div>`
+    : "";
+  return `
+    ${bg}
+    <div class="lot-card-fill"></div>
+    <div class="lot-card-content">
+      <span class="lot-rank">${String(item.rank).padStart(2, "0")}</span>
+      ${thumb}
+      <p class="lot-name">${escapeHtml(item.name)}</p>
+      <div class="lot-meta">
+        <span class="lot-total${changed ? " tick" : ""}">${formatBRL(item.total)}</span>
+        ${hitBadge}
+        <div class="lot-edit">
+          <button data-key="${item.key}">editar</button>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+// Placar que se mexe ao vivo: em vez de recriar tudo a cada atualização,
+// reaproveita os cards existentes (por data-key) e só reordena via
+// appendChild — assim dá pra medir a posição antes/depois (técnica FLIP) e
+// os lotes deslizam suavemente pra nova posição no ranking.
+function renderLots(items, flashKey, flashType) {
+  lotCountEl.textContent = String(items.length);
+
+  if (items.length === 0) {
+    emptyStateEl.style.display = "flex";
+    lotListEl.innerHTML = emptyStateEl.outerHTML;
+    previousTotals = new Map();
+    currentLeaderKey = null;
+    return;
+  }
+  emptyStateEl.style.display = "none";
+
+  const staleEmpty = lotListEl.querySelector(".arena-empty");
+  if (staleEmpty) staleEmpty.remove();
+
+  const maxTotal = Math.max(...items.map((i) => i.total), 1);
+  const nextTotals = new Map();
+
+  const firstRects = new Map();
+  lotListEl.querySelectorAll(".lot-card").forEach((el) => {
+    firstRects.set(el.dataset.key, el.getBoundingClientRect());
+  });
+
+  const seenKeys = new Set();
+  items.forEach((item) => {
+    seenKeys.add(item.key);
+    const flashClass = item.key === flashKey
+      ? (flashType === "remove" ? " flash-remove" : flashType === "add" ? " flash-add" : "")
+      : "";
+    const hitBadge = item.key === flashKey && flashType === "remove"
+      ? '<span class="badge-hit">sabotado agora</span>'
+      : "";
+    const barPct = item.total > 0 ? Math.max(3, Math.round((item.total / maxTotal) * 100)) : 0;
+    const changed = previousTotals.has(item.key) && previousTotals.get(item.key) !== item.total;
+    nextTotals.set(item.key, item.total);
+
+    let card = lotListEl.querySelector(`.lot-card[data-key="${CSS.escape(item.key)}"]`);
+    if (!card) {
+      card = document.createElement("div");
+      card.dataset.key = item.key;
+    }
+    card.className = `lot-card rank-${item.rank}${flashClass}`;
+    card.style.setProperty("--pct", `${barPct}%`);
+    card.innerHTML = lotCardInnerHtml(item, barPct, hitBadge, changed);
+    lotListEl.appendChild(card);
+
+    // Linha de corte entre os classificados (top 3) e o resto do catálogo.
+    if (item.rank === 3 && items.length > 3) {
+      let divider = lotListEl.querySelector(".qualify-divider");
+      if (!divider) {
+        divider = document.createElement("div");
+        divider.className = "qualify-divider";
+        divider.innerHTML = "<span>classificados até aqui</span>";
+      }
+      lotListEl.appendChild(divider);
+    }
+  });
+  if (items.length <= 3) {
+    const divider = lotListEl.querySelector(".qualify-divider");
+    if (divider) divider.remove();
+  }
+
+  lotListEl.querySelectorAll(".lot-card").forEach((el) => {
+    if (!seenKeys.has(el.dataset.key)) el.remove();
+  });
+
+  previousTotals = nextTotals;
+
+  lotListEl.querySelectorAll(".lot-edit button").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const item = currentItems.find((i) => i.key === btn.dataset.key);
+      if (item) openLotModal(item);
+    });
+  });
+
+  // FLIP: inverte pro deslocamento anterior e anima de volta a zero.
+  requestAnimationFrame(() => {
+    lotListEl.querySelectorAll(".lot-card").forEach((el) => {
+      const first = firstRects.get(el.dataset.key);
+      if (!first) return;
+      const last = el.getBoundingClientRect();
+      const deltaY = first.top - last.top;
+      if (Math.abs(deltaY) < 1) return;
+      el.style.transition = "none";
+      el.style.transform = `translateY(${deltaY}px)`;
+      requestAnimationFrame(() => {
+        el.style.transition = "transform 0.5s var(--ease)";
+        el.style.transform = "";
+      });
+    });
+  });
+
+  if (flashKey) {
+    const flashedCard = lotListEl.querySelector(`.lot-card[data-key="${CSS.escape(flashKey)}"]`);
+    if (flashedCard) {
+      setTimeout(() => {
+        flashedCard.classList.remove("flash-add", "flash-remove");
+        const badge = flashedCard.querySelector(".badge-hit");
+        if (badge) badge.remove();
+      }, 4000);
+    }
+  }
+
+  const leader = items.find((i) => i.rank === 1) || null;
+  const newLeaderKey = leader ? leader.key : null;
+  if (newLeaderKey && newLeaderKey !== currentLeaderKey && currentLeaderKey !== null) {
+    const leaderCard = lotListEl.querySelector(`.lot-card[data-key="${CSS.escape(newLeaderKey)}"]`);
+    if (leaderCard) {
+      leaderCard.classList.add("lead-shift");
+      setTimeout(() => leaderCard.classList.remove("lead-shift"), 700);
+    }
+  }
+  currentLeaderKey = newLeaderKey;
+}
+
+function renderDonors(donors) {
+  donorEmptyEl.style.display = donors.length === 0 ? "flex" : "none";
+  const rows = donors.map((d) => `
+    <div class="donor-row rank-${d.rank}">
+      <span class="donor-rank">${String(d.rank).padStart(2, "0")}</span>
+      <span class="donor-name">${escapeHtml(d.username || "Anônimo")}</span>
+      <span class="donor-total">${formatBRL(d.total)}</span>
+    </div>
+  `);
+  donorListEl.innerHTML = (donors.length === 0 ? donorEmptyEl.outerHTML : "") + rows.join("");
+  donorCountEl.textContent = String(donors.length);
+}
+
+function historyLabel(event) {
+  if (event.type === "add" || event.type === "manual") {
+    return { text: `<span class="who">${escapeHtml(event.username || "Anônimo")}</span> apoiou <strong>${escapeHtml(event.game ? event.game.name : "")}</strong>`, dot: "dot-add", amtClass: "amt-add" };
+  }
+  if (event.type === "remove") {
+    return { text: `<span class="who">${escapeHtml(event.username || "Anônimo")}</span> tirou pontos de <strong>${escapeHtml(event.game ? event.game.name : "")}</strong>`, dot: "dot-remove", amtClass: "amt-remove" };
+  }
+  if (event.type === "ignored") {
+    return { text: `<span class="who">${escapeHtml(event.username || "Anônimo")}</span> doou sem indicar um lote`, dot: "", amtClass: "" };
+  }
+  if (event.type === "closed") {
+    return { text: `<span class="who">${escapeHtml(event.username || "Anônimo")}</span> doou (leilão encerrado, não contabilizado)`, dot: "", amtClass: "" };
+  }
+  return null;
+}
+
+function renderHistory() {
+  historyEmptyEl.style.display = historyItems.length === 0 ? "flex" : "none";
+  const rows = historyItems.slice(0, 50).map((event) => {
+    const info = historyLabel(event);
+    if (!info) return "";
+    const time = event.time ? new Date(event.time).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" }) : "";
+    const amount = info.amtClass ? `<span class="history-amt ${info.amtClass}">${formatBRL(event.amount || 0)}</span>` : "";
+    return `
+      <li>
+        <span class="history-dot ${info.dot}"></span>
+        <span class="history-text">${info.text}</span>
+        <span class="history-time">${time}</span>
+        ${amount}
+      </li>
+    `;
+  });
+  historyListEl.innerHTML = (historyItems.length === 0 ? historyEmptyEl.outerHTML : "") + rows.join("");
+}
+
+function pushHistory(event) {
+  if (!event || !historyLabel(event)) return;
+  historyItems.unshift({ ...event, time: Date.now() });
+  historyItems = historyItems.slice(0, 50);
+  renderHistory();
+}
+
+async function loadInitialHistory() {
+  try {
+    const res = await fetch("/api/events/recent?limit=30");
+    const data = await res.json();
+    historyItems = data.events
+      .filter((e) => e.action === "add" || e.action === "remove" || e.action === "ignored")
+      .map((e) => ({
+        type: e.action,
+        username: e.username,
+        amount: e.amount,
+        game: e.game_name ? { name: e.game_name } : null,
+        time: e.created_at ? new Date(e.created_at).getTime() : Date.now(),
+      }));
+    renderHistory();
+  } catch (err) {
+    console.error("Erro ao carregar histórico:", err);
+  }
+}
+
+// Reta final: quando o leilão fecha (sozinho ou pelo apresentador), bate o
+// martelo — um "Vendido!" estampado por cima de tudo, uma vez só.
+let soldTimeout = null;
+function triggerSoldMoment(leaderName) {
+  clearTimeout(soldTimeout);
+  soldMarkEl.textContent = leaderName ? `Vendido — ${leaderName}!` : "Vendido!";
+  soldOverlayEl.hidden = false;
+  soldOverlayEl.style.animation = "none";
+  soldMarkEl.style.animation = "none";
+  void soldOverlayEl.offsetWidth; // força reflow pra reiniciar a animação
+  soldOverlayEl.style.animation = "";
+  soldMarkEl.style.animation = "";
+  soldTimeout = setTimeout(() => { soldOverlayEl.hidden = true; }, 2300);
+}
+
+socket.on("update", ({ leaderboard, lastEvent }) => {
+  titleEl.textContent = leaderboard.title;
+  hostNameEl.textContent = leaderboard.host || "Streamer";
+  if (leaderboard.hostAvatar) {
+    hostAvatarEl.src = leaderboard.hostAvatar;
+    hostAvatarEl.hidden = false;
+  } else {
+    hostAvatarEl.hidden = true;
+    hostAvatarEl.removeAttribute("src");
+  }
+
+  const wasOpen = isOpenState;
+  isOpenState = leaderboard.open;
+  if (wasOpen === true && isOpenState === false) {
+    const leader = (leaderboard.items || [])[0];
+    triggerSoldMoment(leader ? leader.name : null);
+  }
+
+  timerEndsAt = leaderboard.timerEndsAt;
+  tickTimer();
+
+  const totalValue = leaderboard.totalRaised || 0;
+  if (totalOdometer) totalOdometer.update(Math.round(totalValue));
+  else bumpValue(statTotalEl, String(Math.round(totalValue)));
+
+  currentItems = leaderboard.items || [];
+  donorNames = leaderboard.donorNames || [];
+  const flashKey = lastEvent && lastEvent.game ? lastEvent.game.key : null;
+  renderLots(leaderboard.items, flashKey, lastEvent ? lastEvent.type : null);
+  renderDonors(leaderboard.donors || []);
+  pushHistory(lastEvent);
+});
+
+function getPassword() {
+  return sessionStorage.getItem("presenterPassword") || "";
+}
+
+async function presenterFetch(url, options = {}) {
+  const res = await fetch(url, {
+    ...options,
+    headers: {
+      "Content-Type": "application/json",
+      "x-admin-password": getPassword(),
+      ...(options.headers || {}),
+    },
+  });
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({}));
+    throw new Error(data.error || `Erro ${res.status}`);
+  }
+  return res.status === 204 ? null : res.json();
+}
+
+function setPresenterMode(active) {
+  document.body.classList.toggle("presenter-mode", active);
+  if (!active) document.body.classList.remove("host-editing");
+  presenterToggleEl.classList.toggle("active", active);
+  presenterToggleEl.title = active ? "Sair do modo apresentador" : "Entrar no modo apresentador";
+  presenterDrawerEl.hidden = !active;
+}
+
+presenterToggleEl.addEventListener("click", async () => {
+  const isActive = document.body.classList.contains("presenter-mode");
+  if (isActive) {
+    sessionStorage.removeItem("presenterPassword");
+    setPresenterMode(false);
+    return;
+  }
+  const password = prompt("Senha do apresentador:");
+  if (!password) return;
+  const res = await fetch("/api/admin/login", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ password }),
+  });
+  if (!res.ok) {
+    alert("Senha incorreta");
+    return;
+  }
+  sessionStorage.setItem("presenterPassword", password);
+  setPresenterMode(true);
+});
+
+hostEditBtn.addEventListener("click", () => {
+  document.body.classList.add("host-editing");
+  const current = hostNameEl.textContent.trim();
+  hostInputEl.value = current === "Streamer" ? "" : current;
+  hostInputEl.focus();
+  hostInputEl.select();
+});
+
+const hostSaveBtn = document.getElementById("p-host-save");
+hostSaveBtn.addEventListener("click", async () => {
+  const host = hostInputEl.value.trim();
+  try {
+    await presenterFetch("/api/admin/host", { method: "POST", body: JSON.stringify({ host }) });
+    document.body.classList.remove("host-editing");
+  } catch (err) {
+    alert(err.message);
+  }
+});
+
+hostInputEl.addEventListener("keydown", (e) => {
+  if (e.key === "Enter") hostSaveBtn.click();
+  if (e.key === "Escape") document.body.classList.remove("host-editing");
+});
+
+document.getElementById("p-timer-reset").addEventListener("click", async () => {
+  try {
+    await presenterFetch("/api/admin/reset-timer", { method: "POST" });
+  } catch (err) {
+    alert(err.message);
+  }
+});
+
+document.getElementById("p-toggle-open").addEventListener("click", async () => {
+  try {
+    await presenterFetch("/api/admin/toggle-open", {
+      method: "POST",
+      body: JSON.stringify({ open: !isOpenState }),
+    });
+  } catch (err) {
+    alert(err.message);
+  }
+});
+
+// Procura um jogo já no catálogo pelo nome (pra o modal mostrar o total atual).
+function findGameByName(name) {
+  const norm = name.trim().toLowerCase();
+  return currentItems.find((i) => i.name.trim().toLowerCase() === norm) || null;
+}
+
+document.getElementById("p-manual-submit").addEventListener("click", () => {
+  const name = manualNameEl.value.trim();
+  if (!name) return manualNameEl.focus();
+  hideSuggestions();
+  openLotModal(findGameByName(name) || { name });
+});
+
+const manualNameEl = document.getElementById("p-manual-name");
+const suggestionsEl = document.getElementById("game-suggestions");
+let suggestionsAbortController = null;
+let suggestionsDebounce = null;
+
+function hideSuggestions() {
+  suggestionsEl.hidden = true;
+  suggestionsEl.innerHTML = "";
+}
+
+function renderSuggestions(query, results) {
+  const items = results.map((g) => {
+    const thumb = g.image
+      ? `<img class="suggestion-thumb" src="${g.image}" alt="" loading="lazy" />`
+      : `<div class="suggestion-thumb suggestion-thumb-placeholder">${escapeHtml((g.name[0] || "?").toUpperCase())}</div>`;
+    return `
+      <div class="suggestion-item" data-name="${escapeHtml(g.name)}" data-image="${escapeHtml(g.image || "")}">
+        ${thumb}
+        <span class="suggestion-name">${escapeHtml(g.name)}</span>
+        ${g.year ? `<span class="suggestion-year">${g.year}</span>` : ""}
+      </div>
+    `;
+  });
+
+  items.push(`
+    <div class="suggestion-item manual" data-name="${escapeHtml(query)}" data-image="">
+      Adicionar <strong>"${escapeHtml(query)}"</strong>
+      <span class="badge-manual">manual</span>
+    </div>
+  `);
+
+  suggestionsEl.innerHTML = items.join("");
+  suggestionsEl.hidden = false;
+
+  suggestionsEl.querySelectorAll(".suggestion-item").forEach((el) => {
+    el.addEventListener("click", () => {
+      const name = el.dataset.name;
+      hideSuggestions();
+      manualNameEl.value = "";
+      const existing = findGameByName(name);
+      openLotModal(existing || { name, image: el.dataset.image || null });
+    });
+  });
+}
+
+manualNameEl.addEventListener("input", () => {
+  const query = manualNameEl.value.trim();
+  clearTimeout(suggestionsDebounce);
+  if (query.length < 2) {
+    hideSuggestions();
+    return;
+  }
+  suggestionsDebounce = setTimeout(() => {
+    suggestionsEl.innerHTML = '<div class="suggestion-loading">buscando "' + escapeHtml(query) + '"…</div>';
+    suggestionsEl.hidden = false;
+
+    if (suggestionsAbortController) suggestionsAbortController.abort();
+    suggestionsAbortController = new AbortController();
+    fetch(`/api/admin/game-search?q=${encodeURIComponent(query)}`, {
+      headers: { "x-admin-password": getPassword() },
+      signal: suggestionsAbortController.signal,
+    })
+      .then((res) => (res.ok ? res.json() : { results: [] }))
+      .then((data) => {
+        if (manualNameEl.value.trim() !== query) return;
+        renderSuggestions(query, data.results || []);
+      })
+      .catch((err) => {
+        if (err.name !== "AbortError") console.error("Erro ao buscar sugestões:", err.message);
+      });
+  }, 150);
+});
+
+document.addEventListener("click", (e) => {
+  if (!suggestionsEl.hidden && !e.target.closest(".field-wrap")) hideSuggestions();
+});
+
+manualNameEl.addEventListener("keydown", (e) => {
+  if (e.key === "Escape") hideSuggestions();
+});
+
+// ---- modal de lançar/editar lote ----
+
+function setModalAction(action) {
+  lotModalActionSeg.querySelectorAll("button").forEach((b) => {
+    b.classList.toggle("active", b.dataset.action === action);
+  });
+  const wrap = lotModalAmount.closest(".amount-wrap");
+  wrap.classList.toggle("act-add", action === "add");
+  wrap.classList.toggle("act-remove", action === "remove");
+}
+
+function getModalAction() {
+  const active = lotModalActionSeg.querySelector("button.active");
+  return active ? active.dataset.action : "add";
+}
+
+// game: { name, key?, total?, image? }. Com key+total = editar; sem = novo lote.
+function openLotModal(game) {
+  modalGame = game;
+  const existing = game.key != null && game.total != null;
+
+  lotModalTitle.textContent = game.name;
+  lotModalEyebrow.textContent = existing ? "editar lote" : "novo lote";
+
+  if (game.image) {
+    lotModalThumb.src = game.image;
+    lotModalThumb.hidden = false;
+  } else {
+    lotModalThumb.hidden = true;
+    lotModalThumb.removeAttribute("src");
+  }
+
+  if (existing) {
+    lotModalCurrent.textContent = `total atual: ${formatBRL(game.total)}`;
+    lotModalCurrent.hidden = false;
+  } else {
+    lotModalCurrent.hidden = true;
+  }
+
+  setModalAction("add");
+  lotModalAmount.value = "";
+  lotModalDonor.value = "";
+  hideDonorSuggestions();
+  lotModalEl.hidden = false;
+  setTimeout(() => lotModalAmount.focus(), 40);
+}
+
+function closeLotModal() {
+  lotModalEl.hidden = true;
+  hideDonorSuggestions();
+  modalGame = null;
+}
+
+async function submitLotModal() {
+  if (!modalGame) return;
+  const amount = lotModalAmount.value;
+  if (!amount || Number(amount) <= 0) return lotModalAmount.focus();
+  try {
+    await presenterFetch("/api/admin/manual-entry", {
+      method: "POST",
+      body: JSON.stringify({
+        name: modalGame.name,
+        amount,
+        action: getModalAction(),
+        username: lotModalDonor.value.trim(),
+      }),
+    });
+    closeLotModal();
+  } catch (err) {
+    alert(err.message);
+  }
+}
+
+lotModalActionSeg.querySelectorAll("button").forEach((b) => {
+  b.addEventListener("click", () => setModalAction(b.dataset.action));
+});
+lotModalSubmit.addEventListener("click", submitLotModal);
+lotModalCancel.addEventListener("click", closeLotModal);
+lotModalClose.addEventListener("click", closeLotModal);
+lotModalEl.addEventListener("click", (e) => { if (e.target === lotModalEl) closeLotModal(); });
+lotModalAmount.addEventListener("keydown", (e) => { if (e.key === "Enter") submitLotModal(); });
+document.addEventListener("keydown", (e) => { if (e.key === "Escape" && !lotModalEl.hidden) closeLotModal(); });
+
+// Autocomplete do doador: sugere nomes de quem já doou, pra evitar variações
+// do mesmo nome (ex.: "Yeojin" vs "yEOJIN") que viram apoiadores diferentes.
+function hideDonorSuggestions() {
+  donorSuggestionsEl.hidden = true;
+  donorSuggestionsEl.innerHTML = "";
+}
+
+function showDonorSuggestions() {
+  const q = donorInputEl.value.trim().toLowerCase();
+  let matches = donorNames;
+  if (q) matches = donorNames.filter((n) => n.toLowerCase().includes(q) && n.toLowerCase() !== q);
+  matches = matches.slice(0, 6);
+  if (matches.length === 0) return hideDonorSuggestions();
+
+  donorSuggestionsEl.innerHTML = matches
+    .map((n) => `<div class="suggestion-item donor-suggestion" data-name="${escapeHtml(n)}"><span class="suggestion-name">${escapeHtml(n)}</span></div>`)
+    .join("");
+  donorSuggestionsEl.hidden = false;
+
+  donorSuggestionsEl.querySelectorAll(".suggestion-item").forEach((el) => {
+    // mousedown (não click) pra disparar antes do blur do input
+    el.addEventListener("mousedown", (e) => {
+      e.preventDefault();
+      donorInputEl.value = el.dataset.name;
+      hideDonorSuggestions();
+    });
+  });
+}
+
+donorInputEl.addEventListener("input", showDonorSuggestions);
+donorInputEl.addEventListener("focus", showDonorSuggestions);
+donorInputEl.addEventListener("blur", () => setTimeout(hideDonorSuggestions, 120));
+
+if (getPassword()) setPresenterMode(true);
+
+socket.on("update", ({ leaderboard }) => {
+  const btn = document.getElementById("p-toggle-open");
+  btn.textContent = leaderboard.open ? "Encerrar leilão" : "Reabrir leilão";
+});

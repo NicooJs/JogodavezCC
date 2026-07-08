@@ -1,0 +1,6 @@
+node_modules/
+.env
+leilao-data.json
+*.bak
+.claude/
+CLAUDE.md
