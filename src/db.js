@@ -5,7 +5,12 @@
 const fs = require("fs");
 const path = require("path");
 
-const DATA_FILE = path.join(__dirname, "..", "leilao-data.json");
+// Em produção (Railway), DATA_DIR aponta pra um volume persistente, senão
+// o arquivo seria apagado a cada novo deploy. Sem DATA_DIR (uso local),
+// continua salvando na raiz do projeto como sempre.
+const DATA_FILE = process.env.DATA_DIR
+  ? path.join(process.env.DATA_DIR, "leilao-data.json")
+  : path.join(__dirname, "..", "leilao-data.json");
 
 function emptyData() {
   return {
