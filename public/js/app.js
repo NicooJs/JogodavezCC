@@ -45,6 +45,8 @@ const TIMER_RING_CIRCUMFERENCE = 2 * Math.PI * 28;
 let timerEndsAt = null;
 let timerDurationMs = 5 * 60 * 1000; // atualizado a cada "update" com o valor real do server
 let isOpenState = null; // null = ainda não recebemos a primeira atualização
+let isPausedState = false;
+let pausedRemainingMs = null;
 let historyItems = [];
 let currentLeaderKey = null;
 let previousTotals = new Map();
@@ -93,16 +95,31 @@ function setRingFraction(fraction) {
 const FINAL_COUNTDOWN_SECONDS = 15;
 
 function tickTimer() {
-  if (!isOpenState || !timerEndsAt) {
+  if (!isOpenState) {
     timerEl.classList.add("closed");
-    timerEl.classList.remove("urgent");
+    timerEl.classList.remove("urgent", "paused");
     boardEl.classList.remove("final-countdown");
     timerLabelEl.textContent = "leilão";
     timerClockEl.textContent = "ENCERRADO";
     setRingFraction(0);
     return;
   }
-  timerEl.classList.remove("closed");
+
+  if (isPausedState) {
+    timerEl.classList.add("paused");
+    timerEl.classList.remove("closed", "urgent");
+    boardEl.classList.remove("final-countdown");
+    const totalSeconds = Math.ceil((pausedRemainingMs || 0) / 1000);
+    const m = Math.floor(totalSeconds / 60);
+    const s = totalSeconds % 60;
+    timerLabelEl.textContent = "pausado em";
+    timerClockEl.textContent = `${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
+    setRingFraction((pausedRemainingMs || 0) / timerDurationMs);
+    return;
+  }
+
+  timerEl.classList.remove("closed", "paused");
+  if (!timerEndsAt) return;
   const msLeft = timerEndsAt - Date.now();
   if (msLeft <= 0) {
     timerLabelEl.textContent = "leilão";
@@ -394,6 +411,8 @@ socket.on("update", ({ leaderboard, lastEvent }) => {
   }
 
   timerEndsAt = leaderboard.timerEndsAt;
+  isPausedState = !!leaderboard.paused;
+  pausedRemainingMs = leaderboard.timerRemainingMs;
   if (leaderboard.timerDurationMs) timerDurationMs = leaderboard.timerDurationMs;
   tickTimer();
 
@@ -483,6 +502,17 @@ hostInputEl.addEventListener("keydown", (e) => {
   if (e.key === "Escape") document.body.classList.remove("host-editing");
 });
 
+document.getElementById("p-pause-toggle").addEventListener("click", async () => {
+  try {
+    await presenterFetch("/api/admin/pause", {
+      method: "POST",
+      body: JSON.stringify({ paused: !isPausedState }),
+    });
+  } catch (err) {
+    alert(err.message);
+  }
+});
+
 document.getElementById("p-timer-reset").addEventListener("click", async () => {
   try {
     await presenterFetch("/api/admin/reset-timer", { method: "POST" });
@@ -511,6 +541,9 @@ timerMinutesInput.addEventListener("keydown", (e) => {
 });
 
 document.getElementById("p-toggle-open").addEventListener("click", async () => {
+  // Encerrar é definitivo (só reabre manual) — confirma antes pra evitar
+  // clique acidental. Reabrir é seguro, não precisa confirmar.
+  if (isOpenState && !confirm("Encerrar o leilão agora? Ele só reabre quando você reabrir manualmente.")) return;
   try {
     await presenterFetch("/api/admin/toggle-open", {
       method: "POST",
@@ -734,9 +767,18 @@ donorInputEl.addEventListener("blur", () => setTimeout(hideDonorSuggestions, 120
 if (getPassword()) setPresenterMode(true);
 
 socket.on("update", ({ leaderboard }) => {
-  const btn = document.getElementById("p-toggle-open");
-  const label = leaderboard.open ? "Encerrar leilão" : "Reabrir leilão";
-  btn.classList.toggle("is-closed", !leaderboard.open);
-  btn.title = label;
-  btn.setAttribute("aria-label", label);
+  const openBtn = document.getElementById("p-toggle-open");
+  const openLabel = leaderboard.open ? "Encerrar leilão" : "Reabrir leilão";
+  openBtn.classList.toggle("is-closed", !leaderboard.open);
+  openBtn.title = openLabel;
+  openBtn.setAttribute("aria-label", openLabel);
+  document.getElementById("p-open-label").textContent = leaderboard.open ? "Encerrar" : "Reabrir";
+
+  const pauseBtn = document.getElementById("p-pause-toggle");
+  const pauseLabel = leaderboard.paused ? "Retomar timer" : "Pausar timer";
+  pauseBtn.classList.toggle("is-paused", !!leaderboard.paused);
+  pauseBtn.disabled = !leaderboard.open;
+  pauseBtn.title = leaderboard.open ? pauseLabel : "Reabra o leilão pra poder pausar";
+  pauseBtn.setAttribute("aria-label", pauseBtn.title);
+  document.getElementById("p-pause-label").textContent = leaderboard.paused ? "Retomar" : "Pausar";
 });

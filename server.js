@@ -56,7 +56,9 @@ function resolveParsedGame(parsed) {
 function serializeLeaderboard() {
   const rows = db.getLeaderboard();
   const isOpen = db.getState("open", "true") === "true";
+  const isPaused = isOpen && db.getState("paused", "false") === "true";
   const lastActivityAt = Number(db.getState("lastActivityAt", Date.now()));
+  const autoCloseMs = getAutoCloseMs();
   const items = rows.map((row, index) => ({
     key: row.key,
     name: row.name,
@@ -77,12 +79,14 @@ function serializeLeaderboard() {
     host: db.getState("host", ""),
     hostAvatar: db.getState("hostAvatar", null),
     open: isOpen,
+    paused: isPaused,
     items,
     donors,
     donorNames: db.getDonorNames(),
     totalRaised: centsToNumber(db.getTotalRaised()),
-    timerEndsAt: isOpen ? lastActivityAt + getAutoCloseMs() : null,
-    timerDurationMs: getAutoCloseMs(),
+    timerEndsAt: isOpen && !isPaused ? lastActivityAt + autoCloseMs : null,
+    timerRemainingMs: isPaused ? Number(db.getState("pausedRemainingMs", autoCloseMs)) : null,
+    timerDurationMs: autoCloseMs,
   };
 }
 
@@ -346,8 +350,32 @@ app.post("/api/admin/toggle-open", requireAdmin, (req, res) => {
   const { open } = req.body || {};
   db.setState("open", open ? "true" : "false");
   if (open) touchActivity(); // reabrir dá um fôlego novo de 5 min
+  else db.setState("paused", "false"); // encerrar limpa qualquer pausa pendente
   broadcastUpdate({ type: "toggle-open", open: !!open });
   res.json({ ok: true, open: !!open });
+});
+
+// Pausa/retoma só o timer de inatividade (o leilão continua aberto e
+// aceitando doações normalmente) — diferente de encerrar, que é definitivo
+// até reabrir manual. Ao retomar, volta exatamente com o tempo que faltava.
+app.post("/api/admin/pause", requireAdmin, (req, res) => {
+  const { paused } = req.body || {};
+  const isOpen = db.getState("open", "true") === "true";
+  if (!isOpen) return res.status(400).json({ error: "O leilão está encerrado, não dá pra pausar" });
+
+  const autoCloseMs = getAutoCloseMs();
+  if (paused) {
+    const lastActivityAt = Number(db.getState("lastActivityAt", Date.now()));
+    const remaining = Math.max(0, lastActivityAt + autoCloseMs - Date.now());
+    db.setState("pausedRemainingMs", Math.round(remaining));
+    db.setState("paused", "true");
+  } else {
+    const remaining = Number(db.getState("pausedRemainingMs", autoCloseMs));
+    db.setState("lastActivityAt", String(Date.now() - (autoCloseMs - remaining)));
+    db.setState("paused", "false");
+  }
+  broadcastUpdate({ type: "pause", paused: !!paused });
+  res.json({ ok: true, paused: !!paused });
 });
 
 app.post("/api/admin/reset-timer", requireAdmin, (req, res) => {
@@ -420,6 +448,7 @@ io.on("connection", (socket) => {
 setInterval(() => {
   const isOpen = db.getState("open", "true") === "true";
   if (!isOpen) return;
+  if (db.getState("paused", "false") === "true") return; // pausado não conta o tempo
   const lastActivityAt = Number(db.getState("lastActivityAt", Date.now()));
   if (Date.now() - lastActivityAt >= getAutoCloseMs()) {
     db.setState("open", "false");
