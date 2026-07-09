@@ -129,6 +129,21 @@ function thumbHtml(item, className) {
     : `<div class="${className} ${className}-placeholder">${escapeHtml((item.name[0] || "?").toUpperCase())}</div>`;
 }
 
+// Medalha (coroa/prata/bronze) pros 3 primeiros do leilão — mesmo desenho
+// pros três, só a cor muda (herda a cor já definida por .lot-card.rank-N).
+// O losango no centro ecoa a marca do site (o losango ao lado do título).
+const MEDAL_ICON_SVG = `<svg class="medal-icon" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <path d="M7.5 11L4.5 17.5L7.3 16.6L9 19L10.8 14.8" fill="currentColor" opacity="0.85"/>
+  <path d="M12.5 11L15.5 17.5L12.7 16.6L11 19L9.2 14.8" fill="currentColor" opacity="0.85"/>
+  <circle cx="10" cy="7.5" r="5.5" fill="currentColor" fill-opacity="0.18" stroke="currentColor" stroke-width="1.4"/>
+  <rect x="8.6" y="6.1" width="2.8" height="2.8" fill="currentColor" transform="rotate(45 10 7.5)"/>
+</svg>`;
+
+function rankBadgeHtml(rank) {
+  const num = `<b>${String(rank).padStart(2, "0")}</b>`;
+  return rank <= 3 ? MEDAL_ICON_SVG + num : num;
+}
+
 function lotCardInnerHtml(item, barPct, hitBadge, changed) {
   const thumb = thumbHtml(item, "lot-thumb");
   const bg = item.image
@@ -138,7 +153,7 @@ function lotCardInnerHtml(item, barPct, hitBadge, changed) {
     ${bg}
     <div class="lot-card-fill"></div>
     <div class="lot-card-content">
-      <span class="lot-rank">${String(item.rank).padStart(2, "0")}</span>
+      <span class="lot-rank">${rankBadgeHtml(item.rank)}</span>
       ${thumb}
       <p class="lot-name">${escapeHtml(item.name)}</p>
       <div class="lot-meta">
@@ -720,5 +735,8 @@ if (getPassword()) setPresenterMode(true);
 
 socket.on("update", ({ leaderboard }) => {
   const btn = document.getElementById("p-toggle-open");
-  btn.textContent = leaderboard.open ? "Encerrar leilão" : "Reabrir leilão";
+  const label = leaderboard.open ? "Encerrar leilão" : "Reabrir leilão";
+  btn.classList.toggle("is-closed", !leaderboard.open);
+  btn.title = label;
+  btn.setAttribute("aria-label", label);
 });

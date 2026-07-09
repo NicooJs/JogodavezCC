@@ -23,6 +23,8 @@
 
 * { box-sizing: border-box; }
 
+svg.icon { display: block; flex-shrink: 0; }
+
 html, body {
   margin: 0;
   padding: 0;
@@ -243,6 +245,18 @@ body::before {
 .field-wrap { position: relative; }
 .field-wrap input { width: 100%; }
 .presenter-search { flex: 1; min-width: 180px; }
+
+.field-icon {
+  position: absolute;
+  left: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 15px;
+  height: 15px;
+  color: var(--muted);
+  pointer-events: none;
+}
+.presenter-search input { padding-left: 34px; }
 
 .amount-wrap {
   display: flex;
@@ -496,29 +510,43 @@ body::before {
 
 .panel-hint strong { color: var(--text); }
 
-.host-panel { flex-shrink: 0; padding-top: 22px; padding-bottom: 22px; }
+.host-panel { flex-shrink: 0; padding: 20px 10px; }
 
-.host-row { display: flex; align-items: center; gap: 13px; min-height: 66px; }
+/* Cartão próprio pra destacar o host dentro do painel — mais respiro e um
+   contorno sutil que separa do resto da coluna, em vez de ficar solto. O
+   padding aqui substitui (não soma) o padding lateral do .panel, senão
+   sobra pouco espaço pro nome numa coluna de 260px. */
+.host-card {
+  position: relative;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 18px 10px;
+}
+
+.host-row { display: flex; align-items: center; gap: 14px; min-height: 68px; }
 
 .host-name {
   font-family: var(--font-display);
   font-style: italic;
   font-weight: 700;
   font-size: 32px;
-  line-height: 1.1;
+  line-height: 1.12;
   margin: 0;
   color: var(--text);
   flex: 1;
   min-width: 0;
   overflow: hidden;
+  overflow-wrap: break-word;
+  hyphens: auto;
   display: -webkit-box;
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
 }
 
 .host-avatar {
-  width: 66px;
-  height: 66px;
+  width: 68px;
+  height: 68px;
   border-radius: 50%;
   object-fit: cover;
   border: 2px solid var(--accent);
@@ -527,46 +555,78 @@ body::before {
 
 .host-avatar[hidden] { display: none; }
 
-/* Botão "editar" — fica abaixo do nome (pra não espremer o nome), só no modo
-   apresentador, e some enquanto está editando. */
+/* Botão "editar" — ícone só, fixado no canto do card (fora do fluxo da
+   linha, pra não competir por espaço com o nome), só no modo apresentador,
+   e some enquanto está editando. */
 .host-edit-btn {
   display: none;
-  align-self: flex-start;
-  margin-top: 12px;
-  font-family: var(--font-mono);
-  font-size: 10.5px;
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  flex-shrink: 0;
   background: none;
   border: 1px solid var(--border);
   color: var(--muted);
-  padding: 5px 11px;
-  border-radius: var(--radius);
+  border-radius: 50%;
   cursor: pointer;
   transition: border-color 0.15s ease, color 0.15s ease;
 }
 
-.host-edit-btn:hover { border-color: var(--accent); color: var(--text); }
+.host-edit-btn .icon { width: 12px; height: 12px; }
+.host-edit-btn:hover { border-color: var(--accent); color: var(--accent-text); }
 .presenter-mode .host-edit-btn { display: inline-flex; }
+.presenter-mode .host-row { padding-right: 26px; }
 
-/* A foto fica visível sempre. O nome + "editar" aparecem por padrão; só ao
-   clicar em "editar" (body.host-editing) é que surge o campo de digitar. */
-.host-edit { display: none; gap: 6px; flex: 1; min-width: 0; }
+/* Foto + nome ficam visíveis por padrão; ao clicar em "editar"
+   (body.host-editing) troca pra uma pílula de edição em largura total. */
+.host-edit {
+  display: none;
+  align-items: center;
+  gap: 4px;
+  margin-top: 12px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 4px;
+}
 .presenter-mode.host-editing .host-edit { display: flex; }
-.presenter-mode.host-editing .host-name,
-.presenter-mode.host-editing .host-edit-btn { display: none; }
+.presenter-mode.host-editing .host-row { display: none; }
 
 .host-edit input {
   flex: 1;
   min-width: 0;
-  background: var(--surface-2);
-  border: 1px solid var(--border);
+  background: none;
+  border: none;
   color: var(--text);
-  padding: 7px 10px;
-  border-radius: var(--radius);
+  padding: 0 12px;
   font-family: var(--font-body);
-  font-size: 13px;
+  font-size: 13.5px;
+  height: 32px;
 }
 
-.host-edit input:focus { outline: none; border-color: var(--accent); }
+.host-edit input:focus { outline: none; }
+
+.host-edit-confirm {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  flex-shrink: 0;
+  background: var(--accent);
+  color: #2b1205;
+  border: none;
+  border-radius: 50%;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.host-edit-confirm:hover { background: var(--accent-text); }
+.host-edit-confirm .icon { width: 14px; height: 14px; }
 
 .donors-panel { flex: 1; min-height: 160px; }
 
@@ -786,13 +846,20 @@ body::before {
 }
 
 .lot-rank {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
   font-family: var(--font-mono);
   font-size: 12px;
   font-weight: 600;
   color: var(--muted);
-  width: 18px;
+  width: 24px;
   flex-shrink: 0;
 }
+
+.lot-rank .medal-icon { width: 17px; height: 17px; }
 
 .lot-card.rank-1 .lot-rank { color: var(--accent-text); }
 .lot-card.rank-2 .lot-rank { color: var(--silver); }
@@ -913,29 +980,98 @@ body::before {
 .timer.urgent .timer-clock { color: var(--danger); }
 .timer.closed .timer-clock { color: var(--muted); font-size: 15px; }
 
-.timer-controls { display: none; gap: 8px; margin-top: 14px; }
-.presenter-mode .timer-controls { display: flex; }
-
-.timer-controls-custom { margin-top: 8px; }
-
-.timer-minutes-input {
-  width: 56px;
-  min-width: 0;
+/* Barra única de controles do timer: um só container em pílula, com ícones
+   em vez de texto empilhado em várias caixas (toggle pausa/play, +5 rápido,
+   e duração customizada — tudo lado a lado, separado por divisores finos). */
+.timer-toolbar {
+  display: none;
+  align-items: stretch;
+  gap: 2px;
+  margin-top: 14px;
   background: var(--surface-2);
   border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 4px;
+  height: 40px;
+}
+.presenter-mode .timer-toolbar { display: flex; }
+
+.tbar-divider { width: 1px; background: var(--border); margin: 6px 0; flex-shrink: 0; }
+
+.tbar-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  background: none;
+  border: none;
+  color: var(--muted);
+  border-radius: 999px;
+  padding: 0 11px;
+  cursor: pointer;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-weight: 600;
+  transition: color 0.15s ease, background 0.15s ease;
+}
+
+.tbar-btn:hover { color: var(--text); background: rgba(255, 255, 255, 0.04); }
+.tbar-btn .icon { width: 16px; height: 16px; flex-shrink: 0; }
+
+/* Toggle encerrar/reabrir: mostra pause quando aberto, play quando fechado
+   (a classe é alternada via JS junto com o title/aria-label). */
+.tbar-btn .icon-play { display: none; }
+.tbar-btn.is-closed .icon-pause { display: none; }
+.tbar-btn.is-closed .icon-play { display: block; }
+.tbar-btn.is-closed { color: var(--accent-text); }
+
+.tbar-btn-wide { padding: 0 12px 0 10px; }
+
+.tbar-custom {
+  display: flex;
+  align-items: center;
+  flex: 1;
+  min-width: 0;
+  gap: 2px;
+  padding-left: 10px;
+}
+
+.tbar-input {
+  width: 100%;
+  min-width: 0;
+  background: none;
+  border: none;
   color: var(--text);
-  padding: 7px 8px;
-  border-radius: var(--radius);
+  padding: 0;
   font-family: var(--font-mono);
   font-size: 13px;
 }
 
-.timer-minutes-input:focus { outline: none; border-color: var(--accent); }
+.tbar-input:focus { outline: none; }
+.tbar-input::placeholder { color: var(--muted); }
 
 /* remove as setinhas do input number pra não brigar com o resto do UI */
-.timer-minutes-input::-webkit-outer-spin-button,
-.timer-minutes-input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
-.timer-minutes-input { -moz-appearance: textfield; }
+.tbar-input::-webkit-outer-spin-button,
+.tbar-input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+.tbar-input { -moz-appearance: textfield; }
+
+.tbar-icon-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  flex-shrink: 0;
+  background: var(--accent);
+  color: #2b1205;
+  border: none;
+  border-radius: 50%;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.tbar-icon-btn:hover { background: var(--accent-text); }
+.tbar-icon-btn .icon { width: 13px; height: 13px; }
 
 .btn-mini {
   background: var(--surface-2);
@@ -1014,6 +1150,14 @@ body::before {
   .arena-panel { min-height: 0; }
   .arena-grid { max-height: none; overflow: visible; }
   .presenter-toggle span { display: inline; }
+
+  /* Card do lote mais compacto: sem isso, o nome do jogo é espremido a
+     zero pela miniatura + valor + botão "editar" competindo no mesmo eixo. */
+  .lot-card-content { gap: 10px; padding: 12px 14px; }
+  .lot-thumb, .lot-thumb-placeholder { width: 46px; height: 46px; }
+  .lot-rank { width: 20px; }
+  .lot-meta { gap: 6px; }
+  .lot-edit button { padding: 2px 5px; font-size: 9.5px; }
 }
 
 /* ---- modal de lote ---- */
