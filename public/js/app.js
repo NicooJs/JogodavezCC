@@ -1,4 +1,15 @@
-const socket = io();
+// A página do board é servida em /l/<id> — o id é a única coisa que
+// diferencia o leilão de um streamer do de outro, então tudo (fetch, socket)
+// passa por ele.
+const LEILAO_ID = location.pathname.match(/^\/l\/([a-z0-9_-]+)/i)?.[1] || null;
+if (!LEILAO_ID) {
+  document.body.innerHTML = '<p style="padding:40px;font-family:sans-serif;color:#ccc;background:#1c1c1f;">Link de leilão inválido. Volte pra <a href="/" style="color:#ff7a45;">criar ou achar o seu</a>.</p>';
+  throw new Error("LEILAO_ID ausente na URL");
+}
+
+document.getElementById("admin-link").href = `/l/${LEILAO_ID}/admin`;
+
+const socket = io({ query: { leilaoId: LEILAO_ID } });
 
 const lotListEl = document.getElementById("lot-list");
 const emptyStateEl = document.getElementById("empty-state");
@@ -360,7 +371,7 @@ function pushHistory(event) {
 
 async function loadInitialHistory() {
   try {
-    const res = await fetch("/api/events/recent?limit=30");
+    const res = await fetch(`/api/l/${LEILAO_ID}/events/recent?limit=30`);
     const data = await res.json();
     historyItems = data.events
       .filter((e) => e.action === "add" || e.action === "remove" || e.action === "ignored")
@@ -429,11 +440,11 @@ socket.on("update", ({ leaderboard, lastEvent }) => {
 });
 
 function getPassword() {
-  return sessionStorage.getItem("presenterPassword") || "";
+  return sessionStorage.getItem(`admin:${LEILAO_ID}`) || "";
 }
 
-async function presenterFetch(url, options = {}) {
-  const res = await fetch(url, {
+async function presenterFetch(path, options = {}) {
+  const res = await fetch(`/api/l/${LEILAO_ID}${path}`, {
     ...options,
     headers: {
       "Content-Type": "application/json",
@@ -459,13 +470,13 @@ function setPresenterMode(active) {
 presenterToggleEl.addEventListener("click", async () => {
   const isActive = document.body.classList.contains("presenter-mode");
   if (isActive) {
-    sessionStorage.removeItem("presenterPassword");
+    sessionStorage.removeItem(`admin:${LEILAO_ID}`);
     setPresenterMode(false);
     return;
   }
   const password = prompt("Senha do apresentador:");
   if (!password) return;
-  const res = await fetch("/api/admin/login", {
+  const res = await fetch(`/api/l/${LEILAO_ID}/admin/login`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ password }),
@@ -474,7 +485,7 @@ presenterToggleEl.addEventListener("click", async () => {
     alert("Senha incorreta");
     return;
   }
-  sessionStorage.setItem("presenterPassword", password);
+  sessionStorage.setItem(`admin:${LEILAO_ID}`, password);
   setPresenterMode(true);
 });
 
@@ -490,7 +501,7 @@ const hostSaveBtn = document.getElementById("p-host-save");
 hostSaveBtn.addEventListener("click", async () => {
   const host = hostInputEl.value.trim();
   try {
-    await presenterFetch("/api/admin/host", { method: "POST", body: JSON.stringify({ host }) });
+    await presenterFetch("/admin/host", { method: "POST", body: JSON.stringify({ host }) });
     document.body.classList.remove("host-editing");
   } catch (err) {
     alert(err.message);
@@ -504,7 +515,7 @@ hostInputEl.addEventListener("keydown", (e) => {
 
 document.getElementById("p-pause-toggle").addEventListener("click", async () => {
   try {
-    await presenterFetch("/api/admin/pause", {
+    await presenterFetch("/admin/pause", {
       method: "POST",
       body: JSON.stringify({ paused: !isPausedState }),
     });
@@ -515,7 +526,7 @@ document.getElementById("p-pause-toggle").addEventListener("click", async () => 
 
 document.getElementById("p-timer-reset").addEventListener("click", async () => {
   try {
-    await presenterFetch("/api/admin/reset-timer", { method: "POST" });
+    await presenterFetch("/admin/reset-timer", { method: "POST" });
   } catch (err) {
     alert(err.message);
   }
@@ -526,7 +537,7 @@ document.getElementById("p-timer-set").addEventListener("click", async () => {
   const minutes = Number(timerMinutesInput.value);
   if (!minutes || minutes <= 0) return timerMinutesInput.focus();
   try {
-    await presenterFetch("/api/admin/set-timer", {
+    await presenterFetch("/admin/set-timer", {
       method: "POST",
       body: JSON.stringify({ minutes }),
     });
@@ -545,7 +556,7 @@ document.getElementById("p-toggle-open").addEventListener("click", async () => {
   // clique acidental. Reabrir é seguro, não precisa confirmar.
   if (isOpenState && !confirm("Encerrar o leilão agora? Ele só reabre quando você reabrir manualmente.")) return;
   try {
-    await presenterFetch("/api/admin/toggle-open", {
+    await presenterFetch("/admin/toggle-open", {
       method: "POST",
       body: JSON.stringify({ open: !isOpenState }),
     });
@@ -625,7 +636,7 @@ manualNameEl.addEventListener("input", () => {
 
     if (suggestionsAbortController) suggestionsAbortController.abort();
     suggestionsAbortController = new AbortController();
-    fetch(`/api/admin/game-search?q=${encodeURIComponent(query)}`, {
+    fetch(`/api/l/${LEILAO_ID}/admin/game-search?q=${encodeURIComponent(query)}`, {
       headers: { "x-admin-password": getPassword() },
       signal: suggestionsAbortController.signal,
     })
@@ -706,7 +717,7 @@ async function submitLotModal() {
   const amount = lotModalAmount.value;
   if (!amount || Number(amount) <= 0) return lotModalAmount.focus();
   try {
-    await presenterFetch("/api/admin/manual-entry", {
+    await presenterFetch("/admin/manual-entry", {
       method: "POST",
       body: JSON.stringify({
         name: modalGame.name,

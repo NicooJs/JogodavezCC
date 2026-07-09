@@ -1,15 +1,22 @@
+// Painel avançado é servido em /l/<id>/admin — mesma convenção do board.
+const LEILAO_ID = location.pathname.match(/^\/l\/([a-z0-9_-]+)\/admin/i)?.[1] || null;
+
 const loginScreen = document.getElementById("login-screen");
 const adminScreen = document.getElementById("admin-screen");
 const passwordInput = document.getElementById("password");
 const loginBtn = document.getElementById("login-btn");
 const loginError = document.getElementById("login-error");
 
-function getPassword() {
-  return sessionStorage.getItem("adminPassword") || "";
+if (!LEILAO_ID) {
+  loginScreen.innerHTML = '<header class="top"><h1>Link inválido</h1></header><div class="panel"><p>Esse link não aponta pra nenhum leilão. Volte pra <a href="/">criar ou achar o seu</a>.</p></div>';
 }
 
-async function adminFetch(url, options = {}) {
-  const res = await fetch(url, {
+function getPassword() {
+  return sessionStorage.getItem(`admin:${LEILAO_ID}`) || "";
+}
+
+async function adminFetch(path, options = {}) {
+  const res = await fetch(`/api/l/${LEILAO_ID}${path}`, {
     ...options,
     headers: {
       "Content-Type": "application/json",
@@ -25,7 +32,7 @@ async function adminFetch(url, options = {}) {
 }
 
 async function tryLogin(password) {
-  const res = await fetch("/api/admin/login", {
+  const res = await fetch(`/api/l/${LEILAO_ID}/admin/login`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ password }),
@@ -33,21 +40,27 @@ async function tryLogin(password) {
   return res.ok;
 }
 
-loginBtn.addEventListener("click", async () => {
-  const password = passwordInput.value;
-  loginError.textContent = "";
-  const ok = await tryLogin(password);
-  if (!ok) {
-    loginError.textContent = "Senha incorreta";
-    return;
-  }
-  sessionStorage.setItem("adminPassword", password);
-  showAdmin();
-});
+if (LEILAO_ID) {
+  loginBtn.addEventListener("click", async () => {
+    const password = passwordInput.value;
+    loginError.textContent = "";
+    const ok = await tryLogin(password);
+    if (!ok) {
+      loginError.textContent = "Senha incorreta";
+      return;
+    }
+    sessionStorage.setItem(`admin:${LEILAO_ID}`, password);
+    showAdmin();
+  });
 
-passwordInput.addEventListener("keydown", (e) => {
-  if (e.key === "Enter") loginBtn.click();
-});
+  passwordInput.addEventListener("keydown", (e) => {
+    if (e.key === "Enter") loginBtn.click();
+  });
+
+  if (getPassword()) {
+    tryLogin(getPassword()).then((ok) => { if (ok) showAdmin(); });
+  }
+}
 
 function formatBRL(value) {
   return value.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
@@ -59,17 +72,17 @@ function showAdmin() {
   initAdmin();
 }
 
-if (getPassword()) {
-  tryLogin(getPassword()).then((ok) => { if (ok) showAdmin(); });
-}
-
 // ---------------- admin screen logic ----------------
 
 let socket;
 let currentGames = [];
+let adminInitialized = false;
 
 function initAdmin() {
-  socket = io();
+  if (adminInitialized) return;
+  adminInitialized = true;
+
+  socket = io({ query: { leilaoId: LEILAO_ID } });
   socket.on("update", ({ leaderboard }) => {
     currentGames = leaderboard.items;
     document.getElementById("title-input").value = leaderboard.title;
@@ -80,21 +93,13 @@ function initAdmin() {
 
   document.getElementById("save-title").addEventListener("click", async () => {
     const title = document.getElementById("title-input").value.trim();
-    await adminFetch("/api/admin/title", { method: "POST", body: JSON.stringify({ title }) });
+    await adminFetch("/admin/title", { method: "POST", body: JSON.stringify({ title }) });
   });
 
   document.getElementById("toggle-open").addEventListener("click", async () => {
     const isOpen = document.getElementById("open-state").textContent === "aberto";
-    await adminFetch("/api/admin/toggle-open", { method: "POST", body: JSON.stringify({ open: !isOpen }) });
-  });
-
-  document.getElementById("setup-webhook").addEventListener("click", async () => {
-    try {
-      const result = await adminFetch("/api/admin/setup-webhook", { method: "POST" });
-      alert("Webhook registrado com sucesso:\n" + JSON.stringify(result.webhook, null, 2));
-    } catch (err) {
-      alert("Erro ao registrar webhook: " + err.message);
-    }
+    if (isOpen && !confirm("Encerrar o leilão agora? Ele só reabre quando você reabrir manualmente.")) return;
+    await adminFetch("/admin/toggle-open", { method: "POST", body: JSON.stringify({ open: !isOpen }) });
   });
 
   document.getElementById("manual-submit").addEventListener("click", async () => {
@@ -104,7 +109,7 @@ function initAdmin() {
     const username = document.getElementById("manual-username").value.trim();
     if (!name || !amount) return alert("Preencha nome e valor");
     try {
-      await adminFetch("/api/admin/manual-entry", {
+      await adminFetch("/admin/manual-entry", {
         method: "POST",
         body: JSON.stringify({ name, amount, action, username }),
       });
@@ -121,7 +126,7 @@ function initAdmin() {
     const toKey = document.getElementById("merge-to").value;
     if (!fromKey || !toKey || fromKey === toKey) return alert("Escolha dois jogos diferentes");
     try {
-      await adminFetch("/api/admin/merge", { method: "POST", body: JSON.stringify({ fromKey, toKey }) });
+      await adminFetch("/admin/merge", { method: "POST", body: JSON.stringify({ fromKey, toKey }) });
     } catch (err) {
       alert(err.message);
     }
@@ -129,7 +134,7 @@ function initAdmin() {
 
   document.getElementById("reset-btn").addEventListener("click", async () => {
     if (!confirm("Isso apaga TODOS os jogos e o histórico. Tem certeza?")) return;
-    await adminFetch("/api/admin/reset", { method: "POST" });
+    await adminFetch("/admin/reset", { method: "POST" });
   });
 }
 
@@ -158,24 +163,24 @@ function renderTable() {
       </td>
     `;
     tr.querySelector('[data-act="plus"]').addEventListener("click", () =>
-      adminFetch("/api/admin/adjust", { method: "POST", body: JSON.stringify({ key: game.key, deltaAmount: 10 }) })
+      adminFetch("/admin/adjust", { method: "POST", body: JSON.stringify({ key: game.key, deltaAmount: 10 }) })
     );
     tr.querySelector('[data-act="minus"]').addEventListener("click", () =>
-      adminFetch("/api/admin/adjust", { method: "POST", body: JSON.stringify({ key: game.key, deltaAmount: -10 }) })
+      adminFetch("/admin/adjust", { method: "POST", body: JSON.stringify({ key: game.key, deltaAmount: -10 }) })
     );
     tr.querySelector('[data-act="set"]').addEventListener("click", () => {
       const value = prompt(`Novo valor total para "${game.name}" (R$):`, game.total.toFixed(2));
       if (value === null) return;
-      adminFetch("/api/admin/set-total", { method: "POST", body: JSON.stringify({ key: game.key, total: value }) });
+      adminFetch("/admin/set-total", { method: "POST", body: JSON.stringify({ key: game.key, total: value }) });
     });
     tr.querySelector('[data-act="rename"]').addEventListener("click", () => {
       const value = prompt("Novo nome:", game.name);
       if (value === null) return;
-      adminFetch("/api/admin/rename", { method: "POST", body: JSON.stringify({ key: game.key, newName: value }) });
+      adminFetch("/admin/rename", { method: "POST", body: JSON.stringify({ key: game.key, newName: value }) });
     });
     tr.querySelector('[data-act="delete"]').addEventListener("click", () => {
       if (!confirm(`Excluir "${game.name}"?`)) return;
-      adminFetch(`/api/admin/game/${encodeURIComponent(game.key)}`, { method: "DELETE" });
+      adminFetch(`/admin/game/${encodeURIComponent(game.key)}`, { method: "DELETE" });
     });
     body.appendChild(tr);
   });

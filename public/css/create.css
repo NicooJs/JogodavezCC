@@ -1,0 +1,171 @@
+/* Tela de criação de leilão — reaproveita os tokens de :root do style.css
+   (cor, fonte). Não duplicar valores de cor aqui; se precisar mudar tema,
+   mexe só em style.css. */
+
+.create-body { height: auto; overflow-y: auto; }
+
+.create-page {
+  max-width: 640px;
+  margin: 0 auto;
+  padding: 18px 24px 60px;
+  min-height: 100vh;
+}
+
+.create-topbar { margin-bottom: 48px; }
+
+.create-main { display: flex; flex-direction: column; gap: 28px; }
+
+.create-intro { display: flex; flex-direction: column; gap: 12px; }
+
+.create-title {
+  font-family: var(--font-display);
+  font-style: italic;
+  font-weight: 700;
+  font-size: 40px;
+  line-height: 1.1;
+  margin: 0;
+  color: var(--text);
+}
+
+.create-lede {
+  margin: 0;
+  font-size: 14.5px;
+  line-height: 1.6;
+  color: var(--muted);
+  max-width: 52ch;
+}
+
+.create-lede strong { color: var(--accent-text); }
+
+.create-form {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 28px;
+}
+.create-form[hidden] { display: none; }
+
+.create-field { display: flex; flex-direction: column; gap: 7px; }
+
+.create-field span:first-child {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--muted);
+  font-weight: 600;
+}
+
+.create-field input {
+  height: 44px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  color: var(--text);
+  padding: 0 14px;
+  border-radius: var(--radius);
+  font-family: var(--font-body);
+  font-size: 14.5px;
+}
+
+.create-field input:focus { outline: none; border-color: var(--accent); }
+
+.create-hint { font-size: 12px; color: var(--muted); line-height: 1.5; }
+
+.create-submit {
+  height: 46px;
+  margin-top: 6px;
+  background: var(--accent);
+  color: #2b1205;
+  border: none;
+  border-radius: var(--radius);
+  font-family: var(--font-body);
+  font-size: 14.5px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.create-submit:hover { background: var(--accent-text); }
+.create-submit:disabled { opacity: 0.55; cursor: not-allowed; }
+
+.create-error {
+  margin: 0;
+  font-size: 13px;
+  color: var(--danger);
+  background: var(--danger-bg);
+  border-radius: var(--radius);
+  padding: 10px 12px;
+}
+.create-error[hidden] { display: none; }
+
+.create-result {
+  background: var(--surface);
+  border: 1px solid var(--accent-soft);
+  border-radius: 10px;
+  padding: 28px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.create-result[hidden] { display: none; }
+
+.create-result-title {
+  margin: 0;
+  font-family: var(--font-display);
+  font-style: italic;
+  font-weight: 700;
+  font-size: 22px;
+  color: var(--text);
+}
+
+.create-result-hint {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.6;
+  color: var(--muted);
+}
+
+.create-result-link { display: flex; gap: 8px; }
+
+.create-result-link input {
+  flex: 1;
+  min-width: 0;
+  height: 40px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  color: var(--accent-text);
+  padding: 0 12px;
+  border-radius: var(--radius);
+  font-family: var(--font-mono);
+  font-size: 13px;
+}
+
+.create-result-link button {
+  height: 40px;
+  padding: 0 16px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  color: var(--text);
+  border-radius: var(--radius);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+}
+.create-result-link button:hover { border-color: var(--accent); }
+
+.create-result-open {
+  align-self: flex-start;
+  font-size: 13.5px;
+  font-weight: 600;
+  color: var(--accent-text);
+}
+.create-result-open:hover { color: var(--accent); }
+
+@media (max-width: 640px) {
+  .create-page { padding: 16px 16px 40px; }
+  .create-title { font-size: 32px; }
+  .create-form, .create-result { padding: 20px; }
+}
