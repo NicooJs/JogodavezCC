@@ -113,6 +113,58 @@ function hasGame(key) {
   return !!data.games[key];
 }
 
+function getGame(key) {
+  return data.games[key] ? { ...data.games[key] } : null;
+}
+
+function levenshtein(a, b) {
+  const dp = Array.from({ length: a.length + 1 }, () => new Array(b.length + 1).fill(0));
+  for (let i = 0; i <= a.length; i++) dp[i][0] = i;
+  for (let j = 0; j <= b.length; j++) dp[0][j] = j;
+  for (let i = 1; i <= a.length; i++) {
+    for (let j = 1; j <= b.length; j++) {
+      dp[i][j] = a[i - 1] === b[j - 1]
+        ? dp[i - 1][j - 1]
+        : 1 + Math.min(dp[i - 1][j], dp[i][j - 1], dp[i - 1][j - 1]);
+    }
+  }
+  return dp[a.length][b.length];
+}
+
+// Tenta casar uma chave nova com um jogo já existente no catálogo, pra
+// mensagens com ruído em volta do nome (ex: "minecraft manda ver!!") ou erro
+// de digitação (ex: "minecrat") não virarem lotes duplicados. Só é chamada
+// depois de já confirmar que não existe match exato pra candidateKey.
+function resolveExistingKey(candidateKey) {
+  const existingKeys = Object.keys(data.games);
+  if (existingKeys.length === 0) return null;
+
+  // 1) alguma chave existente aparece inteira (por palavra) dentro da
+  // mensagem -> usa a mais longa (mais específica) entre as que baterem.
+  const substringMatches = existingKeys.filter((k) => {
+    const escaped = k.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    const re = new RegExp(`(^|\\s)${escaped}(\\s|$)`);
+    return re.test(candidateKey);
+  });
+  if (substringMatches.length > 0) {
+    return substringMatches.sort((a, b) => b.length - a.length)[0];
+  }
+
+  // 2) erro de digitação: distância de edição pequena relativa ao tamanho
+  // da menor das duas chaves (pra não confundir jogos curtos diferentes).
+  let best = null;
+  let bestDist = Infinity;
+  for (const k of existingKeys) {
+    const dist = levenshtein(candidateKey, k);
+    const threshold = Math.max(1, Math.floor(Math.min(candidateKey.length, k.length) * 0.25));
+    if (dist <= threshold && dist < bestDist) {
+      best = k;
+      bestDist = dist;
+    }
+  }
+  return best;
+}
+
 function hasGameImage(key) {
   return !!(data.games[key] && data.games[key].image_url);
 }
@@ -242,6 +294,8 @@ module.exports = {
   getDonorNames,
   getTotalRaised,
   hasGame,
+  getGame,
+  resolveExistingKey,
   hasGameImage,
   setGameImage,
   adjustGame,

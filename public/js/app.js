@@ -40,10 +40,10 @@ const lotModalClose = document.getElementById("lot-modal-close");
 const donorInputEl = document.getElementById("lot-modal-donor");
 const donorSuggestionsEl = document.getElementById("donor-suggestions");
 
-const TIMER_TOTAL_MS = 5 * 60 * 1000; // espelha AUTO_CLOSE_MS do server.js, só pro anel visual
 const TIMER_RING_CIRCUMFERENCE = 2 * Math.PI * 28;
 
 let timerEndsAt = null;
+let timerDurationMs = 5 * 60 * 1000; // atualizado a cada "update" com o valor real do server
 let isOpenState = null; // null = ainda não recebemos a primeira atualização
 let historyItems = [];
 let currentLeaderKey = null;
@@ -119,7 +119,7 @@ function tickTimer() {
   timerClockEl.textContent = `${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
   timerEl.classList.toggle("urgent", totalSeconds <= 60);
   boardEl.classList.toggle("final-countdown", totalSeconds <= FINAL_COUNTDOWN_SECONDS);
-  setRingFraction(msLeft / TIMER_TOTAL_MS);
+  setRingFraction(msLeft / timerDurationMs);
 }
 setInterval(tickTimer, 1000);
 
@@ -379,6 +379,7 @@ socket.on("update", ({ leaderboard, lastEvent }) => {
   }
 
   timerEndsAt = leaderboard.timerEndsAt;
+  if (leaderboard.timerDurationMs) timerDurationMs = leaderboard.timerDurationMs;
   tickTimer();
 
   const totalValue = leaderboard.totalRaised || 0;
@@ -473,6 +474,25 @@ document.getElementById("p-timer-reset").addEventListener("click", async () => {
   } catch (err) {
     alert(err.message);
   }
+});
+
+const timerMinutesInput = document.getElementById("p-timer-minutes");
+document.getElementById("p-timer-set").addEventListener("click", async () => {
+  const minutes = Number(timerMinutesInput.value);
+  if (!minutes || minutes <= 0) return timerMinutesInput.focus();
+  try {
+    await presenterFetch("/api/admin/set-timer", {
+      method: "POST",
+      body: JSON.stringify({ minutes }),
+    });
+    timerMinutesInput.value = "";
+  } catch (err) {
+    alert(err.message);
+  }
+});
+
+timerMinutesInput.addEventListener("keydown", (e) => {
+  if (e.key === "Enter") document.getElementById("p-timer-set").click();
 });
 
 document.getElementById("p-toggle-open").addEventListener("click", async () => {

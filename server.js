@@ -20,7 +20,14 @@ app.use(express.static(path.join(__dirname, "public")));
 
 const AUCTION_TITLE = process.env.AUCTION_TITLE || "Leilão de Jogos";
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || "";
-const AUTO_CLOSE_MS = 5 * 60 * 1000; // 5 minutos sem atividade encerra sozinho
+const DEFAULT_AUTO_CLOSE_MS = 5 * 60 * 1000; // 5 minutos sem atividade encerra sozinho
+
+// O streamer pode alongar essa janela pelo modo apresentador (ver
+// /api/admin/set-timer); guardado no state pra sobreviver a restart/deploy.
+function getAutoCloseMs() {
+  const stored = Number(db.getState("timerDurationMs", DEFAULT_AUTO_CLOSE_MS));
+  return Number.isFinite(stored) && stored > 0 ? stored : DEFAULT_AUTO_CLOSE_MS;
+}
 
 // ---------- helpers ----------
 
@@ -33,6 +40,17 @@ function centsToNumber(cents) {
 function touchActivity(reopen = false) {
   db.setState("lastActivityAt", String(Date.now()));
   if (reopen) db.setState("open", "true");
+}
+
+// Se a chave já existe, usa ela direto. Senão, tenta casar com um jogo já
+// existente no catálogo (ruído na mensagem ou erro de digitação — ver
+// resolveExistingKey em db.js) antes de decidir que é um lote novo.
+function resolveParsedGame(parsed) {
+  if (db.hasGame(parsed.key)) return parsed;
+  const matchedKey = db.resolveExistingKey(parsed.key);
+  if (!matchedKey) return parsed;
+  const existing = db.getGame(matchedKey);
+  return { ...parsed, key: matchedKey, name: existing.name };
 }
 
 function serializeLeaderboard() {
@@ -63,7 +81,8 @@ function serializeLeaderboard() {
     donors,
     donorNames: db.getDonorNames(),
     totalRaised: centsToNumber(db.getTotalRaised()),
-    timerEndsAt: isOpen ? lastActivityAt + AUTO_CLOSE_MS : null,
+    timerEndsAt: isOpen ? lastActivityAt + getAutoCloseMs() : null,
+    timerDurationMs: getAutoCloseMs(),
   };
 }
 
@@ -116,7 +135,7 @@ async function processDonationMessage({ id, fallbackUsername, fallbackMessage, f
     return;
   }
 
-  const parsed = parseMessage(message);
+  let parsed = parseMessage(message);
   if (!parsed) {
     db.logUnparsedEvent({ amountCents, username, rawMessage: message, livepixId: id });
     broadcastUpdate({
@@ -127,6 +146,7 @@ async function processDonationMessage({ id, fallbackUsername, fallbackMessage, f
     });
     return;
   }
+  parsed = resolveParsedGame(parsed);
 
   const needsImage = !db.hasGame(parsed.key) || !db.hasGameImage(parsed.key);
 
@@ -240,8 +260,9 @@ app.post("/api/admin/manual-entry", requireAdmin, (req, res) => {
   if (!name || !amount || Number.isNaN(Number(amount))) {
     return res.status(400).json({ error: "Informe name e amount" });
   }
-  const parsed = parseMessage(`${action === "remove" ? "-" : "+"}${name}`);
+  let parsed = parseMessage(`${action === "remove" ? "-" : "+"}${name}`);
   if (!parsed) return res.status(400).json({ error: "Nome de jogo inválido" });
+  parsed = resolveParsedGame(parsed);
 
   const needsImage = !db.hasGame(parsed.key) || !db.hasGameImage(parsed.key);
 
@@ -335,6 +356,19 @@ app.post("/api/admin/reset-timer", requireAdmin, (req, res) => {
   res.json({ ok: true });
 });
 
+// Deixa o streamer escolher quantos minutos sem atividade encerram o leilão
+// (padrão 5). Já reinicia a contagem do zero com a duração nova.
+app.post("/api/admin/set-timer", requireAdmin, (req, res) => {
+  const minutes = Number(req.body && req.body.minutes);
+  if (!Number.isFinite(minutes) || minutes <= 0 || minutes > 180) {
+    return res.status(400).json({ error: "Informe um número de minutos entre 1 e 180" });
+  }
+  db.setState("timerDurationMs", Math.round(minutes * 60 * 1000));
+  touchActivity(true);
+  broadcastUpdate({ type: "timer-reset" });
+  res.json({ ok: true, minutes });
+});
+
 app.post("/api/admin/host", requireAdmin, (req, res) => {
   const { host } = req.body || {};
   const name = host || "";
@@ -387,7 +421,7 @@ setInterval(() => {
   const isOpen = db.getState("open", "true") === "true";
   if (!isOpen) return;
   const lastActivityAt = Number(db.getState("lastActivityAt", Date.now()));
-  if (Date.now() - lastActivityAt >= AUTO_CLOSE_MS) {
+  if (Date.now() - lastActivityAt >= getAutoCloseMs()) {
     db.setState("open", "false");
     broadcastUpdate({ type: "auto-closed" });
   }

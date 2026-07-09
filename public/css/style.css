@@ -496,31 +496,32 @@ body::before {
 
 .panel-hint strong { color: var(--text); }
 
-.host-panel { flex-shrink: 0; padding-top: 20px; padding-bottom: 20px; }
+.host-panel { flex-shrink: 0; padding-top: 22px; padding-bottom: 22px; }
 
-.host-row { display: flex; align-items: center; gap: 14px; min-height: 60px; }
+.host-row { display: flex; align-items: center; gap: 13px; min-height: 66px; }
 
 .host-name {
   font-family: var(--font-display);
   font-style: italic;
   font-weight: 700;
-  font-size: 31px;
-  line-height: 1.05;
+  font-size: 32px;
+  line-height: 1.1;
   margin: 0;
   color: var(--text);
   flex: 1;
   min-width: 0;
   overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
 }
 
 .host-avatar {
-  width: 60px;
-  height: 60px;
+  width: 66px;
+  height: 66px;
   border-radius: 50%;
   object-fit: cover;
-  border: 1px solid var(--border);
+  border: 2px solid var(--accent);
   flex-shrink: 0;
 }
 
@@ -914,6 +915,27 @@ body::before {
 
 .timer-controls { display: none; gap: 8px; margin-top: 14px; }
 .presenter-mode .timer-controls { display: flex; }
+
+.timer-controls-custom { margin-top: 8px; }
+
+.timer-minutes-input {
+  width: 56px;
+  min-width: 0;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  color: var(--text);
+  padding: 7px 8px;
+  border-radius: var(--radius);
+  font-family: var(--font-mono);
+  font-size: 13px;
+}
+
+.timer-minutes-input:focus { outline: none; border-color: var(--accent); }
+
+/* remove as setinhas do input number pra não brigar com o resto do UI */
+.timer-minutes-input::-webkit-outer-spin-button,
+.timer-minutes-input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+.timer-minutes-input { -moz-appearance: textfield; }
 
 .btn-mini {
   background: var(--surface-2);
