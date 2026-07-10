@@ -42,10 +42,17 @@ function centsToNumber(cents) {
 }
 
 // Marca "agora" como o último lance recebido (reinicia a contagem de 5 min).
-// reopen=true também garante que o leilão volte a ficar aberto.
+// reopen=true também garante que o leilão volte a ficar aberto, e marca
+// "agora" como início dessa sessão aberta (ver leilaoOpenedAt em
+// isWebhookStale) — sem isso, reabrir um leilão que ficou fechado um tempo
+// mostra o aviso de webhook desvinculado na hora, mesmo sem nada quebrado,
+// só porque o último ping/contato é de antes de fechar.
 function touchActivity(store, reopen = false) {
   store.setState("lastActivityAt", String(Date.now()));
-  if (reopen) store.setState("open", "true");
+  if (reopen) {
+    store.setState("open", "true");
+    store.setState("leilaoOpenedAt", String(Date.now()));
+  }
 }
 
 // Marca "agora" como o último contato de verdade do pix.gg nessa URL de
@@ -60,11 +67,19 @@ function touchWebhookPing(store) {
 // Isso mais o threshold folgado (WEBHOOK_STALE_MS) é a resposta ao falso
 // positivo que já rolou em produção com um threshold de 5min sem essa
 // condição de "aberto".
+//
+// A referência é a mais recente entre: último ping/POST de verdade, criação
+// do leilão, e início da sessão aberta atual (leilaoOpenedAt, marcado no
+// reabrir — ver touchActivity). Sem esse último, reabrir um leilão que
+// ficou fechado (silêncio normal, esperado) fazia o aviso aparecer na hora,
+// porque o último contato real podia ser de muito antes de fechar — outro
+// falso positivo já visto em produção.
 function isWebhookStale(store, isOpen) {
   if (!isOpen) return false;
   const lastPing = Number(store.getState("lastWebhookPingAt", 0));
   const createdAt = new Date(store.getState("createdAt", new Date().toISOString())).getTime();
-  const referenceTime = lastPing || createdAt; // sem ping ainda, conta desde a criação
+  const openedAt = Number(store.getState("leilaoOpenedAt", 0));
+  const referenceTime = Math.max(lastPing, createdAt, openedAt);
   return Date.now() - referenceTime > WEBHOOK_STALE_MS;
 }
 
@@ -501,7 +516,7 @@ app.post("/api/l/:id/admin/toggle-open", loadLeilao, requireLeilaoAdmin, (req, r
   const { open } = req.body || {};
   const { store, leilaoId } = req;
   store.setState("open", open ? "true" : "false");
-  if (open) touchActivity(store); // reabrir dá um fôlego novo
+  if (open) touchActivity(store, true); // reabrir dá um fôlego novo (e reseta a referência do aviso de webhook, ver isWebhookStale)
   else store.setState("paused", "false"); // encerrar limpa qualquer pausa pendente
   broadcastUpdate(leilaoId, store, { type: "toggle-open", open: !!open });
   res.json({ ok: true, open: !!open });
