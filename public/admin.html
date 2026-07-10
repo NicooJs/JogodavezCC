@@ -82,6 +82,21 @@
       </div>
     </div>
 
+    <div class="panel">
+      <h2 class="panel-title">Revincular webhook do pix.gg</h2>
+      <p class="hint">
+        Use se as doações pararem de cair no leilão (ex: depois de
+        regenerar o Client Secret no pix.gg, o que limpa a URL do webhook
+        de lá). Não recria o leilão, só refaz o vínculo.
+      </p>
+      <div class="panel-row wrap">
+        <input type="text" id="relink-client-id" placeholder="Client ID (pix.gg)" autocomplete="off" />
+        <input type="password" id="relink-client-secret" placeholder="Client Secret (pix.gg)" autocomplete="off" />
+        <button class="btn" id="relink-submit">Revincular</button>
+      </div>
+      <p class="hint" id="relink-result"></p>
+    </div>
+
     <div class="panel danger-zone">
       <h2 class="panel-title">Zona de risco</h2>
       <button class="btn danger" id="reset-btn">Zerar leilão inteiro</button>

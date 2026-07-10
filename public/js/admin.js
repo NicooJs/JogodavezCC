@@ -136,6 +136,24 @@ function initAdmin() {
     if (!confirm("Isso apaga TODOS os jogos e o histórico. Tem certeza?")) return;
     await adminFetch("/admin/reset", { method: "POST" });
   });
+
+  document.getElementById("relink-submit").addEventListener("click", async () => {
+    const clientId = document.getElementById("relink-client-id").value.trim();
+    const clientSecret = document.getElementById("relink-client-secret").value.trim();
+    const resultEl = document.getElementById("relink-result");
+    resultEl.textContent = "";
+    if (!clientId || !clientSecret) return alert("Preencha Client ID e Client Secret");
+    try {
+      await adminFetch("/admin/relink-webhook", {
+        method: "POST",
+        body: JSON.stringify({ clientId, clientSecret }),
+      });
+      resultEl.textContent = "Webhook revinculado com sucesso.";
+      document.getElementById("relink-client-secret").value = "";
+    } catch (err) {
+      resultEl.textContent = "Erro: " + err.message;
+    }
+  });
 }
 
 function renderOpenState(open) {

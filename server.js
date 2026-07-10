@@ -5,6 +5,7 @@ const http = require("http");
 const { Server } = require("socket.io");
 
 const registry = require("./src/registry");
+const pixggApi = require("./src/pixggApi");
 const { getStore } = require("./src/stores");
 const { verifyPassword } = require("./src/passwords");
 const { parseMessage, normalizeKey } = require("./src/parser");
@@ -196,20 +197,27 @@ async function processDonationMessage(leilaoId, store, { id, fallbackUsername, f
   maybeFetchGameImage(leilaoId, store, game.key, game.name, needsImage);
 }
 
+// Monta a URL de webhook de um leilão a partir da própria requisição (não
+// depende de nenhuma env var de URL pública, funciona igual local e em
+// produção).
+function buildWebhookUrlFromReq(req, leilaoId) {
+  const publicUrl = `${req.protocol}://${req.get("host")}`;
+  const secret = process.env.PIXGG_WEBHOOK_SECRET || "";
+  return `${publicUrl}/webhook/pixgg/${leilaoId}?assinatura=${secret}`;
+}
+
 // ---------- criação de leilão ----------
 
 app.post("/api/leiloes", async (req, res) => {
   try {
     const { title, host, password, clientId, clientSecret } = req.body || {};
-    const publicUrl = `${req.protocol}://${req.get("host")}`;
-    const secret = process.env.PIXGG_WEBHOOK_SECRET || "";
     const { id } = await registry.createLeilao({
       title,
       host,
       password,
       clientId,
       clientSecret,
-      buildWebhookUrl: (leilaoId) => `${publicUrl}/webhook/pixgg/${leilaoId}?assinatura=${secret}`,
+      buildWebhookUrl: (leilaoId) => buildWebhookUrlFromReq(req, leilaoId),
     });
     res.json({ ok: true, id, url: `/l/${id}` });
   } catch (err) {
@@ -482,6 +490,23 @@ app.post("/api/l/:id/admin/title", loadLeilao, requireLeilaoAdmin, (req, res) =>
   req.store.setState("title", title || "Leilão de Jogos");
   broadcastUpdate(req.leilaoId, req.store, { type: "title" });
   res.json({ ok: true });
+});
+
+// Revincula o webhook do leilão já existente na aplicação do pix.gg — pra
+// quando o link se perde (ex: o streamer regenerou o clientSecret, o que
+// limpa o campo "Webhook URL" do lado do pix.gg). Não recria o leilão, só
+// refaz a chamada de vínculo com um client id/secret atuais.
+app.post("/api/l/:id/admin/relink-webhook", loadLeilao, requireLeilaoAdmin, async (req, res) => {
+  try {
+    const { clientId, clientSecret } = req.body || {};
+    if (!clientId || !clientSecret) {
+      return res.status(400).json({ error: "Informe o Client ID e o Client Secret do pix.gg" });
+    }
+    await pixggApi.setWebhookUrl(clientId, clientSecret, buildWebhookUrlFromReq(req, req.leilaoId));
+    res.json({ ok: true });
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
 });
 
 // ---------- estáticos ----------
