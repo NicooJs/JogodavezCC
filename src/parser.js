@@ -4,10 +4,15 @@
 //
 // Convenção pros espectadores (explique isso na tela do site):
 //   "+Elden Ring"        -> apoia Elden Ring
-//   "Elden Ring"         -> (sem prefixo) também conta como apoio, é o padrão
 //   "-Hollow Knight"     -> tira valor de Hollow Knight
 //   "tirar Hollow Knight" -> mesma coisa, por extenso
 //   "colocar Elden Ring" / "por Elden Ring" -> mesma coisa que "+"
+//
+// Mensagem SEM nenhum desses prefixos não conta como lance — é ignorada
+// (fica só registrada no histórico como "sem indicar um lote"). Isso já foi
+// "sem prefixo também apoia" numa versão antiga, mas causava mensagem de
+// chat qualquer (sem intenção de dar lance) virando lote sozinha — mudado
+// de propósito, exigir o prefixo é o que evita isso.
 
 function removeAccents(str) {
   return str.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
@@ -31,7 +36,7 @@ function parseMessage(rawMessage) {
   let text = rawMessage.trim();
   if (!text) return null;
 
-  let action = "add";
+  let action = null;
 
   for (const pattern of REMOVE_PATTERNS) {
     if (pattern.test(text)) {
@@ -41,14 +46,19 @@ function parseMessage(rawMessage) {
     }
   }
 
-  if (action === "add") {
+  if (!action) {
     for (const pattern of ADD_PATTERNS) {
       if (pattern.test(text)) {
+        action = "add";
         text = text.replace(pattern, "");
         break;
       }
     }
   }
+
+  // Sem "+"/"-" (ou palavra equivalente) no começo, não é lance nenhum —
+  // só bate-papo normal que veio junto da doação. Ignora.
+  if (!action) return null;
 
   text = text.trim();
   // tira pontuação solta nas pontas, tipo "Elden Ring!!" ou "-- Elden Ring"

@@ -241,6 +241,20 @@ app.post("/api/leiloes", async (req, res) => {
       buildWebhookUrl: (leilaoId) => buildWebhookUrlFromReq(req, leilaoId),
     });
     res.json({ ok: true, id, url: `/l/${id}` });
+
+    // Busca a foto da Twitch já na criação, sem precisar editar o nome do
+    // host manualmente depois — mesmo padrão fire-and-forget da rota
+    // /admin/host, só que aqui dispara sozinho.
+    if (host) {
+      const store = getStore(id);
+      fetchTwitchAvatar(host)
+        .then((avatarUrl) => {
+          if (!avatarUrl || store.getState("host", "") !== host) return;
+          store.setState("hostAvatar", avatarUrl);
+          broadcastUpdate(id, store, null);
+        })
+        .catch((err) => console.error("Falha ao buscar avatar da Twitch na criação:", err.message));
+    }
   } catch (err) {
     res.status(400).json({ error: err.message });
   }
