@@ -61,7 +61,6 @@ let timerDurationMs = 5 * 60 * 1000; // atualizado a cada "update" com o valor r
 let isOpenState = null; // null = ainda não recebemos a primeira atualização
 let isPausedState = false;
 let pausedRemainingMs = null;
-let webhookStaleState = false;
 let webhookSignatureIssueState = false;
 let historyItems = [];
 let currentLeaderKey = null;
@@ -97,16 +96,14 @@ function setStatus(online) {
   statusTextEl.textContent = online ? "ao vivo" : "reconectando…";
 }
 
-// Só mostra o aviso de webhook desvinculado no modo apresentador — não faz
-// sentido (e pode confundir espectador) aparecer isso no board público.
+// Só mostra o aviso no modo apresentador — não faz sentido (e pode
+// confundir espectador) aparecer isso no board público. Baseado só em
+// falha de assinatura de verdade (não em "silêncio", que já causou alarme
+// falso — ver server.js).
 function updateWebhookWarning() {
   const active = document.body.classList.contains("presenter-mode");
-  if (webhookSignatureIssueState) {
-    webhookWarningTextEl.textContent = "O pix.gg está mandando doações, mas a assinatura da URL não bate — provavelmente a URL do webhook está incompleta ou cortada. As doações não estão sendo contabilizadas.";
-  } else {
-    webhookWarningTextEl.textContent = "Sem contato do pix.gg há um tempo — o webhook pode estar desvinculado e as doações podem não estar chegando.";
-  }
-  webhookWarningEl.hidden = !(active && (webhookStaleState || webhookSignatureIssueState));
+  webhookWarningTextEl.textContent = "O pix.gg está mandando doações, mas a assinatura da URL não bate — provavelmente a URL do webhook está incompleta ou cortada. As doações não estão sendo contabilizadas.";
+  webhookWarningEl.hidden = !(active && webhookSignatureIssueState);
 }
 
 socket.on("connect", () => {
@@ -444,7 +441,6 @@ socket.on("update", ({ leaderboard, lastEvent }) => {
   if (leaderboard.timerDurationMs) timerDurationMs = leaderboard.timerDurationMs;
   tickTimer();
 
-  webhookStaleState = !!leaderboard.webhookStale;
   webhookSignatureIssueState = !!leaderboard.webhookSignatureIssue;
   updateWebhookWarning();
 
