@@ -121,14 +121,20 @@ function serializeLeaderboard(store) {
   const isPaused = isOpen && store.getState("paused", "false") === "true";
   const lastActivityAt = Number(store.getState("lastActivityAt", Date.now()));
   const autoCloseMs = getAutoCloseMs(store);
-  const items = rows.map((row, index) => ({
-    key: row.key,
-    name: row.name,
-    total: centsToNumber(row.total_cents),
-    rank: index + 1,
-    winning: index < 3, // top 3 sempre destacado
-    image: row.image_url || null,
-  }));
+  const funding = store.getFundingBreakdown();
+  const items = rows.map((row, index) => {
+    const rowFunding = funding[row.key] || { added_cents: 0, removed_cents: 0 };
+    return {
+      key: row.key,
+      name: row.name,
+      total: centsToNumber(row.total_cents),
+      added: centsToNumber(rowFunding.added_cents),
+      removed: centsToNumber(rowFunding.removed_cents),
+      rank: index + 1,
+      winning: index < 3, // top 3 sempre destacado
+      image: row.image_url || null,
+    };
+  });
 
   const donors = store.getTopDonors(10).map((d, index) => ({
     username: d.username,

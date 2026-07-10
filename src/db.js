@@ -220,6 +220,22 @@ function createStore(filePath) {
       .reduce((sum, ev) => sum + ev.amount_cents, 0);
   }
 
+  // Quanto cada lote recebeu de apoio vs. de sabotagem, separado — diferente
+  // de total_cents (que é o saldo líquido usado pro ranking), isso é a soma
+  // bruta de cada lado, direto dos events, pra mostrar no card "quanto
+  // entrou de cada jeito" sem perder a informação quando um cancela o outro.
+  function getFundingBreakdown() {
+    const map = {};
+    for (const ev of data.events) {
+      if (!ev.game_key) continue;
+      if (ev.action !== "add" && ev.action !== "remove") continue;
+      if (!map[ev.game_key]) map[ev.game_key] = { added_cents: 0, removed_cents: 0 };
+      if (ev.action === "add") map[ev.game_key].added_cents += ev.amount_cents;
+      else map[ev.game_key].removed_cents += ev.amount_cents;
+    }
+    return map;
+  }
+
   function adjustGame(key, deltaCents) {
     if (!data.games[key]) return null;
     data.games[key].total_cents += deltaCents;
@@ -290,6 +306,7 @@ function createStore(filePath) {
     getTopDonors,
     getDonorNames,
     getTotalRaised,
+    getFundingBreakdown,
     hasGame,
     getGame,
     resolveExistingKey,

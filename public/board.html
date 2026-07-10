@@ -6,7 +6,7 @@
 <title>Leilão de Jogos</title>
 <meta name="referrer" content="no-referrer" />
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,wght@0,500;0,600;0,700;1,500;1,600&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,500;0,9..144,600;0,9..144,700;1,9..144,500;1,9..144,600;1,9..144,700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/css/style.css" />
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/odometer.js/0.4.8/themes/odometer-theme-minimal.min.css" />
 </head>
@@ -55,7 +55,12 @@
           <p class="panel-label">host do leilão</p>
           <div class="host-card">
             <div class="host-row">
-              <img class="host-avatar" id="host-avatar" alt="" hidden />
+              <div class="host-avatar-wrap">
+                <img class="host-avatar" id="host-avatar" alt="" hidden />
+                <a class="host-twitch-badge" id="host-twitch-badge" href="#" target="_blank" rel="noopener" aria-label="Ver no Twitch" title="Ver no Twitch" hidden>
+                  <svg class="icon" viewBox="0 0 2400 2800" fill="currentColor" aria-hidden="true"><path d="M500 0 0 500v1800h600v500l500-500h400l900-900V0H500zm1600 1300-400 400h-400l-350 350v-350H500V200h1600v1100z"/><path d="M1700 550h200v600h-200zM1150 550h200v600h-200z"/></svg>
+                </a>
+              </div>
               <h1 class="host-name" id="host-name">Streamer</h1>
               <button class="host-edit-btn" id="host-edit-btn" type="button" aria-label="Editar nome do host" title="Editar nome do host">
                 <svg class="icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M13 3.5l3.5 3.5L6.5 17 2.5 17.5 3 13.5 13 3.5z"/><path d="M11.3 5.2l3.5 3.5"/></svg>

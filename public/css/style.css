@@ -14,7 +14,7 @@
   --danger: #ef4470;
   --danger-bg: rgba(239, 68, 112, 0.14);
   --positive: #46b17f;
-  --font-display: "Newsreader", serif;
+  --font-display: "Fraunces", serif;
   --font-body: "IBM Plex Sans", sans-serif;
   --font-mono: "IBM Plex Mono", monospace;
   --radius: 6px;
@@ -91,33 +91,36 @@ body::before {
 .topbar-mark {
   display: flex;
   align-items: baseline;
-  gap: 8px;
+  gap: 11px;
   margin: 0;
 }
 
 .topbar-mark::before {
   content: "";
-  width: 6px;
-  height: 6px;
-  margin-bottom: 2px;
+  width: 10px;
+  height: 10px;
+  margin-bottom: 3px;
   background: var(--accent);
   transform: rotate(45deg);
   flex-shrink: 0;
 }
 
+/* Título do leilão em si (não a marca fixa do site) — é o elemento mais
+   importante da tela pra quem tá assistindo a live, então recebe o maior
+   destaque tipográfico do topbar. */
 .brand-word {
   font-family: var(--font-display);
   font-style: italic;
   font-weight: 700;
-  font-size: 18px;
+  font-size: 32px;
   color: var(--text);
   line-height: 1;
 }
 
 .brand-sub {
   font-family: var(--font-mono);
-  font-size: 10px;
-  letter-spacing: 0.1em;
+  font-size: 11px;
+  letter-spacing: 0.12em;
   text-transform: uppercase;
   color: var(--accent-text);
 }
@@ -570,6 +573,8 @@ body::before {
   -webkit-box-orient: vertical;
 }
 
+.host-avatar-wrap { position: relative; flex-shrink: 0; }
+
 .host-avatar {
   width: 76px;
   height: 76px;
@@ -580,6 +585,27 @@ body::before {
 }
 
 .host-avatar[hidden] { display: none; }
+
+/* Selo da Twitch, cantinho inferior direito do avatar — cor da marca só
+   aqui, num elemento pequeno e reconhecível, não vira paleta do site. */
+.host-twitch-badge {
+  position: absolute;
+  bottom: -2px;
+  right: -2px;
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #9146ff;
+  border: 2px solid var(--surface-2);
+  border-radius: 50%;
+  color: #fff;
+  transition: transform 0.15s ease;
+}
+.host-twitch-badge .icon { width: 12px; height: 12px; }
+.host-twitch-badge:hover { transform: scale(1.1); }
+.host-twitch-badge[hidden] { display: none; }
 
 /* Botão "editar" — ícone só, fixado no canto do card (fora do fluxo da
    linha, pra não competir por espaço com o nome), só no modo apresentador,
@@ -843,6 +869,26 @@ body::before {
   100% { box-shadow: inset 0 0 0 0 rgba(70, 177, 127, 0); }
 }
 
+/* Lance de peso (ver triggerBigWinCelebration em app.js): confete/faíscas
+   por cima do card, sem interferir no flash normal que já roda junto. */
+.confetti-burst { position: absolute; inset: 0; pointer-events: none; z-index: 6; }
+
+.confetti-piece {
+  position: absolute;
+  width: 6px;
+  height: 9px;
+  border-radius: 1px;
+  opacity: 0;
+  animation: confetti-fly 1.1s ease-out forwards;
+}
+
+.confetti-piece-spark { width: 4px; height: 4px; border-radius: 50%; }
+
+@keyframes confetti-fly {
+  0% { opacity: 1; transform: translate(0, 0) rotate(0deg) scale(1); }
+  100% { opacity: 0; transform: translate(var(--dx), calc(var(--dy) + 26px)) rotate(var(--rot)) scale(0.6); }
+}
+
 .lot-card.flash-add { animation: fill-pulse-add 0.9s ease; }
 
 @keyframes fill-pulse-remove {
@@ -909,6 +955,14 @@ body::before {
   font-size: 22px;
 }
 
+.lot-info {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+  flex: 1;
+}
+
 .lot-name {
   font-family: var(--font-display);
   font-size: 17px;
@@ -918,11 +972,24 @@ body::before {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  min-width: 0;
-  flex: 1;
 }
 
 .lot-card.rank-1 .lot-name { color: var(--text); font-weight: 600; }
+
+/* Quanto o lote recebeu de apoio vs. de sabotagem, separado do total
+   líquido (que já aparece grande em .lot-total) — só aparece quando o lote
+   já tomou sabotagem ou já passou de zero, pra não poluir lotes novos. */
+.lot-funding {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+}
+
+.lot-funding-add { color: var(--positive); }
+.lot-funding-remove { color: var(--danger); }
 
 .lot-meta {
   display: flex;
@@ -1145,26 +1212,74 @@ body::before {
 .history-list li {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 10px;
   font-size: 12.5px;
   color: var(--muted);
-  padding: 9px 0;
-  border-top: 1px dashed var(--border);
-  flex-wrap: wrap;
+  padding: 7px 6px;
+  border-radius: var(--radius);
+  transition: background 0.15s ease;
 }
 
-.history-list li:first-child { border-top: none; }
+.history-list li:hover { background: var(--surface-2); }
 
-.history-dot { width: 5px; height: 5px; border-radius: 50%; flex-shrink: 0; background: var(--muted); }
-.history-dot.dot-add { background: var(--accent); }
-.history-dot.dot-remove { background: var(--danger); }
+/* A entrada mais recente sempre anima ao renderizar (tanto no carregamento
+   inicial quanto em tempo real) — um jeito sutil de sinalizar "algo novo". */
+.history-list li:first-child { animation: history-in 0.35s var(--ease); }
 
-.history-text { flex: 1; min-width: 0; }
+@keyframes history-in {
+  from { opacity: 0; transform: translateY(-4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.history-icon {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  background: var(--surface-2);
+  color: var(--muted);
+}
+.history-icon svg { width: 10px; height: 10px; }
+.history-icon.icon-add { background: var(--accent-bg); color: var(--accent-text); }
+.history-icon.icon-remove { background: var(--danger-bg); color: var(--danger); }
+
+.history-body {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+/* Texto quebra em até 2 linhas em vez de truncar — a coluna da direita é
+   estreita (~220px), então cortar com "..." escondia demais (ex: o nome do
+   jogo, que é a parte que mais importa aqui). */
+.history-text {
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
 .history-text .who { color: var(--text); font-weight: 500; }
-.history-time { font-family: var(--font-mono); font-size: 10.5px; color: var(--muted); flex-shrink: 0; }
-.history-amt { font-family: var(--font-mono); font-size: 12px; flex-shrink: 0; font-variant-numeric: tabular-nums; width: 100%; text-align: right; }
-.history-amt.amt-add { color: var(--accent-text); }
-.history-amt.amt-remove { color: var(--danger); }
+
+.history-meta { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.history-time { font-family: var(--font-mono); font-size: 10px; color: var(--muted); flex-shrink: 0; }
+
+.history-amt {
+  font-family: var(--font-mono);
+  font-size: 11.5px;
+  flex-shrink: 0;
+  font-variant-numeric: tabular-nums;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: var(--surface-2);
+  color: var(--muted);
+}
+.history-amt.amt-add { color: var(--accent-text); background: var(--accent-bg); }
+.history-amt.amt-remove { color: var(--danger); background: var(--danger-bg); }
 
 .footer {
   margin-top: 12px;

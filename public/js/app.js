@@ -23,6 +23,7 @@ const statusTextEl = document.getElementById("status-text");
 const titleEl = document.getElementById("title");
 const hostNameEl = document.getElementById("host-name");
 const hostAvatarEl = document.getElementById("host-avatar");
+const hostTwitchBadgeEl = document.getElementById("host-twitch-badge");
 const timerEl = document.getElementById("timer");
 const timerClockEl = document.getElementById("timer-clock");
 const timerLabelEl = document.getElementById("timer-label");
@@ -192,6 +193,13 @@ function rankBadgeHtml(rank) {
   return rank <= 3 ? MEDAL_ICON_SVG + num : num;
 }
 
+function lotFundingHtml(item) {
+  const added = item.added > 0 ? `<span class="lot-funding-add">+${formatBRL(item.added)}</span>` : "";
+  const removed = item.removed > 0 ? `<span class="lot-funding-remove">−${formatBRL(item.removed)}</span>` : "";
+  if (!added && !removed) return "";
+  return `<div class="lot-funding">${added}${removed}</div>`;
+}
+
 function lotCardInnerHtml(item, barPct, hitBadge, changed) {
   const thumb = thumbHtml(item, "lot-thumb");
   const bg = item.image
@@ -203,7 +211,10 @@ function lotCardInnerHtml(item, barPct, hitBadge, changed) {
     <div class="lot-card-content">
       <span class="lot-rank">${rankBadgeHtml(item.rank)}</span>
       ${thumb}
-      <p class="lot-name">${escapeHtml(item.name)}</p>
+      <div class="lot-info">
+        <p class="lot-name">${escapeHtml(item.name)}</p>
+        ${lotFundingHtml(item)}
+      </div>
       <div class="lot-meta">
         <span class="lot-total${changed ? " tick" : ""}">${formatBRL(item.total)}</span>
         ${hitBadge}
@@ -213,6 +224,38 @@ function lotCardInnerHtml(item, barPct, hitBadge, changed) {
       </div>
     </div>
   `;
+}
+
+// Lance de peso (mais de R$100 num único apoio/sabotagem): efeito mais
+// chamativo que o flash normal — confete pra apoio, faíscas vermelhas pra
+// sabotagem. Fica contido dentro do próprio card (que já corta overflow),
+// pra não vazar em cima dos vizinhos no grid.
+function triggerBigWinCelebration(key, type) {
+  const card = lotListEl.querySelector(`.lot-card[data-key="${CSS.escape(key)}"]`);
+  if (!card) return;
+  const isAdd = type === "add";
+  const colors = isAdd
+    ? ["var(--accent)", "var(--accent-text)", "var(--positive)", "var(--silver)"]
+    : ["var(--danger)", "#ff8fa8", "var(--muted)"];
+  const burst = document.createElement("div");
+  burst.className = "confetti-burst";
+  const count = isAdd ? 22 : 14;
+  for (let i = 0; i < count; i++) {
+    const piece = document.createElement("span");
+    piece.className = "confetti-piece" + (isAdd ? "" : " confetti-piece-spark");
+    const angle = Math.random() * 360;
+    const dist = 30 + Math.random() * 50;
+    piece.style.setProperty("--dx", `${Math.cos((angle * Math.PI) / 180) * dist}px`);
+    piece.style.setProperty("--dy", `${Math.sin((angle * Math.PI) / 180) * dist}px`);
+    piece.style.setProperty("--rot", `${Math.random() * 720 - 360}deg`);
+    piece.style.left = `${15 + Math.random() * 70}%`;
+    piece.style.top = `${20 + Math.random() * 40}%`;
+    piece.style.background = colors[i % colors.length];
+    piece.style.animationDelay = `${Math.random() * 0.12}s`;
+    burst.appendChild(piece);
+  }
+  card.appendChild(burst);
+  setTimeout(() => burst.remove(), 1300);
 }
 
 // Placar que se mexe ao vivo: em vez de recriar tudo a cada atualização,
@@ -363,6 +406,16 @@ function historyLabel(event) {
   return null;
 }
 
+function historyIconHtml(dotClass) {
+  if (dotClass === "dot-add") {
+    return `<span class="history-icon icon-add"><svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9V3M3 6l3-3 3 3"/></svg></span>`;
+  }
+  if (dotClass === "dot-remove") {
+    return `<span class="history-icon icon-remove"><svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3v6M3 6l3 3 3-3"/></svg></span>`;
+  }
+  return `<span class="history-icon icon-neutral"></span>`;
+}
+
 function renderHistory() {
   historyEmptyEl.style.display = historyItems.length === 0 ? "flex" : "none";
   const rows = historyItems.slice(0, 50).map((event) => {
@@ -372,10 +425,14 @@ function renderHistory() {
     const amount = info.amtClass ? `<span class="history-amt ${info.amtClass}">${formatBRL(event.amount || 0)}</span>` : "";
     return `
       <li>
-        <span class="history-dot ${info.dot}"></span>
-        <span class="history-text">${info.text}</span>
-        <span class="history-time">${time}</span>
-        ${amount}
+        ${historyIconHtml(info.dot)}
+        <div class="history-body">
+          <span class="history-text">${info.text}</span>
+          <div class="history-meta">
+            <span class="history-time">${time}</span>
+            ${amount}
+          </div>
+        </div>
       </li>
     `;
   });
@@ -433,6 +490,12 @@ socket.on("update", ({ leaderboard, lastEvent }) => {
     hostAvatarEl.hidden = true;
     hostAvatarEl.removeAttribute("src");
   }
+  if (leaderboard.host) {
+    hostTwitchBadgeEl.href = `https://twitch.tv/${encodeURIComponent(leaderboard.host.trim())}`;
+    hostTwitchBadgeEl.hidden = false;
+  } else {
+    hostTwitchBadgeEl.hidden = true;
+  }
 
   const wasOpen = isOpenState;
   isOpenState = leaderboard.open;
@@ -461,6 +524,10 @@ socket.on("update", ({ leaderboard, lastEvent }) => {
   renderLots(leaderboard.items, flashKey, lastEvent ? lastEvent.type : null);
   renderDonors(leaderboard.donors || []);
   pushHistory(lastEvent);
+
+  if (flashKey && lastEvent && (lastEvent.type === "add" || lastEvent.type === "remove") && (lastEvent.amount || 0) > 100) {
+    triggerBigWinCelebration(flashKey, lastEvent.type);
+  }
 });
 
 function getPassword() {
