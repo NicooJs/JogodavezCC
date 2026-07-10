@@ -138,12 +138,14 @@ body::before {
   display: flex;
   flex-direction: column;
   height: 100vh;
-  /* 1400 -> 1600px: as colunas laterais cresceram duas vezes (juntas,
-     +166px) desde o valor original — sem isso, cada bump nelas roubava
-     espaço direto da arena central. Aumentar o teto do layout em vez de
-     encolher o catálogo. Continua responsivo: em telas menores que
-     1600px, o max-width simplesmente não é atingido. */
-  max-width: 1600px;
+  /* 1400 -> 1600 -> 1850px: em telas largas (1920px+) sobrava muita
+     margem morta nas laterais (visto e medido pelo cliente comparando
+     antes/depois). Combinado com a arena virar grade de 2 colunas (ver
+     .arena-grid), o espaço extra passa a ser usado por um segundo lote
+     lado a lado, não só esticar cards ou aumentar margem. Continua
+     responsivo: em telas menores que 1850px, o max-width simplesmente não
+     é atingido. */
+  max-width: 1850px;
   margin: 0 auto;
   padding: 18px 24px 14px;
 }
@@ -1328,18 +1330,25 @@ body::before {
 
 .arena-panel { flex: 1; min-height: 0; }
 
+/* Grade de verdade (não só uma lista empilhada) — em telas largas o
+   catálogo usa a largura extra pra mostrar 2 lotes lado a lado em vez de
+   esticar cada card sozinho por toda a largura (ficava um vão vazio enorme
+   entre a miniatura e o valor). auto-fill colapsa pra 1 coluna sozinho
+   quando não cabem 2 de minmax(430px, 1fr) — sem media query própria. */
 .arena-grid {
   overflow-y: auto;
   min-height: 0;
   flex: 1;
-  display: flex;
-  flex-direction: column;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(430px, 1fr));
+  align-content: start;
   gap: 7px;
   margin: 0 -4px;
   padding: 2px 4px 4px;
 }
 
 .arena-empty {
+  grid-column: 1 / -1;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -1351,13 +1360,15 @@ body::before {
 
 .arena-empty-title { font-family: var(--font-display); font-style: italic; font-size: 19px; color: var(--text); }
 
-/* Linha entre os classificados (top 3) e o resto do catálogo. */
+/* Linha entre os classificados (top 3) e o resto do catálogo. grid-column
+   1/-1 pra atravessar as duas colunas da grade, não ficar preso numa só. */
 .qualify-divider {
   display: flex;
   align-items: center;
   gap: 10px;
   padding: 1px 2px;
   flex-shrink: 0;
+  grid-column: 1 / -1;
 }
 
 .qualify-divider::before,
@@ -1914,7 +1925,10 @@ body::before {
   .panel { min-height: 0; border-right: none; }
   .donors-panel, .history-panel { max-height: 260px; }
   .arena-panel { min-height: 0; }
-  .arena-grid { max-height: none; overflow: visible; }
+  /* grid-template-columns: 1fr fixo (não o minmax(430px, 1fr) da regra
+     base) — 430px de mínimo por track é mais largo que a tela em muitos
+     celulares, o que causaria overflow horizontal em vez de colapsar. */
+  .arena-grid { max-height: none; overflow: visible; grid-template-columns: 1fr; }
   .presenter-toggle span { display: inline; }
 
   /* Card do lote mais compacto: sem isso, o nome do jogo é espremido a

@@ -362,16 +362,19 @@ function renderLots(items, flashKey, flashType, lastSabotagedKey) {
     });
   });
 
-  // FLIP: inverte pro deslocamento anterior e anima de volta a zero.
+  // FLIP: inverte pro deslocamento anterior e anima de volta a zero. Conta
+  // deltaX também (não só deltaY) — na arena em grade de 2 colunas, um lote
+  // pode mudar de coluna ao subir/descer no ranking, não só de linha.
   requestAnimationFrame(() => {
     lotListEl.querySelectorAll(".lot-card").forEach((el) => {
       const first = firstRects.get(el.dataset.key);
       if (!first) return;
       const last = el.getBoundingClientRect();
+      const deltaX = first.left - last.left;
       const deltaY = first.top - last.top;
-      if (Math.abs(deltaY) < 1) return;
+      if (Math.abs(deltaX) < 1 && Math.abs(deltaY) < 1) return;
       el.style.transition = "none";
-      el.style.transform = `translateY(${deltaY}px)`;
+      el.style.transform = `translate(${deltaX}px, ${deltaY}px)`;
       requestAnimationFrame(() => {
         el.style.transition = "transform 0.5s var(--ease)";
         el.style.transform = "";
