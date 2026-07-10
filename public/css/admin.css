@@ -121,3 +121,4 @@ input:focus, select:focus { outline: 1px solid var(--accent); }
 .theme-preview-nebulosa { background: linear-gradient(135deg, #14141c 50%, #3ecfe0 50%); }
 .theme-preview-brasa { background: linear-gradient(135deg, #1c1c1f 50%, #ff7a45 50%); }
 .theme-preview-recife { background: linear-gradient(135deg, #101a1a 50%, #e0a955 50%); }
+.theme-preview-ametista { background: linear-gradient(135deg, #17131f 50%, #b98cf5 50%); }

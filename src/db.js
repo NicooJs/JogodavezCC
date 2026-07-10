@@ -330,6 +330,7 @@ function createStore(filePath) {
   // pixggApi.js), mas era um bug de verdade que apareceu na revisão.
   function resetAll() {
     const preservedState = { ...data.state };
+    delete preservedState.lastSabotagedKey; // referenciava um lote que não existe mais
     const preservedPastAuctions = data.pastAuctions || [];
     data = emptyData();
     data.state = preservedState;

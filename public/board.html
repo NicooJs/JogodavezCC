@@ -53,8 +53,11 @@
         <button class="theme-dot theme-dot-nebulosa" data-theme="nebulosa" type="button" title="Tema Nebulosa"></button>
         <button class="theme-dot theme-dot-brasa" data-theme="brasa" type="button" title="Tema Brasa"></button>
         <button class="theme-dot theme-dot-recife" data-theme="recife" type="button" title="Tema Recife"></button>
+        <button class="theme-dot theme-dot-ametista" data-theme="ametista" type="button" title="Tema Ametista"></button>
       </div>
-      <a class="presenter-bar-link" href="admin" id="admin-link" target="_blank">painel avançado</a>
+      <a class="presenter-bar-link presenter-bar-icon-link" href="admin" id="admin-link" target="_blank" title="Painel avançado" aria-label="Painel avançado">
+        <svg class="icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="10" cy="10" r="2.6"/><path d="M10 2.8v2M10 15.2v2M17.2 10h-2M4.8 10h-2M15.1 4.9l-1.4 1.4M6.3 13.7l-1.4 1.4M15.1 15.1l-1.4-1.4M6.3 6.3L4.9 4.9"/></svg>
+      </a>
     </section>
 
     <section class="webhook-warning" id="webhook-warning" hidden>
@@ -218,6 +221,29 @@
 
       <p class="recap-section-label" id="recap-donors-label" hidden>maiores apoiadores</p>
       <div class="recap-donor-list" id="recap-donor-list"></div>
+    </div>
+  </div>
+
+  <div class="modal-overlay" id="presenter-login-modal" hidden>
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="presenter-login-title">
+      <button class="modal-close" id="presenter-login-close" type="button" aria-label="Fechar">✕</button>
+      <div class="modal-head">
+        <div class="modal-head-text">
+          <p class="modal-eyebrow">modo apresentador</p>
+          <h2 class="modal-title" id="presenter-login-title">Entrar</h2>
+        </div>
+      </div>
+
+      <div class="modal-field">
+        <label class="modal-label" for="presenter-login-password">senha</label>
+        <input type="password" id="presenter-login-password" class="modal-input" placeholder="••••••••" autocomplete="current-password" />
+      </div>
+      <p class="modal-error" id="presenter-login-error" hidden>Senha incorreta</p>
+
+      <div class="modal-actions">
+        <button class="btn-mini" id="presenter-login-cancel" type="button">Cancelar</button>
+        <button class="btn-mini primary" id="presenter-login-submit" type="button">Entrar</button>
+      </div>
     </div>
   </div>
 

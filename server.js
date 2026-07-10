@@ -188,6 +188,7 @@ function serializeLeaderboard(store) {
     open: isOpen,
     paused: isPaused,
     items,
+    lastSabotagedKey: store.getState("lastSabotagedKey", null),
     donors,
     donorNames: store.getDonorNames(),
     totalRaised: centsToNumber(store.getTotalRaised()),
@@ -321,6 +322,7 @@ async function processDonationMessage(leilaoId, store, { id, fallbackUsername, f
     rawMessage: message,
     livepixId: id,
   });
+  if (parsed.action === "remove") store.setState("lastSabotagedKey", game.key);
 
   broadcastUpdate(leilaoId, store, {
     type: parsed.action,
@@ -540,6 +542,7 @@ app.post("/api/l/:id/admin/manual-entry", loadLeilao, requireLeilaoAdmin, async 
     rawMessage: `[lançamento manual] ${name}`,
     livepixId: null,
   });
+  if (parsed.action === "remove") store.setState("lastSabotagedKey", game.key);
 
   broadcastUpdate(leilaoId, store, {
     type: parsed.action,
@@ -697,7 +700,7 @@ app.post("/api/l/:id/admin/title", loadLeilao, requireLeilaoAdmin, (req, res) =>
   res.json({ ok: true });
 });
 
-const AVAILABLE_THEMES = ["nebulosa", "brasa", "recife"];
+const AVAILABLE_THEMES = ["nebulosa", "brasa", "recife", "ametista"];
 
 app.post("/api/l/:id/admin/theme", loadLeilao, requireLeilaoAdmin, (req, res) => {
   const { theme } = req.body || {};

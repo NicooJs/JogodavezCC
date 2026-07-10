@@ -244,41 +244,49 @@ function lotCardInnerHtml(item, barPct, hitBadge, changed) {
 
 // Lance de peso (mais de R$100 num único apoio/sabotagem): efeito mais
 // chamativo que o flash normal — confete pra apoio, faíscas vermelhas pra
-// sabotagem. Fica contido dentro do próprio card (que já corta overflow),
-// pra não vazar em cima dos vizinhos no grid.
+// sabotagem. burst é position:fixed ancorado no retângulo do card (não
+// filho dele) — anexar dentro do card cortava quase tudo pelo
+// overflow:hidden que ele usa pra imagem de fundo, deixando o efeito quase
+// invisível na prática.
 function triggerBigWinCelebration(key, type) {
   const card = lotListEl.querySelector(`.lot-card[data-key="${CSS.escape(key)}"]`);
   if (!card) return;
+  const rect = card.getBoundingClientRect();
   const isAdd = type === "add";
   const colors = isAdd
     ? ["var(--accent)", "var(--accent-text)", "var(--positive)", "var(--silver)"]
     : ["var(--danger)", "#ff8fa8", "var(--muted)"];
   const burst = document.createElement("div");
   burst.className = "confetti-burst";
-  const count = isAdd ? 22 : 14;
+  burst.style.left = `${rect.left}px`;
+  burst.style.top = `${rect.top}px`;
+  burst.style.width = `${rect.width}px`;
+  burst.style.height = `${rect.height}px`;
+  const count = isAdd ? 40 : 26;
   for (let i = 0; i < count; i++) {
     const piece = document.createElement("span");
     piece.className = "confetti-piece" + (isAdd ? "" : " confetti-piece-spark");
     const angle = Math.random() * 360;
-    const dist = 30 + Math.random() * 50;
+    const dist = 70 + Math.random() * 130;
     piece.style.setProperty("--dx", `${Math.cos((angle * Math.PI) / 180) * dist}px`);
-    piece.style.setProperty("--dy", `${Math.sin((angle * Math.PI) / 180) * dist}px`);
-    piece.style.setProperty("--rot", `${Math.random() * 720 - 360}deg`);
-    piece.style.left = `${15 + Math.random() * 70}%`;
-    piece.style.top = `${20 + Math.random() * 40}%`;
+    piece.style.setProperty("--dy", `${Math.sin((angle * Math.PI) / 180) * dist - 30}px`);
+    piece.style.setProperty("--rot", `${Math.random() * 900 - 450}deg`);
+    piece.style.left = `${20 + Math.random() * 60}%`;
+    piece.style.top = `${30 + Math.random() * 30}%`;
     piece.style.background = colors[i % colors.length];
-    piece.style.animationDelay = `${Math.random() * 0.12}s`;
+    piece.style.animationDuration = `${1.9 + Math.random() * 0.7}s`;
+    piece.style.animationDelay = `${Math.random() * 0.25}s`;
     burst.appendChild(piece);
   }
-  card.appendChild(burst);
-  setTimeout(() => burst.remove(), 1300);
+  document.body.appendChild(burst);
+  setTimeout(() => burst.remove(), 2900);
 }
 
 // Placar que se mexe ao vivo: em vez de recriar tudo a cada atualização,
 // reaproveita os cards existentes (por data-key) e só reordena via
 // appendChild — assim dá pra medir a posição antes/depois (técnica FLIP) e
 // os lotes deslizam suavemente pra nova posição no ranking.
-function renderLots(items, flashKey, flashType) {
+function renderLots(items, flashKey, flashType, lastSabotagedKey) {
   lotCountEl.textContent = String(items.length);
 
   if (items.length === 0) {
@@ -307,9 +315,10 @@ function renderLots(items, flashKey, flashType) {
     const flashClass = item.key === flashKey
       ? (flashType === "remove" ? " flash-remove" : flashType === "add" ? " flash-add" : "")
       : "";
-    const hitBadge = item.key === flashKey && flashType === "remove"
+    const isFlashingSabotage = item.key === flashKey && flashType === "remove";
+    const hitBadge = isFlashingSabotage
       ? '<span class="badge-hit">sabotado agora</span>'
-      : "";
+      : (item.key === lastSabotagedKey ? '<span class="badge-hit badge-hit-last">último sabotado</span>' : "");
     const barPct = item.total > 0 ? Math.max(3, Math.round((item.total / maxTotal) * 100)) : 0;
     const changed = previousTotals.has(item.key) && previousTotals.get(item.key) !== item.total;
     nextTotals.set(item.key, item.total);
@@ -375,8 +384,15 @@ function renderLots(items, flashKey, flashType) {
     if (flashedCard) {
       setTimeout(() => {
         flashedCard.classList.remove("flash-add", "flash-remove");
-        const badge = flashedCard.querySelector(".badge-hit");
-        if (badge) badge.remove();
+        // Vira o badge persistente em vez de simplesmente sumir — sem isso
+        // ficava um buraco vazio até o próximo evento qualquer forçar um
+        // re-render (achado testando: o badge sumia de vez depois de 4s e
+        // só voltava se algo mais acontecesse no leilão).
+        const badge = flashedCard.querySelector(".badge-hit:not(.badge-hit-last)");
+        if (badge) {
+          badge.textContent = "último sabotado";
+          badge.classList.add("badge-hit-last");
+        }
       }, 4000);
     }
   }
@@ -725,7 +741,7 @@ socket.on("update", ({ leaderboard, lastEvent }) => {
   currentItems = leaderboard.items || [];
   donorNames = leaderboard.donorNames || [];
   const flashKey = lastEvent && lastEvent.game ? lastEvent.game.key : null;
-  renderLots(leaderboard.items, flashKey, lastEvent ? lastEvent.type : null);
+  renderLots(leaderboard.items, flashKey, lastEvent ? lastEvent.type : null, leaderboard.lastSabotagedKey);
   renderDonors(leaderboard.donors || []);
   pushHistory(lastEvent);
 
@@ -763,27 +779,66 @@ function setPresenterMode(active) {
   updateWebhookWarning();
 }
 
-presenterToggleEl.addEventListener("click", async () => {
+// Modal próprio em vez de prompt() nativo — o prompt() do navegador não
+// mascara o texto digitado, então a senha ficava visível em texto puro na
+// tela (problema real: a tela do streamer é capturada ao vivo no OBS).
+const presenterLoginModal = document.getElementById("presenter-login-modal");
+const presenterLoginPassword = document.getElementById("presenter-login-password");
+const presenterLoginError = document.getElementById("presenter-login-error");
+const presenterLoginSubmit = document.getElementById("presenter-login-submit");
+const presenterLoginCancel = document.getElementById("presenter-login-cancel");
+const presenterLoginClose = document.getElementById("presenter-login-close");
+
+function openPresenterLogin() {
+  presenterLoginError.hidden = true;
+  presenterLoginPassword.value = "";
+  presenterLoginModal.hidden = false;
+  presenterLoginPassword.focus();
+}
+
+function closePresenterLogin() {
+  presenterLoginModal.hidden = true;
+}
+
+async function submitPresenterLogin() {
+  const password = presenterLoginPassword.value;
+  if (!password) return;
+  presenterLoginSubmit.disabled = true;
+  try {
+    const res = await fetch(`/api/l/${LEILAO_ID}/admin/login`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ password }),
+    });
+    if (!res.ok) {
+      presenterLoginError.hidden = false;
+      presenterLoginPassword.select();
+      return;
+    }
+    sessionStorage.setItem(`admin:${LEILAO_ID}`, password);
+    closePresenterLogin();
+    setPresenterMode(true);
+  } finally {
+    presenterLoginSubmit.disabled = false;
+  }
+}
+
+presenterToggleEl.addEventListener("click", () => {
   const isActive = document.body.classList.contains("presenter-mode");
   if (isActive) {
     sessionStorage.removeItem(`admin:${LEILAO_ID}`);
     setPresenterMode(false);
     return;
   }
-  const password = prompt("Senha do apresentador:");
-  if (!password) return;
-  const res = await fetch(`/api/l/${LEILAO_ID}/admin/login`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ password }),
-  });
-  if (!res.ok) {
-    alert("Senha incorreta");
-    return;
-  }
-  sessionStorage.setItem(`admin:${LEILAO_ID}`, password);
-  setPresenterMode(true);
+  openPresenterLogin();
 });
+
+presenterLoginSubmit.addEventListener("click", submitPresenterLogin);
+presenterLoginCancel.addEventListener("click", closePresenterLogin);
+presenterLoginClose.addEventListener("click", closePresenterLogin);
+presenterLoginModal.addEventListener("click", (e) => { if (e.target === presenterLoginModal) closePresenterLogin(); });
+presenterLoginPassword.addEventListener("keydown", (e) => { if (e.key === "Enter") submitPresenterLogin(); });
+document.addEventListener("keydown", (e) => { if (e.key === "Escape" && !presenterLoginModal.hidden) closePresenterLogin(); });
 
 hostEditBtn.addEventListener("click", () => {
   document.body.classList.add("host-editing");
