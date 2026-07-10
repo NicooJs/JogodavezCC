@@ -117,54 +117,6 @@ body::before {
   line-height: 1;
 }
 
-/* Nome que o STREAMER escolheu (não a marca fixa "Leilão de Jogos" — essa
-   fica só com .brand-word simples). Um tratamento próprio: gradiente sutil
-   no texto + um traço desenhado por baixo, tipo assinatura, que aparece uma
-   vez só ao carregar (não fica piscando/repetindo — isso seria cansativo
-   numa tela que fica ligada a live inteira). Cor do traço é a mesma hex de
-   --accent, só que fixa no data-uri (não dá pra usar var() dentro de SVG
-   embutido) — se o tema mudar de cor, atualizar aqui também. */
-#title.brand-word {
-  position: relative;
-  display: inline-block;
-  background: linear-gradient(100deg, var(--accent-text) 0%, var(--text) 45%, var(--accent-text) 100%);
-  background-size: 220% auto;
-  -webkit-background-clip: text;
-  background-clip: text;
-  color: transparent;
-  animation: title-shimmer 1.6s ease-out;
-}
-
-@keyframes title-shimmer {
-  from { background-position: 220% center; }
-  to { background-position: 0% center; }
-}
-
-#title.brand-word::after {
-  content: "";
-  position: absolute;
-  left: 1%;
-  right: 6%;
-  bottom: -7px;
-  height: 7px;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 200 14'%3E%3Cpath d='M2 9 Q 30 2 60 8 T 120 7 T 198 9' fill='none' stroke='%23ff7a45' stroke-width='2.6' stroke-linecap='round'/%3E%3C/svg%3E");
-  background-repeat: no-repeat;
-  background-size: 100% 100%;
-  opacity: 0;
-  transform: scaleX(0);
-  transform-origin: left center;
-  animation: flourish-draw 0.7s var(--ease) 0.35s forwards;
-}
-
-@keyframes flourish-draw {
-  to { transform: scaleX(1); opacity: 0.6; }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  #title.brand-word { animation: none; background-position: 0% center; }
-  #title.brand-word::after { animation: none; transform: scaleX(1); opacity: 0.6; }
-}
-
 .brand-sub {
   font-family: var(--font-mono);
   font-size: 11px;
@@ -185,10 +137,6 @@ body::before {
   display: inline-flex;
   align-items: baseline;
   gap: 9px;
-  background: var(--surface-2);
-  border: 1px solid var(--border);
-  border-radius: 999px;
-  padding: 7px 16px 7px 14px;
   color: var(--muted);
   font-family: var(--font-mono);
   text-transform: uppercase;
@@ -320,8 +268,8 @@ body::before {
   gap: 6px;
 }
 
-.presenter-bar-submit .icon,
-.presenter-bar-reset .icon { width: 13px; height: 13px; }
+.presenter-bar-submit .icon { width: 13px; height: 13px; }
+.presenter-bar-reset .icon { width: 16px; height: 16px; }
 
 /* Aviso de webhook desvinculado — só aparece no modo apresentador, quando o
    site detecta que faz tempo que o pix.gg não dá sinal de vida naquela URL

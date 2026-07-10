@@ -362,6 +362,12 @@ app.get("/l/:id/admin", (req, res) => {
   res.sendFile(path.join(__dirname, "public", "admin.html"));
 });
 
+app.get("/l/:id/historico", (req, res) => {
+  if (!registry.leilaoExists(req.params.id)) return res.status(404).send("Leilão não encontrado");
+  res.set("Referrer-Policy", "no-referrer");
+  res.sendFile(path.join(__dirname, "public", "history.html"));
+});
+
 // ---------- rotas públicas (id-scoped) ----------
 
 app.get("/api/l/:id/leaderboard", loadLeilao, (req, res) => {

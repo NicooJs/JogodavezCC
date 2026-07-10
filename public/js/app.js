@@ -9,6 +9,7 @@ if (!LEILAO_ID) {
 
 document.getElementById("admin-link").href = `/l/${LEILAO_ID}/admin`;
 document.getElementById("webhook-warning-link").href = `/l/${LEILAO_ID}/admin`;
+document.getElementById("history-link").href = `/l/${LEILAO_ID}/historico`;
 
 const socket = io({ query: { leilaoId: LEILAO_ID } });
 
