@@ -55,6 +55,17 @@ function touchActivity(store, reopen = false) {
   }
 }
 
+// Guarda quanto tempo essa sessão aberta durou, no momento de fechar (manual
+// ou automático) — usado pelo recap de encerramento. Calculado aqui (e não
+// só na hora de exibir o recap) pra ficar estável mesmo que o cliente
+// reconecte ou recarregue a página depois do leilão já ter fechado.
+function captureAuctionDuration(store) {
+  const openedAt = Number(store.getState("leilaoOpenedAt", 0));
+  if (openedAt > 0) {
+    store.setState("lastAuctionDurationMs", String(Date.now() - openedAt));
+  }
+}
+
 // Marca "agora" como o último contato de verdade do pix.gg nessa URL de
 // webhook (GET de ping ou POST com assinatura válida) — usado só pra
 // detectar desvinculação, ver WEBHOOK_STALE_MS e isWebhookStale.
@@ -157,6 +168,44 @@ function serializeLeaderboard(store) {
     timerDurationMs: autoCloseMs,
     webhookStale: isWebhookStale(store, isOpen),
     webhookSignatureIssue: hasWebhookSignatureIssue(store),
+  };
+}
+
+// Resumo mostrado numa janela quando o leilão encerra (manual ou automático)
+// — TOP 3 lotes com quantos doadores cada um teve, maiores doadores gerais,
+// total arrecadado e duração. Duração vem de lastAuctionDurationMs
+// (capturado no momento de fechar, ver captureAuctionDuration) — se ainda
+// não existe (leilão nunca fechou por essa rota, ex: dado antigo), cai pra
+// null em vez de inventar um número.
+function buildRecap(store) {
+  const rows = store.getLeaderboard();
+  const donorCounts = store.getDonorCountByGame();
+  const topGames = rows.slice(0, 3).map((row, index) => ({
+    rank: index + 1,
+    key: row.key,
+    name: row.name,
+    total: centsToNumber(row.total_cents),
+    image: row.image_url || null,
+    donorCount: donorCounts[row.key] || 0,
+  }));
+
+  const topDonors = store.getTopDonors(5).map((d, index) => ({
+    rank: index + 1,
+    username: d.username,
+    total: centsToNumber(d.total_cents),
+  }));
+
+  const durationMs = Number(store.getState("lastAuctionDurationMs", 0)) || null;
+
+  return {
+    title: store.getState("title", "Leilão de Jogos"),
+    host: store.getState("host", ""),
+    totalRaised: centsToNumber(store.getTotalRaised()),
+    totalGames: rows.length,
+    totalDonors: store.getTotalDonorCount(),
+    durationMs,
+    topGames,
+    topDonors,
   };
 }
 
@@ -317,6 +366,10 @@ app.get("/l/:id/admin", (req, res) => {
 
 app.get("/api/l/:id/leaderboard", loadLeilao, (req, res) => {
   res.json(serializeLeaderboard(req.store));
+});
+
+app.get("/api/l/:id/recap", loadLeilao, (req, res) => {
+  res.json(buildRecap(req.store));
 });
 
 app.get("/api/l/:id/events/recent", loadLeilao, (req, res) => {
@@ -522,8 +575,12 @@ app.post("/api/l/:id/admin/toggle-open", loadLeilao, requireLeilaoAdmin, (req, r
   const { open } = req.body || {};
   const { store, leilaoId } = req;
   store.setState("open", open ? "true" : "false");
-  if (open) touchActivity(store, true); // reabrir dá um fôlego novo (e reseta a referência do aviso de webhook, ver isWebhookStale)
-  else store.setState("paused", "false"); // encerrar limpa qualquer pausa pendente
+  if (open) {
+    touchActivity(store, true); // reabrir dá um fôlego novo (e reseta a referência do aviso de webhook, ver isWebhookStale)
+  } else {
+    store.setState("paused", "false"); // encerrar limpa qualquer pausa pendente
+    captureAuctionDuration(store);
+  }
   broadcastUpdate(leilaoId, store, { type: "toggle-open", open: !!open });
   res.json({ ok: true, open: !!open });
 });
@@ -642,6 +699,7 @@ setInterval(() => {
     const lastActivityAt = Number(store.getState("lastActivityAt", Date.now()));
     if (Date.now() - lastActivityAt >= getAutoCloseMs(store)) {
       store.setState("open", "false");
+      captureAuctionDuration(store);
       broadcastUpdate(leilaoId, store, { type: "auto-closed" });
     }
   }

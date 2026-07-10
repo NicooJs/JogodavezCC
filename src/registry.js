@@ -86,6 +86,10 @@ async function createLeilao({ title, host, password, clientId, clientSecret, bui
   // pix.gg (ver "webhookStale" em server.js) — se nunca chegou nenhum ping
   // desde a criação, isso também conta como sinal de webhook desvinculado.
   store.setState("createdAt", meta.createdAt);
+  // Início da primeira sessão aberta — mesma referência usada por
+  // isWebhookStale e pela duração do recap de encerramento (ver
+  // captureAuctionDuration em server.js).
+  store.setState("leilaoOpenedAt", String(Date.now()));
 
   return { id };
 }

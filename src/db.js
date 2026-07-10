@@ -236,6 +236,34 @@ function createStore(filePath) {
     return map;
   }
 
+  // Quantas pessoas distintas mexeram em cada lote (apoiando ou sabotando)
+  // — usado no recap de encerramento. Username ausente (doação anônima/sem
+  // nome) não conta pra nenhum lote.
+  function getDonorCountByGame() {
+    const seenByGame = {};
+    for (const ev of data.events) {
+      if (!ev.game_key || !ev.username) continue;
+      if (ev.action !== "add" && ev.action !== "remove") continue;
+      if (!seenByGame[ev.game_key]) seenByGame[ev.game_key] = new Set();
+      seenByGame[ev.game_key].add(ev.username);
+    }
+    const counts = {};
+    for (const key of Object.keys(seenByGame)) counts[key] = seenByGame[key].size;
+    return counts;
+  }
+
+  // Quantas pessoas distintas doaram no leilão inteiro (qualquer lote) —
+  // usado no recap de encerramento.
+  function getTotalDonorCount() {
+    const seen = new Set();
+    for (const ev of data.events) {
+      if (!ev.username) continue;
+      if (ev.action !== "add" && ev.action !== "remove") continue;
+      seen.add(ev.username);
+    }
+    return seen.size;
+  }
+
   function adjustGame(key, deltaCents) {
     if (!data.games[key]) return null;
     data.games[key].total_cents += deltaCents;
@@ -290,8 +318,17 @@ function createStore(filePath) {
     return { ...data.games[key] };
   }
 
+  // Zera só os jogos/histórico — preserva o state (senha do apresentador,
+  // título, host, foto, flags de webhook). Antes isso chamava emptyData()
+  // puro, que apagava TUDO, inclusive adminSecretHash: depois de zerar, o
+  // streamer ficava trancado fora do próprio modo apresentador. Achado
+  // revisando um incidente relatado (2026-07-10) — não era esse o problema
+  // relatado (esse foi regenerar o Client Secret no pix.gg, ver
+  // pixggApi.js), mas era um bug de verdade que apareceu na revisão.
   function resetAll() {
+    const preservedState = { ...data.state };
     data = emptyData();
+    data.state = preservedState;
     save();
   }
 
@@ -307,6 +344,8 @@ function createStore(filePath) {
     getDonorNames,
     getTotalRaised,
     getFundingBreakdown,
+    getDonorCountByGame,
+    getTotalDonorCount,
     hasGame,
     getGame,
     resolveExistingKey,

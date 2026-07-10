@@ -38,6 +38,16 @@ const hostInputEl = document.getElementById("p-host-input");
 const boardEl = document.querySelector(".board");
 const soldOverlayEl = document.getElementById("sold-overlay");
 const soldMarkEl = document.getElementById("sold-mark");
+const recapOverlayEl = document.getElementById("recap-overlay");
+const recapTitleEl = document.getElementById("recap-title");
+const recapTotalEl = document.getElementById("recap-total");
+const recapDurationEl = document.getElementById("recap-duration");
+const recapDonorsEl = document.getElementById("recap-donors");
+const recapGamesEl = document.getElementById("recap-games");
+const recapPodiumEl = document.getElementById("recap-podium");
+const recapDonorListEl = document.getElementById("recap-donor-list");
+const recapDonorsLabelEl = document.getElementById("recap-donors-label");
+const recapCloseEl = document.getElementById("recap-close");
 const webhookWarningEl = document.getElementById("webhook-warning");
 const webhookWarningTextEl = document.getElementById("webhook-warning-text");
 
@@ -379,13 +389,18 @@ function renderLots(items, flashKey, flashType) {
 
 function renderDonors(donors) {
   donorEmptyEl.style.display = donors.length === 0 ? "flex" : "none";
-  const rows = donors.map((d) => `
-    <div class="donor-row rank-${d.rank}">
-      <span class="donor-rank">${String(d.rank).padStart(2, "0")}</span>
+  const maxTotal = Math.max(...donors.map((d) => d.total), 1);
+  const rows = donors.map((d) => {
+    const pct = d.total > 0 ? Math.max(4, Math.round((d.total / maxTotal) * 100)) : 0;
+    return `
+    <div class="donor-row rank-${d.rank}" style="--pct:${pct}%">
+      <div class="donor-row-fill"></div>
+      <span class="donor-rank">${rankBadgeHtml(d.rank)}</span>
       <span class="donor-name">${escapeHtml(d.username || "Anônimo")}</span>
       <span class="donor-total">${formatBRL(d.total)}</span>
     </div>
-  `);
+  `;
+  });
   donorListEl.innerHTML = (donors.length === 0 ? donorEmptyEl.outerHTML : "") + rows.join("");
   donorCountEl.textContent = String(donors.length);
 }
@@ -480,6 +495,71 @@ function triggerSoldMoment(leaderName) {
   soldTimeout = setTimeout(() => { soldOverlayEl.hidden = true; }, 2300);
 }
 
+function formatDuration(ms) {
+  if (!ms || ms <= 0) return "—";
+  const totalMin = Math.round(ms / 60000);
+  if (totalMin === 0) return "<1min";
+  const h = Math.floor(totalMin / 60);
+  const m = totalMin % 60;
+  if (h === 0) return `${m}min`;
+  return `${h}h${String(m).padStart(2, "0")}`;
+}
+
+// Pódio do recap — mesma linguagem de medalha do catálogo (rankBadgeHtml),
+// só que num cartão vertical em vez da linha horizontal do lot-card.
+function recapPodiumCardHtml(game) {
+  const thumb = game.image
+    ? `<img class="recap-podium-thumb" src="${escapeHtml(game.image)}" alt="" />`
+    : `<div class="recap-podium-thumb recap-podium-thumb-placeholder">${escapeHtml((game.name[0] || "?").toUpperCase())}</div>`;
+  return `
+    <div class="recap-podium-card rank-${game.rank}">
+      <span class="recap-podium-rank">${rankBadgeHtml(game.rank)}</span>
+      ${thumb}
+      <p class="recap-podium-name">${escapeHtml(game.name)}</p>
+      <p class="recap-podium-total">${formatBRL(game.total)}</p>
+      <p class="recap-podium-donors">${game.donorCount} ${game.donorCount === 1 ? "apoiador" : "apoiadores"}</p>
+    </div>
+  `;
+}
+
+async function showRecap() {
+  let recap;
+  try {
+    recap = await fetch(`/api/l/${LEILAO_ID}/recap`).then((r) => r.json());
+  } catch (err) {
+    console.error("Erro ao buscar recap:", err.message);
+    return;
+  }
+
+  recapTitleEl.textContent = recap.title || "Leilão de Jogos";
+  recapTotalEl.textContent = formatBRL(recap.totalRaised || 0);
+  recapDurationEl.textContent = formatDuration(recap.durationMs);
+  recapDonorsEl.textContent = String(recap.totalDonors || 0);
+  recapGamesEl.textContent = String(recap.totalGames || 0);
+
+  recapPodiumEl.innerHTML = (recap.topGames || []).map(recapPodiumCardHtml).join("");
+
+  const topDonors = recap.topDonors || [];
+  recapDonorsLabelEl.hidden = topDonors.length === 0;
+  recapDonorListEl.innerHTML = topDonors.map((d) => `
+    <div class="recap-donor-row rank-${d.rank}">
+      <span class="recap-donor-rank">${rankBadgeHtml(d.rank)}</span>
+      <span class="recap-donor-name">${escapeHtml(d.username || "Anônimo")}</span>
+      <span class="recap-donor-total">${formatBRL(d.total)}</span>
+    </div>
+  `).join("");
+
+  recapOverlayEl.hidden = false;
+}
+
+function closeRecap() {
+  recapOverlayEl.hidden = true;
+}
+
+recapCloseEl.addEventListener("click", closeRecap);
+recapOverlayEl.addEventListener("click", (e) => { if (e.target === recapOverlayEl) closeRecap(); });
+document.addEventListener("keydown", (e) => { if (e.key === "Escape" && !recapOverlayEl.hidden) closeRecap(); });
+
 socket.on("update", ({ leaderboard, lastEvent }) => {
   titleEl.textContent = leaderboard.title;
   hostNameEl.textContent = leaderboard.host || "Streamer";
@@ -502,6 +582,9 @@ socket.on("update", ({ leaderboard, lastEvent }) => {
   if (wasOpen === true && isOpenState === false) {
     const leader = (leaderboard.items || [])[0];
     triggerSoldMoment(leader ? leader.name : null);
+    // Espera o "Vendido!" terminar (2.3s) pra não brigar visualmente com o
+    // recap — a janela vem logo em seguida, não por cima.
+    setTimeout(showRecap, 2400);
   }
 
   timerEndsAt = leaderboard.timerEndsAt;
@@ -657,18 +740,35 @@ document.getElementById("p-toggle-open").addEventListener("click", async () => {
   }
 });
 
+// Zerar direto do board evita ter que abrir o painel avançado no meio da
+// live (ver CLAUDE.md: controle do dia a dia é modo apresentador, não
+// admin.html) — mas continua destrutivo, por isso o confirm() explícito.
+document.getElementById("p-reset-btn").addEventListener("click", async () => {
+  if (!confirm("Isso apaga TODOS os jogos e o histórico desse leilão. Título, host e senha continuam os mesmos. Tem certeza?")) return;
+  try {
+    await presenterFetch("/admin/reset", { method: "POST" });
+  } catch (err) {
+    alert(err.message);
+  }
+});
+
 // Procura um jogo já no catálogo pelo nome (pra o modal mostrar o total atual).
 function findGameByName(name) {
   const norm = name.trim().toLowerCase();
   return currentItems.find((i) => i.name.trim().toLowerCase() === norm) || null;
 }
 
-document.getElementById("p-manual-submit").addEventListener("click", () => {
+// Não lança direto — abre o modal (mesmo que clicar numa sugestão da busca),
+// só que com o texto digitado ao pé da letra, sem escolher um resultado da
+// RAWG (útil quando o jogo não aparece na busca).
+function submitManualSearch() {
   const name = manualNameEl.value.trim();
   if (!name) return manualNameEl.focus();
   hideSuggestions();
   openLotModal(findGameByName(name) || { name });
-});
+}
+
+document.getElementById("p-manual-submit").addEventListener("click", submitManualSearch);
 
 const manualNameEl = document.getElementById("p-manual-name");
 const suggestionsEl = document.getElementById("game-suggestions");
@@ -749,6 +849,7 @@ document.addEventListener("click", (e) => {
 
 manualNameEl.addEventListener("keydown", (e) => {
   if (e.key === "Escape") hideSuggestions();
+  else if (e.key === "Enter") submitManualSearch();
 });
 
 // ---- modal de lançar/editar lote ----

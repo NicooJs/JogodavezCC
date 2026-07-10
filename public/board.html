@@ -37,7 +37,8 @@
         <input type="text" id="p-manual-name" placeholder="Buscar um jogo pra lançar…" autocomplete="off" />
         <div class="suggestions" id="game-suggestions" hidden></div>
       </div>
-      <button class="btn-mini primary presenter-bar-submit" id="p-manual-submit">Lançar</button>
+      <button class="btn-mini primary presenter-bar-submit" id="p-manual-submit" title="Usa o texto digitado direto, sem escolher uma sugestão da busca">Adicionar lote</button>
+      <button class="btn-mini danger" id="p-reset-btn" type="button" title="Apaga todos os jogos e o histórico (mantém título, host e senha)">Zerar leilão</button>
       <a class="presenter-bar-link" href="admin" id="admin-link" target="_blank">painel avançado</a>
     </section>
 
@@ -161,6 +162,39 @@
 
   <div class="sold-overlay" id="sold-overlay" hidden aria-hidden="true">
     <span class="sold-mark" id="sold-mark">Vendido!</span>
+  </div>
+
+  <div class="recap-overlay" id="recap-overlay" hidden>
+    <div class="recap-modal" role="dialog" aria-modal="true" aria-labelledby="recap-title">
+      <button class="recap-close" id="recap-close" type="button" aria-label="Fechar">✕</button>
+      <p class="recap-eyebrow">leilão encerrado</p>
+      <h2 class="recap-title" id="recap-title">Leilão de Jogos</h2>
+
+      <div class="recap-stats">
+        <div class="recap-stat">
+          <span class="recap-stat-value" id="recap-total">R$ 0</span>
+          <span class="recap-stat-label">arrecadado</span>
+        </div>
+        <div class="recap-stat">
+          <span class="recap-stat-value" id="recap-duration">—</span>
+          <span class="recap-stat-label">duração</span>
+        </div>
+        <div class="recap-stat">
+          <span class="recap-stat-value" id="recap-donors">0</span>
+          <span class="recap-stat-label">apoiadores</span>
+        </div>
+        <div class="recap-stat">
+          <span class="recap-stat-value" id="recap-games">0</span>
+          <span class="recap-stat-label">lotes disputados</span>
+        </div>
+      </div>
+
+      <p class="recap-section-label">TOP 3</p>
+      <div class="recap-podium" id="recap-podium"></div>
+
+      <p class="recap-section-label" id="recap-donors-label" hidden>maiores apoiadores</p>
+      <div class="recap-donor-list" id="recap-donor-list"></div>
+    </div>
   </div>
 
   <div class="modal-overlay" id="lot-modal" hidden>
