@@ -45,7 +45,10 @@
         <svg class="icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 6h10M8.5 6V4.5h3V6M6.5 6l.6 9a1 1 0 0 0 1 .9h3.8a1 1 0 0 0 1-.9l.6-9"/></svg>
         Zerar leilão
       </button>
-      <a class="presenter-bar-link" href="historico" id="history-link" target="_blank">histórico de leilões</a>
+      <button class="btn-mini presenter-bar-history" id="history-open-btn" type="button" title="Ver rounds anteriores">
+        <svg class="icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 5.5V10l3 2"/><circle cx="10" cy="10" r="7"/></svg>
+        Histórico
+      </button>
       <a class="presenter-bar-link" href="admin" id="admin-link" target="_blank">painel avançado</a>
     </section>
 
@@ -169,6 +172,15 @@
 
   <div class="sold-overlay" id="sold-overlay" hidden aria-hidden="true">
     <span class="sold-mark" id="sold-mark">Vendido!</span>
+  </div>
+
+  <div class="history-overlay" id="history-overlay" hidden>
+    <div class="history-modal" role="dialog" aria-modal="true" aria-labelledby="history-modal-title">
+      <button class="recap-close" id="history-close" type="button" aria-label="Fechar">✕</button>
+      <h2 class="history-modal-title" id="history-modal-title">Histórico de leilões</h2>
+      <p class="history-modal-empty" id="history-modal-empty" hidden>Nenhum leilão zerado ainda — assim que você usar "zerar leilão", os rounds anteriores aparecem aqui.</p>
+      <div class="history-grid" id="history-grid"></div>
+    </div>
   </div>
 
   <div class="recap-overlay" id="recap-overlay" hidden>

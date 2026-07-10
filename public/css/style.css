@@ -268,6 +268,16 @@ body::before {
   gap: 6px;
 }
 
+.presenter-bar-history {
+  height: 36px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--muted);
+}
+.presenter-bar-history:hover { color: var(--accent-text); }
+.presenter-bar-history .icon { width: 14px; height: 14px; }
+
 .presenter-bar-submit .icon { width: 13px; height: 13px; }
 .presenter-bar-reset .icon { width: 16px; height: 16px; }
 
@@ -750,6 +760,131 @@ body::before {
   .recap-stats { grid-template-columns: repeat(2, 1fr); }
   .recap-podium { grid-template-columns: 1fr; }
   .recap-podium-card.rank-1 { transform: none; }
+}
+
+/* Lista de rounds anteriores — popup por cima do board (não abre aba nova
+   nem navega pra outra página, ver history-open-btn em app.js), clicar num
+   card troca pra .recap-overlay com os detalhes daquele round. */
+.history-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 65;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background: rgba(10, 10, 12, 0.72);
+  backdrop-filter: blur(4px);
+  animation: overlay-in 0.2s ease;
+}
+.history-overlay[hidden] { display: none; }
+
+.history-modal {
+  position: relative;
+  width: 100%;
+  max-width: 760px;
+  max-height: 88vh;
+  overflow-y: auto;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 32px 36px;
+  box-shadow: 0 32px 80px -20px rgba(0, 0, 0, 0.8);
+  animation: modal-in 0.25s var(--ease);
+}
+
+.history-modal-title {
+  margin: 0 0 20px;
+  font-family: var(--font-display);
+  font-style: italic;
+  font-weight: 700;
+  font-size: 24px;
+  color: var(--text);
+}
+
+.history-modal-empty {
+  color: var(--muted);
+  font-size: 13.5px;
+  padding: 20px 0;
+  text-align: center;
+}
+
+.history-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 12px;
+}
+
+.history-card {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 14px 16px;
+  cursor: pointer;
+  text-align: left;
+  font-family: var(--font-body);
+  transition: border-color 0.15s ease, transform 0.15s ease;
+}
+
+.history-card:hover { border-color: var(--accent); transform: translateY(-2px); }
+
+.history-card-when {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.history-card-total {
+  font-family: var(--font-mono);
+  font-size: 21px;
+  font-weight: 600;
+  color: var(--accent-text);
+  font-variant-numeric: tabular-nums;
+}
+
+.history-card-champion { display: flex; align-items: center; gap: 8px; }
+
+.history-card-thumb {
+  width: 32px;
+  height: 32px;
+  border-radius: 5px;
+  object-fit: cover;
+  background: var(--surface);
+  flex-shrink: 0;
+}
+
+.history-card-thumb-placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--muted);
+  font-family: var(--font-display);
+  font-style: italic;
+  font-size: 13px;
+}
+
+.history-card-champion-name {
+  font-family: var(--font-display);
+  font-size: 13.5px;
+  font-weight: 600;
+  color: var(--text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.history-card-meta {
+  display: flex;
+  gap: 10px;
+  font-size: 11px;
+  color: var(--muted);
+  border-top: 1px dashed var(--border);
+  padding-top: 8px;
 }
 
 .col {

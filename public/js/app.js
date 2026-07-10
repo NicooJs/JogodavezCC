@@ -9,7 +9,6 @@ if (!LEILAO_ID) {
 
 document.getElementById("admin-link").href = `/l/${LEILAO_ID}/admin`;
 document.getElementById("webhook-warning-link").href = `/l/${LEILAO_ID}/admin`;
-document.getElementById("history-link").href = `/l/${LEILAO_ID}/historico`;
 
 const socket = io({ query: { leilaoId: LEILAO_ID } });
 
@@ -50,6 +49,11 @@ const recapDonorListEl = document.getElementById("recap-donor-list");
 const recapDonorsLabelEl = document.getElementById("recap-donors-label");
 const recapCloseEl = document.getElementById("recap-close");
 const recapEyebrowEl = document.getElementById("recap-eyebrow");
+const historyOverlayEl = document.getElementById("history-overlay");
+const historyCloseEl = document.getElementById("history-close");
+const historyGridEl = document.getElementById("history-grid");
+const historyModalEmptyEl = document.getElementById("history-modal-empty");
+const historyOpenBtnEl = document.getElementById("history-open-btn");
 const webhookWarningEl = document.getElementById("webhook-warning");
 const webhookWarningTextEl = document.getElementById("webhook-warning-text");
 
@@ -588,6 +592,73 @@ function closeRecap() {
 recapCloseEl.addEventListener("click", closeRecap);
 recapOverlayEl.addEventListener("click", (e) => { if (e.target === recapOverlayEl) closeRecap(); });
 document.addEventListener("keydown", (e) => { if (e.key === "Escape" && !recapOverlayEl.hidden) closeRecap(); });
+
+// Lista de rounds anteriores — popup por cima do board (ver
+// history-open-btn), não abre aba nem navega pra outra página. Clicar num
+// card troca pro mesmo overlay de recap usado ao vivo.
+function historyCardHtml(h, index) {
+  const when = h.archivedAt ? new Date(h.archivedAt).toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" }) : "—";
+  const champion = h.topGames && h.topGames[0] ? h.topGames[0] : null;
+  const thumb = champion && champion.image
+    ? `<img class="history-card-thumb" src="${escapeHtml(champion.image)}" alt="" />`
+    : `<div class="history-card-thumb history-card-thumb-placeholder">${escapeHtml(((champion && champion.name[0]) || "?").toUpperCase())}</div>`;
+  return `
+    <button class="history-card" type="button" data-index="${index}">
+      <span class="history-card-when">${when}</span>
+      <span class="history-card-total">${formatBRL(h.totalRaised || 0)}</span>
+      <div class="history-card-champion">
+        ${thumb}
+        <span class="history-card-champion-name">${escapeHtml(champion ? champion.name : "—")}</span>
+      </div>
+      <div class="history-card-meta">
+        <span>${h.totalGames || 0} lotes</span>
+        <span>${h.totalDonors || 0} apoiadores</span>
+        <span>${formatDuration(h.durationMs)}</span>
+      </div>
+    </button>
+  `;
+}
+
+async function openHistoryOverlay() {
+  historyOverlayEl.hidden = false;
+  let history = [];
+  try {
+    const data = await fetch(`/api/l/${LEILAO_ID}/recap/history`).then((r) => r.json());
+    history = data.history || [];
+  } catch (err) {
+    console.error("Erro ao carregar histórico:", err.message);
+  }
+
+  if (history.length === 0) {
+    historyModalEmptyEl.hidden = false;
+    historyGridEl.innerHTML = "";
+    return;
+  }
+  historyModalEmptyEl.hidden = true;
+  historyGridEl.innerHTML = history.map(historyCardHtml).join("");
+
+  historyGridEl.querySelectorAll(".history-card").forEach((card) => {
+    card.addEventListener("click", () => {
+      const index = Number(card.dataset.index);
+      const recap = history[index];
+      if (!recap) return;
+      const when = recap.archivedAt
+        ? new Date(recap.archivedAt).toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" })
+        : "";
+      historyOverlayEl.hidden = true;
+      renderRecap(recap, when ? `round encerrado em ${when}` : "round anterior");
+    });
+  });
+}
+
+function closeHistoryOverlay() {
+  historyOverlayEl.hidden = true;
+}
+
+historyOpenBtnEl.addEventListener("click", openHistoryOverlay);
+historyCloseEl.addEventListener("click", closeHistoryOverlay);
+historyOverlayEl.addEventListener("click", (e) => { if (e.target === historyOverlayEl) closeHistoryOverlay(); });
+document.addEventListener("keydown", (e) => { if (e.key === "Escape" && !historyOverlayEl.hidden) closeHistoryOverlay(); });
 
 socket.on("update", ({ leaderboard, lastEvent }) => {
   titleEl.textContent = leaderboard.title;
