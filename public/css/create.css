@@ -78,7 +78,7 @@
   height: 46px;
   margin-top: 6px;
   background: var(--accent);
-  color: #2b1205;
+  color: var(--accent-ink);
   border: none;
   border-radius: var(--radius);
   font-family: var(--font-body);

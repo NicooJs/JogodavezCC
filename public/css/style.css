@@ -1,4 +1,39 @@
+/* Sistema de temas: cada leilão escolhe um (state.theme, ver admin.html →
+   painel "Tema visual" → POST /admin/theme), aplicado via
+   document.documentElement.dataset.theme em app.js. "nebulosa" no :root é
+   o default de verdade (novos leilões e qualquer :root antes do socket
+   conectar) — os outros dois só entram via [data-theme="..."] no <html>.
+   --danger/--positive/--bronze ficam FIXOS entre temas de propósito: são
+   sinais semânticos (sabotagem/apoio/medalha de bronze), não identidade
+   visual, então mudar por tema confundiria o significado. */
 :root {
+  --bg: #14141c;
+  --surface: #1b1b26;
+  --surface-2: #21212e;
+  --border: #34343f;
+  --text: #f0f0f5;
+  --muted: #8e8ea3;
+  --accent: #3ecfe0;
+  --accent-bg: rgba(62, 207, 224, 0.12);
+  --accent-text: #7de0ec;
+  --accent-soft: #1f9aab;
+  --accent-glow: rgba(62, 207, 224, 0.35);
+  --accent-ink: #062023;
+  --silver: #cfd3dc;
+  --bronze: #c99a6c;
+  --danger: #ef4470;
+  --danger-bg: rgba(239, 68, 112, 0.14);
+  --positive: #46b17f;
+  --font-display: "Fraunces", serif;
+  --font-body: "IBM Plex Sans", sans-serif;
+  --font-mono: "IBM Plex Mono", monospace;
+  --radius: 6px;
+  --ease: cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+/* "Brasa" — o laranja/grafite original, mantido como opção pra quem
+   preferir (deixou de ser o default em 2026-07-10, a pedido do cliente). */
+:root[data-theme="brasa"] {
   --bg: #1c1c1f;
   --surface: #232326;
   --surface-2: #29292d;
@@ -9,16 +44,26 @@
   --accent-bg: rgba(255, 122, 69, 0.12);
   --accent-text: #ffa679;
   --accent-soft: #c2551f;
+  --accent-glow: rgba(255, 122, 69, 0.35);
+  --accent-ink: #2b1205;
   --silver: #cdc7ba;
-  --bronze: #c99a6c;
-  --danger: #ef4470;
-  --danger-bg: rgba(239, 68, 112, 0.14);
-  --positive: #46b17f;
-  --font-display: "Fraunces", serif;
-  --font-body: "IBM Plex Sans", sans-serif;
-  --font-mono: "IBM Plex Mono", monospace;
-  --radius: 6px;
-  --ease: cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+/* "Recife" — petróleo/teal com latão. */
+:root[data-theme="recife"] {
+  --bg: #101a1a;
+  --surface: #16211f;
+  --surface-2: #1c2926;
+  --border: #2d3a37;
+  --text: #eef4f2;
+  --muted: #87a19b;
+  --accent: #e0a955;
+  --accent-bg: rgba(224, 169, 85, 0.12);
+  --accent-text: #edc17e;
+  --accent-soft: #a97f3d;
+  --accent-glow: rgba(224, 169, 85, 0.35);
+  --accent-ink: #2b1c05;
+  --silver: #cfd8d5;
 }
 
 * { box-sizing: border-box; }
@@ -254,32 +299,58 @@ body::before {
 .presenter-bar-link { align-self: center; font-size: 12px; color: var(--muted); white-space: nowrap; }
 .presenter-bar-link:hover { color: var(--accent-text); }
 
-.presenter-bar-submit {
-  height: 36px;
+/* Botões da barra do apresentador — um sistema só, com três pesos visuais
+   (primário sólido / perigo contornado / fantasma), todos com a mesma
+   altura, raio e ritmo de ícone, pra lerem como um conjunto desenhado de
+   propósito, não uma mistura de estilos soltos. Sombra em duas camadas
+   (brilho fino por cima + sombra difusa da cor do tema por baixo) dá uma
+   sensação de profundidade sutil, sem exagero. */
+.pbar-btn {
+  height: 38px;
+  padding: 0 16px;
   display: inline-flex;
   align-items: center;
-  gap: 6px;
+  gap: 7px;
+  border-radius: 9px;
+  border: 1px solid transparent;
+  font-family: var(--font-body);
+  font-size: 13px;
+  font-weight: 600;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease, background 0.15s ease, color 0.15s ease;
+}
+.pbar-btn .icon { width: 14px; height: 14px; flex-shrink: 0; }
+.pbar-btn:active { transform: translateY(0) !important; }
+
+.pbar-btn-primary {
+  background: linear-gradient(180deg, var(--accent-text), var(--accent));
+  color: var(--accent-ink);
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.3) inset, 0 4px 14px -5px var(--accent-glow);
+}
+.pbar-btn-primary:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.35) inset, 0 10px 24px -8px var(--accent-glow);
 }
 
-.presenter-bar-reset {
-  height: 36px;
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
+.pbar-btn-danger {
+  background: var(--surface-2);
+  border-color: var(--border);
+  color: var(--danger);
+}
+.pbar-btn-danger:hover {
+  transform: translateY(-1px);
+  border-color: var(--danger);
+  background: var(--danger-bg);
+  box-shadow: 0 8px 20px -10px rgba(239, 68, 112, 0.45);
 }
 
-.presenter-bar-history {
-  height: 36px;
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
+.pbar-btn-ghost {
+  background: transparent;
   color: var(--muted);
+  padding: 0 12px;
 }
-.presenter-bar-history:hover { color: var(--accent-text); }
-.presenter-bar-history .icon { width: 14px; height: 14px; }
-
-.presenter-bar-submit .icon { width: 13px; height: 13px; }
-.presenter-bar-reset .icon { width: 16px; height: 16px; }
+.pbar-btn-ghost:hover { color: var(--accent-text); background: var(--surface-2); }
 
 /* Aviso de webhook desvinculado — só aparece no modo apresentador, quando o
    site detecta que faz tempo que o pix.gg não dá sinal de vida naquela URL
@@ -465,7 +536,10 @@ body::before {
   flex: 1;
   min-height: 0;
   display: grid;
-  grid-template-columns: 260px minmax(0, 1fr) 280px;
+  /* Esquerda 260→300px, direita 280→323px — mesmo fator (~1.154x) nas
+     duas, mantendo a proporção original entre elas. Central continua
+     flexível (minmax(0, 1fr)) e absorve a diferença. */
+  grid-template-columns: 300px minmax(0, 1fr) 323px;
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: var(--radius);
@@ -1070,7 +1144,7 @@ body::before {
   height: 32px;
   flex-shrink: 0;
   background: var(--accent);
-  color: #2b1205;
+  color: var(--accent-ink);
   border: none;
   border-radius: 50%;
   cursor: pointer;
@@ -1147,6 +1221,28 @@ body::before {
 .donor-row.rank-1 .donor-rank { color: var(--accent-text); }
 .donor-row.rank-2 .donor-rank { color: var(--silver); }
 .donor-row.rank-3 .donor-rank { color: var(--bronze); }
+
+/* Foto da Twitch quando o nome digitado na doação bate com um login de
+   verdade (melhor esforço, ver getDonorAvatar em server.js) — sem isso, cai
+   pro círculo com a inicial, igual o placeholder do host/lote. */
+.donor-avatar {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  object-fit: cover;
+  background: var(--surface);
+  flex-shrink: 0;
+}
+
+.donor-avatar-placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-display);
+  font-style: italic;
+  font-size: 11px;
+  color: var(--muted);
+}
 
 .donor-name {
   flex: 1;
@@ -1607,7 +1703,7 @@ body::before {
   height: 30px;
   flex-shrink: 0;
   background: var(--accent);
-  color: #2b1205;
+  color: var(--accent-ink);
   border: none;
   border-radius: 50%;
   cursor: pointer;
@@ -1630,16 +1726,9 @@ body::before {
 }
 
 .btn-mini:hover { border-color: var(--accent); }
-.btn-mini.primary { background: var(--accent); color: #2b1205; border-color: var(--accent); font-weight: 600; }
+.btn-mini.primary { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); font-weight: 600; }
 .btn-mini.danger { color: var(--danger); }
 .btn-mini.danger:hover { border-color: var(--danger); background: var(--danger-bg); }
-
-.presenter-bar-submit,
-.presenter-bar-reset { transition: transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease, background 0.15s ease; }
-.presenter-bar-submit:hover { transform: translateY(-1px); box-shadow: 0 6px 16px -6px rgba(255, 122, 69, 0.55); }
-.presenter-bar-reset:hover { transform: translateY(-1px); box-shadow: 0 6px 16px -8px rgba(239, 68, 112, 0.5); }
-.presenter-bar-submit:active,
-.presenter-bar-reset:active { transform: translateY(0); }
 
 .history-panel { flex: 1; min-height: 160px; }
 
@@ -1882,7 +1971,7 @@ body::before {
 }
 
 .seg button:hover { color: var(--text); }
-.seg button.active { background: var(--accent); color: #2b1205; font-weight: 600; }
+.seg button.active { background: var(--accent); color: var(--accent-ink); font-weight: 600; }
 .seg button.active[data-action="remove"] { background: var(--danger); color: #fff; }
 
 .modal-amount { width: 100%; height: 38px; }

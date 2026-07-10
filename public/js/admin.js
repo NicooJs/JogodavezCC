@@ -88,6 +88,7 @@ function initAdmin() {
     document.getElementById("title-input").value = leaderboard.title;
     renderOpenState(leaderboard.open);
     renderWebhookState(leaderboard.webhookStale, leaderboard.webhookSignatureIssue);
+    renderThemePicker(leaderboard.theme);
     renderTable();
     renderMergeOptions();
   });
@@ -95,6 +96,17 @@ function initAdmin() {
   document.getElementById("save-title").addEventListener("click", async () => {
     const title = document.getElementById("title-input").value.trim();
     await adminFetch("/admin/title", { method: "POST", body: JSON.stringify({ title }) });
+  });
+
+  document.querySelectorAll(".theme-swatch").forEach((btn) => {
+    btn.addEventListener("click", async () => {
+      try {
+        await adminFetch("/admin/theme", { method: "POST", body: JSON.stringify({ theme: btn.dataset.theme }) });
+        renderThemePicker(btn.dataset.theme);
+      } catch (err) {
+        alert(err.message);
+      }
+    });
   });
 
   document.getElementById("toggle-open").addEventListener("click", async () => {
@@ -177,6 +189,12 @@ function renderWebhookState(stale, signatureIssue) {
     badge.textContent = "vinculado";
   }
   badge.className = "badge" + (stale || signatureIssue ? " closed" : "");
+}
+
+function renderThemePicker(theme) {
+  document.querySelectorAll(".theme-swatch").forEach((btn) => {
+    btn.classList.toggle("active", btn.dataset.theme === (theme || "nebulosa"));
+  });
 }
 
 function renderTable() {

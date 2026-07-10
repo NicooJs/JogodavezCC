@@ -398,10 +398,14 @@ function renderDonors(donors) {
   const maxTotal = Math.max(...donors.map((d) => d.total), 1);
   const rows = donors.map((d) => {
     const pct = d.total > 0 ? Math.max(4, Math.round((d.total / maxTotal) * 100)) : 0;
+    const avatar = d.avatar
+      ? `<img class="donor-avatar" src="${escapeHtml(d.avatar)}" alt="" loading="lazy" />`
+      : `<span class="donor-avatar donor-avatar-placeholder">${escapeHtml((d.username || "?")[0].toUpperCase())}</span>`;
     return `
     <div class="donor-row rank-${d.rank}" style="--pct:${pct}%">
       <div class="donor-row-fill"></div>
       <span class="donor-rank">${rankBadgeHtml(d.rank)}</span>
+      ${avatar}
       <span class="donor-name">${escapeHtml(d.username || "Anônimo")}</span>
       <span class="donor-total">${formatBRL(d.total)}</span>
     </div>
@@ -661,6 +665,7 @@ historyOverlayEl.addEventListener("click", (e) => { if (e.target === historyOver
 document.addEventListener("keydown", (e) => { if (e.key === "Escape" && !historyOverlayEl.hidden) closeHistoryOverlay(); });
 
 socket.on("update", ({ leaderboard, lastEvent }) => {
+  document.documentElement.dataset.theme = leaderboard.theme || "nebulosa";
   titleEl.textContent = leaderboard.title;
   hostNameEl.textContent = leaderboard.host || "Streamer";
   if (leaderboard.hostAvatar) {

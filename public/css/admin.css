@@ -58,7 +58,7 @@ input:focus, select:focus { outline: 1px solid var(--accent); }
 }
 
 .btn:hover { border-color: var(--accent); }
-.btn.primary { background: var(--accent); color: #2b2205; border-color: var(--accent); }
+.btn.primary { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
 .btn.danger { background: transparent; border-color: var(--danger); color: var(--danger); }
 .btn.danger:hover { background: var(--danger-bg); }
 
@@ -85,3 +85,39 @@ input:focus, select:focus { outline: 1px solid var(--accent); }
 #login-screen input { width: 100%; margin-bottom: 12px; }
 #login-screen .btn { width: 100%; }
 .error { color: var(--danger); font-size: 13px; min-height: 18px; }
+
+.theme-picker { display: flex; gap: 10px; flex-wrap: wrap; }
+
+.theme-swatch {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  background: var(--surface-2);
+  border: 2px solid var(--border);
+  border-radius: 10px;
+  padding: 10px 16px;
+  color: var(--muted);
+  font-family: var(--font-body);
+  font-size: 12.5px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: border-color 0.15s ease, color 0.15s ease;
+}
+
+.theme-swatch:hover { border-color: var(--muted); }
+.theme-swatch.active { border-color: var(--accent); color: var(--text); }
+
+.theme-swatch-preview {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+/* Cores fixas de propósito (não var()) — são a pré-visualização das
+   próprias paletas definidas em style.css, então não podem depender de
+   qual tema o :root do admin.html "está" no momento. */
+.theme-preview-nebulosa { background: linear-gradient(135deg, #14141c 50%, #3ecfe0 50%); }
+.theme-preview-brasa { background: linear-gradient(135deg, #1c1c1f 50%, #ff7a45 50%); }
+.theme-preview-recife { background: linear-gradient(135deg, #101a1a 50%, #e0a955 50%); }

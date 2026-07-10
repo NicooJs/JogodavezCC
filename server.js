@@ -103,6 +103,32 @@ function hasWebhookSignatureIssue(store) {
   return store.getState("webhookSignatureBroken", "false") === "true";
 }
 
+// Melhor esforço pra achar a foto de perfil de um doador na Twitch, usando
+// o nome que ele digitou na mensagem do pix.gg como se fosse o login dele —
+// funciona quando bate (a maioria dos apoiadores usa o mesmo nick), e
+// silenciosamente não mostra nada quando não bate (não tem como confirmar
+// identidade a partir só do nome digitado). Cache global (não por leilão,
+// login é global) e um Set pra não disparar duas buscas em paralelo pro
+// mesmo nome. Nunca bloqueia a resposta: se ainda não tem no cache, devolve
+// null nessa chamada e a foto aparece na próxima atualização normal do
+// placar (uma doação nova, por exemplo) depois que a busca resolver.
+const donorAvatarCache = new Map(); // username normalizado -> url|null
+const donorAvatarFetching = new Set();
+
+function getDonorAvatar(username) {
+  if (!username) return null;
+  const key = username.trim().toLowerCase();
+  if (donorAvatarCache.has(key)) return donorAvatarCache.get(key);
+  if (!donorAvatarFetching.has(key)) {
+    donorAvatarFetching.add(key);
+    fetchTwitchAvatar(key)
+      .then((url) => donorAvatarCache.set(key, url))
+      .catch(() => {})
+      .finally(() => donorAvatarFetching.delete(key));
+  }
+  return null;
+}
+
 // Se a chave já existe, usa ela direto. Senão, tenta casar com um jogo já
 // existente no catálogo (ruído na mensagem ou erro de digitação — ver
 // resolveExistingKey em db.js). Se ainda assim não achar nada (é a
@@ -151,12 +177,14 @@ function serializeLeaderboard(store) {
     username: d.username,
     total: centsToNumber(d.total_cents),
     rank: index + 1,
+    avatar: getDonorAvatar(d.username),
   }));
 
   return {
     title: store.getState("title", "Leilão de Jogos"),
     host: store.getState("host", ""),
     hostAvatar: store.getState("hostAvatar", null),
+    theme: store.getState("theme", "nebulosa"),
     open: isOpen,
     paused: isPaused,
     items,
@@ -666,6 +694,18 @@ app.post("/api/l/:id/admin/title", loadLeilao, requireLeilaoAdmin, (req, res) =>
   const { title } = req.body || {};
   req.store.setState("title", title || "Leilão de Jogos");
   broadcastUpdate(req.leilaoId, req.store, { type: "title" });
+  res.json({ ok: true });
+});
+
+const AVAILABLE_THEMES = ["nebulosa", "brasa", "recife"];
+
+app.post("/api/l/:id/admin/theme", loadLeilao, requireLeilaoAdmin, (req, res) => {
+  const { theme } = req.body || {};
+  if (!AVAILABLE_THEMES.includes(theme)) {
+    return res.status(400).json({ error: "Tema inválido" });
+  }
+  req.store.setState("theme", theme);
+  broadcastUpdate(req.leilaoId, req.store, { type: "theme" });
   res.json({ ok: true });
 });
 
