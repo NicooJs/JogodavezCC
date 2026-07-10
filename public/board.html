@@ -37,8 +37,14 @@
         <input type="text" id="p-manual-name" placeholder="Buscar um jogo pra lançar…" autocomplete="off" />
         <div class="suggestions" id="game-suggestions" hidden></div>
       </div>
-      <button class="btn-mini primary presenter-bar-submit" id="p-manual-submit" title="Usa o texto digitado direto, sem escolher uma sugestão da busca">Adicionar lote</button>
-      <button class="btn-mini danger" id="p-reset-btn" type="button" title="Apaga todos os jogos e o histórico (mantém título, host e senha)">Zerar leilão</button>
+      <button class="btn-mini primary presenter-bar-submit" id="p-manual-submit" title="Usa o texto digitado direto, sem escolher uma sugestão da busca">
+        <svg class="icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M10 4.5v11M4.5 10h11"/></svg>
+        Adicionar lote
+      </button>
+      <button class="btn-mini danger presenter-bar-reset" id="p-reset-btn" type="button" title="Apaga todos os jogos e o histórico (mantém título, host e senha)">
+        <svg class="icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 6h10M8.5 6V4.5h3V6M6.5 6l.6 9a1 1 0 0 0 1 .9h3.8a1 1 0 0 0 1-.9l.6-9"/></svg>
+        Zerar leilão
+      </button>
       <a class="presenter-bar-link" href="admin" id="admin-link" target="_blank">painel avançado</a>
     </section>
 
@@ -167,7 +173,7 @@
   <div class="recap-overlay" id="recap-overlay" hidden>
     <div class="recap-modal" role="dialog" aria-modal="true" aria-labelledby="recap-title">
       <button class="recap-close" id="recap-close" type="button" aria-label="Fechar">✕</button>
-      <p class="recap-eyebrow">leilão encerrado</p>
+      <p class="recap-eyebrow" id="recap-eyebrow">leilão encerrado</p>
       <h2 class="recap-title" id="recap-title">Leilão de Jogos</h2>
 
       <div class="recap-stats">

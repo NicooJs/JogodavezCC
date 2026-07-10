@@ -136,7 +136,10 @@ function initAdmin() {
   document.getElementById("reset-btn").addEventListener("click", async () => {
     if (!confirm("Isso apaga TODOS os jogos e o histórico. Tem certeza?")) return;
     await adminFetch("/admin/reset", { method: "POST" });
+    loadHistory();
   });
+
+  loadHistory();
 
   document.getElementById("relink-submit").addEventListener("click", async () => {
     const clientId = document.getElementById("relink-client-id").value.trim();
@@ -231,4 +234,45 @@ function escapeHtml(str) {
   return String(str).replace(/[&<>"']/g, (c) => ({
     "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;",
   }[c]));
+}
+
+// Histórico de rounds já zerados (ver archiveAuction em src/db.js). O link
+// "Ver recap" abre o board com ?recap=<index> — index é a posição na lista
+// (mais recente primeiro), o board busca /recap/history de novo e reabre a
+// mesma janela bonita que aparecia ao vivo quando o round encerrou.
+async function loadHistory() {
+  try {
+    const res = await fetch(`/api/l/${LEILAO_ID}/recap/history`);
+    const data = await res.json();
+    renderHistory(data.history || []);
+  } catch (err) {
+    console.error("Erro ao carregar histórico:", err.message);
+  }
+}
+
+function renderHistory(history) {
+  const emptyEl = document.getElementById("history-empty");
+  const tableEl = document.getElementById("history-table");
+  if (history.length === 0) {
+    emptyEl.style.display = "block";
+    tableEl.style.display = "none";
+    return;
+  }
+  emptyEl.style.display = "none";
+  tableEl.style.display = "table";
+
+  const body = document.getElementById("history-body");
+  body.innerHTML = history.map((h, index) => {
+    const when = h.archivedAt ? new Date(h.archivedAt).toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" }) : "—";
+    const champion = h.topGames && h.topGames[0] ? h.topGames[0].name : "—";
+    return `
+      <tr>
+        <td>${when}</td>
+        <td>${formatBRL(h.totalRaised || 0)}</td>
+        <td>${h.totalGames || 0}</td>
+        <td>${escapeHtml(champion)}</td>
+        <td><a href="/l/${LEILAO_ID}?recap=${index}" target="_blank">Ver recap →</a></td>
+      </tr>
+    `;
+  }).join("");
 }

@@ -48,6 +48,7 @@ const recapPodiumEl = document.getElementById("recap-podium");
 const recapDonorListEl = document.getElementById("recap-donor-list");
 const recapDonorsLabelEl = document.getElementById("recap-donors-label");
 const recapCloseEl = document.getElementById("recap-close");
+const recapEyebrowEl = document.getElementById("recap-eyebrow");
 const webhookWarningEl = document.getElementById("webhook-warning");
 const webhookWarningTextEl = document.getElementById("webhook-warning-text");
 
@@ -522,15 +523,11 @@ function recapPodiumCardHtml(game) {
   `;
 }
 
-async function showRecap() {
-  let recap;
-  try {
-    recap = await fetch(`/api/l/${LEILAO_ID}/recap`).then((r) => r.json());
-  } catch (err) {
-    console.error("Erro ao buscar recap:", err.message);
-    return;
-  }
-
+// Renderiza tanto o recap ao vivo (leilão acabou de encerrar) quanto um
+// arquivado (histórico, ver showHistoricalRecap) — mesma forma de dado nos
+// dois casos (buildRecap no server.js), só muda a legenda de topo.
+function renderRecap(recap, eyebrowText) {
+  recapEyebrowEl.textContent = eyebrowText;
   recapTitleEl.textContent = recap.title || "Leilão de Jogos";
   recapTotalEl.textContent = formatBRL(recap.totalRaised || 0);
   recapDurationEl.textContent = formatDuration(recap.durationMs);
@@ -550,6 +547,37 @@ async function showRecap() {
   `).join("");
 
   recapOverlayEl.hidden = false;
+}
+
+async function showRecap() {
+  try {
+    const recap = await fetch(`/api/l/${LEILAO_ID}/recap`).then((r) => r.json());
+    renderRecap(recap, "leilão encerrado");
+  } catch (err) {
+    console.error("Erro ao buscar recap:", err.message);
+  }
+}
+
+// Reabre o recap de um round já zerado (link "Ver recap" no painel
+// avançado, /l/:id?recap=<index> — index é a posição na lista devolvida por
+// /recap/history, mais recente primeiro).
+async function showHistoricalRecap(index) {
+  try {
+    const data = await fetch(`/api/l/${LEILAO_ID}/recap/history`).then((r) => r.json());
+    const recap = (data.history || [])[index];
+    if (!recap) return;
+    const when = recap.archivedAt
+      ? new Date(recap.archivedAt).toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" })
+      : "";
+    renderRecap(recap, when ? `round encerrado em ${when}` : "round anterior");
+  } catch (err) {
+    console.error("Erro ao buscar recap histórico:", err.message);
+  }
+}
+
+const recapParam = new URLSearchParams(location.search).get("recap");
+if (recapParam !== null && /^\d+$/.test(recapParam)) {
+  showHistoricalRecap(Number(recapParam));
 }
 
 function closeRecap() {

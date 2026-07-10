@@ -372,6 +372,14 @@ app.get("/api/l/:id/recap", loadLeilao, (req, res) => {
   res.json(buildRecap(req.store));
 });
 
+// Histórico de rounds já zerados (ver archiveAuction, chamado em
+// POST /admin/reset). Pública como o /recap normal — mesmo tipo de dado
+// que já era visível ao vivo quando o round estava rolando, não expõe
+// nada novo por trás de senha.
+app.get("/api/l/:id/recap/history", loadLeilao, (req, res) => {
+  res.json({ history: req.store.getPastAuctions() });
+});
+
 app.get("/api/l/:id/events/recent", loadLeilao, (req, res) => {
   const limit = Math.min(parseInt(req.query.limit, 10) || 25, 100);
   const events = req.store.getRecentEvents(limit).map((e) => ({
@@ -566,8 +574,14 @@ app.delete("/api/l/:id/admin/game/:key", loadLeilao, requireLeilaoAdmin, (req, r
 });
 
 app.post("/api/l/:id/admin/reset", loadLeilao, requireLeilaoAdmin, (req, res) => {
-  req.store.resetAll();
-  broadcastUpdate(req.leilaoId, req.store, { type: "reset" });
+  const { store, leilaoId } = req;
+  // Arquiva o recap do round atual antes de apagar — só se teve algum lote
+  // de verdade, pra não poluir o histórico com resets de leilão vazio
+  // (testes, ou zerar duas vezes seguidas sem nada rolar no meio).
+  const recap = buildRecap(store);
+  if (recap.totalGames > 0) store.archiveAuction(recap);
+  store.resetAll();
+  broadcastUpdate(leilaoId, store, { type: "reset" });
   res.json({ ok: true });
 });
 

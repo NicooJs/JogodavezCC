@@ -14,9 +14,12 @@ function emptyData() {
     events: [],         // lista de eventos, mais recente por último
     processedMessages: {}, // livepix_id -> true (evita contar 2x)
     state: {},           // ex: { open: "true", title: "..." }
+    pastAuctions: [],   // recaps arquivados de rounds anteriores (ver archiveAuction)
     nextEventId: 1,
   };
 }
+
+const MAX_PAST_AUCTIONS = 50;
 
 function nowISO() {
   return new Date().toISOString();
@@ -327,9 +330,26 @@ function createStore(filePath) {
   // pixggApi.js), mas era um bug de verdade que apareceu na revisão.
   function resetAll() {
     const preservedState = { ...data.state };
+    const preservedPastAuctions = data.pastAuctions || [];
     data = emptyData();
     data.state = preservedState;
+    data.pastAuctions = preservedPastAuctions;
     save();
+  }
+
+  // Guarda um recap (ver buildRecap em server.js) antes de zerar, pra não
+  // perder o resultado do round pra sempre — a lista sobrevive ao resetAll
+  // (que preserva pastAuctions de propósito). Mais recente primeiro; um
+  // teto (MAX_PAST_AUCTIONS) evita o arquivo crescer sem limite num leilão
+  // usado por muito tempo.
+  function archiveAuction(recap) {
+    data.pastAuctions.unshift({ ...recap, archivedAt: nowISO() });
+    data.pastAuctions = data.pastAuctions.slice(0, MAX_PAST_AUCTIONS);
+    save();
+  }
+
+  function getPastAuctions() {
+    return data.pastAuctions.slice();
   }
 
   return {
@@ -358,6 +378,8 @@ function createStore(filePath) {
     mergeGames,
     addManualGame,
     resetAll,
+    archiveAuction,
+    getPastAuctions,
   };
 }
 

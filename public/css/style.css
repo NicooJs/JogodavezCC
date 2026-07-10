@@ -117,6 +117,54 @@ body::before {
   line-height: 1;
 }
 
+/* Nome que o STREAMER escolheu (não a marca fixa "Leilão de Jogos" — essa
+   fica só com .brand-word simples). Um tratamento próprio: gradiente sutil
+   no texto + um traço desenhado por baixo, tipo assinatura, que aparece uma
+   vez só ao carregar (não fica piscando/repetindo — isso seria cansativo
+   numa tela que fica ligada a live inteira). Cor do traço é a mesma hex de
+   --accent, só que fixa no data-uri (não dá pra usar var() dentro de SVG
+   embutido) — se o tema mudar de cor, atualizar aqui também. */
+#title.brand-word {
+  position: relative;
+  display: inline-block;
+  background: linear-gradient(100deg, var(--accent-text) 0%, var(--text) 45%, var(--accent-text) 100%);
+  background-size: 220% auto;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  animation: title-shimmer 1.6s ease-out;
+}
+
+@keyframes title-shimmer {
+  from { background-position: 220% center; }
+  to { background-position: 0% center; }
+}
+
+#title.brand-word::after {
+  content: "";
+  position: absolute;
+  left: 1%;
+  right: 6%;
+  bottom: -7px;
+  height: 7px;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 200 14'%3E%3Cpath d='M2 9 Q 30 2 60 8 T 120 7 T 198 9' fill='none' stroke='%23ff7a45' stroke-width='2.6' stroke-linecap='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-size: 100% 100%;
+  opacity: 0;
+  transform: scaleX(0);
+  transform-origin: left center;
+  animation: flourish-draw 0.7s var(--ease) 0.35s forwards;
+}
+
+@keyframes flourish-draw {
+  to { transform: scaleX(1); opacity: 0.6; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  #title.brand-word { animation: none; background-position: 0% center; }
+  #title.brand-word::after { animation: none; transform: scaleX(1); opacity: 0.6; }
+}
+
 .brand-sub {
   font-family: var(--font-mono);
   font-size: 11px;
@@ -134,17 +182,26 @@ body::before {
 }
 
 .topbar-total {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 9px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 7px 16px 7px 14px;
   color: var(--muted);
   font-family: var(--font-mono);
   text-transform: uppercase;
   letter-spacing: 0.04em;
-  font-size: 10.5px;
+  font-size: 10px;
 }
 
 .topbar-total strong {
   display: inline-block;
-  margin-left: 6px;
-  font-size: 16px;
+  font-size: 20px;
+  font-weight: 600;
+  letter-spacing: 0;
+  text-transform: none;
   color: var(--accent-text);
   font-variant-numeric: tabular-nums;
   transition: transform 0.15s ease;
@@ -238,12 +295,33 @@ body::before {
   font-family: var(--font-body);
   font-size: 13.5px;
   height: 36px;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
 }
 
-.presenter-bar input:focus { outline: none; border-color: var(--accent); }
+.presenter-bar input:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-bg);
+}
 .presenter-bar-link { align-self: center; font-size: 12px; color: var(--muted); white-space: nowrap; }
 .presenter-bar-link:hover { color: var(--accent-text); }
-.presenter-bar-submit { height: 36px; }
+
+.presenter-bar-submit {
+  height: 36px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.presenter-bar-reset {
+  height: 36px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.presenter-bar-submit .icon,
+.presenter-bar-reset .icon { width: 13px; height: 13px; }
 
 /* Aviso de webhook desvinculado — só aparece no modo apresentador, quando o
    site detecta que faz tempo que o pix.gg não dá sinal de vida naquela URL
@@ -281,8 +359,10 @@ body::before {
   height: 15px;
   color: var(--muted);
   pointer-events: none;
+  transition: color 0.15s ease;
 }
-.presenter-search input { padding-left: 34px; }
+.presenter-search input { padding-left: 34px; border-radius: 999px; }
+.presenter-search:focus-within .field-icon { color: var(--accent-text); }
 
 .amount-wrap {
   display: flex;
@@ -1470,6 +1550,13 @@ body::before {
 .btn-mini.primary { background: var(--accent); color: #2b1205; border-color: var(--accent); font-weight: 600; }
 .btn-mini.danger { color: var(--danger); }
 .btn-mini.danger:hover { border-color: var(--danger); background: var(--danger-bg); }
+
+.presenter-bar-submit,
+.presenter-bar-reset { transition: transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease, background 0.15s ease; }
+.presenter-bar-submit:hover { transform: translateY(-1px); box-shadow: 0 6px 16px -6px rgba(255, 122, 69, 0.55); }
+.presenter-bar-reset:hover { transform: translateY(-1px); box-shadow: 0 6px 16px -8px rgba(239, 68, 112, 0.5); }
+.presenter-bar-submit:active,
+.presenter-bar-reset:active { transform: translateY(0); }
 
 .history-panel { flex: 1; min-height: 160px; }
 
