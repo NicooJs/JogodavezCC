@@ -255,6 +255,14 @@ app.post("/webhook/livepix", (req, res) => {
   res.sendStatus(200);
 });
 
+// O pix.gg faz um "ping" periódico com GET nessa URL pra confirmar que ela
+// está de pé (descoberto em 2026-07-10 pelos logs de produção — a doc deles
+// não menciona isso). Sem responder 200 aqui, o pix.gg parece considerar o
+// endpoint quebrado e não manda o POST de verdade da doação.
+app.get("/webhook/pixgg/:leilaoId", (req, res) => {
+  res.sendStatus(200);
+});
+
 // Webhook do pix.gg — uma URL própria por leilão (vinculada automaticamente
 // na aplicação do streamer no momento da criação, ver registry.createLeilao
 // + pixggApi.setWebhookUrl). O :leilaoId na própria URL já diz de quem é a
