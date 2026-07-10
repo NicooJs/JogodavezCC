@@ -664,8 +664,24 @@ historyCloseEl.addEventListener("click", closeHistoryOverlay);
 historyOverlayEl.addEventListener("click", (e) => { if (e.target === historyOverlayEl) closeHistoryOverlay(); });
 document.addEventListener("keydown", (e) => { if (e.key === "Escape" && !historyOverlayEl.hidden) closeHistoryOverlay(); });
 
+// Troca rápida de tema direto do board (mesma rota do seletor no painel
+// avançado) — só bolinhas, sem rótulo, pra não competir por espaço com os
+// outros controles da barra.
+document.querySelectorAll(".theme-dot").forEach((dot) => {
+  dot.addEventListener("click", async () => {
+    try {
+      await presenterFetch("/admin/theme", { method: "POST", body: JSON.stringify({ theme: dot.dataset.theme }) });
+    } catch (err) {
+      alert(err.message);
+    }
+  });
+});
+
 socket.on("update", ({ leaderboard, lastEvent }) => {
   document.documentElement.dataset.theme = leaderboard.theme || "nebulosa";
+  document.querySelectorAll(".theme-dot").forEach((dot) => {
+    dot.classList.toggle("active", dot.dataset.theme === (leaderboard.theme || "nebulosa"));
+  });
   titleEl.textContent = leaderboard.title;
   hostNameEl.textContent = leaderboard.host || "Streamer";
   if (leaderboard.hostAvatar) {

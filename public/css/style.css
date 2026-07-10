@@ -299,6 +299,30 @@ body::before {
 .presenter-bar-link { align-self: center; font-size: 12px; color: var(--muted); white-space: nowrap; }
 .presenter-bar-link:hover { color: var(--accent-text); }
 
+/* Troca rápida de tema direto no board — versão discreta (só bolinhas, sem
+   texto) do seletor completo do painel avançado, pra não precisar sair da
+   tela principal pra ajustar a cor no meio da live. Cores fixas de
+   propósito (não var()), são a pré-visualização de cada paleta, não podem
+   depender de qual tema o documento "está" usando agora. */
+.theme-dots { display: flex; align-items: center; gap: 7px; margin-left: auto; }
+
+.theme-dot {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  border: 2px solid transparent;
+  padding: 0;
+  cursor: pointer;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.12);
+  transition: transform 0.15s ease, border-color 0.15s ease;
+}
+.theme-dot:hover { transform: scale(1.15); }
+.theme-dot.active { border-color: var(--text); }
+
+.theme-dot-nebulosa { background: linear-gradient(135deg, #14141c 50%, #3ecfe0 50%); }
+.theme-dot-brasa { background: linear-gradient(135deg, #1c1c1f 50%, #ff7a45 50%); }
+.theme-dot-recife { background: linear-gradient(135deg, #101a1a 50%, #e0a955 50%); }
+
 /* Botões da barra do apresentador — um sistema só, com três pesos visuais
    (primário sólido / perigo contornado / fantasma), todos com a mesma
    altura, raio e ritmo de ícone, pra lerem como um conjunto desenhado de
