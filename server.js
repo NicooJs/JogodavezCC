@@ -22,6 +22,12 @@ app.use(express.json());
 
 const DEFAULT_AUTO_CLOSE_MS = 5 * 60 * 1000; // 5 minutos sem atividade encerra sozinho
 
+// O pix.gg manda um GET periódico na URL do webhook (ping de saúde, ver
+// CLAUDE.md) bem mais frequente que isso — se a gente ficar esse tempo sem
+// nenhum contato (nem GET nem POST válido), é sinal forte de que o webhook
+// foi desvinculado do lado do pix.gg (ex: streamer regenerou o secret).
+const WEBHOOK_STALE_MS = 5 * 60 * 1000;
+
 function getAutoCloseMs(store) {
   const stored = Number(store.getState("timerDurationMs", DEFAULT_AUTO_CLOSE_MS));
   return Number.isFinite(stored) && stored > 0 ? stored : DEFAULT_AUTO_CLOSE_MS;
@@ -38,6 +44,20 @@ function centsToNumber(cents) {
 function touchActivity(store, reopen = false) {
   store.setState("lastActivityAt", String(Date.now()));
   if (reopen) store.setState("open", "true");
+}
+
+// Marca "agora" como o último contato de verdade do pix.gg nessa URL de
+// webhook (GET de ping ou POST com assinatura válida) — usado só pra
+// detectar desvinculação, ver WEBHOOK_STALE_MS e serializeLeaderboard.
+function touchWebhookPing(store) {
+  store.setState("lastWebhookPingAt", String(Date.now()));
+}
+
+function isWebhookStale(store) {
+  const lastPing = Number(store.getState("lastWebhookPingAt", 0));
+  const createdAt = new Date(store.getState("createdAt", new Date().toISOString())).getTime();
+  const referenceTime = lastPing || createdAt; // sem ping ainda, conta desde a criação
+  return Date.now() - referenceTime > WEBHOOK_STALE_MS;
 }
 
 // Se a chave já existe, usa ela direto. Senão, tenta casar com um jogo já
@@ -97,6 +117,7 @@ function serializeLeaderboard(store) {
     timerEndsAt: isOpen && !isPaused ? lastActivityAt + autoCloseMs : null,
     timerRemainingMs: isPaused ? Number(store.getState("pausedRemainingMs", autoCloseMs)) : null,
     timerDurationMs: autoCloseMs,
+    webhookStale: isWebhookStale(store),
   };
 }
 
@@ -266,8 +287,13 @@ app.post("/webhook/livepix", (req, res) => {
 // O pix.gg faz um "ping" periódico com GET nessa URL pra confirmar que ela
 // está de pé (descoberto em 2026-07-10 pelos logs de produção — a doc deles
 // não menciona isso). Sem responder 200 aqui, o pix.gg parece considerar o
-// endpoint quebrado e não manda o POST de verdade da doação.
+// endpoint quebrado e não manda o POST de verdade da doação. Também serve
+// de sinal de vida pro aviso de "webhook desvinculado" (ver isWebhookStale).
 app.get("/webhook/pixgg/:leilaoId", (req, res) => {
+  const leilaoId = req.params.leilaoId;
+  if (/^[a-z0-9_-]+$/i.test(leilaoId) && registry.leilaoExists(leilaoId)) {
+    touchWebhookPing(getStore(leilaoId));
+  }
   res.sendStatus(200);
 });
 
@@ -290,6 +316,7 @@ app.post("/webhook/pixgg/:leilaoId", (req, res) => {
       console.warn(`Webhook pix.gg: leilão "${leilaoId}" não encontrado, ignorando.`);
       return;
     }
+    touchWebhookPing(getStore(leilaoId));
 
     const donation = pixgg.parseDonation(req.body);
     if (!pixgg.isPaid(donation.status)) return; // ignora o "created", só conta o "paid"

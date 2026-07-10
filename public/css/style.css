@@ -242,6 +242,29 @@ body::before {
 .presenter-bar-link:hover { color: var(--accent-text); }
 .presenter-bar-submit { height: 36px; }
 
+/* Aviso de webhook desvinculado — só aparece no modo apresentador, quando o
+   site detecta que faz tempo que o pix.gg não dá sinal de vida naquela URL
+   (ver isWebhookStale em server.js). Visibilidade é controlada 100% via JS
+   (attribute hidden), não por classe combinada com .presenter-mode — por
+   isso não precisa da regra [hidden] explícita de outros componentes. */
+.webhook-warning {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: var(--danger-bg);
+  border: 1px solid rgba(239, 68, 112, 0.4);
+  border-radius: var(--radius);
+  padding: 11px 16px;
+  margin-bottom: 16px;
+  font-size: 13px;
+  color: var(--text);
+  line-height: 1.5;
+}
+.webhook-warning[hidden] { display: none; }
+.webhook-warning .icon { width: 20px; height: 20px; flex-shrink: 0; color: var(--danger); }
+.webhook-warning a { color: var(--danger); font-weight: 600; white-space: nowrap; }
+.webhook-warning a:hover { color: var(--text); }
+
 .field-wrap { position: relative; }
 .field-wrap input { width: 100%; }
 .presenter-search { flex: 1; min-width: 180px; }

@@ -87,6 +87,7 @@ function initAdmin() {
     currentGames = leaderboard.items;
     document.getElementById("title-input").value = leaderboard.title;
     renderOpenState(leaderboard.open);
+    renderWebhookState(leaderboard.webhookStale);
     renderTable();
     renderMergeOptions();
   });
@@ -161,6 +162,12 @@ function renderOpenState(open) {
   badge.textContent = open ? "aberto" : "encerrado";
   badge.className = "badge" + (open ? "" : " closed");
   document.getElementById("toggle-open").textContent = open ? "Encerrar leilão" : "Reabrir leilão";
+}
+
+function renderWebhookState(stale) {
+  const badge = document.getElementById("webhook-state");
+  badge.textContent = stale ? "sem contato — pode estar desvinculado" : "vinculado";
+  badge.className = "badge" + (stale ? " closed" : "");
 }
 
 function renderTable() {

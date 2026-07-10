@@ -8,6 +8,7 @@ if (!LEILAO_ID) {
 }
 
 document.getElementById("admin-link").href = `/l/${LEILAO_ID}/admin`;
+document.getElementById("webhook-warning-link").href = `/l/${LEILAO_ID}/admin`;
 
 const socket = io({ query: { leilaoId: LEILAO_ID } });
 
@@ -36,6 +37,7 @@ const hostInputEl = document.getElementById("p-host-input");
 const boardEl = document.querySelector(".board");
 const soldOverlayEl = document.getElementById("sold-overlay");
 const soldMarkEl = document.getElementById("sold-mark");
+const webhookWarningEl = document.getElementById("webhook-warning");
 
 const lotModalEl = document.getElementById("lot-modal");
 const lotModalThumb = document.getElementById("lot-modal-thumb");
@@ -58,6 +60,7 @@ let timerDurationMs = 5 * 60 * 1000; // atualizado a cada "update" com o valor r
 let isOpenState = null; // null = ainda não recebemos a primeira atualização
 let isPausedState = false;
 let pausedRemainingMs = null;
+let webhookStaleState = false;
 let historyItems = [];
 let currentLeaderKey = null;
 let previousTotals = new Map();
@@ -90,6 +93,13 @@ function bumpValue(el, text) {
 function setStatus(online) {
   statusEl.classList.toggle("online", online);
   statusTextEl.textContent = online ? "ao vivo" : "reconectando…";
+}
+
+// Só mostra o aviso de webhook desvinculado no modo apresentador — não faz
+// sentido (e pode confundir espectador) aparecer isso no board público.
+function updateWebhookWarning() {
+  const active = document.body.classList.contains("presenter-mode");
+  webhookWarningEl.hidden = !(active && webhookStaleState);
 }
 
 socket.on("connect", () => {
@@ -427,6 +437,9 @@ socket.on("update", ({ leaderboard, lastEvent }) => {
   if (leaderboard.timerDurationMs) timerDurationMs = leaderboard.timerDurationMs;
   tickTimer();
 
+  webhookStaleState = !!leaderboard.webhookStale;
+  updateWebhookWarning();
+
   const totalValue = leaderboard.totalRaised || 0;
   if (totalOdometer) totalOdometer.update(Math.round(totalValue));
   else bumpValue(statTotalEl, String(Math.round(totalValue)));
@@ -465,6 +478,7 @@ function setPresenterMode(active) {
   presenterToggleEl.classList.toggle("active", active);
   presenterToggleEl.title = active ? "Sair do modo apresentador" : "Entrar no modo apresentador";
   presenterDrawerEl.hidden = !active;
+  updateWebhookWarning();
 }
 
 presenterToggleEl.addEventListener("click", async () => {
