@@ -138,7 +138,12 @@ body::before {
   display: flex;
   flex-direction: column;
   height: 100vh;
-  max-width: 1400px;
+  /* 1400 -> 1600px: as colunas laterais cresceram duas vezes (juntas,
+     +166px) desde o valor original — sem isso, cada bump nelas roubava
+     espaço direto da arena central. Aumentar o teto do layout em vez de
+     encolher o catálogo. Continua responsivo: em telas menores que
+     1600px, o max-width simplesmente não é atingido. */
+  max-width: 1600px;
   margin: 0 auto;
   padding: 18px 24px 14px;
 }
@@ -1529,9 +1534,9 @@ body::before {
 .lot-card.rank-3 .lot-rank { color: var(--bronze); }
 
 .lot-thumb {
-  width: 72px;
-  height: 72px;
-  border-radius: 7px;
+  width: 92px;
+  height: 92px;
+  border-radius: 8px;
   object-fit: cover;
   background: var(--surface);
   flex-shrink: 0;
@@ -1544,7 +1549,7 @@ body::before {
   color: var(--muted);
   font-family: var(--font-display);
   font-style: italic;
-  font-size: 22px;
+  font-size: 28px;
 }
 
 .lot-info {

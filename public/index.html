@@ -18,77 +18,113 @@
       </p>
     </header>
 
-    <main class="create-main">
-      <div class="create-intro">
-        <h1 class="create-title">Crie seu leilão</h1>
+    <main class="create-hero">
+      <div class="create-pitch">
+        <h1 class="create-title">Seu placar de leilão, no ar em menos de um minuto</h1>
         <p class="create-lede">
-          Preencha os dados abaixo e seu leilão fica pronto na hora — placar
-          próprio, isolado de qualquer outro streamer usando o site. A gente
-          já vincula o webhook na sua aplicação do <strong>pix.gg</strong>
-          automaticamente, sem precisar colar URL em lugar nenhum.
+          Espectadores doam pelo <strong>pix.gg</strong> e escrevem o nome do
+          jogo na mensagem — o placar atualiza sozinho, ao vivo, sem você
+          precisar tocar em nada. Isolado de qualquer outro streamer usando
+          o site.
         </p>
+
+        <ol class="create-steps">
+          <li>
+            <span class="create-step-num">01</span>
+            <div class="create-step-text">
+              <p class="create-step-title">Cole o Client ID e Secret</p>
+              <p class="create-step-hint">Da sua aplicação no pix.gg — a gente vincula o webhook automaticamente, sem colar URL em lugar nenhum.</p>
+            </div>
+          </li>
+          <li>
+            <span class="create-step-num">02</span>
+            <div class="create-step-text">
+              <p class="create-step-title">Escolha uma senha</p>
+              <p class="create-step-hint">É ela que libera o modo apresentador — editar valores, pausar o timer, lançar doações manuais — na hora da live.</p>
+            </div>
+          </li>
+          <li>
+            <span class="create-step-num">03</span>
+            <div class="create-step-text">
+              <p class="create-step-title">Capture a tela e pronto</p>
+              <p class="create-step-hint">Seu link é só seu. O placar já começa a contar assim que a primeira doação chegar.</p>
+            </div>
+          </li>
+        </ol>
       </div>
 
-      <div class="create-existing" id="create-existing" hidden>
-        <p class="create-existing-title">Você já criou um leilão nesse navegador</p>
-        <div class="create-existing-list" id="create-existing-list"></div>
-        <button class="create-existing-new" id="create-existing-new" type="button">Criar outro leilão →</button>
-      </div>
-
-      <form class="create-form" id="create-form">
-        <label class="create-field">
-          <span>Nome do leilão</span>
-          <input type="text" id="f-title" placeholder="Leilão de Jogos" autocomplete="off" />
-        </label>
-
-        <label class="create-field">
-          <span>Seu nome (host)</span>
-          <input type="text" id="f-host" placeholder="Como você quer aparecer no placar" autocomplete="off" required />
-        </label>
-
-        <label class="create-field">
-          <span>Client ID (pix.gg)</span>
-          <input type="text" id="f-client-id" placeholder="app_..." autocomplete="off" required />
-          <span class="create-hint">
-            Em <strong>pixgg.com → Aplicações</strong>, crie uma aplicação com
-            escopo "Webhook" (ou use uma que já tenha) e copie o Client ID.
-          </span>
-        </label>
-
-        <label class="create-field">
-          <span>Client Secret (pix.gg)</span>
-          <input type="password" id="f-client-secret" placeholder="só aparece na hora que você cria/regenera" autocomplete="off" required />
-          <span class="create-hint">
-            A gente usa isso só uma vez, pra vincular o webhook automaticamente
-            na sua aplicação — não fica guardado depois.
-          </span>
-        </label>
-
-        <label class="create-field">
-          <span>Senha do modo apresentador</span>
-          <input type="password" id="f-password" placeholder="mínimo 6 caracteres" autocomplete="new-password" required minlength="6" />
-          <span class="create-hint">
-            Só você vai saber essa senha — é ela que libera os controles ao
-            vivo. Guarde num lugar seguro, não tem como recuperar depois.
-          </span>
-        </label>
-
-        <button class="create-submit" id="create-submit" type="submit">Criar leilão</button>
-        <p class="create-error" id="create-error" hidden></p>
-      </form>
-
-      <div class="create-result" id="create-result" hidden>
-        <p class="create-result-title">Pronto — seu leilão está no ar</p>
-        <p class="create-result-hint">
-          Esse é o link do seu placar. Bota ele numa aba do navegador (ou
-          captura de tela) durante a live. Pra entrar no modo apresentador,
-          use a senha que você acabou de criar.
-        </p>
-        <div class="create-result-link">
-          <input type="text" id="create-result-url" readonly />
-          <button type="button" id="create-result-copy">Copiar</button>
+      <div class="create-panel">
+        <div class="create-existing" id="create-existing" hidden>
+          <p class="create-existing-title">Você já criou um leilão nesse navegador</p>
+          <div class="create-existing-list" id="create-existing-list"></div>
+          <button class="create-existing-new" id="create-existing-new" type="button">Criar outro leilão →</button>
         </div>
-        <a class="create-result-open" id="create-result-open" href="#">Abrir meu leilão →</a>
+
+        <form class="create-form" id="create-form">
+          <div class="create-section">
+            <p class="create-section-title">seu leilão</p>
+
+            <label class="create-field">
+              <span>Nome do leilão</span>
+              <input type="text" id="f-title" placeholder="Leilão de Jogos" autocomplete="off" />
+            </label>
+
+            <label class="create-field">
+              <span>Seu nome (host)</span>
+              <input type="text" id="f-host" placeholder="Como você quer aparecer no placar" autocomplete="off" required />
+            </label>
+          </div>
+
+          <div class="create-section">
+            <p class="create-section-title">vínculo com o pix.gg</p>
+
+            <label class="create-field">
+              <span>Client ID</span>
+              <input type="text" id="f-client-id" placeholder="app_..." autocomplete="off" required />
+              <span class="create-hint">
+                Em <strong>pixgg.com → Aplicações</strong>, crie uma aplicação
+                com escopo "Webhook" (ou use uma que já tenha) e copie o Client ID.
+              </span>
+            </label>
+
+            <label class="create-field">
+              <span>Client Secret</span>
+              <input type="password" id="f-client-secret" placeholder="só aparece na hora que você cria/regenera" autocomplete="off" required />
+              <span class="create-hint">
+                A gente usa isso só uma vez, pra vincular o webhook — não fica guardado depois.
+              </span>
+            </label>
+          </div>
+
+          <div class="create-section">
+            <p class="create-section-title">segurança</p>
+
+            <label class="create-field">
+              <span>Senha do modo apresentador</span>
+              <input type="password" id="f-password" placeholder="mínimo 6 caracteres" autocomplete="new-password" required minlength="6" />
+              <span class="create-hint">
+                Só você vai saber essa senha. Guarde num lugar seguro, não tem como recuperar depois.
+              </span>
+            </label>
+          </div>
+
+          <button class="create-submit" id="create-submit" type="submit">Criar leilão →</button>
+          <p class="create-error" id="create-error" hidden></p>
+        </form>
+
+        <div class="create-result" id="create-result" hidden>
+          <p class="create-result-title">Pronto — seu leilão está no ar</p>
+          <p class="create-result-hint">
+            Esse é o link do seu placar. Bota ele numa aba do navegador (ou
+            captura de tela) durante a live. Pra entrar no modo apresentador,
+            use a senha que você acabou de criar.
+          </p>
+          <div class="create-result-link">
+            <input type="text" id="create-result-url" readonly />
+            <button type="button" id="create-result-copy">Copiar</button>
+          </div>
+          <a class="create-result-open" id="create-result-open" href="#">Abrir meu leilão →</a>
+        </div>
       </div>
     </main>
   </div>
