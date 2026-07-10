@@ -60,6 +60,15 @@ function isWebhookStale(store) {
   return Date.now() - referenceTime > WEBHOOK_STALE_MS;
 }
 
+// Diferente de isWebhookStale (que olha só se a URL bate no leilão certo,
+// via GET ou POST): isso olha especificamente se o POST de doação real tem
+// batido com a assinatura errada/ausente — sinal de URL incompleta/cortada
+// (ver rota POST /webhook/pixgg/:leilaoId). Só considera POST porque não dá
+// pra confiar que o GET de ping do pix.gg sempre carrega a assinatura.
+function hasWebhookSignatureIssue(store) {
+  return store.getState("webhookSignatureBroken", "false") === "true";
+}
+
 // Se a chave já existe, usa ela direto. Senão, tenta casar com um jogo já
 // existente no catálogo (ruído na mensagem ou erro de digitação — ver
 // resolveExistingKey em db.js). Se ainda assim não achar nada (é a
@@ -118,6 +127,7 @@ function serializeLeaderboard(store) {
     timerRemainingMs: isPaused ? Number(store.getState("pausedRemainingMs", autoCloseMs)) : null,
     timerDurationMs: autoCloseMs,
     webhookStale: isWebhookStale(store),
+    webhookSignatureIssue: hasWebhookSignatureIssue(store),
   };
 }
 
@@ -301,14 +311,38 @@ app.post("/webhook/livepix", (req, res) => {
 // O pix.gg faz um "ping" periódico com GET nessa URL pra confirmar que ela
 // está de pé (descoberto em 2026-07-10 pelos logs de produção — a doc deles
 // não menciona isso). Sem responder 200 aqui, o pix.gg parece considerar o
-// endpoint quebrado e não manda o POST de verdade da doação. Também serve
-// de sinal de vida pro aviso de "webhook desvinculado" (ver isWebhookStale).
+// endpoint quebrado e não manda o POST de verdade da doação.
+//
+// IMPORTANTE: essa rota sempre respondia só "OK" pra qualquer GET, mesmo
+// sem o ?assinatura= — isso é uma armadilha real: se alguém copia uma URL
+// incompleta (ex: cortada, sem a assinatura) e testa no navegador, vê "OK"
+// e acha que está tudo certo, enquanto o POST de doação de verdade (que
+// SIM exige assinatura) seria recusado em silêncio. Agora o texto da
+// resposta avisa isso, mesmo mantendo status 200 (não quebra o ping
+// automático do pix.gg, que só olha o status).
 app.get("/webhook/pixgg/:leilaoId", (req, res) => {
   const leilaoId = req.params.leilaoId;
-  if (/^[a-z0-9_-]+$/i.test(leilaoId) && registry.leilaoExists(leilaoId)) {
-    touchWebhookPing(getStore(leilaoId));
+  if (!/^[a-z0-9_-]+$/i.test(leilaoId) || !registry.leilaoExists(leilaoId)) {
+    return res.status(200).send("OK — mas esse leilão não existe. Essa URL parece incompleta ou errada.");
   }
-  res.sendStatus(200);
+
+  const secret = process.env.PIXGG_WEBHOOK_SECRET || "";
+  const signatureOk = pixgg.verifySignature(req.query.assinatura, secret);
+  const store = getStore(leilaoId);
+  touchWebhookPing(store); // a URL bateu certo no leilão, isso já prova que o host/id estão certos
+
+  if (!signatureOk) {
+    // Não mexe em webhookSignatureBroken aqui (só o POST de verdade decide
+    // isso) — não dá pra confiar que o GET de ping do pix.gg sempre carrega
+    // a assinatura, então um GET sem ela não é necessariamente um problema.
+    return res.status(200).send(
+      "OK — só que o parâmetro ?assinatura= dessa URL está ausente ou errado. " +
+      "As doações de verdade seriam recusadas até isso ser corrigido. " +
+      "Revincule o webhook pelo painel avançado do leilão pra gerar a URL completa de novo."
+    );
+  }
+
+  res.status(200).send("OK — webhook desse leilão configurado corretamente.");
 });
 
 // Webhook do pix.gg — uma URL própria por leilão (vinculada automaticamente
@@ -319,23 +353,25 @@ app.post("/webhook/pixgg/:leilaoId", (req, res) => {
   res.sendStatus(200); // confirma recebimento primeiro
 
   try {
-    const secret = process.env.PIXGG_WEBHOOK_SECRET || "";
-    if (!pixgg.verifySignature(req.query.assinatura, secret)) {
-      console.warn("Webhook pix.gg ignorado: assinatura inválida");
-      return;
-    }
-
     const leilaoId = req.params.leilaoId;
     if (!/^[a-z0-9_-]+$/i.test(leilaoId) || !registry.leilaoExists(leilaoId)) {
       console.warn(`Webhook pix.gg: leilão "${leilaoId}" não encontrado, ignorando.`);
       return;
     }
-    touchWebhookPing(getStore(leilaoId));
+    const store = getStore(leilaoId);
+
+    const secret = process.env.PIXGG_WEBHOOK_SECRET || "";
+    if (!pixgg.verifySignature(req.query.assinatura, secret)) {
+      console.warn("Webhook pix.gg ignorado: assinatura inválida");
+      store.setState("webhookSignatureBroken", "true");
+      return;
+    }
+    store.setState("webhookSignatureBroken", "false");
+    touchWebhookPing(store);
 
     const donation = pixgg.parseDonation(req.body);
     if (!pixgg.isPaid(donation.status)) return; // ignora o "created", só conta o "paid"
 
-    const store = getStore(leilaoId);
     processDonationMessage(leilaoId, store, {
       id: donation.id,
       fallbackUsername: donation.username,

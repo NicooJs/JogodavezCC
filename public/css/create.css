@@ -101,6 +101,70 @@
 }
 .create-error[hidden] { display: none; }
 
+/* Lembrete de leilão já criado nesse navegador — mostrado no lugar do
+   formulário pra evitar recriar sem querer (o que revincularia o webhook
+   pra um leilão novo e desligaria o antigo). */
+.create-existing {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 24px;
+}
+.create-existing[hidden] { display: none; }
+
+.create-existing-title {
+  margin: 0;
+  font-family: var(--font-display);
+  font-style: italic;
+  font-weight: 700;
+  font-size: 19px;
+  color: var(--text);
+}
+
+.create-existing-list { display: flex; flex-direction: column; gap: 8px; }
+
+.create-existing-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 12px 14px;
+}
+
+.create-existing-item span {
+  font-size: 13.5px;
+  color: var(--text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.create-existing-item a {
+  flex-shrink: 0;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--accent-text);
+  white-space: nowrap;
+}
+.create-existing-item a:hover { color: var(--accent); }
+
+.create-existing-new {
+  align-self: flex-start;
+  background: none;
+  border: none;
+  color: var(--muted);
+  font-size: 12.5px;
+  cursor: pointer;
+  padding: 0;
+}
+.create-existing-new:hover { color: var(--text); }
+
 .create-result {
   background: var(--surface);
   border: 1px solid var(--accent-soft);

@@ -1,3 +1,5 @@
+const STORAGE_KEY = "meus-leiloes";
+
 const form = document.getElementById("create-form");
 const errorEl = document.getElementById("create-error");
 const submitBtn = document.getElementById("create-submit");
@@ -5,6 +7,60 @@ const resultEl = document.getElementById("create-result");
 const resultUrlEl = document.getElementById("create-result-url");
 const resultOpenEl = document.getElementById("create-result-open");
 const resultCopyBtn = document.getElementById("create-result-copy");
+const existingEl = document.getElementById("create-existing");
+const existingListEl = document.getElementById("create-existing-list");
+const existingNewBtn = document.getElementById("create-existing-new");
+
+function escapeHtml(str) {
+  return String(str).replace(/[&<>"']/g, (c) => ({
+    "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;",
+  }[c]));
+}
+
+function getSavedLeiloes() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    return raw ? JSON.parse(raw) : [];
+  } catch (err) {
+    return [];
+  }
+}
+
+function saveLeilao(entry) {
+  const list = getSavedLeiloes();
+  list.push(entry);
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(list));
+  } catch (err) {
+    // localStorage indisponível (modo privado, etc) — sem problema, só não
+    // lembra da próxima vez.
+  }
+}
+
+// Lembrete de leilão já criado nesse navegador — pra evitar que a pessoa
+// preencha o formulário de novo sem querer. Recriar não é só redundante:
+// como o vínculo do webhook é um-por-aplicação no pix.gg, criar de novo com
+// o mesmo Client ID desliga o webhook do leilão antigo sem avisar.
+function renderExisting() {
+  const saved = getSavedLeiloes();
+  if (saved.length === 0) return;
+
+  existingListEl.innerHTML = saved.map((item) => `
+    <div class="create-existing-item">
+      <span>${escapeHtml(item.title || "Leilão de Jogos")}</span>
+      <a href="${escapeHtml(item.url)}" target="_blank">Abrir →</a>
+    </div>
+  `).join("");
+  existingEl.hidden = false;
+  form.hidden = true;
+}
+
+existingNewBtn.addEventListener("click", () => {
+  existingEl.hidden = true;
+  form.hidden = false;
+});
+
+renderExisting();
 
 form.addEventListener("submit", async (e) => {
   e.preventDefault();
@@ -31,6 +87,7 @@ form.addEventListener("submit", async (e) => {
     if (!res.ok) throw new Error(data.error || `Erro ${res.status}`);
 
     const url = `${location.origin}${data.url}`;
+    saveLeilao({ title: title || "Leilão de Jogos", url: data.url });
     resultUrlEl.value = url;
     resultOpenEl.href = data.url;
     form.hidden = true;

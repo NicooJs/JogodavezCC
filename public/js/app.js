@@ -38,6 +38,7 @@ const boardEl = document.querySelector(".board");
 const soldOverlayEl = document.getElementById("sold-overlay");
 const soldMarkEl = document.getElementById("sold-mark");
 const webhookWarningEl = document.getElementById("webhook-warning");
+const webhookWarningTextEl = document.getElementById("webhook-warning-text");
 
 const lotModalEl = document.getElementById("lot-modal");
 const lotModalThumb = document.getElementById("lot-modal-thumb");
@@ -61,6 +62,7 @@ let isOpenState = null; // null = ainda não recebemos a primeira atualização
 let isPausedState = false;
 let pausedRemainingMs = null;
 let webhookStaleState = false;
+let webhookSignatureIssueState = false;
 let historyItems = [];
 let currentLeaderKey = null;
 let previousTotals = new Map();
@@ -99,7 +101,12 @@ function setStatus(online) {
 // sentido (e pode confundir espectador) aparecer isso no board público.
 function updateWebhookWarning() {
   const active = document.body.classList.contains("presenter-mode");
-  webhookWarningEl.hidden = !(active && webhookStaleState);
+  if (webhookSignatureIssueState) {
+    webhookWarningTextEl.textContent = "O pix.gg está mandando doações, mas a assinatura da URL não bate — provavelmente a URL do webhook está incompleta ou cortada. As doações não estão sendo contabilizadas.";
+  } else {
+    webhookWarningTextEl.textContent = "Sem contato do pix.gg há um tempo — o webhook pode estar desvinculado e as doações podem não estar chegando.";
+  }
+  webhookWarningEl.hidden = !(active && (webhookStaleState || webhookSignatureIssueState));
 }
 
 socket.on("connect", () => {
@@ -438,6 +445,7 @@ socket.on("update", ({ leaderboard, lastEvent }) => {
   tickTimer();
 
   webhookStaleState = !!leaderboard.webhookStale;
+  webhookSignatureIssueState = !!leaderboard.webhookSignatureIssue;
   updateWebhookWarning();
 
   const totalValue = leaderboard.totalRaised || 0;

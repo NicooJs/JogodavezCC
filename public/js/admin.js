@@ -87,7 +87,7 @@ function initAdmin() {
     currentGames = leaderboard.items;
     document.getElementById("title-input").value = leaderboard.title;
     renderOpenState(leaderboard.open);
-    renderWebhookState(leaderboard.webhookStale);
+    renderWebhookState(leaderboard.webhookStale, leaderboard.webhookSignatureIssue);
     renderTable();
     renderMergeOptions();
   });
@@ -164,10 +164,16 @@ function renderOpenState(open) {
   document.getElementById("toggle-open").textContent = open ? "Encerrar leilão" : "Reabrir leilão";
 }
 
-function renderWebhookState(stale) {
+function renderWebhookState(stale, signatureIssue) {
   const badge = document.getElementById("webhook-state");
-  badge.textContent = stale ? "sem contato — pode estar desvinculado" : "vinculado";
-  badge.className = "badge" + (stale ? " closed" : "");
+  if (signatureIssue) {
+    badge.textContent = "assinatura errada — URL provavelmente incompleta";
+  } else if (stale) {
+    badge.textContent = "sem contato — pode estar desvinculado";
+  } else {
+    badge.textContent = "vinculado";
+  }
+  badge.className = "badge" + (stale || signatureIssue ? " closed" : "");
 }
 
 function renderTable() {
