@@ -2,6 +2,8 @@
 // Crie uma chave grátis em https://rawg.io/apidocs e coloque em RAWG_API_KEY no .env.
 // Sem a chave configurada, os jogos simplesmente aparecem sem imagem (não quebra nada).
 
+const { normalizeKey } = require("./parser");
+
 const cache = new Map(); // nome normalizado -> URL da imagem (ou null se não achou)
 
 async function fetchGameImage(name) {
@@ -59,4 +61,42 @@ async function searchGames(query) {
   }
 }
 
-module.exports = { fetchGameImage, searchGames };
+// Tenta extrair o nome "limpo" de um jogo dentro de uma mensagem barulhenta
+// (ex: "minecraft coloca ele ai!!" -> "Minecraft"). Só serve pra PRIMEIRA
+// menção de um jogo — quando já existe um lote no catálogo, quem resolve
+// isso é resolveExistingKey em db.js, mais barato (não bate na RAWG).
+//
+// Só confia no resultado da RAWG se o nome dele aparecer de verdade, por
+// palavra inteira, dentro do texto original — isso impede a busca fuzzy
+// deles de "inventar" um jogo não relacionado pra um texto barulhento
+// demais (ex: alguém só mandando um emoji ou uma frase aleatória).
+async function identifyGameFromNoisyText(text) {
+  const apiKey = process.env.RAWG_API_KEY;
+  if (!apiKey || !text || !text.trim()) return null;
+
+  try {
+    const url = `https://api.rawg.io/api/games?search=${encodeURIComponent(text)}&page_size=1&key=${apiKey}`;
+    const res = await fetch(url, {
+      headers: { "User-Agent": "leilao-de-jogos (uso pessoal)" },
+    });
+    if (!res.ok) return null;
+
+    const json = await res.json();
+    const top = json.results && json.results[0];
+    if (!top || !top.name) return null;
+
+    const normalizedCandidate = normalizeKey(top.name);
+    const normalizedText = normalizeKey(text);
+    if (!normalizedCandidate) return null;
+    const escaped = normalizedCandidate.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    const re = new RegExp(`(^|\\s)${escaped}(\\s|$)`);
+    if (!re.test(normalizedText)) return null;
+
+    return { name: top.name, image: top.background_image || null };
+  } catch (err) {
+    console.error("Erro ao identificar jogo via RAWG:", err.message);
+    return null;
+  }
+}
+
+module.exports = { fetchGameImage, searchGames, identifyGameFromNoisyText };

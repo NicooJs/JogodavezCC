@@ -7,10 +7,10 @@ const { Server } = require("socket.io");
 const registry = require("./src/registry");
 const { getStore } = require("./src/stores");
 const { verifyPassword } = require("./src/passwords");
-const { parseMessage } = require("./src/parser");
+const { parseMessage, normalizeKey } = require("./src/parser");
 const livepix = require("./src/livepixClient");
 const pixgg = require("./src/pixggClient");
-const { fetchGameImage, searchGames } = require("./src/gameImages");
+const { fetchGameImage, searchGames, identifyGameFromNoisyText } = require("./src/gameImages");
 const { fetchTwitchAvatar } = require("./src/twitchClient");
 
 const app = express();
@@ -41,13 +41,25 @@ function touchActivity(store, reopen = false) {
 
 // Se a chave já existe, usa ela direto. Senão, tenta casar com um jogo já
 // existente no catálogo (ruído na mensagem ou erro de digitação — ver
-// resolveExistingKey em db.js) antes de decidir que é um lote novo.
-function resolveParsedGame(store, parsed) {
+// resolveExistingKey em db.js). Se ainda assim não achar nada (é a
+// PRIMEIRA menção desse jogo, sem lote de referência local pra comparar),
+// tenta extrair o nome limpo batendo contra a RAWG antes de desistir e
+// aceitar o texto inteiro como nome do lote.
+async function resolveParsedGame(store, parsed) {
   if (store.hasGame(parsed.key)) return parsed;
+
   const matchedKey = store.resolveExistingKey(parsed.key);
-  if (!matchedKey) return parsed;
-  const existing = store.getGame(matchedKey);
-  return { ...parsed, key: matchedKey, name: existing.name };
+  if (matchedKey) {
+    const existing = store.getGame(matchedKey);
+    return { ...parsed, key: matchedKey, name: existing.name };
+  }
+
+  const rawgMatch = await identifyGameFromNoisyText(parsed.name);
+  if (rawgMatch) {
+    return { ...parsed, key: normalizeKey(rawgMatch.name), name: rawgMatch.name };
+  }
+
+  return parsed;
 }
 
 function serializeLeaderboard(store) {
@@ -158,7 +170,7 @@ async function processDonationMessage(leilaoId, store, { id, fallbackUsername, f
     });
     return;
   }
-  parsed = resolveParsedGame(store, parsed);
+  parsed = await resolveParsedGame(store, parsed);
 
   const needsImage = !store.hasGame(parsed.key) || !store.hasGameImage(parsed.key);
 
@@ -296,7 +308,7 @@ app.get("/api/l/:id/admin/game-search", loadLeilao, requireLeilaoAdmin, async (r
   res.json({ results });
 });
 
-app.post("/api/l/:id/admin/manual-entry", loadLeilao, requireLeilaoAdmin, (req, res) => {
+app.post("/api/l/:id/admin/manual-entry", loadLeilao, requireLeilaoAdmin, async (req, res) => {
   const { name, amount, action, username } = req.body || {};
   if (!name || !amount || Number.isNaN(Number(amount))) {
     return res.status(400).json({ error: "Informe name e amount" });
@@ -304,7 +316,7 @@ app.post("/api/l/:id/admin/manual-entry", loadLeilao, requireLeilaoAdmin, (req, 
   const { leilaoId, store } = req;
   let parsed = parseMessage(`${action === "remove" ? "-" : "+"}${name}`);
   if (!parsed) return res.status(400).json({ error: "Nome de jogo inválido" });
-  parsed = resolveParsedGame(store, parsed);
+  parsed = await resolveParsedGame(store, parsed);
 
   const needsImage = !store.hasGame(parsed.key) || !store.hasGameImage(parsed.key);
 
