@@ -82,6 +82,10 @@ async function createLeilao({ title, host, password, clientId, clientSecret, bui
   store.setState("title", meta.title);
   store.setState("host", meta.host);
   store.setState("open", "true");
+  // Referência pra saber há quanto tempo esperamos o primeiro contato do
+  // pix.gg (ver "webhookStale" em server.js) — se nunca chegou nenhum ping
+  // desde a criação, isso também conta como sinal de webhook desvinculado.
+  store.setState("createdAt", meta.createdAt);
 
   return { id };
 }

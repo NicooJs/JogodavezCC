@@ -22,6 +22,14 @@ app.use(express.json());
 
 const DEFAULT_AUTO_CLOSE_MS = 5 * 60 * 1000; // 5 minutos sem atividade encerra sozinho
 
+// O pix.gg manda um GET periódico na URL do webhook (ping de saúde, ver
+// CLAUDE.md), mas a frequência real não é documentada e variou bastante na
+// prática — um threshold de 5min já deu alarme falso em uso normal. 30min é
+// bem mais folgado; combinado com só checar isso enquanto o leilão está
+// aberto (ver isWebhookStale), o objetivo é só pegar um desvínculo real no
+// meio de uma live longa, não qualquer intervalo maior entre pings.
+const WEBHOOK_STALE_MS = 30 * 60 * 1000;
+
 function getAutoCloseMs(store) {
   const stored = Number(store.getState("timerDurationMs", DEFAULT_AUTO_CLOSE_MS));
   return Number.isFinite(stored) && stored > 0 ? stored : DEFAULT_AUTO_CLOSE_MS;
@@ -40,12 +48,31 @@ function touchActivity(store, reopen = false) {
   if (reopen) store.setState("open", "true");
 }
 
-// Olha se o POST de doação real do pix.gg tem batido com assinatura
-// errada/ausente — sinal concreto de URL incompleta/cortada (ver rota
-// POST /webhook/pixgg/:leilaoId). Baseado numa falha de verdade que
-// aconteceu, não em "faz tempo que não ouço nada" — essa segunda ideia foi
-// tentada antes e descartada por dar alarme falso (não dá pra confiar na
-// frequência do GET de ping do pix.gg, variou demais na prática).
+// Marca "agora" como o último contato de verdade do pix.gg nessa URL de
+// webhook (GET de ping ou POST com assinatura válida) — usado só pra
+// detectar desvinculação, ver WEBHOOK_STALE_MS e isWebhookStale.
+function touchWebhookPing(store) {
+  store.setState("lastWebhookPingAt", String(Date.now()));
+}
+
+// Só considera "desvinculado por silêncio" enquanto o leilão está aberto —
+// fora de uma live, silêncio é o esperado, não é sinal de nada quebrado.
+// Isso mais o threshold folgado (WEBHOOK_STALE_MS) é a resposta ao falso
+// positivo que já rolou em produção com um threshold de 5min sem essa
+// condição de "aberto".
+function isWebhookStale(store, isOpen) {
+  if (!isOpen) return false;
+  const lastPing = Number(store.getState("lastWebhookPingAt", 0));
+  const createdAt = new Date(store.getState("createdAt", new Date().toISOString())).getTime();
+  const referenceTime = lastPing || createdAt; // sem ping ainda, conta desde a criação
+  return Date.now() - referenceTime > WEBHOOK_STALE_MS;
+}
+
+// Diferente de isWebhookStale (que olha só se ALGUM contato chegou nessa
+// URL, via GET ou POST): isso olha especificamente se o POST de doação real
+// tem batido com a assinatura errada/ausente — sinal concreto de URL
+// incompleta/cortada (ver rota POST /webhook/pixgg/:leilaoId). Baseado numa
+// falha de verdade que aconteceu, não em inferência de silêncio.
 function hasWebhookSignatureIssue(store) {
   return store.getState("webhookSignatureBroken", "false") === "true";
 }
@@ -107,6 +134,7 @@ function serializeLeaderboard(store) {
     timerEndsAt: isOpen && !isPaused ? lastActivityAt + autoCloseMs : null,
     timerRemainingMs: isPaused ? Number(store.getState("pausedRemainingMs", autoCloseMs)) : null,
     timerDurationMs: autoCloseMs,
+    webhookStale: isWebhookStale(store, isOpen),
     webhookSignatureIssue: hasWebhookSignatureIssue(store),
   };
 }
@@ -308,6 +336,8 @@ app.get("/webhook/pixgg/:leilaoId", (req, res) => {
 
   const secret = process.env.PIXGG_WEBHOOK_SECRET || "";
   const signatureOk = pixgg.verifySignature(req.query.assinatura, secret);
+  const store = getStore(leilaoId);
+  touchWebhookPing(store); // a URL bateu certo no leilão, isso já prova que o host/id estão certos
 
   if (!signatureOk) {
     // Não mexe em webhookSignatureBroken aqui (só o POST de verdade decide
@@ -345,6 +375,7 @@ app.post("/webhook/pixgg/:leilaoId", (req, res) => {
       return;
     }
     store.setState("webhookSignatureBroken", "false");
+    touchWebhookPing(store);
 
     const donation = pixgg.parseDonation(req.body);
     if (!pixgg.isPaid(donation.status)) return; // ignora o "created", só conta o "paid"

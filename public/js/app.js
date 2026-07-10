@@ -61,6 +61,7 @@ let timerDurationMs = 5 * 60 * 1000; // atualizado a cada "update" com o valor r
 let isOpenState = null; // null = ainda não recebemos a primeira atualização
 let isPausedState = false;
 let pausedRemainingMs = null;
+let webhookStaleState = false;
 let webhookSignatureIssueState = false;
 let historyItems = [];
 let currentLeaderKey = null;
@@ -97,13 +98,18 @@ function setStatus(online) {
 }
 
 // Só mostra o aviso no modo apresentador — não faz sentido (e pode
-// confundir espectador) aparecer isso no board público. Baseado só em
-// falha de assinatura de verdade (não em "silêncio", que já causou alarme
-// falso — ver server.js).
+// confundir espectador) aparecer isso no board público. webhookStale só é
+// true com o leilão aberto e depois de 30min de silêncio real (ver
+// isWebhookStale em server.js) — threshold folgado de propósito, um de
+// 5min já causou alarme falso em uso normal.
 function updateWebhookWarning() {
   const active = document.body.classList.contains("presenter-mode");
-  webhookWarningTextEl.textContent = "O pix.gg está mandando doações, mas a assinatura da URL não bate — provavelmente a URL do webhook está incompleta ou cortada. As doações não estão sendo contabilizadas.";
-  webhookWarningEl.hidden = !(active && webhookSignatureIssueState);
+  if (webhookSignatureIssueState) {
+    webhookWarningTextEl.textContent = "O pix.gg está mandando doações, mas a assinatura da URL não bate — provavelmente a URL do webhook está incompleta ou cortada. As doações não estão sendo contabilizadas.";
+  } else {
+    webhookWarningTextEl.textContent = "Sem contato do pix.gg há mais de 30 minutos com o leilão aberto — o webhook pode estar desvinculado e as doações podem não estar chegando.";
+  }
+  webhookWarningEl.hidden = !(active && (webhookStaleState || webhookSignatureIssueState));
 }
 
 socket.on("connect", () => {
@@ -441,6 +447,7 @@ socket.on("update", ({ leaderboard, lastEvent }) => {
   if (leaderboard.timerDurationMs) timerDurationMs = leaderboard.timerDurationMs;
   tickTimer();
 
+  webhookStaleState = !!leaderboard.webhookStale;
   webhookSignatureIssueState = !!leaderboard.webhookSignatureIssue;
   updateWebhookWarning();
 
