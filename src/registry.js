@@ -1,22 +1,28 @@
 // Registro pequeno e separado dos dados de cada leilão: só o necessário pra
-// (a) rotear um webhook do pix.gg pro leilão certo, olhando o
-// streamerUsername que já vem em toda doação, e (b) impedir que dois
-// streamers cadastrem o mesmo usuário do pix.gg duas vezes.
+// gerar um id novo e guardar metadados leves (título, host, client id do
+// pix.gg pra referência/suporte). O roteamento do webhook NÃO depende mais
+// disso — cada leilão tem sua própria URL de webhook (/webhook/pixgg/:id),
+// vinculada automaticamente na aplicação do pix.gg na hora da criação (ver
+// setWebhookUrl em pixggApi.js). Sem URL compartilhada, sem precisar casar
+// streamerUsername — o id na própria URL já diz de quem é a doação.
 //
 // A senha do apresentador NÃO fica aqui — fica com hash no state do
 // próprio leilão (ver stores.js), então esse arquivo continua pequeno e
-// não é onde a senha de ninguém mora.
+// não é onde a senha de ninguém mora. O clientSecret do pix.gg também não
+// fica guardado em lugar nenhum depois de usado uma vez pra vincular o
+// webhook — só o clientId, que não é segredo.
 
 const fs = require("fs");
 const path = require("path");
 const crypto = require("crypto");
 const { getStore, DATA_DIR } = require("./stores");
 const { hashPassword } = require("./passwords");
+const pixggApi = require("./pixggApi");
 
 const REGISTRY_FILE = path.join(DATA_DIR, "_registry.json");
 
 function emptyRegistry() {
-  return { leiloes: {}, byPixggUsername: {} };
+  return { leiloes: {} };
 }
 
 function load() {
@@ -34,32 +40,21 @@ function save() {
   fs.writeFileSync(REGISTRY_FILE, JSON.stringify(registry, null, 2), "utf-8");
 }
 
-function normalizeUsername(username) {
-  return String(username || "").trim().toLowerCase();
-}
-
 function generateId() {
   return crypto.randomBytes(6).toString("hex"); // 12 caracteres, só [0-9a-f]
 }
 
 const MIN_PASSWORD_LENGTH = 6;
 
-// IMPORTANTE: do check de unicidade até o save(), essa função tem que
-// continuar 100% síncrona — nenhum await no meio. O event loop do Node só
-// garante que duas chamadas concorrentes não se intercalam enquanto o
-// trecho for síncrono; é isso (não alguma trava explícita) que impede dois
-// streamers de cadastrarem o mesmo usuário do pix.gg ao mesmo tempo. Se
-// algum dia entrar uma chamada assíncrona aqui no meio (ex: validar o
-// username via API do pix.gg antes de salvar), essa garantia quebra e
-// precisa de um lock de verdade.
-function createLeilao({ title, host, pixggUsername, password }) {
-  const normalized = normalizeUsername(pixggUsername);
-  if (!normalized) throw new Error("Informe o usuário do pix.gg");
+// buildWebhookUrl(id) monta a URL completa de webhook pra esse leilão —
+// quem sabe montar isso é server.js (precisa do host da requisição), por
+// isso vem como função em vez de string pronta.
+async function createLeilao({ title, host, password, clientId, clientSecret, buildWebhookUrl }) {
+  if (!clientId || !clientSecret) {
+    throw new Error("Informe o Client ID e o Client Secret da sua aplicação no pix.gg");
+  }
   if (!password || String(password).length < MIN_PASSWORD_LENGTH) {
     throw new Error(`A senha precisa ter pelo menos ${MIN_PASSWORD_LENGTH} caracteres`);
-  }
-  if (registry.byPixggUsername[normalized]) {
-    throw new Error("Esse usuário do pix.gg já tem um leilão cadastrado");
   }
 
   let id;
@@ -67,14 +62,19 @@ function createLeilao({ title, host, pixggUsername, password }) {
     id = generateId();
   } while (registry.leiloes[id]);
 
+  // Vincula o webhook ANTES de salvar qualquer coisa: se o client id/secret
+  // forem inválidos, o pix.gg recusa aqui e a criação falha inteira, sem
+  // deixar leilão órfão no registro. É essa chamada que prova que quem tá
+  // criando o leilão realmente tem acesso àquela aplicação no pix.gg.
+  await pixggApi.setWebhookUrl(clientId, clientSecret, buildWebhookUrl(id));
+
   const meta = {
     title: title || "Leilão de Jogos",
     host: host || "",
-    pixggUsername: normalized,
+    pixggClientId: clientId,
     createdAt: new Date().toISOString(),
   };
   registry.leiloes[id] = meta;
-  registry.byPixggUsername[normalized] = id;
   save();
 
   const store = getStore(id);
@@ -84,10 +84,6 @@ function createLeilao({ title, host, pixggUsername, password }) {
   store.setState("open", "true");
 
   return { id };
-}
-
-function findLeilaoIdByPixggUsername(username) {
-  return registry.byPixggUsername[normalizeUsername(username)] || null;
 }
 
 function leilaoExists(id) {
@@ -105,7 +101,6 @@ function listLeilaoIds() {
 
 module.exports = {
   createLeilao,
-  findLeilaoIdByPixggUsername,
   leilaoExists,
   getLeilaoMeta,
   listLeilaoIds,

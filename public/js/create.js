@@ -12,19 +12,20 @@ form.addEventListener("submit", async (e) => {
 
   const title = document.getElementById("f-title").value.trim();
   const host = document.getElementById("f-host").value.trim();
-  const pixggUsername = document.getElementById("f-pixgg").value.trim();
+  const clientId = document.getElementById("f-client-id").value.trim();
+  const clientSecret = document.getElementById("f-client-secret").value.trim();
   const password = document.getElementById("f-password").value;
 
-  if (!host || !pixggUsername || !password) return;
+  if (!host || !clientId || !clientSecret || !password) return;
 
   submitBtn.disabled = true;
-  submitBtn.textContent = "Criando…";
+  submitBtn.textContent = "Vinculando webhook…";
 
   try {
     const res = await fetch("/api/leiloes", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ title, host, pixggUsername, password }),
+      body: JSON.stringify({ title, host, clientId, clientSecret, password }),
     });
     const data = await res.json().catch(() => ({}));
     if (!res.ok) throw new Error(data.error || `Erro ${res.status}`);

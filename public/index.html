@@ -23,9 +23,9 @@
         <h1 class="create-title">Crie seu leilão</h1>
         <p class="create-lede">
           Preencha os dados abaixo e seu leilão fica pronto na hora — placar
-          próprio, isolado de qualquer outro streamer usando o site. As
-          doações do <strong>pix.gg</strong> caem automaticamente nele assim
-          que alguém escreve o nome de um jogo na mensagem.
+          próprio, isolado de qualquer outro streamer usando o site. A gente
+          já vincula o webhook na sua aplicação do <strong>pix.gg</strong>
+          automaticamente, sem precisar colar URL em lugar nenhum.
         </p>
       </div>
 
@@ -41,9 +41,21 @@
         </label>
 
         <label class="create-field">
-          <span>Seu usuário no pix.gg</span>
-          <input type="text" id="f-pixgg" placeholder="usuário exato da sua conta pix.gg" autocomplete="off" required />
-          <span class="create-hint">É por esse usuário que a gente sabe que uma doação é sua.</span>
+          <span>Client ID (pix.gg)</span>
+          <input type="text" id="f-client-id" placeholder="app_..." autocomplete="off" required />
+          <span class="create-hint">
+            Em <strong>pixgg.com → Aplicações</strong>, crie uma aplicação com
+            escopo "Webhook" (ou use uma que já tenha) e copie o Client ID.
+          </span>
+        </label>
+
+        <label class="create-field">
+          <span>Client Secret (pix.gg)</span>
+          <input type="password" id="f-client-secret" placeholder="só aparece na hora que você cria/regenera" autocomplete="off" required />
+          <span class="create-hint">
+            A gente usa isso só uma vez, pra vincular o webhook automaticamente
+            na sua aplicação — não fica guardado depois.
+          </span>
         </label>
 
         <label class="create-field">

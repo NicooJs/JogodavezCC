@@ -186,10 +186,19 @@ async function processDonationMessage(leilaoId, store, { id, fallbackUsername, f
 
 // ---------- criação de leilão ----------
 
-app.post("/api/leiloes", (req, res) => {
+app.post("/api/leiloes", async (req, res) => {
   try {
-    const { title, host, pixggUsername, password } = req.body || {};
-    const { id } = registry.createLeilao({ title, host, pixggUsername, password });
+    const { title, host, password, clientId, clientSecret } = req.body || {};
+    const publicUrl = `${req.protocol}://${req.get("host")}`;
+    const secret = process.env.PIXGG_WEBHOOK_SECRET || "";
+    const { id } = await registry.createLeilao({
+      title,
+      host,
+      password,
+      clientId,
+      clientSecret,
+      buildWebhookUrl: (leilaoId) => `${publicUrl}/webhook/pixgg/${leilaoId}?assinatura=${secret}`,
+    });
     res.json({ ok: true, id, url: `/l/${id}` });
   } catch (err) {
     res.status(400).json({ error: err.message });
@@ -234,10 +243,11 @@ app.post("/webhook/livepix", (req, res) => {
   res.sendStatus(200);
 });
 
-// Webhook do pix.gg — uma URL só, compartilhada por todos os leilões. O
-// pix.gg manda quem recebeu a doação (data.streamerUsername) em toda
-// chamada; é esse campo que decide pra qual leilão a doação vai.
-app.post("/webhook/pixgg", (req, res) => {
+// Webhook do pix.gg — uma URL própria por leilão (vinculada automaticamente
+// na aplicação do streamer no momento da criação, ver registry.createLeilao
+// + pixggApi.setWebhookUrl). O :leilaoId na própria URL já diz de quem é a
+// doação — não precisa mais casar por streamerUsername no corpo.
+app.post("/webhook/pixgg/:leilaoId", (req, res) => {
   res.sendStatus(200); // confirma recebimento primeiro
 
   try {
@@ -247,15 +257,14 @@ app.post("/webhook/pixgg", (req, res) => {
       return;
     }
 
-    const donation = pixgg.parseDonation(req.body);
-    if (!pixgg.isPaid(donation.status)) return; // ignora o "created", só conta o "paid"
-
-    const streamerUsername = pixgg.identifyStreamer(req.body);
-    const leilaoId = registry.findLeilaoIdByPixggUsername(streamerUsername);
-    if (!leilaoId) {
-      console.warn(`Webhook pix.gg: streamerUsername "${streamerUsername}" não tem leilão cadastrado, ignorando.`);
+    const leilaoId = req.params.leilaoId;
+    if (!/^[a-z0-9_-]+$/i.test(leilaoId) || !registry.leilaoExists(leilaoId)) {
+      console.warn(`Webhook pix.gg: leilão "${leilaoId}" não encontrado, ignorando.`);
       return;
     }
+
+    const donation = pixgg.parseDonation(req.body);
+    if (!pixgg.isPaid(donation.status)) return; // ignora o "created", só conta o "paid"
 
     const store = getStore(leilaoId);
     processDonationMessage(leilaoId, store, {
