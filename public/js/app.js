@@ -701,6 +701,13 @@ socket.on("update", ({ leaderboard, lastEvent }) => {
   document.querySelectorAll(".theme-dot").forEach((dot) => {
     dot.classList.toggle("active", dot.dataset.theme === (leaderboard.theme || "nebulosa"));
   });
+  if (leaderboard.backgroundImageUrl) {
+    document.body.style.setProperty("--bg-image", `url("${leaderboard.backgroundImageUrl}")`);
+    document.body.classList.add("has-bg-image");
+  } else {
+    document.body.classList.remove("has-bg-image");
+    document.body.style.removeProperty("--bg-image");
+  }
   titleEl.textContent = leaderboard.title;
   hostNameEl.textContent = leaderboard.host || "Streamer";
   if (leaderboard.hostAvatar) {

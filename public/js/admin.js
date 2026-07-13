@@ -90,6 +90,8 @@ function initAdmin() {
     renderOpenState(leaderboard.open);
     renderWebhookState(leaderboard.webhookStale, leaderboard.webhookSignatureIssue);
     renderThemePicker(leaderboard.theme);
+    const bgInput = document.getElementById("bg-image-url");
+    if (document.activeElement !== bgInput) bgInput.value = leaderboard.backgroundImageUrl || "";
     renderTable();
     renderMergeOptions();
   });
@@ -108,6 +110,20 @@ function initAdmin() {
         alert(err.message);
       }
     });
+  });
+
+  document.getElementById("bg-image-save").addEventListener("click", async () => {
+    const url = document.getElementById("bg-image-url").value.trim();
+    try {
+      await adminFetch("/admin/background-image", { method: "POST", body: JSON.stringify({ url }) });
+    } catch (err) {
+      alert(err.message);
+    }
+  });
+
+  document.getElementById("bg-image-clear").addEventListener("click", async () => {
+    document.getElementById("bg-image-url").value = "";
+    await adminFetch("/admin/background-image", { method: "POST", body: JSON.stringify({ url: "" }) });
   });
 
   document.getElementById("toggle-open").addEventListener("click", async () => {

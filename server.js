@@ -185,6 +185,7 @@ function serializeLeaderboard(store) {
     host: store.getState("host", ""),
     hostAvatar: store.getState("hostAvatar", null),
     theme: store.getState("theme", "nebulosa"),
+    backgroundImageUrl: store.getState("backgroundImageUrl", null),
     open: isOpen,
     paused: isPaused,
     items,
@@ -700,7 +701,7 @@ app.post("/api/l/:id/admin/title", loadLeilao, requireLeilaoAdmin, (req, res) =>
   res.json({ ok: true });
 });
 
-const AVAILABLE_THEMES = ["nebulosa", "brasa", "recife", "ametista"];
+const AVAILABLE_THEMES = ["nebulosa", "recife", "ametista", "safira", "grafite"];
 
 app.post("/api/l/:id/admin/theme", loadLeilao, requireLeilaoAdmin, (req, res) => {
   const { theme } = req.body || {};
@@ -709,6 +710,32 @@ app.post("/api/l/:id/admin/theme", loadLeilao, requireLeilaoAdmin, (req, res) =>
   }
   req.store.setState("theme", theme);
   broadcastUpdate(req.leilaoId, req.store, { type: "theme" });
+  res.json({ ok: true });
+});
+
+// Imagem de fundo custom do board — só uma URL (sem upload de arquivo, ver
+// restrição de "sem dependência nativa" no CLAUDE.md: um upload de verdade
+// precisaria de storage, o que esse projeto não tem). Valida só o
+// protocolo pra evitar um valor tipo "javascript:" acabar num
+// background-image inline no app.js.
+app.post("/api/l/:id/admin/background-image", loadLeilao, requireLeilaoAdmin, (req, res) => {
+  const raw = (req.body?.url || "").trim();
+  if (!raw) {
+    req.store.setState("backgroundImageUrl", null);
+    broadcastUpdate(req.leilaoId, req.store, { type: "background-image" });
+    return res.json({ ok: true });
+  }
+  let parsed;
+  try {
+    parsed = new URL(raw);
+  } catch {
+    return res.status(400).json({ error: "URL inválida" });
+  }
+  if (parsed.protocol !== "http:" && parsed.protocol !== "https:") {
+    return res.status(400).json({ error: "A URL precisa começar com http:// ou https://" });
+  }
+  req.store.setState("backgroundImageUrl", parsed.href);
+  broadcastUpdate(req.leilaoId, req.store, { type: "background-image" });
   res.json({ ok: true });
 });
 

@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>Admin · Leilão de Jogos</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Gambetta:ital,opsz,wght@0,11..30,500;0,11..30,600;0,11..30,700;1,11..30,500;1,11..30,600;1,11..30,700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Nunito:ital,wght@0,500;0,600;0,700;1,500;1,600;1,700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/css/style.css" />
 <link rel="stylesheet" href="/css/admin.css" />
 </head>
@@ -60,10 +60,6 @@
           <span class="theme-swatch-preview theme-preview-nebulosa"></span>
           Nebulosa
         </button>
-        <button class="theme-swatch" data-theme="brasa" type="button">
-          <span class="theme-swatch-preview theme-preview-brasa"></span>
-          Brasa
-        </button>
         <button class="theme-swatch" data-theme="recife" type="button">
           <span class="theme-swatch-preview theme-preview-recife"></span>
           Recife
@@ -72,7 +68,21 @@
           <span class="theme-swatch-preview theme-preview-ametista"></span>
           Ametista
         </button>
+        <button class="theme-swatch" data-theme="safira" type="button">
+          <span class="theme-swatch-preview theme-preview-safira"></span>
+          Safira
+        </button>
+        <button class="theme-swatch" data-theme="grafite" type="button">
+          <span class="theme-swatch-preview theme-preview-grafite"></span>
+          Grafite
+        </button>
       </div>
+      <div class="panel-row wrap" style="margin-top: 14px;">
+        <input type="text" id="bg-image-url" placeholder="URL de uma imagem (opcional)" autocomplete="off" />
+        <button class="btn" id="bg-image-save">Salvar imagem</button>
+        <button class="btn" id="bg-image-clear">Remover</button>
+      </div>
+      <p class="hint">Some atrás do placar, escurecida. Cole o link de uma imagem publicada em algum lugar (Imgur, etc).</p>
     </div>
 
     <div class="panel">

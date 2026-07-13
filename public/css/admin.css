@@ -205,9 +205,10 @@ input:focus, select:focus {
    próprias paletas definidas em style.css, então não podem depender de
    qual tema o :root do admin.html "está" no momento. */
 .theme-preview-nebulosa { background: linear-gradient(135deg, #14141c 50%, #3ecfe0 50%); }
-.theme-preview-brasa { background: linear-gradient(135deg, #1c1c1f 50%, #ff7a45 50%); }
 .theme-preview-recife { background: linear-gradient(135deg, #101a1a 50%, #e0a955 50%); }
 .theme-preview-ametista { background: linear-gradient(135deg, #17131f 50%, #b98cf5 50%); }
+.theme-preview-safira { background: linear-gradient(135deg, #0f1420 50%, #4d80f5 50%); }
+.theme-preview-grafite { background: linear-gradient(135deg, #16171a 50%, #9fb0c2 50%); }
 
 .danger-zone { border-color: rgba(239, 68, 112, 0.35); }
 

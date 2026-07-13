@@ -24,29 +24,47 @@
   --danger: #ef4470;
   --danger-bg: rgba(239, 68, 112, 0.14);
   --positive: #46b17f;
-  --font-display: "Gambetta", serif;
+  --font-display: "Nunito", sans-serif;
+  --font-title: "Abril Fatface", serif;
   --font-body: "IBM Plex Sans", sans-serif;
   --font-mono: "IBM Plex Mono", monospace;
   --radius: 6px;
   --ease: cubic-bezier(0.22, 1, 0.36, 1);
 }
 
-/* "Brasa" — o laranja/grafite original, mantido como opção pra quem
-   preferir (deixou de ser o default em 2026-07-10, a pedido do cliente). */
-:root[data-theme="brasa"] {
-  --bg: #1c1c1f;
-  --surface: #232326;
-  --surface-2: #29292d;
-  --border: #38383e;
-  --text: #f2f0ec;
-  --muted: #8f8c94;
-  --accent: #ff7a45;
-  --accent-bg: rgba(255, 122, 69, 0.12);
-  --accent-text: #ffa679;
-  --accent-soft: #c2551f;
-  --accent-glow: rgba(255, 122, 69, 0.35);
-  --accent-ink: #2b1205;
-  --silver: #cdc7ba;
+/* "Safira" — azul profundo com destaque num azul mais claro/vívido. */
+:root[data-theme="safira"] {
+  --bg: #0f1420;
+  --surface: #161d2e;
+  --surface-2: #1c2438;
+  --border: #2c3650;
+  --text: #eef1f8;
+  --muted: #8792ac;
+  --accent: #4d80f5;
+  --accent-bg: rgba(77, 128, 245, 0.12);
+  --accent-text: #7ea3f7;
+  --accent-soft: #3860c4;
+  --accent-glow: rgba(77, 128, 245, 0.35);
+  --accent-ink: #0a1530;
+  --silver: #c9d2e3;
+}
+
+/* "Grafite" — cinza-chumbo neutro com destaque em platina/prata, sem cor
+   saturada — opção discreta pra quem quer algo mais "profissional". */
+:root[data-theme="grafite"] {
+  --bg: #16171a;
+  --surface: #1d1e22;
+  --surface-2: #232529;
+  --border: #35373d;
+  --text: #f1f1f3;
+  --muted: #93949c;
+  --accent: #9fb0c2;
+  --accent-bg: rgba(159, 176, 194, 0.12);
+  --accent-text: #bcc9d6;
+  --accent-soft: #6f7f8f;
+  --accent-glow: rgba(159, 176, 194, 0.35);
+  --accent-ink: #14181c;
+  --silver: #d4d7dc;
 }
 
 /* "Recife" — petróleo/teal com latão. */
@@ -134,10 +152,37 @@ body::before {
 ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 999px; }
 ::-webkit-scrollbar-thumb:hover { background: var(--accent-soft); }
 
+/* body.board-body centraliza o .page nos dois eixos — sem isso, em
+   monitores bem maiores que o design (altura > 1000px), os painéis
+   flex:1 (quadro de honra, histórico) esticavam até preencher a tela
+   inteira e ficavam com muito espaço vazio abaixo do conteúdo curto que
+   tinham (medido: painéis com só ~8 linhas ocupando 900px+ de altura).
+   Capar a altura do .page no tamanho que já foi desenhado/testado e
+   centralizar o resto como fundo neutro resolve sem mudar como o board
+   se comporta em telas normais/menores (min() sempre escolhe o menor). */
+body.board-body {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+}
+
+/* Imagem de fundo custom (state.backgroundImageUrl, definida em
+   admin.html → painel "Tema visual"). Um véu escuro por cima garante que
+   a imagem não compita com o texto/paineis translúcidos que sobram visível
+   nas bordas do .page em monitores maiores (ver o cap de altura acima). */
+body.board-body.has-bg-image {
+  background-image: linear-gradient(rgba(8, 8, 14, 0.72), rgba(8, 8, 14, 0.72)), var(--bg-image);
+  background-size: cover;
+  background-position: center;
+  background-attachment: fixed;
+}
+
 .page {
   display: flex;
   flex-direction: column;
-  height: 100vh;
+  height: min(100vh, 1000px);
+  width: 100%;
   /* 1400 -> 1600 -> 1850px: em telas largas (1920px+) sobrava muita
      margem morta nas laterais (visto e medido pelo cliente comparando
      antes/depois). Combinado com a arena virar grade de 2 colunas (ver
@@ -146,7 +191,6 @@ body::before {
      responsivo: em telas menores que 1850px, o max-width simplesmente não
      é atingido. */
   max-width: 1850px;
-  margin: 0 auto;
   padding: 18px 24px 14px;
 }
 
@@ -180,10 +224,13 @@ body::before {
    importante da tela pra quem tá assistindo a live, então recebe o maior
    destaque tipográfico do topbar. */
 .brand-word {
-  font-family: var(--font-display);
-  font-style: italic;
-  font-weight: 700;
-  font-size: 32px;
+  /* Abril Fatface só existe no peso/estilo regular — sem itálico, sem
+     variação de peso (ao contrário da fonte antiga, Gambetta). */
+  font-family: var(--font-title);
+  font-style: normal;
+  font-weight: 400;
+  font-size: 30px;
+  letter-spacing: 0.01em;
   color: var(--text);
   line-height: 1;
 }
@@ -357,9 +404,10 @@ body::before {
 .theme-dot.active { border-color: var(--text); }
 
 .theme-dot-nebulosa { background: linear-gradient(135deg, #14141c 50%, #3ecfe0 50%); }
-.theme-dot-brasa { background: linear-gradient(135deg, #1c1c1f 50%, #ff7a45 50%); }
 .theme-dot-recife { background: linear-gradient(135deg, #101a1a 50%, #e0a955 50%); }
 .theme-dot-ametista { background: linear-gradient(135deg, #17131f 50%, #b98cf5 50%); }
+.theme-dot-safira { background: linear-gradient(135deg, #0f1420 50%, #4d80f5 50%); }
+.theme-dot-grafite { background: linear-gradient(135deg, #16171a 50%, #9fb0c2 50%); }
 
 /* Botões da barra do apresentador — um sistema só, com três pesos visuais
    (primário sólido / perigo contornado / fantasma), todos com a mesma
