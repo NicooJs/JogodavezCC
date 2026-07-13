@@ -1666,6 +1666,14 @@ body.board-body.has-bg-image {
   border: 1px solid var(--border);
   border-radius: var(--radius);
   overflow: hidden;
+  /* Achado real: overflow != visible faz o navegador tratar a altura
+     mínima automática do item como 0 pro cálculo de linha do CSS Grid
+     (regra de espec de overflow) — sem min-height explícito aqui, a linha
+     da grade colapsava bem menor que o conteúdo de verdade (thumb 92px +
+     padding), cortando ao meio nome/valores/badge sempre que uma delas
+     precisava de mais altura (ex: apoio+sabotagem quebrando linha). Um
+     min-height "de verdade" (não automático) escapa dessa regra. */
+  min-height: 122px;
   transition: border-color 0.2s ease;
   animation: card-in 0.25s var(--ease);
 }
@@ -1837,7 +1845,7 @@ body.board-body.has-bg-image {
   display: flex;
   flex-direction: column;
   gap: 3px;
-  min-width: 0;
+  min-width: 90px;
   flex: 1;
 }
 
@@ -1860,22 +1868,27 @@ body.board-body.has-bg-image {
 .lot-funding {
   display: flex;
   align-items: center;
+  flex-wrap: wrap;
+  row-gap: 1px;
   gap: 8px;
   font-family: var(--font-mono);
   font-size: 11px;
   font-variant-numeric: tabular-nums;
-  /* .lot-info espreme essa linha bem estreito quando o nome do lote é
-     comprido — sem overflow:hidden, "+R$ 5.079,00" vazava (overflow:
-     visible) por cima do .lot-total, que fica logo ao lado. */
-  overflow: hidden;
   min-width: 0;
 }
 
 .lot-funding-add,
 .lot-funding-remove {
+  /* Cada valor tem seu próprio teto de largura (não a linha toda) — assim,
+     quando apoio e sabotagem não cabem lado a lado, o de sabotagem quebra
+     pra uma segunda linha em vez de ficar cortado/invisível (achado real:
+     um overflow:hidden na linha inteira escondia o valor de sabotagem por
+     completo quando os dois apareciam juntos). Só trunca com "..." se um
+     valor sozinho for longo demais mesmo tendo a linha toda pra ele. */
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  max-width: 100%;
 }
 
 .lot-funding-add { color: var(--positive); }
@@ -1922,8 +1935,19 @@ body.board-body.has-bg-image {
 .lot-meta {
   display: flex;
   align-items: center;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  row-gap: 4px;
   gap: 10px;
   flex-shrink: 0;
+  /* Sem isso, o badge "último sabotado" (texto comprido) fazia .lot-meta
+     pedir mais largura do que a linha 2 colunas tinha sobrando, e como
+     flex-shrink:0 nunca cedia, sobrava 0px pro .lot-info vizinho — nome,
+     valores de apoio/sabotagem e top doador do lote inteiro somem juntos
+     (achado real: card ficava com um buraco vazio do lado da capa). Com
+     max-width, o badge quebra pra uma segunda linha em vez de expulsar o
+     resto do card. */
+  max-width: 150px;
 }
 
 .lot-total {
@@ -2254,9 +2278,11 @@ body.board-body.has-bg-image {
   /* Card do lote mais compacto: sem isso, o nome do jogo é espremido a
      zero pela miniatura + valor + botão "editar" competindo no mesmo eixo. */
   .lot-card-content { gap: 10px; padding: 12px 14px; }
+  .lot-card { min-height: 90px; }
   .lot-thumb, .lot-thumb-placeholder { width: 46px; height: 46px; }
   .lot-rank { width: 26px; }
-  .lot-meta { gap: 6px; }
+  .lot-meta { gap: 6px; max-width: 112px; }
+  .lot-info { min-width: 64px; }
   .lot-edit button { padding: 2px 5px; font-size: 9.5px; }
 }
 
