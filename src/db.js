@@ -195,6 +195,19 @@ function createStore(filePath) {
     return data.events.slice(-limit).reverse();
   }
 
+  // Maior doação ÚNICA do leilão (não soma por doador, é o maior lance
+  // isolado) — usado no recap como "recorde de doação". Só apoio conta
+  // (sabotagem não é "doação pro jogo", ver getTopDonorByGame).
+  function getBiggestDonation() {
+    let best = null;
+    for (const ev of data.events) {
+      if (ev.action !== "add" || !ev.username) continue;
+      if (!best || ev.amount_cents > best.amount_cents) best = ev;
+    }
+    if (!best) return null;
+    return { username: best.username, amount_cents: best.amount_cents, game_name: best.game_name };
+  }
+
   function getTopDonors(limit = 8) {
     const totals = {};
     for (const ev of data.events) {
@@ -367,14 +380,28 @@ function createStore(filePath) {
     save();
   }
 
-  // Guarda um recap (ver buildRecap em server.js) antes de zerar, pra não
-  // perder o resultado do round pra sempre — a lista sobrevive ao resetAll
-  // (que preserva pastAuctions de propósito). Mais recente primeiro; um
-  // teto (MAX_PAST_AUCTIONS) evita o arquivo crescer sem limite num leilão
-  // usado por muito tempo.
-  function archiveAuction(recap) {
-    data.pastAuctions.unshift({ ...recap, archivedAt: nowISO() });
-    data.pastAuctions = data.pastAuctions.slice(0, MAX_PAST_AUCTIONS);
+  // Guarda um recap (ver buildRecap em server.js). Chamada tanto ao ENCERRAR
+  // (openRound: true — pedido do cliente: "quando eu encerrar já conta no
+  // histórico, não preciso zerar") quanto ao ZERAR (openRound: false).
+  //
+  // Como encerrar não apaga o catálogo (reabrir continua o mesmo leilão, ver
+  // CLAUDE.md), fechar-reabrir-fechar de novo SEM zerar recalcularia o
+  // recap sobre os MESMOS jogos/eventos de antes — arquivar isso como uma
+  // entrada nova a cada vez contaria o mesmo dinheiro repetidas vezes no
+  // histórico (e no ranking global de streamers, que soma tudo). Por isso:
+  // enquanto o topo da lista for um round "aberto" (openRound: true, ainda
+  // não finalizado por um zerar), um novo encerramento SUBSTITUI essa
+  // entrada em vez de empilhar outra — só passa a existir uma entrada nova
+  // de verdade depois que um openRound:false (zerar) fecha esse round.
+  function archiveAuction(recap, options = {}) {
+    const openRound = !!options.openRound;
+    const top = data.pastAuctions[0];
+    if (top && top.openRound) {
+      data.pastAuctions[0] = { ...recap, archivedAt: nowISO(), openRound };
+    } else {
+      data.pastAuctions.unshift({ ...recap, archivedAt: nowISO(), openRound });
+      data.pastAuctions = data.pastAuctions.slice(0, MAX_PAST_AUCTIONS);
+    }
     save();
   }
 
@@ -395,6 +422,7 @@ function createStore(filePath) {
     getTotalRaised,
     getFundingBreakdown,
     getTopDonorByGame,
+    getBiggestDonation,
     getDonorCountByGame,
     getTotalDonorCount,
     hasGame,

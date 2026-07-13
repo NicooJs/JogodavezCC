@@ -21,6 +21,7 @@ const titleEl = document.getElementById("title");
 const hostNameEl = document.getElementById("host-name");
 const hostAvatarEl = document.getElementById("host-avatar");
 const hostTwitchBadgeEl = document.getElementById("host-twitch-badge");
+const hostTwitchLinkEl = document.getElementById("host-twitch-link");
 const timerEl = document.getElementById("timer");
 const timerClockEl = document.getElementById("timer-clock");
 const timerLabelEl = document.getElementById("timer-label");
@@ -471,9 +472,17 @@ function historyIconHtml(dotClass) {
   return `<span class="history-icon icon-neutral"></span>`;
 }
 
+let historySortMode = "recent"; // "recent" | "high" | "low"
+
+function sortedHistoryItems() {
+  if (historySortMode === "high") return [...historyItems].sort((a, b) => (b.amount || 0) - (a.amount || 0));
+  if (historySortMode === "low") return [...historyItems].sort((a, b) => (a.amount || 0) - (b.amount || 0));
+  return historyItems; // já vem mais recente primeiro (unshift em pushHistory)
+}
+
 function renderHistory() {
   historyEmptyEl.style.display = historyItems.length === 0 ? "flex" : "none";
-  const rows = historyItems.slice(0, 50).map((event) => {
+  const rows = sortedHistoryItems().slice(0, 50).map((event) => {
     const info = historyLabel(event);
     if (!info) return "";
     const time = event.time ? new Date(event.time).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" }) : "";
@@ -493,6 +502,18 @@ function renderHistory() {
   });
   historyListEl.innerHTML = (historyItems.length === 0 ? historyEmptyEl.outerHTML : "") + rows.join("");
 }
+
+const historySortBtn = document.getElementById("history-sort-btn");
+const historySortLabelEl = document.getElementById("history-sort-label");
+const HISTORY_SORT_CYCLE = { recent: "high", high: "low", low: "recent" };
+const HISTORY_SORT_LABELS = { recent: "recentes", high: "maior valor", low: "menor valor" };
+
+historySortBtn.addEventListener("click", () => {
+  historySortMode = HISTORY_SORT_CYCLE[historySortMode];
+  historySortLabelEl.textContent = HISTORY_SORT_LABELS[historySortMode];
+  historySortBtn.classList.toggle("active", historySortMode !== "recent");
+  renderHistory();
+});
 
 function pushHistory(event) {
   if (!event || !historyLabel(event)) return;
@@ -551,6 +572,9 @@ function recapPodiumCardHtml(game) {
   const thumb = game.image
     ? `<img class="recap-podium-thumb" src="${escapeHtml(game.image)}" alt="" />`
     : `<div class="recap-podium-thumb recap-podium-thumb-placeholder">${escapeHtml((game.name[0] || "?").toUpperCase())}</div>`;
+  const topDonorHtml = game.topDonor
+    ? `<p class="recap-podium-top-donor">apoiador: ${escapeHtml(game.topDonor.username)}</p>`
+    : "";
   return `
     <div class="recap-podium-card rank-${game.rank}">
       <span class="recap-podium-rank">${rankBadgeHtml(game.rank)}</span>
@@ -558,6 +582,7 @@ function recapPodiumCardHtml(game) {
       <p class="recap-podium-name">${escapeHtml(game.name)}</p>
       <p class="recap-podium-total">${formatBRL(game.total)}</p>
       <p class="recap-podium-donors">${game.donorCount} ${game.donorCount === 1 ? "apoiador" : "apoiadores"}</p>
+      ${topDonorHtml}
     </div>
   `;
 }
@@ -572,6 +597,18 @@ function renderRecap(recap, eyebrowText) {
   recapDurationEl.textContent = formatDuration(recap.durationMs);
   recapDonorsEl.textContent = String(recap.totalDonors || 0);
   recapGamesEl.textContent = String(recap.totalGames || 0);
+
+  const champion = (recap.topGames || [])[0];
+  const championLineEl = document.getElementById("recap-champion-line");
+  const recordLineEl = document.getElementById("recap-record-line");
+  const highlightEl = document.getElementById("recap-highlight");
+  championLineEl.innerHTML = champion
+    ? `🏆 <strong>${escapeHtml(champion.name)}</strong> foi o campeão, arrecadando ${formatBRL(champion.total)}`
+    : "";
+  recordLineEl.innerHTML = recap.biggestDonation
+    ? `💥 recorde de doação: <strong>${escapeHtml(recap.biggestDonation.username || "Anônimo")}</strong> mandou ${formatBRL(recap.biggestDonation.amount)} em ${escapeHtml(recap.biggestDonation.gameName || "")}`
+    : "";
+  highlightEl.hidden = !champion && !recap.biggestDonation;
 
   recapPodiumEl.innerHTML = (recap.topGames || []).map(recapPodiumCardHtml).join("");
 
@@ -636,9 +673,10 @@ function historyCardHtml(h, index) {
   const thumb = champion && champion.image
     ? `<img class="history-card-thumb" src="${escapeHtml(champion.image)}" alt="" />`
     : `<div class="history-card-thumb history-card-thumb-placeholder">${escapeHtml(((champion && champion.name[0]) || "?").toUpperCase())}</div>`;
+  const inProgressTag = h.openRound ? `<span class="history-card-inprogress">em andamento</span>` : "";
   return `
     <button class="history-card" type="button" data-index="${index}">
-      <span class="history-card-when">${when}</span>
+      <span class="history-card-when">${when}${inProgressTag}</span>
       <span class="history-card-total">${formatBRL(h.totalRaised || 0)}</span>
       <div class="history-card-champion">
         ${thumb}
@@ -694,6 +732,75 @@ historyCloseEl.addEventListener("click", closeHistoryOverlay);
 historyOverlayEl.addEventListener("click", (e) => { if (e.target === historyOverlayEl) closeHistoryOverlay(); });
 document.addEventListener("keydown", (e) => { if (e.key === "Escape" && !historyOverlayEl.hidden) closeHistoryOverlay(); });
 
+// Ranking público de streamers do site inteiro (GET /api/ranking, ver
+// server.js) — botão de destaque no topbar, aberto pra qualquer um vendo o
+// board, não só o apresentador. Pódio pros 3 primeiros (mesmo visual do
+// recap de encerramento) + lista pro resto até o 10º.
+const rankingOpenBtnEl = document.getElementById("ranking-open-btn");
+const rankingOverlayEl = document.getElementById("ranking-overlay");
+const rankingCloseEl = document.getElementById("ranking-close");
+const rankingPodiumEl = document.getElementById("ranking-podium");
+const rankingListEl = document.getElementById("ranking-list");
+const rankingEmptyEl = document.getElementById("ranking-empty");
+
+function rankingPodiumCardHtml(row) {
+  const avatar = row.hostAvatar
+    ? `<img class="recap-podium-thumb ranking-podium-avatar" src="${escapeHtml(row.hostAvatar)}" alt="" />`
+    : `<div class="recap-podium-thumb recap-podium-thumb-placeholder ranking-podium-avatar">${escapeHtml((row.host[0] || "?").toUpperCase())}</div>`;
+  return `
+    <div class="recap-podium-card rank-${row.rank}">
+      <span class="recap-podium-rank">${rankBadgeHtml(row.rank)}</span>
+      ${avatar}
+      <p class="recap-podium-name">${escapeHtml(row.host)}</p>
+      <p class="recap-podium-total">${formatBRL(row.totalRaised)}</p>
+    </div>
+  `;
+}
+
+function rankingRowHtml(row) {
+  const avatar = row.hostAvatar
+    ? `<img class="ranking-row-avatar" src="${escapeHtml(row.hostAvatar)}" alt="" loading="lazy" />`
+    : `<span class="ranking-row-avatar ranking-row-avatar-placeholder">${escapeHtml((row.host[0] || "?").toUpperCase())}</span>`;
+  return `
+    <div class="ranking-row">
+      <span class="ranking-row-rank">${String(row.rank).padStart(2, "0")}</span>
+      ${avatar}
+      <span class="ranking-row-host">${escapeHtml(row.host)}</span>
+      <span class="ranking-row-total">${formatBRL(row.totalRaised)}</span>
+    </div>
+  `;
+}
+
+async function openRankingOverlay() {
+  rankingOverlayEl.hidden = false;
+  let ranking = [];
+  try {
+    const data = await fetch("/api/ranking").then((r) => r.json());
+    ranking = data.ranking || [];
+  } catch (err) {
+    console.error("Erro ao carregar ranking:", err.message);
+  }
+
+  if (ranking.length === 0) {
+    rankingEmptyEl.hidden = false;
+    rankingPodiumEl.innerHTML = "";
+    rankingListEl.innerHTML = "";
+    return;
+  }
+  rankingEmptyEl.hidden = true;
+  rankingPodiumEl.innerHTML = ranking.slice(0, 3).map(rankingPodiumCardHtml).join("");
+  rankingListEl.innerHTML = ranking.slice(3, 10).map(rankingRowHtml).join("");
+}
+
+function closeRankingOverlay() {
+  rankingOverlayEl.hidden = true;
+}
+
+rankingOpenBtnEl.addEventListener("click", openRankingOverlay);
+rankingCloseEl.addEventListener("click", closeRankingOverlay);
+rankingOverlayEl.addEventListener("click", (e) => { if (e.target === rankingOverlayEl) closeRankingOverlay(); });
+document.addEventListener("keydown", (e) => { if (e.key === "Escape" && !rankingOverlayEl.hidden) closeRankingOverlay(); });
+
 // Troca rápida de tema direto do board (mesma rota do seletor no painel
 // avançado) — só bolinhas, sem rótulo, pra não competir por espaço com os
 // outros controles da barra.
@@ -729,10 +836,15 @@ socket.on("update", ({ leaderboard, lastEvent }) => {
     hostAvatarEl.removeAttribute("src");
   }
   if (leaderboard.host) {
-    hostTwitchBadgeEl.href = `https://twitch.tv/${encodeURIComponent(leaderboard.host.trim())}`;
+    const twitchUrl = `https://twitch.tv/${encodeURIComponent(leaderboard.host.trim())}`;
+    hostTwitchBadgeEl.href = twitchUrl;
     hostTwitchBadgeEl.hidden = false;
+    hostTwitchLinkEl.href = twitchUrl;
+    hostTwitchLinkEl.textContent = `twitch.tv/${leaderboard.host.trim()}`;
+    hostTwitchLinkEl.hidden = false;
   } else {
     hostTwitchBadgeEl.hidden = true;
+    hostTwitchLinkEl.hidden = true;
   }
 
   const wasOpen = isOpenState;
@@ -764,7 +876,17 @@ socket.on("update", ({ leaderboard, lastEvent }) => {
   const flashKey = lastEvent && lastEvent.game ? lastEvent.game.key : null;
   renderLots(leaderboard.items, flashKey, lastEvent ? lastEvent.type : null, leaderboard.lastSabotagedKey);
   renderDonors(leaderboard.donors || []);
-  pushHistory(lastEvent);
+  if (lastEvent && lastEvent.type === "reset") {
+    // resetAll() apaga os events no servidor, mas o historyItems local (só
+    // preenchido 1x no connect + acumulado via pushHistory) não sabia disso
+    // e continuava mostrando doações de antes do zerar. pushHistory() por si
+    // só não resolvia: "reset" não bate em nenhum case de historyLabel(),
+    // então virava um no-op em vez de limpar.
+    historyItems = [];
+    renderHistory();
+  } else {
+    pushHistory(lastEvent);
+  }
 
   if (flashKey && lastEvent && (lastEvent.type === "add" || lastEvent.type === "remove") && (lastEvent.amount || 0) > 100) {
     triggerBigWinCelebration(flashKey, lastEvent.type);

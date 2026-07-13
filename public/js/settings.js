@@ -255,9 +255,10 @@ function renderSettingsHistory(history) {
   body.innerHTML = history.map((h, index) => {
     const when = h.archivedAt ? new Date(h.archivedAt).toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" }) : "—";
     const champion = h.topGames && h.topGames[0] ? h.topGames[0].name : "—";
+    const inProgressTag = h.openRound ? ` <span class="badge">em andamento</span>` : "";
     return `
       <tr>
-        <td>${when}</td>
+        <td>${when}${inProgressTag}</td>
         <td>${formatBRL(h.totalRaised || 0)}</td>
         <td>${h.totalGames || 0}</td>
         <td>${escapeHtml(champion)}</td>

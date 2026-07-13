@@ -66,6 +66,16 @@ function captureAuctionDuration(store) {
   }
 }
 
+// Chamada nos dois pontos onde o leilão fecha (toggle manual e auto-close
+// por inatividade) — pedido do cliente: encerrar já deve contar no
+// histórico/ranking, sem precisar zerar depois. Ver openRound em
+// src/db.js#archiveAuction pra como isso evita contar o mesmo dinheiro
+// duas vezes se reabrir e fechar de novo sem zerar.
+function archiveOpenRoundSnapshot(store) {
+  const recap = buildRecap(store);
+  if (recap.totalGames > 0) store.archiveAuction(recap, { openRound: true });
+}
+
 // Marca "agora" como o último contato de verdade do pix.gg nessa URL de
 // webhook (GET de ping ou POST com assinatura válida) — usado só pra
 // detectar desvinculação, ver WEBHOOK_STALE_MS e isWebhookStale.
@@ -215,20 +225,32 @@ function serializeLeaderboard(store) {
 function buildRecap(store) {
   const rows = store.getLeaderboard();
   const donorCounts = store.getDonorCountByGame();
-  const topGames = rows.slice(0, 3).map((row, index) => ({
-    rank: index + 1,
-    key: row.key,
-    name: row.name,
-    total: centsToNumber(row.total_cents),
-    image: row.image_url || null,
-    donorCount: donorCounts[row.key] || 0,
-  }));
+  const topDonorByGame = store.getTopDonorByGame();
+  const topGames = rows.slice(0, 3).map((row, index) => {
+    const topDonor = topDonorByGame[row.key];
+    return {
+      rank: index + 1,
+      key: row.key,
+      name: row.name,
+      total: centsToNumber(row.total_cents),
+      image: row.image_url || null,
+      donorCount: donorCounts[row.key] || 0,
+      topDonor: topDonor
+        ? { username: topDonor.username, total: centsToNumber(topDonor.total_cents), avatar: getDonorAvatar(topDonor.username) }
+        : null,
+    };
+  });
 
   const topDonors = store.getTopDonors(5).map((d, index) => ({
     rank: index + 1,
     username: d.username,
     total: centsToNumber(d.total_cents),
   }));
+
+  const biggest = store.getBiggestDonation();
+  const biggestDonation = biggest
+    ? { username: biggest.username, amount: centsToNumber(biggest.amount_cents), gameName: biggest.game_name }
+    : null;
 
   const durationMs = Number(store.getState("lastAuctionDurationMs", 0)) || null;
 
@@ -241,6 +263,7 @@ function buildRecap(store) {
     durationMs,
     topGames,
     topDonors,
+    biggestDonation,
   };
 }
 
@@ -385,22 +408,41 @@ app.post("/api/leiloes", async (req, res) => {
 });
 
 // Ranking público de streamers por total arrecadado — histórico completo
-// (soma o round aberto atual com todos os rounds já arquivados via
-// resetAll/archiveAuction, ver src/db.js). Cross-tenant de propósito: é a
-// única rota que olha todos os leilões de uma vez, pra mostrar na home.
+// (soma todos os rounds já arquivados via archiveAuction, ver src/db.js).
+// Cross-tenant de propósito: é a única rota que olha todos os leilões de
+// uma vez, pra mostrar no board.
+//
+// Não dá pra só somar archivedTotal + totalRaised ao vivo direto: desde que
+// encerrar passou a arquivar sozinho (openRound: true, ver archiveAuction),
+// o snapshot mais recente já pode refletir boa parte (ou tudo) do total ao
+// vivo atual, e somar os dois contaria esse pedaço 2x. Também não dá pra só
+// ignorar o total ao vivo quando fechado (tentativa anterior, com bug real):
+// leilões fechados de antes dessa feature existir (sem nenhum pastAuctions
+// ainda) sumiam do ranking inteiro, mesmo já tendo arrecadado de verdade.
+//
+// A conta certa: se o snapshot mais recente é um round "aberto" (ainda não
+// finalizado por um zerar), ele já é a MELHOR estimativa do que já foi
+// contado dali — só soma a diferença (getTotalRaised ao vivo menos esse
+// snapshot), que é o que rolou de novo desde então (ex: reabriu e voltou a
+// receber doação sem fechar de novo ainda). Sem esse snapshot (nunca
+// arquivado, ou já finalizado por um zerar — round novo começando do zero),
+// o total ao vivo inteiro ainda não foi contado em lugar nenhum.
 app.get("/api/ranking", (req, res) => {
   const rows = registry
     .listLeilaoIds()
     .map((id) => {
       const meta = registry.getLeilaoMeta(id) || {};
       const store = getStore(id);
-      const archivedTotal = store.getPastAuctions().reduce((sum, a) => sum + (a.totalRaised || 0), 0);
-      const currentTotal = centsToNumber(store.getTotalRaised());
+      const pastAuctions = store.getPastAuctions();
+      const archivedTotal = pastAuctions.reduce((sum, a) => sum + (a.totalRaised || 0), 0);
+      const alreadyReflected = pastAuctions[0] && pastAuctions[0].openRound ? (pastAuctions[0].totalRaised || 0) : 0;
+      const liveTotal = centsToNumber(store.getTotalRaised());
+      const totalRaised = archivedTotal + Math.max(0, liveTotal - alreadyReflected);
       return {
         id,
         host: store.getState("host", meta.host || ""),
         hostAvatar: store.getState("hostAvatar", null),
-        totalRaised: currentTotal + archivedTotal,
+        totalRaised,
       };
     })
     .filter((row) => row.host && row.totalRaised > 0)
@@ -583,7 +625,13 @@ app.post("/api/l/:id/admin/manual-entry", loadLeilao, requireLeilaoAdmin, async 
     game: { key: game.key, name: game.name, total: centsToNumber(game.total_cents) },
   });
 
-  touchActivity(store, true);
+  // touchActivity SEM reopen=true: um lançamento manual (ex: doação recebida
+  // fora do app, ou teste do sistema) não deve reabrir um leilão encerrado
+  // sozinho — mesma regra do webhook real (ver isOpen check acima em
+  // processDonationMessage), documentada no CLAUDE.md ("não reabre sozinho
+  // com uma doação nova"). Antes usava reopen=true e reabria sem avisar,
+  // isso que o cliente percebeu como "o timer tá com um problema".
+  touchActivity(store);
   maybeFetchGameImage(leilaoId, store, game.key, game.name, needsImage);
   res.json({ ok: true, game });
 });
@@ -642,7 +690,7 @@ app.post("/api/l/:id/admin/reset", loadLeilao, requireLeilaoAdmin, (req, res) =>
   // de verdade, pra não poluir o histórico com resets de leilão vazio
   // (testes, ou zerar duas vezes seguidas sem nada rolar no meio).
   const recap = buildRecap(store);
-  if (recap.totalGames > 0) store.archiveAuction(recap);
+  if (recap.totalGames > 0) store.archiveAuction(recap, { openRound: false });
   store.resetAll();
   broadcastUpdate(leilaoId, store, { type: "reset" });
   res.json({ ok: true });
@@ -656,7 +704,8 @@ app.post("/api/l/:id/admin/toggle-open", loadLeilao, requireLeilaoAdmin, (req, r
     touchActivity(store, true); // reabrir dá um fôlego novo (e reseta a referência do aviso de webhook, ver isWebhookStale)
   } else {
     store.setState("paused", "false"); // encerrar limpa qualquer pausa pendente
-    captureAuctionDuration(store);
+    captureAuctionDuration(store); // precisa rodar antes do snapshot: buildRecap lê lastAuctionDurationMs
+    archiveOpenRoundSnapshot(store);
   }
   broadcastUpdate(leilaoId, store, { type: "toggle-open", open: !!open });
   res.json({ ok: true, open: !!open });
@@ -815,6 +864,7 @@ setInterval(() => {
     if (Date.now() - lastActivityAt >= getAutoCloseMs(store)) {
       store.setState("open", "false");
       captureAuctionDuration(store);
+      archiveOpenRoundSnapshot(store);
       broadcastUpdate(leilaoId, store, { type: "auto-closed" });
     }
   }

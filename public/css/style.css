@@ -315,6 +315,32 @@ body.board-body.has-bg-image {
 
 .presenter-toggle:hover { color: var(--text); border-color: var(--accent-soft); }
 
+/* Botão de destaque, visível pra qualquer um vendo o board (não só o
+   apresentador) — pedido explícito do cliente: "alguma parte de destaque"
+   do board, diferente do resto dos controles (que são cinza/discretos). */
+.ranking-open-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  font-family: var(--font-body);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--accent-text);
+  background: var(--accent-bg);
+  border: 1px solid var(--accent-soft);
+  border-radius: 999px;
+  padding: 6px 13px;
+  cursor: pointer;
+  transition: transform 0.15s ease, box-shadow 0.15s ease, background 0.15s ease;
+}
+.ranking-open-btn:hover {
+  background: var(--accent);
+  color: var(--accent-ink);
+  transform: translateY(-1px);
+  box-shadow: 0 6px 16px -8px var(--accent-glow);
+}
+.ranking-open-btn .icon { width: 15px; height: 15px; }
+
 .presenter-toggle-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--accent); display: none; }
 .presenter-toggle-x { display: none; font-size: 10px; opacity: 0.75; margin-left: 1px; }
 
@@ -824,6 +850,36 @@ body.board-body.has-bg-image {
   color: var(--muted);
 }
 
+/* Chamada de texto extra além do pódio (que já destaca visualmente o
+   campeão por posição/tamanho) — pedido explícito do cliente pra nomear o
+   campeão e o recorde de doação por escrito, não só implícito no ranking. */
+.recap-highlight {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 22px;
+  padding: 14px 16px;
+  background: var(--accent-bg);
+  border: 1px solid var(--accent-soft);
+  border-radius: 10px;
+}
+.recap-highlight[hidden] { display: none; }
+
+.recap-highlight-line {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--text);
+}
+.recap-highlight-line:empty { display: none; }
+.recap-highlight-line strong { color: var(--accent-text); }
+
+.recap-podium-top-donor {
+  margin: 2px 0 0;
+  font-size: 10.5px;
+  color: var(--muted);
+}
+
 .recap-section-label {
   margin: 0 0 12px;
   font-family: var(--font-mono);
@@ -860,7 +916,7 @@ body.board-body.has-bg-image {
 }
 
 .recap-podium-rank { color: var(--muted); }
-.recap-podium-rank .medal-icon { width: 20px; height: 20px; }
+.recap-podium-rank .medal-icon { width: 27px; height: 27px; }
 .recap-podium-card.rank-1 .recap-podium-rank { color: var(--accent-text); }
 .recap-podium-card.rank-2 .recap-podium-rank { color: var(--silver); }
 .recap-podium-card.rank-3 .recap-podium-rank { color: var(--bronze); }
@@ -909,6 +965,102 @@ body.board-body.has-bg-image {
   margin: 0;
   font-size: 11px;
   color: var(--muted);
+}
+
+/* ---- ranking global de streamers (botão de destaque no topbar) ---- */
+
+.ranking-modal {
+  position: relative;
+  width: 100%;
+  max-width: 560px;
+  max-height: 86vh;
+  display: flex;
+  flex-direction: column;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  box-shadow: 0 30px 70px -28px rgba(0, 0, 0, 0.75);
+  animation: modal-in 0.2s var(--ease);
+  overflow: hidden;
+}
+
+.ranking-modal-head {
+  flex-shrink: 0;
+  padding: 26px 56px 16px 26px;
+  border-bottom: 1px solid var(--border);
+}
+
+.ranking-modal-hint { margin: 8px 0 0; font-size: 12.5px; line-height: 1.5; color: var(--muted); }
+
+.ranking-modal-body { overflow-y: auto; padding: 22px 26px 26px; }
+
+/* Reaproveita o visual do pódio do recap de encerramento (mesmo padrão
+   "bonito" já existente no site) — só troca a capa do jogo por avatar
+   redondo do streamer. */
+.ranking-podium-avatar { border-radius: 50%; }
+
+.ranking-list { display: flex; flex-direction: column; gap: 6px; }
+
+.ranking-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 9px 4px;
+  border-top: 1px solid var(--border);
+}
+.ranking-list .ranking-row:first-child { border-top: none; }
+
+.ranking-row-rank {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--muted);
+  width: 20px;
+  flex-shrink: 0;
+  text-align: center;
+}
+
+.ranking-row-avatar {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  object-fit: cover;
+  background: var(--surface-2);
+  flex-shrink: 0;
+}
+
+.ranking-row-avatar-placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-display);
+  font-style: italic;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.ranking-row-host {
+  flex: 1;
+  min-width: 0;
+  font-size: 13.5px;
+  font-weight: 600;
+  color: var(--text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ranking-row-total {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--accent-text);
+  font-variant-numeric: tabular-nums;
+  flex-shrink: 0;
+}
+
+@media (max-width: 640px) {
+  .ranking-modal { max-width: none; max-height: none; height: 100%; border-radius: 0; }
 }
 
 .recap-donor-list { display: flex; flex-direction: column; gap: 2px; }
@@ -1030,11 +1182,25 @@ body.board-body.has-bg-image {
 .history-card:hover { border-color: var(--accent); transform: translateY(-2px); }
 
 .history-card-when {
+  display: flex;
+  align-items: center;
+  gap: 6px;
   font-family: var(--font-mono);
   font-size: 10px;
   letter-spacing: 0.05em;
   text-transform: uppercase;
   color: var(--muted);
+}
+
+/* Round arquivado sozinho ao encerrar (openRound: true, ver archiveAuction
+   em src/db.js), ainda não finalizado por um "zerar leilão" — os números
+   ainda podem mudar se reabrir e continuar. */
+.history-card-inprogress {
+  background: var(--accent-bg);
+  color: var(--accent-text);
+  padding: 2px 7px;
+  border-radius: 999px;
+  font-weight: 600;
 }
 
 .history-card-total {
@@ -1125,6 +1291,31 @@ body.board-body.has-bg-image {
   font-size: 10.5px;
 }
 
+/* Ciclo recentes -> maior valor -> menor valor -> recentes (ver
+   cycleHistorySort em app.js) — texto do estado atual ao lado do ícone, já
+   que "só uma setinha" sozinha não deixa claro qual das 3 ordens tá ativa. */
+.history-sort-btn {
+  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: none;
+  border: none;
+  padding: 2px 4px;
+  color: var(--muted);
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  font-weight: 600;
+  cursor: pointer;
+  border-radius: 4px;
+  transition: color 0.15s ease, background 0.15s ease;
+}
+.history-sort-btn:hover { color: var(--text); background: var(--surface-2); }
+.history-sort-btn .icon { width: 13px; height: 13px; }
+.history-sort-btn.active { color: var(--accent-text); }
+
 .panel-hint {
   margin: -6px 0 12px;
   font-size: 12px;
@@ -1184,6 +1375,24 @@ body.board-body.has-bg-image {
 }
 
 .host-avatar[hidden] { display: none; }
+
+/* Link de texto pro canal, além do selo/ícone que já fica em cima do
+   avatar — pedido explícito do cliente, o ícone sozinho já funcionava bem
+   mas ele queria o link visível por escrito também. */
+.host-twitch-link {
+  display: block;
+  text-align: center;
+  margin-top: 8px;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--accent-text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.host-twitch-link:hover { color: var(--accent); text-decoration: underline; }
+.host-twitch-link[hidden] { display: none; }
+.presenter-mode.host-editing .host-twitch-link { display: none; }
 
 /* Selo da Twitch, cantinho inferior direito do avatar — cor da marca só
    aqui, num elemento pequeno e reconhecível, não vira paleta do site. */
@@ -1337,10 +1546,10 @@ body.board-body.has-bg-image {
   font-size: 11px;
   font-weight: 600;
   color: var(--muted);
-  width: 18px;
+  width: 24px;
   flex-shrink: 0;
 }
-.donor-rank .medal-icon { width: 14px; height: 14px; }
+.donor-rank .medal-icon { width: 20px; height: 20px; }
 
 .donor-row.rank-1 .donor-rank { color: var(--accent-text); }
 .donor-row.rank-2 .donor-rank { color: var(--silver); }
@@ -1595,11 +1804,11 @@ body.board-body.has-bg-image {
   font-size: 12px;
   font-weight: 600;
   color: var(--muted);
-  width: 24px;
+  width: 30px;
   flex-shrink: 0;
 }
 
-.lot-rank .medal-icon { width: 17px; height: 17px; }
+.lot-rank .medal-icon { width: 25px; height: 25px; }
 
 .lot-card.rank-1 .lot-rank { color: var(--accent-text); }
 .lot-card.rank-2 .lot-rank { color: var(--silver); }
@@ -2046,7 +2255,7 @@ body.board-body.has-bg-image {
      zero pela miniatura + valor + botão "editar" competindo no mesmo eixo. */
   .lot-card-content { gap: 10px; padding: 12px 14px; }
   .lot-thumb, .lot-thumb-placeholder { width: 46px; height: 46px; }
-  .lot-rank { width: 20px; }
+  .lot-rank { width: 26px; }
   .lot-meta { gap: 6px; }
   .lot-edit button { padding: 2px 5px; font-size: 9.5px; }
 }

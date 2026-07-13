@@ -24,6 +24,10 @@
           <span class="dot"></span>
           <span id="status-text">conectando…</span>
         </span>
+        <button class="ranking-open-btn" id="ranking-open-btn" type="button" title="Ranking de streamers do site">
+          <svg class="icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 4h8v3.5a4 4 0 0 1-8 0V4z"/><path d="M6 5H3.5A1.5 1.5 0 0 0 2 6.5v0A2.5 2.5 0 0 0 4.5 9H6M14 5h2.5A1.5 1.5 0 0 1 18 6.5v0A2.5 2.5 0 0 1 15.5 9H14"/><path d="M10 11.5V14"/><path d="M7 16.5h6"/><path d="M8 14h4l.6 2.5H7.4L8 14z"/></svg>
+          Ranking
+        </button>
         <button class="presenter-toggle" id="presenter-toggle" type="button">
           <span class="presenter-toggle-dot" aria-hidden="true"></span>
           <span class="presenter-toggle-label">modo apresentador</span>
@@ -87,6 +91,7 @@
                 <svg class="icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M13 3.5l3.5 3.5L6.5 17 2.5 17.5 3 13.5 13 3.5z"/><path d="M11.3 5.2l3.5 3.5"/></svg>
               </button>
             </div>
+            <a class="host-twitch-link" id="host-twitch-link" href="#" target="_blank" rel="noopener" hidden></a>
             <div class="host-edit">
               <input type="text" id="p-host-input" placeholder="Nome do streamer" />
               <button class="host-edit-confirm" id="p-host-save" aria-label="Salvar nome" title="Salvar">
@@ -167,7 +172,13 @@
         </section>
 
         <section class="panel history-panel">
-          <p class="panel-label">histórico</p>
+          <p class="panel-label">
+            histórico
+            <button class="history-sort-btn" id="history-sort-btn" type="button" title="Ordenar por valor">
+              <svg class="icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 4v12M6 16l-3-3M6 16l3-3"/><path d="M14 16V4M14 4l-3 3M14 4l3 3"/></svg>
+              <span id="history-sort-label">recentes</span>
+            </button>
+          </p>
           <ul class="history-list" id="history-list">
             <li class="empty-state" id="history-empty">Ainda não teve nenhum lance.</li>
           </ul>
@@ -216,6 +227,11 @@
           <span class="recap-stat-value" id="recap-games">0</span>
           <span class="recap-stat-label">lotes disputados</span>
         </div>
+      </div>
+
+      <div class="recap-highlight" id="recap-highlight" hidden>
+        <p class="recap-highlight-line" id="recap-champion-line"></p>
+        <p class="recap-highlight-line" id="recap-record-line"></p>
       </div>
 
       <p class="recap-section-label">TOP 3</p>
@@ -288,6 +304,22 @@
       <div class="modal-actions">
         <button class="btn-mini" id="lot-modal-cancel" type="button">Cancelar</button>
         <button class="btn-mini primary" id="lot-modal-submit" type="button">Lançar</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal-overlay ranking-overlay" id="ranking-overlay" hidden>
+    <div class="ranking-modal" role="dialog" aria-modal="true" aria-labelledby="ranking-modal-title">
+      <button class="modal-close" id="ranking-close" type="button" aria-label="Fechar">✕</button>
+      <div class="ranking-modal-head">
+        <p class="modal-eyebrow">ranking do site</p>
+        <h2 class="modal-title" id="ranking-modal-title">Quem mais arrecadou</h2>
+        <p class="ranking-modal-hint">Soma tudo que cada streamer já levantou, em todos os leilões que já rodou por aqui.</p>
+      </div>
+      <div class="ranking-modal-body">
+        <div class="recap-podium ranking-podium" id="ranking-podium"></div>
+        <div class="ranking-list" id="ranking-list"></div>
+        <p class="empty-state" id="ranking-empty" hidden>Ninguém arrecadou nada ainda por aqui.</p>
       </div>
     </div>
   </div>
