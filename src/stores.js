@@ -26,4 +26,20 @@ function getStore(leilaoId) {
   return cache.get(leilaoId);
 }
 
-module.exports = { getStore, storePath, DATA_DIR };
+// Apaga o arquivo de dados de um leilão e tira do cache em memória — usado
+// só pela rota de super-admin (ver server.js) pra remover leilão de teste
+// de vez. Sem isso, um getStore(id) chamado logo depois recriaria o
+// arquivo do zero (createStore lê um arquivo inexistente como dados
+// vazios), então a ordem importa: sempre apagar o registro (registry.js)
+// ANTES de chamar isso, pra nenhuma rota rode "getStore" pro id no meio
+// do caminho.
+function deleteStore(leilaoId) {
+  cache.delete(leilaoId);
+  try {
+    fs.unlinkSync(storePath(leilaoId));
+  } catch (err) {
+    if (err.code !== "ENOENT") throw err;
+  }
+}
+
+module.exports = { getStore, deleteStore, storePath, DATA_DIR };

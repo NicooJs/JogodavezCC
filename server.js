@@ -8,7 +8,7 @@ const multer = require("multer");
 
 const registry = require("./src/registry");
 const pixggApi = require("./src/pixggApi");
-const { getStore, DATA_DIR } = require("./src/stores");
+const { getStore, deleteStore, DATA_DIR } = require("./src/stores");
 const { verifyPassword } = require("./src/passwords");
 const { parseMessage, normalizeKey } = require("./src/parser");
 const livepix = require("./src/livepixClient");
@@ -510,6 +510,27 @@ app.get("/api/ranking", (req, res) => {
     .slice(0, 50)
     .map((row, index) => ({ ...row, rank: index + 1 }));
   res.json({ ranking: rows });
+});
+
+// Apaga um leilão inteiro (registro + arquivo de dados) — moderação/limpeza
+// de leilões de teste, sem precisar saber a senha de apresentador de cada
+// um. Diferente da senha por leilão: exige um segredo do DONO do site
+// (SUPER_ADMIN_SECRET no .env). Sem essa variável configurada, a rota
+// nega sempre — "em branco = pula validação" (como o PIXGG_WEBHOOK_SECRET
+// faz) seria perigoso demais pra uma ação destrutiva e irreversível.
+app.delete("/api/admin/leiloes/:id", (req, res) => {
+  const secret = process.env.SUPER_ADMIN_SECRET || "";
+  const supplied = req.header("x-super-admin-secret") || "";
+  if (!secret || supplied !== secret) {
+    return res.status(401).json({ error: "Segredo de super-admin inválido ou não configurado" });
+  }
+  const { id } = req.params;
+  if (!registry.leilaoExists(id)) {
+    return res.status(404).json({ error: "Leilão não encontrado" });
+  }
+  registry.deleteLeilao(id); // primeiro: nenhuma rota nova pode mais achar esse id
+  deleteStore(id); // depois: tira do cache e apaga o arquivo
+  res.json({ ok: true, id });
 });
 
 // ---------- board e painel por leilão ----------

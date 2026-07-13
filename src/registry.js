@@ -107,9 +107,21 @@ function listLeilaoIds() {
   return Object.keys(registry.leiloes);
 }
 
+// Apaga um leilão do registro (some da listagem, do ranking, de qualquer
+// rota — loadLeilao já 404 sozinho pra id que não existe mais aqui). Não
+// apaga o arquivo de dados dele nem o cache em memória — isso é
+// responsabilidade de quem chama (ver deleteStore em stores.js e a rota
+// de super-admin em server.js), pra esse módulo não precisar saber de
+// filesystem além do próprio _registry.json.
+function deleteLeilao(id) {
+  delete registry.leiloes[id];
+  save();
+}
+
 module.exports = {
   createLeilao,
   leilaoExists,
   getLeilaoMeta,
   listLeilaoIds,
+  deleteLeilao,
 };
