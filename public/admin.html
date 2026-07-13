@@ -12,12 +12,12 @@
 <body>
   <div class="arena" id="login-screen">
     <header class="top"><h1>Painel do Leilão</h1></header>
-    <div class="panel">
+    <form class="panel" id="login-form" autocomplete="off">
       <label>Senha de administrador</label>
-      <input type="password" id="password" placeholder="••••••••" />
-      <button class="btn primary" id="login-btn">Entrar</button>
+      <input type="password" id="password" placeholder="••••••••" autocomplete="current-password" />
+      <button class="btn primary" id="login-btn" type="submit">Entrar</button>
       <p class="error" id="login-error"></p>
-    </div>
+    </form>
   </div>
 
   <div class="arena" id="admin-screen" style="display:none;">
@@ -33,7 +33,7 @@
       <div class="panel-row">
         <div>
           <label>Título exibido no placar</label>
-          <input type="text" id="title-input" />
+          <input type="text" id="title-input" autocomplete="off" />
         </div>
         <button class="btn" id="save-title">Salvar título</button>
       </div>
@@ -79,13 +79,13 @@
       <h2 class="panel-title">Lançamento manual</h2>
       <p class="hint">Use se receber um pix fora do app, ou pra testar o sistema.</p>
       <div class="panel-row wrap">
-        <input type="text" id="manual-name" placeholder="Nome do jogo" />
-        <input type="number" id="manual-amount" placeholder="Valor (R$)" step="0.01" />
+        <input type="text" id="manual-name" placeholder="Nome do jogo" autocomplete="off" />
+        <input type="number" id="manual-amount" placeholder="Valor (R$)" step="0.01" autocomplete="off" />
         <select id="manual-action">
           <option value="add">Apoiar (+)</option>
           <option value="remove">Sabotar (-)</option>
         </select>
-        <input type="text" id="manual-username" placeholder="Nome do doador (opcional)" />
+        <input type="text" id="manual-username" placeholder="Nome do doador (opcional)" autocomplete="off" />
         <button class="btn primary" id="manual-submit">Lançar</button>
       </div>
     </div>
@@ -118,11 +118,11 @@
         regenerar o Client Secret no pix.gg, o que limpa a URL do webhook
         de lá). Não recria o leilão, só refaz o vínculo.
       </p>
-      <div class="panel-row wrap">
+      <form class="panel-row wrap" id="relink-form" autocomplete="off">
         <input type="text" id="relink-client-id" placeholder="Client ID (pix.gg)" autocomplete="off" />
-        <input type="password" id="relink-client-secret" placeholder="Client Secret (pix.gg)" autocomplete="off" />
-        <button class="btn" id="relink-submit">Revincular</button>
-      </div>
+        <input type="password" id="relink-client-secret" placeholder="Client Secret (pix.gg)" autocomplete="new-password" />
+        <button class="btn" id="relink-submit" type="submit">Revincular</button>
+      </form>
       <p class="hint" id="relink-result"></p>
     </div>
 

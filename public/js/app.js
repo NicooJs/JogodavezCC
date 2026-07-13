@@ -786,6 +786,7 @@ function setPresenterMode(active) {
 // mascara o texto digitado, então a senha ficava visível em texto puro na
 // tela (problema real: a tela do streamer é capturada ao vivo no OBS).
 const presenterLoginModal = document.getElementById("presenter-login-modal");
+const presenterLoginForm = document.getElementById("presenter-login-form");
 const presenterLoginPassword = document.getElementById("presenter-login-password");
 const presenterLoginError = document.getElementById("presenter-login-error");
 const presenterLoginSubmit = document.getElementById("presenter-login-submit");
@@ -836,11 +837,18 @@ presenterToggleEl.addEventListener("click", () => {
   openPresenterLogin();
 });
 
-presenterLoginSubmit.addEventListener("click", submitPresenterLogin);
+// Campo de senha real dentro de um <form> de verdade (não filho solto de
+// uma div) — sem isso o Chrome, ao ver um input de senha sem nenhum campo
+// de usuário por perto, buscava o texto mais recente digitado em QUALQUER
+// lugar da página (ex: o nome de um jogo pesquisado) e oferecia salvar como
+// se fosse login. O <form> dá o limite que o Chrome respeita.
+presenterLoginForm.addEventListener("submit", (e) => {
+  e.preventDefault();
+  submitPresenterLogin();
+});
 presenterLoginCancel.addEventListener("click", closePresenterLogin);
 presenterLoginClose.addEventListener("click", closePresenterLogin);
 presenterLoginModal.addEventListener("click", (e) => { if (e.target === presenterLoginModal) closePresenterLogin(); });
-presenterLoginPassword.addEventListener("keydown", (e) => { if (e.key === "Enter") submitPresenterLogin(); });
 document.addEventListener("keydown", (e) => { if (e.key === "Escape" && !presenterLoginModal.hidden) closePresenterLogin(); });
 
 hostEditBtn.addEventListener("click", () => {

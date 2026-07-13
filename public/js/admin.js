@@ -3,6 +3,7 @@ const LEILAO_ID = location.pathname.match(/^\/l\/([a-z0-9_-]+)\/admin/i)?.[1] ||
 
 const loginScreen = document.getElementById("login-screen");
 const adminScreen = document.getElementById("admin-screen");
+const loginForm = document.getElementById("login-form");
 const passwordInput = document.getElementById("password");
 const loginBtn = document.getElementById("login-btn");
 const loginError = document.getElementById("login-error");
@@ -41,7 +42,11 @@ async function tryLogin(password) {
 }
 
 if (LEILAO_ID) {
-  loginBtn.addEventListener("click", async () => {
+  // <form> de verdade (não só um <div>) — sem isso o Chrome, ao ver um
+  // input de senha sem campo de usuário por perto, tentava casar o texto
+  // mais recente digitado em qualquer lugar da página como se fosse login.
+  loginForm.addEventListener("submit", async (e) => {
+    e.preventDefault();
     const password = passwordInput.value;
     loginError.textContent = "";
     const ok = await tryLogin(password);
@@ -51,10 +56,6 @@ if (LEILAO_ID) {
     }
     sessionStorage.setItem(`admin:${LEILAO_ID}`, password);
     showAdmin();
-  });
-
-  passwordInput.addEventListener("keydown", (e) => {
-    if (e.key === "Enter") loginBtn.click();
   });
 
   if (getPassword()) {
@@ -153,7 +154,8 @@ function initAdmin() {
 
   loadHistory();
 
-  document.getElementById("relink-submit").addEventListener("click", async () => {
+  document.getElementById("relink-form").addEventListener("submit", async (e) => {
+    e.preventDefault();
     const clientId = document.getElementById("relink-client-id").value.trim();
     const clientSecret = document.getElementById("relink-client-secret").value.trim();
     const resultEl = document.getElementById("relink-result");
@@ -192,6 +194,10 @@ function renderWebhookState(stale, signatureIssue) {
 }
 
 function renderThemePicker(theme) {
+  // Antes só destacava a bolinha escolhida — a página do painel em si nunca
+  // refletia o tema, então parecia que trocar não fazia nada (o mecanismo
+  // de verdade funciona, é só o board que aplicava visualmente até aqui).
+  document.documentElement.dataset.theme = theme || "nebulosa";
   document.querySelectorAll(".theme-swatch").forEach((btn) => {
     btn.classList.toggle("active", btn.dataset.theme === (theme || "nebulosa"));
   });
