@@ -8,6 +8,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Abril+Fatface&family=Nunito:ital,wght@0,500;0,600;0,700;1,500;1,600;1,700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/css/style.css" />
+<link rel="stylesheet" href="/css/settings.css" />
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/odometer.js/0.4.8/themes/odometer-theme-minimal.min.css" />
 </head>
 <body class="board-body">
@@ -56,16 +57,16 @@
         <button class="theme-dot theme-dot-safira" data-theme="safira" type="button" title="Tema Safira"></button>
         <button class="theme-dot theme-dot-grafite" data-theme="grafite" type="button" title="Tema Grafite"></button>
       </div>
-      <a class="presenter-bar-link presenter-bar-icon-link" href="admin" id="admin-link" target="_blank" title="Painel avançado" aria-label="Painel avançado">
+      <button class="presenter-bar-link presenter-bar-icon-link" id="admin-link" type="button" title="Configurações" aria-label="Configurações">
         <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg>
-      </a>
+      </button>
     </section>
 
     <section class="webhook-warning" id="webhook-warning" hidden>
       <svg class="icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 3.5l7.5 13h-15l7.5-13z"/><path d="M10 8.5v3.2"/><circle cx="10" cy="14.2" r="0.9" fill="currentColor" stroke="none"/></svg>
       <span>
         <span id="webhook-warning-text">Sem contato do pix.gg há um tempo — o webhook pode estar desvinculado e as doações podem não estar chegando.</span>
-        <a href="admin" id="webhook-warning-link" target="_blank">Revincular no painel avançado →</a>
+        <button type="button" id="webhook-warning-link">Revincular nas configurações →</button>
       </span>
     </section>
 
@@ -291,8 +292,150 @@
     </div>
   </div>
 
+  <!-- Configurações — antes era a página separada /l/:id/admin (ver
+       admin.html, que continua existindo por compatibilidade mas não é
+       mais linkada daqui). Reaproveita a MESMA sessão de apresentador (ver
+       settings.js), então se já tiver feito login no modo apresentador,
+       abre direto sem pedir senha de novo. -->
+  <div class="modal-overlay settings-overlay" id="settings-overlay" hidden>
+    <div class="settings-modal" role="dialog" aria-modal="true" aria-labelledby="settings-title">
+      <button class="modal-close" id="settings-close" type="button" aria-label="Fechar">✕</button>
+      <div class="settings-head">
+        <p class="modal-eyebrow">Configurações</p>
+        <h2 class="modal-title" id="settings-title">Painel do leilão</h2>
+      </div>
+
+      <div class="settings-body">
+        <div class="panel">
+          <div class="panel-row">
+            <div>
+              <label>Título exibido no placar</label>
+              <input type="text" id="title-input" autocomplete="off" />
+            </div>
+            <button class="btn" id="save-title">Salvar título</button>
+          </div>
+          <div class="panel-row">
+            <div>
+              <label>Leilão está</label>
+              <span id="open-state" class="badge">aberto</span>
+            </div>
+            <button class="btn" id="toggle-open">Encerrar leilão</button>
+          </div>
+          <div class="panel-row">
+            <div>
+              <label>Webhook do pix.gg</label>
+              <span id="webhook-state" class="badge">verificando…</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="panel">
+          <h2 class="panel-title">Tema visual</h2>
+          <p class="hint">A cor de destaque do placar ao vivo.</p>
+          <div class="theme-picker" id="settings-theme-picker">
+            <button class="theme-swatch" data-theme="nebulosa" type="button">
+              <span class="theme-swatch-preview theme-preview-nebulosa"></span>
+              Nebulosa
+            </button>
+            <button class="theme-swatch" data-theme="recife" type="button">
+              <span class="theme-swatch-preview theme-preview-recife"></span>
+              Recife
+            </button>
+            <button class="theme-swatch" data-theme="ametista" type="button">
+              <span class="theme-swatch-preview theme-preview-ametista"></span>
+              Ametista
+            </button>
+            <button class="theme-swatch" data-theme="safira" type="button">
+              <span class="theme-swatch-preview theme-preview-safira"></span>
+              Safira
+            </button>
+            <button class="theme-swatch" data-theme="grafite" type="button">
+              <span class="theme-swatch-preview theme-preview-grafite"></span>
+              Grafite
+            </button>
+          </div>
+          <div class="panel-row wrap settings-bg-row">
+            <input type="text" id="bg-image-url" placeholder="URL de uma imagem (opcional)" autocomplete="off" />
+            <button class="btn" id="bg-image-save">Salvar imagem</button>
+            <button class="btn" id="bg-image-clear">Remover</button>
+          </div>
+          <p class="hint">Some atrás do placar, escurecida. Cole o link de uma imagem publicada em algum lugar (Imgur, etc).</p>
+        </div>
+
+        <div class="panel">
+          <h2 class="panel-title">Lançamento manual</h2>
+          <p class="hint">Use se receber um pix fora do app, ou pra testar o sistema.</p>
+          <div class="panel-row wrap">
+            <input type="text" id="manual-name" placeholder="Nome do jogo" autocomplete="off" />
+            <input type="number" id="manual-amount" placeholder="Valor (R$)" step="0.01" autocomplete="off" />
+            <select id="manual-action">
+              <option value="add">Apoiar (+)</option>
+              <option value="remove">Sabotar (-)</option>
+            </select>
+            <input type="text" id="manual-username" placeholder="Nome do doador (opcional)" autocomplete="off" />
+            <button class="btn primary" id="manual-submit">Lançar</button>
+          </div>
+        </div>
+
+        <div class="panel">
+          <h2 class="panel-title">Jogos na disputa</h2>
+          <table class="table" id="games-table">
+            <thead>
+              <tr><th>#</th><th>Jogo</th><th>Total</th><th>Ações</th></tr>
+            </thead>
+            <tbody id="games-body"></tbody>
+          </table>
+        </div>
+
+        <div class="panel">
+          <h2 class="panel-title">Mesclar jogos duplicados</h2>
+          <p class="hint">Ex: alguém escreveu "elden ring" e outra vez "eldenring". Escolha a origem e o destino.</p>
+          <div class="panel-row wrap">
+            <select id="merge-from"></select>
+            <span>→</span>
+            <select id="merge-to"></select>
+            <button class="btn" id="merge-submit">Mesclar</button>
+          </div>
+        </div>
+
+        <div class="panel">
+          <h2 class="panel-title">Revincular webhook do pix.gg</h2>
+          <p class="hint">
+            Use se as doações pararem de cair no leilão (ex: depois de
+            regenerar o Client Secret no pix.gg, o que limpa a URL do
+            webhook de lá). Não recria o leilão, só refaz o vínculo.
+          </p>
+          <form class="panel-row wrap" id="relink-form" autocomplete="off">
+            <input type="text" id="relink-client-id" placeholder="Client ID (pix.gg)" autocomplete="off" />
+            <input type="password" id="relink-client-secret" placeholder="Client Secret (pix.gg)" autocomplete="new-password" />
+            <button class="btn" id="relink-submit" type="submit">Revincular</button>
+          </form>
+          <p class="hint" id="relink-result"></p>
+        </div>
+
+        <div class="panel">
+          <h2 class="panel-title">Histórico de leilões anteriores</h2>
+          <p class="hint">Cada vez que você zera o leilão, um resumo do round fica guardado aqui.</p>
+          <p class="hint" id="settings-history-empty">Nenhum leilão zerado ainda.</p>
+          <table class="table" id="history-table" style="display:none;">
+            <thead>
+              <tr><th>Quando</th><th>Total</th><th>Lotes</th><th>Campeão</th><th></th></tr>
+            </thead>
+            <tbody id="history-body"></tbody>
+          </table>
+        </div>
+
+        <div class="panel danger-zone">
+          <h2 class="panel-title">Zona de risco</h2>
+          <button class="btn danger" id="reset-btn">Zerar leilão inteiro</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <script src="/socket.io/socket.io.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/odometer.js/0.4.8/odometer.min.js"></script>
   <script src="/js/app.js"></script>
+  <script src="/js/settings.js"></script>
 </body>
 </html>

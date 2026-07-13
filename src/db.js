@@ -61,8 +61,16 @@ function createStore(filePath) {
     return Object.prototype.hasOwnProperty.call(data.state, key) ? data.state[key] : fallback;
   }
 
+  // null/undefined apaga a chave em vez de virar a string "null" — sem
+  // isso, getState(key, fallback) nunca cai no fallback de novo depois da
+  // primeira vez que alguém "limpa" um campo (achado com backgroundImageUrl:
+  // o botão "Remover" salvava literalmente o texto "null").
   function setState(key, value) {
-    data.state[key] = String(value);
+    if (value === null || value === undefined) {
+      delete data.state[key];
+    } else {
+      data.state[key] = String(value);
+    }
     save();
   }
 
@@ -239,6 +247,27 @@ function createStore(filePath) {
     return map;
   }
 
+  // Quem mais apoiou cada lote (maior soma de "add" por doador, dentro
+  // daquele game_key) — só conta apoio, não sabotagem: "quem mais doou pro
+  // jogo X" não faz sentido incluir quem gastou dinheiro tentando derrubar
+  // X. Usado no card do catálogo, separado do quadro de honra (que é o
+  // ranking geral do leilão inteiro, não por lote).
+  function getTopDonorByGame() {
+    const perGame = {};
+    for (const ev of data.events) {
+      if (!ev.game_key || !ev.username) continue;
+      if (ev.action !== "add") continue;
+      if (!perGame[ev.game_key]) perGame[ev.game_key] = {};
+      perGame[ev.game_key][ev.username] = (perGame[ev.game_key][ev.username] || 0) + ev.amount_cents;
+    }
+    const result = {};
+    for (const key of Object.keys(perGame)) {
+      const top = Object.entries(perGame[key]).sort((a, b) => b[1] - a[1])[0];
+      result[key] = { username: top[0], total_cents: top[1] };
+    }
+    return result;
+  }
+
   // Quantas pessoas distintas mexeram em cada lote (apoiando ou sabotando)
   // — usado no recap de encerramento. Username ausente (doação anônima/sem
   // nome) não conta pra nenhum lote.
@@ -365,6 +394,7 @@ function createStore(filePath) {
     getDonorNames,
     getTotalRaised,
     getFundingBreakdown,
+    getTopDonorByGame,
     getDonorCountByGame,
     getTotalDonorCount,
     hasGame,

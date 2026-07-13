@@ -110,3 +110,37 @@ resultCopyBtn.addEventListener("click", async () => {
     resultUrlEl.select();
   }
 });
+
+function formatBRL(value) {
+  return value.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+}
+
+async function loadRanking() {
+  const sectionEl = document.getElementById("ranking-section");
+  const listEl = document.getElementById("ranking-list");
+  try {
+    const res = await fetch("/api/ranking");
+    const data = await res.json();
+    const ranking = data.ranking || [];
+    if (ranking.length === 0) return;
+
+    listEl.innerHTML = ranking.map((row) => {
+      const avatar = row.hostAvatar
+        ? `<img class="ranking-avatar" src="${escapeHtml(row.hostAvatar)}" alt="" loading="lazy" />`
+        : `<span class="ranking-avatar ranking-avatar-placeholder">${escapeHtml((row.host || "?")[0].toUpperCase())}</span>`;
+      return `
+        <div class="ranking-row rank-${row.rank}">
+          <span class="ranking-rank">${String(row.rank).padStart(2, "0")}</span>
+          ${avatar}
+          <span class="ranking-host">${escapeHtml(row.host)}</span>
+          <span class="ranking-total">${formatBRL(row.totalRaised)}</span>
+        </div>
+      `;
+    }).join("");
+    sectionEl.hidden = false;
+  } catch (err) {
+    // sem ranking, sem problema — a seção continua escondida.
+  }
+}
+
+loadRanking();

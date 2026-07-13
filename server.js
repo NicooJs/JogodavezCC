@@ -159,8 +159,10 @@ function serializeLeaderboard(store) {
   const lastActivityAt = Number(store.getState("lastActivityAt", Date.now()));
   const autoCloseMs = getAutoCloseMs(store);
   const funding = store.getFundingBreakdown();
+  const topDonorByGame = store.getTopDonorByGame();
   const items = rows.map((row, index) => {
     const rowFunding = funding[row.key] || { added_cents: 0, removed_cents: 0 };
+    const topDonor = topDonorByGame[row.key];
     return {
       key: row.key,
       name: row.name,
@@ -170,6 +172,9 @@ function serializeLeaderboard(store) {
       rank: index + 1,
       winning: index < 3, // top 3 sempre destacado
       image: row.image_url || null,
+      topDonor: topDonor
+        ? { username: topDonor.username, total: centsToNumber(topDonor.total_cents), avatar: getDonorAvatar(topDonor.username) }
+        : null,
     };
   });
 
@@ -377,6 +382,32 @@ app.post("/api/leiloes", async (req, res) => {
   } catch (err) {
     res.status(400).json({ error: err.message });
   }
+});
+
+// Ranking público de streamers por total arrecadado — histórico completo
+// (soma o round aberto atual com todos os rounds já arquivados via
+// resetAll/archiveAuction, ver src/db.js). Cross-tenant de propósito: é a
+// única rota que olha todos os leilões de uma vez, pra mostrar na home.
+app.get("/api/ranking", (req, res) => {
+  const rows = registry
+    .listLeilaoIds()
+    .map((id) => {
+      const meta = registry.getLeilaoMeta(id) || {};
+      const store = getStore(id);
+      const archivedTotal = store.getPastAuctions().reduce((sum, a) => sum + (a.totalRaised || 0), 0);
+      const currentTotal = centsToNumber(store.getTotalRaised());
+      return {
+        id,
+        host: store.getState("host", meta.host || ""),
+        hostAvatar: store.getState("hostAvatar", null),
+        totalRaised: currentTotal + archivedTotal,
+      };
+    })
+    .filter((row) => row.host && row.totalRaised > 0)
+    .sort((a, b) => b.totalRaised - a.totalRaised)
+    .slice(0, 50)
+    .map((row, index) => ({ ...row, rank: index + 1 }));
+  res.json({ ranking: rows });
 });
 
 // ---------- board e painel por leilão ----------

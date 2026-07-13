@@ -314,6 +314,100 @@
 }
 .create-result-open:hover { color: var(--accent); }
 
+/* Ranking global de streamers (GET /api/ranking) — cross-tenant de
+   propósito, diferente de tudo mais nessa página, que é sempre sobre UM
+   leilão. Fica escondida (hidden no HTML) até o fetch confirmar que tem
+   pelo menos um streamer com total > 0, pra não mostrar uma seção vazia
+   num site recém-lançado sem doações ainda. */
+.ranking-section {
+  margin-top: 72px;
+  padding-top: 48px;
+  border-top: 1px solid var(--border);
+}
+
+.ranking-title {
+  margin: 6px 0 6px;
+  font-family: var(--font-display);
+  font-style: italic;
+  font-weight: 700;
+  font-size: 26px;
+  color: var(--text);
+}
+
+.ranking-hint { margin: 0 0 24px; font-size: 13px; color: var(--muted); max-width: 50ch; }
+
+.ranking-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-width: 620px;
+}
+
+.ranking-row {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 12px 16px;
+}
+
+.ranking-row.rank-1 { border-color: var(--accent-soft); background: var(--accent-bg); }
+
+.ranking-rank {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--muted);
+  width: 22px;
+  flex-shrink: 0;
+  text-align: center;
+}
+
+.ranking-row.rank-1 .ranking-rank,
+.ranking-row.rank-2 .ranking-rank,
+.ranking-row.rank-3 .ranking-rank { color: var(--accent-text); }
+
+.ranking-avatar {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  object-fit: cover;
+  background: var(--surface-2);
+  flex-shrink: 0;
+}
+
+.ranking-avatar-placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-display);
+  font-style: italic;
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.ranking-host {
+  flex: 1;
+  min-width: 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ranking-total {
+  font-family: var(--font-mono);
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--accent-text);
+  font-variant-numeric: tabular-nums;
+  flex-shrink: 0;
+}
+
 @media (max-width: 900px) {
   .create-hero { grid-template-columns: 1fr; gap: 40px; }
   .create-title { max-width: none; }

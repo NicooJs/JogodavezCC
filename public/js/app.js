@@ -7,9 +7,6 @@ if (!LEILAO_ID) {
   throw new Error("LEILAO_ID ausente na URL");
 }
 
-document.getElementById("admin-link").href = `/l/${LEILAO_ID}/admin`;
-document.getElementById("webhook-warning-link").href = `/l/${LEILAO_ID}/admin`;
-
 const socket = io({ query: { leilaoId: LEILAO_ID } });
 
 const lotListEl = document.getElementById("lot-list");
@@ -216,6 +213,19 @@ function lotFundingHtml(item) {
   return `<div class="lot-funding">${added}${removed}</div>`;
 }
 
+function lotTopDonorHtml(item) {
+  if (!item.topDonor || !item.topDonor.username) return "";
+  const avatar = item.topDonor.avatar
+    ? `<img class="lot-top-donor-avatar" src="${escapeHtml(item.topDonor.avatar)}" alt="" loading="lazy" />`
+    : `<span class="lot-top-donor-avatar lot-top-donor-avatar-placeholder">${escapeHtml(item.topDonor.username[0].toUpperCase())}</span>`;
+  return `
+    <div class="lot-top-donor" title="Quem mais apoiou este jogo">
+      ${avatar}
+      <span class="lot-top-donor-name">${escapeHtml(item.topDonor.username)}</span>
+    </div>
+  `;
+}
+
 function lotCardInnerHtml(item, barPct, hitBadge, changed) {
   const thumb = thumbHtml(item, "lot-thumb");
   const bg = item.image
@@ -230,6 +240,7 @@ function lotCardInnerHtml(item, barPct, hitBadge, changed) {
       <div class="lot-info">
         <p class="lot-name">${escapeHtml(item.name)}</p>
         ${lotFundingHtml(item)}
+        ${lotTopDonorHtml(item)}
       </div>
       <div class="lot-meta">
         <span class="lot-total${changed ? " tick" : ""}">${formatBRL(item.total)}</span>
@@ -800,6 +811,11 @@ const presenterLoginSubmit = document.getElementById("presenter-login-submit");
 const presenterLoginCancel = document.getElementById("presenter-login-cancel");
 const presenterLoginClose = document.getElementById("presenter-login-close");
 
+// Deixa quem chamou openPresenterLogin() (ex: o botão de configurações, que
+// também exige a senha do apresentador) fazer algo assim que o login der
+// certo, sem precisar duplicar o fluxo de login inteiro — ver settings.js.
+let pendingAfterLogin = null;
+
 function openPresenterLogin() {
   presenterLoginError.hidden = true;
   presenterLoginPassword.value = "";
@@ -829,6 +845,11 @@ async function submitPresenterLogin() {
     sessionStorage.setItem(`admin:${LEILAO_ID}`, password);
     closePresenterLogin();
     setPresenterMode(true);
+    if (pendingAfterLogin) {
+      const fn = pendingAfterLogin;
+      pendingAfterLogin = null;
+      fn();
+    }
   } finally {
     presenterLoginSubmit.disabled = false;
   }

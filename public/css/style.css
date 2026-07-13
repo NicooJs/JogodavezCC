@@ -378,6 +378,10 @@ body.board-body.has-bg-image {
   width: 36px;
   height: 36px;
   border-radius: 9px;
+  background: none;
+  border: none;
+  color: var(--muted);
+  cursor: pointer;
 }
 .presenter-bar-icon-link:hover { background: var(--surface-2); }
 .presenter-bar-icon-link .icon { width: 17px; height: 17px; }
@@ -482,8 +486,17 @@ body.board-body.has-bg-image {
 }
 .webhook-warning[hidden] { display: none; }
 .webhook-warning .icon { width: 20px; height: 20px; flex-shrink: 0; color: var(--danger); }
-.webhook-warning a { color: var(--danger); font-weight: 600; white-space: nowrap; }
-.webhook-warning a:hover { color: var(--text); }
+.webhook-warning button {
+  background: none;
+  border: none;
+  padding: 0;
+  font: inherit;
+  color: var(--danger);
+  font-weight: 600;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.webhook-warning button:hover { color: var(--text); }
 
 .field-wrap { position: relative; }
 .field-wrap input { width: 100%; }
@@ -1642,10 +1655,60 @@ body.board-body.has-bg-image {
   font-family: var(--font-mono);
   font-size: 11px;
   font-variant-numeric: tabular-nums;
+  /* .lot-info espreme essa linha bem estreito quando o nome do lote é
+     comprido — sem overflow:hidden, "+R$ 5.079,00" vazava (overflow:
+     visible) por cima do .lot-total, que fica logo ao lado. */
+  overflow: hidden;
+  min-width: 0;
+}
+
+.lot-funding-add,
+.lot-funding-remove {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .lot-funding-add { color: var(--positive); }
 .lot-funding-remove { color: var(--danger); }
+
+/* Quem mais apoiou esse lote especificamente (topDonor por game_key, ver
+   getTopDonorByGame em src/db.js) — diferente do quadro de honra, que é o
+   ranking geral do leilão inteiro, não por jogo. */
+.lot-top-donor {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  overflow: hidden;
+  min-width: 0;
+}
+
+.lot-top-donor-avatar {
+  width: 15px;
+  height: 15px;
+  border-radius: 50%;
+  object-fit: cover;
+  background: var(--surface);
+  flex-shrink: 0;
+}
+
+.lot-top-donor-avatar-placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-display);
+  font-size: 9px;
+  font-weight: 600;
+  color: var(--muted);
+}
+
+.lot-top-donor-name {
+  font-size: 11px;
+  color: var(--muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
 
 .lot-meta {
   display: flex;
