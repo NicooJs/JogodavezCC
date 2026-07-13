@@ -1,12 +1,14 @@
 require("dotenv").config();
+const fs = require("fs");
 const path = require("path");
 const express = require("express");
 const http = require("http");
 const { Server } = require("socket.io");
+const multer = require("multer");
 
 const registry = require("./src/registry");
 const pixggApi = require("./src/pixggApi");
-const { getStore } = require("./src/stores");
+const { getStore, DATA_DIR } = require("./src/stores");
 const { verifyPassword } = require("./src/passwords");
 const { parseMessage, normalizeKey } = require("./src/parser");
 const livepix = require("./src/livepixClient");
@@ -19,6 +21,38 @@ const server = http.createServer(app);
 const io = new Server(server);
 
 app.use(express.json());
+
+// Upload de imagem de fundo do board — salvo no mesmo DATA_DIR persistente
+// dos dados dos leilões (volume do Railway em produção), não em disco
+// efêmero do container. Nome do arquivo prefixado com o leilaoId + horário
+// pra não colidir entre leilões nem ficar em cache velho do navegador
+// quando o streamer troca a imagem.
+const UPLOADS_DIR = path.join(DATA_DIR, "uploads");
+fs.mkdirSync(UPLOADS_DIR, { recursive: true });
+
+const ALLOWED_IMAGE_TYPES = {
+  "image/png": ".png",
+  "image/jpeg": ".jpg",
+  "image/webp": ".webp",
+  "image/gif": ".gif",
+};
+
+const backgroundImageUpload = multer({
+  storage: multer.diskStorage({
+    destination: (req, file, cb) => cb(null, UPLOADS_DIR),
+    filename: (req, file, cb) => {
+      const ext = ALLOWED_IMAGE_TYPES[file.mimetype] || "";
+      cb(null, `${req.params.id}-${Date.now()}${ext}`);
+    },
+  }),
+  limits: { fileSize: 8 * 1024 * 1024 }, // 8MB — imagem de fundo, não precisa de mais
+  fileFilter: (req, file, cb) => {
+    if (!ALLOWED_IMAGE_TYPES[file.mimetype]) {
+      return cb(new Error("Envie uma imagem PNG, JPG, WEBP ou GIF"));
+    }
+    cb(null, true);
+  },
+});
 
 const DEFAULT_AUTO_CLOSE_MS = 5 * 60 * 1000; // 5 minutos sem atividade encerra sozinho
 
@@ -33,6 +67,17 @@ const WEBHOOK_STALE_MS = 30 * 60 * 1000;
 function getAutoCloseMs(store) {
   const stored = Number(store.getState("timerDurationMs", DEFAULT_AUTO_CLOSE_MS));
   return Number.isFinite(stored) && stored > 0 ? stored : DEFAULT_AUTO_CLOSE_MS;
+}
+
+const DEFAULT_QUALIFY_COUNT = 3;
+
+// Quantos lotes contam como "classificados" (linha de corte no catálogo,
+// ver .qualify-divider em app.js) — configurável por leilão desde que
+// streamers com catálogos maiores (mais de 3 jogos "de verdade" em disputa)
+// pediram pra não ficar preso em top 3 fixo.
+function getQualifyCount(store) {
+  const stored = Number(store.getState("qualifyCount", DEFAULT_QUALIFY_COUNT));
+  return Number.isFinite(stored) && stored > 0 ? Math.floor(stored) : DEFAULT_QUALIFY_COUNT;
 }
 
 // ---------- helpers ----------
@@ -170,6 +215,7 @@ function serializeLeaderboard(store) {
   const autoCloseMs = getAutoCloseMs(store);
   const funding = store.getFundingBreakdown();
   const topDonorByGame = store.getTopDonorByGame();
+  const qualifyCount = getQualifyCount(store);
   const items = rows.map((row, index) => {
     const rowFunding = funding[row.key] || { added_cents: 0, removed_cents: 0 };
     const topDonor = topDonorByGame[row.key];
@@ -180,7 +226,7 @@ function serializeLeaderboard(store) {
       added: centsToNumber(rowFunding.added_cents),
       removed: centsToNumber(rowFunding.removed_cents),
       rank: index + 1,
-      winning: index < 3, // top 3 sempre destacado
+      winning: index < qualifyCount,
       image: row.image_url || null,
       topDonor: topDonor
         ? { username: topDonor.username, total: centsToNumber(topDonor.total_cents), avatar: getDonorAvatar(topDonor.username) }
@@ -201,6 +247,7 @@ function serializeLeaderboard(store) {
     hostAvatar: store.getState("hostAvatar", null),
     theme: store.getState("theme", "nebulosa"),
     backgroundImageUrl: store.getState("backgroundImageUrl", null),
+    qualifyCount,
     open: isOpen,
     paused: isPaused,
     items,
@@ -793,10 +840,37 @@ app.post("/api/l/:id/admin/theme", loadLeilao, requireLeilaoAdmin, (req, res) =>
   res.json({ ok: true });
 });
 
-// Imagem de fundo custom do board — só uma URL (sem upload de arquivo, ver
-// restrição de "sem dependência nativa" no CLAUDE.md: um upload de verdade
-// precisaria de storage, o que esse projeto não tem). Valida só o
-// protocolo pra evitar um valor tipo "javascript:" acabar num
+// Quantos lotes contam como "classificados" (ver getQualifyCount) — nem
+// todo streamer joga só 3 jogos por live, então isso não pode ficar fixo.
+app.post("/api/l/:id/admin/qualify-count", loadLeilao, requireLeilaoAdmin, (req, res) => {
+  const count = Number(req.body && req.body.count);
+  if (!Number.isFinite(count) || count < 1 || count > 20) {
+    return res.status(400).json({ error: "Informe um número entre 1 e 20" });
+  }
+  req.store.setState("qualifyCount", Math.floor(count));
+  broadcastUpdate(req.leilaoId, req.store, { type: "qualify-count" });
+  res.json({ ok: true, count: Math.floor(count) });
+});
+
+// Upload de arquivo de imagem pra usar de fundo — alternativa a colar uma
+// URL (rota abaixo). multer.single() é chamado manualmente (não como
+// middleware direto na rota) pra poder responder erro em JSON como todo o
+// resto da API, em vez de cair no handler de erro genérico (HTML) do
+// Express quando o fileFilter rejeita o arquivo.
+app.post("/api/l/:id/admin/background-image-upload", loadLeilao, requireLeilaoAdmin, (req, res) => {
+  backgroundImageUpload.single("image")(req, res, (err) => {
+    if (err) return res.status(400).json({ error: err.message });
+    if (!req.file) return res.status(400).json({ error: "Nenhuma imagem enviada" });
+    const url = `/uploads/${req.file.filename}`;
+    req.store.setState("backgroundImageUrl", url);
+    broadcastUpdate(req.leilaoId, req.store, { type: "background-image" });
+    res.json({ ok: true, url });
+  });
+});
+
+// Imagem de fundo custom do board por URL — alternativa ao upload acima,
+// pra quem já tem a imagem publicada em algum lugar (Imgur, etc). Valida só
+// o protocolo pra evitar um valor tipo "javascript:" acabar num
 // background-image inline no app.js.
 app.post("/api/l/:id/admin/background-image", loadLeilao, requireLeilaoAdmin, (req, res) => {
   const raw = (req.body?.url || "").trim();
@@ -841,6 +915,11 @@ app.post("/api/l/:id/admin/relink-webhook", loadLeilao, requireLeilaoAdmin, asyn
 // prioridade; os arquivos de public/ (css, js, board.html, admin.html
 // direto) continuam acessíveis por trás.
 app.use(express.static(path.join(__dirname, "public")));
+
+// Imagens de fundo enviadas por upload (ver background-image-upload acima)
+// — servidas do mesmo DATA_DIR persistente, não de public/ (que não
+// sobrevive a um novo deploy).
+app.use("/uploads", express.static(UPLOADS_DIR));
 
 // ---------- socket.io ----------
 

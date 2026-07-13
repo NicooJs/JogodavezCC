@@ -57,6 +57,8 @@ function renderSettingsFromLeaderboard(leaderboard) {
   renderSettingsThemePicker(leaderboard.theme);
   const bgInput = document.getElementById("bg-image-url");
   if (document.activeElement !== bgInput) bgInput.value = leaderboard.backgroundImageUrl || "";
+  const qualifyInput = document.getElementById("qualify-count-input");
+  if (document.activeElement !== qualifyInput) qualifyInput.value = leaderboard.qualifyCount || 3;
   renderGamesTable();
   renderMergeOptions();
 }
@@ -120,6 +122,34 @@ document.getElementById("bg-image-save").addEventListener("click", async () => {
 document.getElementById("bg-image-clear").addEventListener("click", async () => {
   document.getElementById("bg-image-url").value = "";
   await presenterFetch("/admin/background-image", { method: "POST", body: JSON.stringify({ url: "" }) });
+});
+
+document.getElementById("bg-image-upload").addEventListener("click", async () => {
+  const fileInput = document.getElementById("bg-image-file");
+  const statusEl = document.getElementById("bg-image-upload-status");
+  const file = fileInput.files[0];
+  if (!file) return alert("Escolha um arquivo de imagem primeiro");
+
+  const formData = new FormData();
+  formData.append("image", file);
+  statusEl.textContent = "Enviando…";
+  try {
+    await presenterFetch("/admin/background-image-upload", { method: "POST", body: formData });
+    statusEl.textContent = "Enviado!";
+    fileInput.value = "";
+    setTimeout(() => { statusEl.textContent = ""; }, 2500);
+  } catch (err) {
+    statusEl.textContent = "Erro: " + err.message;
+  }
+});
+
+document.getElementById("qualify-count-save").addEventListener("click", async () => {
+  const count = Number(document.getElementById("qualify-count-input").value);
+  try {
+    await presenterFetch("/admin/qualify-count", { method: "POST", body: JSON.stringify({ count }) });
+  } catch (err) {
+    alert(err.message);
+  }
 });
 
 document.getElementById("manual-submit").addEventListener("click", async () => {

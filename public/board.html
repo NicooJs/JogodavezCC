@@ -139,10 +139,6 @@
               <span class="timer-clock" id="timer-clock">05:00</span>
             </div>
           </div>
-          <!-- Duas ações bem separadas de propósito: pausar (reversível, some
-               o timer congela) e encerrar (definitivo até reabrir manual).
-               Ver CLAUDE.md — antes só existia um botão pause/play que na
-               verdade encerrava, o que confundia. -->
           <div class="timer-toolbar timer-toolbar-state">
             <button class="tbar-btn tbar-btn-wide" id="p-pause-toggle" type="button" title="Pausar timer" aria-label="Pausar timer">
               <svg class="icon icon-pause" viewBox="0 0 20 20" fill="currentColor"><rect x="5.5" y="4" width="3.2" height="12" rx="1"/><rect x="11.3" y="4" width="3.2" height="12" rx="1"/></svg>
@@ -324,11 +320,6 @@
     </div>
   </div>
 
-  <!-- Configurações — antes era a página separada /l/:id/admin (ver
-       admin.html, que continua existindo por compatibilidade mas não é
-       mais linkada daqui). Reaproveita a MESMA sessão de apresentador (ver
-       settings.js), então se já tiver feito login no modo apresentador,
-       abre direto sem pedir senha de novo. -->
   <div class="modal-overlay settings-overlay" id="settings-overlay" hidden>
     <div class="settings-modal" role="dialog" aria-modal="true" aria-labelledby="settings-title">
       <button class="modal-close" id="settings-close" type="button" aria-label="Fechar">✕</button>
@@ -358,6 +349,13 @@
               <label>Webhook do pix.gg</label>
               <span id="webhook-state" class="badge">verificando…</span>
             </div>
+          </div>
+          <div class="panel-row">
+            <div>
+              <label>Quantos lotes contam como classificados</label>
+              <input type="number" id="qualify-count-input" min="1" max="20" style="width: 70px;" />
+            </div>
+            <button class="btn" id="qualify-count-save">Salvar</button>
           </div>
         </div>
 
@@ -391,7 +389,12 @@
             <button class="btn" id="bg-image-save">Salvar imagem</button>
             <button class="btn" id="bg-image-clear">Remover</button>
           </div>
-          <p class="hint">Some atrás do placar, escurecida. Cole o link de uma imagem publicada em algum lugar (Imgur, etc).</p>
+          <p class="hint">Some atrás do placar, escurecida. Cole o link de uma imagem publicada em algum lugar (Imgur, etc), ou envie um arquivo abaixo.</p>
+          <div class="panel-row wrap settings-bg-row">
+            <input type="file" id="bg-image-file" accept="image/png,image/jpeg,image/webp,image/gif" />
+            <button class="btn" id="bg-image-upload">Enviar arquivo</button>
+          </div>
+          <p class="hint" id="bg-image-upload-status"></p>
         </div>
 
         <div class="panel">

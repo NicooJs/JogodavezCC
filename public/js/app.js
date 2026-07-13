@@ -298,7 +298,7 @@ function triggerBigWinCelebration(key, type) {
 // reaproveita os cards existentes (por data-key) e só reordena via
 // appendChild — assim dá pra medir a posição antes/depois (técnica FLIP) e
 // os lotes deslizam suavemente pra nova posição no ranking.
-function renderLots(items, flashKey, flashType, lastSabotagedKey) {
+function renderLots(items, flashKey, flashType, lastSabotagedKey, qualifyCount) {
   lotCountEl.textContent = String(items.length);
 
   if (items.length === 0) {
@@ -345,8 +345,10 @@ function renderLots(items, flashKey, flashType, lastSabotagedKey) {
     card.innerHTML = lotCardInnerHtml(item, barPct, hitBadge, changed);
     lotListEl.appendChild(card);
 
-    // Linha de corte entre os classificados (top 3) e o resto do catálogo.
-    if (item.rank === 3 && items.length > 3) {
+    // Linha de corte entre os classificados e o resto do catálogo — quantos
+    // contam como classificados é configurável por leilão (ver
+    // getQualifyCount no server.js, painel de configurações), não fixo em 3.
+    if (item.rank === qualifyCount && items.length > qualifyCount) {
       let divider = lotListEl.querySelector(".qualify-divider");
       if (!divider) {
         divider = document.createElement("div");
@@ -356,7 +358,7 @@ function renderLots(items, flashKey, flashType, lastSabotagedKey) {
       lotListEl.appendChild(divider);
     }
   });
-  if (items.length <= 3) {
+  if (items.length <= qualifyCount) {
     const divider = lotListEl.querySelector(".qualify-divider");
     if (divider) divider.remove();
   }
@@ -874,7 +876,7 @@ socket.on("update", ({ leaderboard, lastEvent }) => {
   currentItems = leaderboard.items || [];
   donorNames = leaderboard.donorNames || [];
   const flashKey = lastEvent && lastEvent.game ? lastEvent.game.key : null;
-  renderLots(leaderboard.items, flashKey, lastEvent ? lastEvent.type : null, leaderboard.lastSabotagedKey);
+  renderLots(leaderboard.items, flashKey, lastEvent ? lastEvent.type : null, leaderboard.lastSabotagedKey, leaderboard.qualifyCount || 3);
   renderDonors(leaderboard.donors || []);
   if (lastEvent && lastEvent.type === "reset") {
     // resetAll() apaga os events no servidor, mas o historyItems local (só
@@ -898,10 +900,14 @@ function getPassword() {
 }
 
 async function presenterFetch(path, options = {}) {
+  // FormData (upload de arquivo) monta seu próprio Content-Type com
+  // boundary — se a gente fixar "application/json" aqui, o multipart do
+  // upload de imagem de fundo quebra silenciosamente no servidor.
+  const isFormData = options.body instanceof FormData;
   const res = await fetch(`/api/l/${LEILAO_ID}${path}`, {
     ...options,
     headers: {
-      "Content-Type": "application/json",
+      ...(isFormData ? {} : { "Content-Type": "application/json" }),
       "x-admin-password": getPassword(),
       ...(options.headers || {}),
     },
