@@ -26,6 +26,8 @@ const timerEl = document.getElementById("timer");
 const timerClockEl = document.getElementById("timer-clock");
 const timerLabelEl = document.getElementById("timer-label");
 const statTotalEl = document.getElementById("stat-total");
+const topbarTotalEl = document.getElementById("topbar-total");
+const totalHideToggleEl = document.getElementById("total-hide-toggle");
 const lotCountEl = document.getElementById("lot-count");
 const donorCountEl = document.getElementById("donor-count");
 const presenterToggleEl = document.getElementById("presenter-toggle");
@@ -595,7 +597,7 @@ function recapPodiumCardHtml(game) {
 function renderRecap(recap, eyebrowText) {
   recapEyebrowEl.textContent = eyebrowText;
   recapTitleEl.textContent = recap.title || "Leilão de Jogos";
-  recapTotalEl.textContent = formatBRL(recap.totalRaised || 0);
+  recapTotalEl.textContent = recap.totalRaised === null ? "oculto" : formatBRL(recap.totalRaised || 0);
   recapDurationEl.textContent = formatDuration(recap.durationMs);
   recapDonorsEl.textContent = String(recap.totalDonors || 0);
   recapGamesEl.textContent = String(recap.totalGames || 0);
@@ -679,7 +681,7 @@ function historyCardHtml(h, index) {
   return `
     <button class="history-card" type="button" data-index="${index}">
       <span class="history-card-when">${when}${inProgressTag}</span>
-      <span class="history-card-total">${formatBRL(h.totalRaised || 0)}</span>
+      <span class="history-card-total">${h.totalRaised === null ? "oculto" : formatBRL(h.totalRaised || 0)}</span>
       <div class="history-card-champion">
         ${thumb}
         <span class="history-card-champion-name">${escapeHtml(champion ? champion.name : "—")}</span>
@@ -816,6 +818,15 @@ document.querySelectorAll(".theme-dot").forEach((dot) => {
   });
 });
 
+totalHideToggleEl.addEventListener("click", async () => {
+  const currentlyHidden = totalHideToggleEl.classList.contains("active");
+  try {
+    await presenterFetch("/admin/hide-total", { method: "POST", body: JSON.stringify({ hidden: !currentlyHidden }) });
+  } catch (err) {
+    alert(err.message);
+  }
+});
+
 socket.on("update", ({ leaderboard, lastEvent }) => {
   document.documentElement.dataset.theme = leaderboard.theme || "nebulosa";
   document.querySelectorAll(".theme-dot").forEach((dot) => {
@@ -869,9 +880,17 @@ socket.on("update", ({ leaderboard, lastEvent }) => {
   webhookSignatureIssueState = !!leaderboard.webhookSignatureIssue;
   updateWebhookWarning();
 
-  const totalValue = leaderboard.totalRaised || 0;
-  if (totalOdometer) totalOdometer.update(Math.round(totalValue));
-  else bumpValue(statTotalEl, String(Math.round(totalValue)));
+  topbarTotalEl.classList.toggle("is-hidden", !!leaderboard.hideTotalRaised);
+  totalHideToggleEl.classList.toggle("active", !!leaderboard.hideTotalRaised);
+  totalHideToggleEl.title = leaderboard.hideTotalRaised ? "Mostrar valor arrecadado pro público" : "Ocultar valor arrecadado do público";
+  if (!leaderboard.hideTotalRaised) {
+    // Só atualiza o número quando ele está de fato visível — evita mexer
+    // no DOM interno do Odometer enquanto .is-hidden esconde tudo via CSS
+    // (ver .topbar-total-hidden-label em board.html/style.css).
+    const totalValue = leaderboard.totalRaised || 0;
+    if (totalOdometer) totalOdometer.update(Math.round(totalValue));
+    else bumpValue(statTotalEl, String(Math.round(totalValue)));
+  }
 
   currentItems = leaderboard.items || [];
   donorNames = leaderboard.donorNames || [];

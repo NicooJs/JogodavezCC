@@ -80,6 +80,17 @@ function getQualifyCount(store) {
   return Number.isFinite(stored) && stored > 0 ? Math.floor(stored) : DEFAULT_QUALIFY_COUNT;
 }
 
+// Nem todo streamer quer expor quanto arrecadou pro público — pedido
+// explícito do cliente. Quando ligado, o total agregado (topbar + recap)
+// vira null na API pública (não só escondido via CSS: alguém olhando a
+// rede/inspecionar elemento não pode simplesmente ler o número real, ver
+// CLAUDE.md sobre cuidado com informação exposta). Os valores de CADA lote
+// continuam aparecendo — isso é o mecanismo do leilão em si, não o total
+// pessoal do streamer.
+function getHideTotalRaised(store) {
+  return store.getState("hideTotalRaised", "false") === "true";
+}
+
 // ---------- helpers ----------
 
 function centsToNumber(cents) {
@@ -254,7 +265,8 @@ function serializeLeaderboard(store) {
     lastSabotagedKey: store.getState("lastSabotagedKey", null),
     donors,
     donorNames: store.getDonorNames(),
-    totalRaised: centsToNumber(store.getTotalRaised()),
+    totalRaised: getHideTotalRaised(store) ? null : centsToNumber(store.getTotalRaised()),
+    hideTotalRaised: getHideTotalRaised(store),
     timerEndsAt: isOpen && !isPaused ? lastActivityAt + autoCloseMs : null,
     timerRemainingMs: isPaused ? Number(store.getState("pausedRemainingMs", autoCloseMs)) : null,
     timerDurationMs: autoCloseMs,
@@ -304,7 +316,7 @@ function buildRecap(store) {
   return {
     title: store.getState("title", "Leilão de Jogos"),
     host: store.getState("host", ""),
-    totalRaised: centsToNumber(store.getTotalRaised()),
+    totalRaised: getHideTotalRaised(store) ? null : centsToNumber(store.getTotalRaised()),
     totalGames: rows.length,
     totalDonors: store.getTotalDonorCount(),
     durationMs,
@@ -477,6 +489,7 @@ app.post("/api/leiloes", async (req, res) => {
 app.get("/api/ranking", (req, res) => {
   const rows = registry
     .listLeilaoIds()
+    .filter((id) => !getHideTotalRaised(getStore(id))) // quem oculta o total não participa do ranking
     .map((id) => {
       const meta = registry.getLeilaoMeta(id) || {};
       const store = getStore(id);
@@ -850,6 +863,16 @@ app.post("/api/l/:id/admin/qualify-count", loadLeilao, requireLeilaoAdmin, (req,
   req.store.setState("qualifyCount", Math.floor(count));
   broadcastUpdate(req.leilaoId, req.store, { type: "qualify-count" });
   res.json({ ok: true, count: Math.floor(count) });
+});
+
+// Oculta/revela o total arrecadado do público (ver getHideTotalRaised) —
+// nem todo streamer quer expor quanto ganhou. Enquanto ligado, esse leilão
+// também some do ranking global de streamers (ver /api/ranking).
+app.post("/api/l/:id/admin/hide-total", loadLeilao, requireLeilaoAdmin, (req, res) => {
+  const hidden = !!(req.body && req.body.hidden);
+  req.store.setState("hideTotalRaised", hidden ? "true" : "false");
+  broadcastUpdate(req.leilaoId, req.store, { type: "hide-total" });
+  res.json({ ok: true, hidden });
 });
 
 // Upload de arquivo de imagem pra usar de fundo — alternativa a colar uma

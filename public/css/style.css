@@ -273,6 +273,44 @@ body.board-body.has-bg-image {
   transition: transform 0.15s ease;
 }
 
+/* Duas classes de propósito (não uma): ".topbar-total strong" (regra
+   acima) já tem especificidade 0-1-1, e "strong.topbar-total-hidden-label"
+   sozinho (0-1-1 também) empataria e perderia no empate por ordem de
+   cascata — escopar com o pai ".topbar-total" (0-2-0) garante que index
+   ganha sem depender de ordem no arquivo. */
+.topbar-total .topbar-total-hidden-label {
+  display: none;
+  font-size: 14px;
+  font-weight: 600;
+  font-style: italic;
+  color: var(--muted);
+  text-transform: none;
+  letter-spacing: 0;
+}
+.topbar-total.is-hidden .topbar-total-value { display: none; }
+.topbar-total.is-hidden .topbar-total-hidden-label { display: inline-block; }
+
+/* Botão de alternar fica sempre ao lado do valor (pedido explícito do
+   cliente), mas só é clicável em modo apresentador — pra quem só tá
+   assistindo, não faz sentido ter um botão ali. */
+.total-hide-toggle {
+  display: none;
+  align-items: center;
+  justify-content: center;
+  background: none;
+  border: none;
+  padding: 2px;
+  color: var(--muted);
+  cursor: pointer;
+  border-radius: 4px;
+}
+.presenter-mode .total-hide-toggle { display: inline-flex; }
+.total-hide-toggle:hover { color: var(--text); background: var(--surface-2); }
+.total-hide-toggle .icon { width: 15px; height: 15px; }
+.total-hide-toggle .icon-eye-off { display: none; }
+.total-hide-toggle.active .icon-eye { display: none; }
+.total-hide-toggle.active .icon-eye-off { display: block; }
+
 .tick { animation: tick 0.4s ease; }
 
 .odometer.odometer-theme-minimal {

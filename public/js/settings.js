@@ -289,7 +289,7 @@ function renderSettingsHistory(history) {
     return `
       <tr>
         <td>${when}${inProgressTag}</td>
-        <td>${formatBRL(h.totalRaised || 0)}</td>
+        <td>${h.totalRaised === null ? "oculto" : formatBRL(h.totalRaised || 0)}</td>
         <td>${h.totalGames || 0}</td>
         <td>${escapeHtml(champion)}</td>
         <td><a href="/l/${LEILAO_ID}?recap=${index}" target="_blank">Ver recap →</a></td>

@@ -19,7 +19,15 @@
         <span class="brand-sub">ao vivo</span>
       </p>
       <div class="topbar-right">
-        <span class="topbar-total">total arrecadado <strong>R$&nbsp;<span id="stat-total">0</span></strong></span>
+        <span class="topbar-total" id="topbar-total">
+          total arrecadado
+          <strong class="topbar-total-value">R$&nbsp;<span id="stat-total">0</span></strong>
+          <strong class="topbar-total-hidden-label">oculto</strong>
+          <button class="total-hide-toggle" id="total-hide-toggle" type="button" title="Ocultar valor arrecadado do público">
+            <svg class="icon icon-eye" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M1.5 10S4.5 4.5 10 4.5 18.5 10 18.5 10 15.5 15.5 10 15.5 1.5 10 1.5 10z"/><circle cx="10" cy="10" r="2.5"/></svg>
+            <svg class="icon icon-eye-off" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2.5 2.5l15 15"/><path d="M8.3 5.1C8.85 4.9 9.4 4.9 10 4.9c5.5 0 8.5 5.1 8.5 5.1s-1 1.7-2.7 3.3M5.2 6.2C3.2 7.6 1.5 10 1.5 10s3 5.1 8.5 5.1c1.1 0 2.1-.2 3-.6"/><path d="M7.9 8.1a2.5 2.5 0 0 0 3.5 3.5"/></svg>
+          </button>
+        </span>
         <span class="status" id="status">
           <span class="dot"></span>
           <span id="status-text">conectando…</span>
