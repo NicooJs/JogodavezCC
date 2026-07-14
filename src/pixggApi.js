@@ -36,7 +36,33 @@ async function setWebhookUrl(clientId, clientSecret, webhookUrl) {
     throw new Error(`pix.gg recusou o client ID/secret (status ${res.status}). ${detail}`.trim());
   }
 
-  return res.json();
+  const data = await res.json();
+
+  // A chamada pode responder 200 mesmo tendo salvo algo diferente do que a
+  // gente mandou (ex: um proxy/cliente cortando a URL no meio, ou o pix.gg
+  // normalizando de um jeito inesperado) — sem checar isso, o vínculo fica
+  // silenciosamente quebrado até a primeira doação real falhar (ver
+  // webhookSignatureIssue no server.js). Trata como falha de vinculação,
+  // igual credencial inválida: não deixa passar sem avisar.
+  if (data.webhookUrl !== webhookUrl) {
+    throw new Error(
+      `O pix.gg confirmou uma URL de webhook diferente da que foi enviada — ` +
+      `provavelmente foi cortada ou alterada no caminho. Tente novamente.`
+    );
+  }
+  if (data.isActive === false) {
+    throw new Error("O pix.gg vinculou o webhook, mas marcou a aplicação como inativa (isActive: false). Verifique o status dela em pixgg.com.");
+  }
+
+  return data;
 }
 
-module.exports = { setWebhookUrl };
+// Esconde o segredo compartilhado (?assinatura=..., o mesmo pra TODOS os
+// leilões, ver PIXGG_WEBHOOK_SECRET no CLAUDE.md) antes de mostrar a URL
+// confirmada pro streamer — sem isso, qualquer apresentador veria o
+// segredo de todo mundo, não só do próprio leilão.
+function redactWebhookUrl(url) {
+  return String(url).replace(/([?&]assinatura=)[^&]*/i, "$1••••••••");
+}
+
+module.exports = { setWebhookUrl, redactWebhookUrl };

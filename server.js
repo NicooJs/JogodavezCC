@@ -947,8 +947,8 @@ app.post("/api/l/:id/admin/relink-webhook", loadLeilao, requireLeilaoAdmin, asyn
     if (!clientId || !clientSecret) {
       return res.status(400).json({ error: "Informe o Client ID e o Client Secret do pix.gg" });
     }
-    await pixggApi.setWebhookUrl(clientId, clientSecret, buildWebhookUrlFromReq(req, req.leilaoId));
-    res.json({ ok: true });
+    const confirmed = await pixggApi.setWebhookUrl(clientId, clientSecret, buildWebhookUrlFromReq(req, req.leilaoId));
+    res.json({ ok: true, webhookUrl: pixggApi.redactWebhookUrl(confirmed.webhookUrl) });
   } catch (err) {
     res.status(400).json({ error: err.message });
   }

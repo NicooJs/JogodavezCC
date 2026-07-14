@@ -190,6 +190,8 @@
 
 .settings-modal .danger-zone { border-color: rgba(239, 68, 112, 0.35); }
 
+.settings-modal .relink-result-error { color: var(--danger); }
+
 @media (max-width: 640px) {
   .settings-overlay { padding: 0; align-items: stretch; }
   .settings-modal { max-width: none; max-height: none; height: 100%; border-radius: 0; }

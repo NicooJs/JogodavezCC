@@ -241,14 +241,16 @@ document.getElementById("relink-form").addEventListener("submit", async (e) => {
   resultEl.textContent = "";
   if (!clientId || !clientSecret) return alert("Preencha Client ID e Client Secret");
   try {
-    await presenterFetch("/admin/relink-webhook", {
+    const data = await presenterFetch("/admin/relink-webhook", {
       method: "POST",
       body: JSON.stringify({ clientId, clientSecret }),
     });
-    resultEl.textContent = "Webhook revinculado com sucesso.";
+    resultEl.textContent = `Webhook revinculado com sucesso. URL confirmada pelo pix.gg: ${data.webhookUrl}`;
+    resultEl.classList.remove("relink-result-error");
     document.getElementById("relink-client-secret").value = "";
   } catch (err) {
     resultEl.textContent = "Erro: " + err.message;
+    resultEl.classList.add("relink-result-error");
   }
 });
 
