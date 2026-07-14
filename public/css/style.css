@@ -1,3 +1,14 @@
+/* Fonte custom pro título do leilão no board (não a marca "Leilão de Jogos"
+   da home) — arquivo em public/fonts/, sem CDN. Só uma variação (regular),
+   igual Abril Fatface antes dela. */
+@font-face {
+  font-family: "Creamy Chicken";
+  src: url("/fonts/creamy-chicken.otf") format("opentype");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
 /* Sistema de temas: cada leilão escolhe um (state.theme, ver admin.html →
    painel "Tema visual" → POST /admin/theme), aplicado via
    document.documentElement.dataset.theme em app.js. "nebulosa" no :root é
@@ -196,7 +207,11 @@ body.board-body.has-bg-image {
 
 .topbar {
   display: flex;
-  align-items: baseline;
+  /* center, não baseline: o título usa uma fonte de destaque (custom, ver
+     Creamy Chicken acima) com métricas de linha de base bem diferentes da
+     fonte pequena dos botões — baseline jogava os botões pra baixo do
+     título. center funciona igual não importa a fonte do título. */
+  align-items: center;
   justify-content: space-between;
   gap: 16px;
   flex-wrap: wrap;
@@ -222,10 +237,14 @@ body.board-body.has-bg-image {
 
 /* Título do leilão em si (não a marca fixa do site) — é o elemento mais
    importante da tela pra quem tá assistindo a live, então recebe o maior
-   destaque tipográfico do topbar. */
+   destaque tipográfico do topbar. Só no board (.board-body): a home
+   (.create-body) continua com --font-title (Abril Fatface) pra marca
+   "Leilão de Jogos" do site, sem trocar pra Creamy Chicken. */
+.board-body .brand-word { --font-title: "Creamy Chicken", "Abril Fatface", serif; }
+
 .brand-word {
-  /* Abril Fatface só existe no peso/estilo regular — sem itálico, sem
-     variação de peso (ao contrário da fonte antiga, Gambetta). */
+  /* Nem Abril Fatface nem Creamy Chicken têm itálico/variação de peso
+     (ao contrário da fonte antiga, Gambetta) — só a variação regular. */
   font-family: var(--font-title);
   font-style: normal;
   font-weight: 400;
