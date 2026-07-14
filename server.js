@@ -54,6 +54,44 @@ const backgroundImageUpload = multer({
   },
 });
 
+// Se a imagem de fundo ATUAL desse leilão foi um upload nosso (serve de
+// /uploads/...), apaga o arquivo antes de trocar por outra — sem isso, cada
+// troca de imagem (ou volta pra uma URL externa) deixava o arquivo antigo
+// órfão pra sempre no volume persistente. Uma URL externa (Imgur etc) não
+// tem arquivo nosso pra apagar, então é no-op nesse caso. Best-effort: erro
+// ao apagar só loga, não impede a troca da imagem nova.
+function deleteOldUploadedBackground(store) {
+  const current = store.getState("backgroundImageUrl");
+  if (!current || !current.startsWith("/uploads/")) return;
+  const filePath = path.join(UPLOADS_DIR, path.basename(current));
+  fs.unlink(filePath, (err) => {
+    if (err && err.code !== "ENOENT") console.error("Falha ao apagar imagem de fundo antiga:", err.message);
+  });
+}
+
+// Apaga qualquer imagem de fundo que esse leilão tenha enviado por upload
+// (nome sempre prefixado "<leilaoId>-", ver backgroundImageUpload acima) —
+// chamado ao apagar o leilão inteiro (rota de super-admin), senão o arquivo
+// ficava pra trás no volume pra sempre (deleteStore só apaga o JSON de
+// dados). Varre por prefixo em vez de confiar só no backgroundImageUrl
+// guardado, então também limpa órfãos que já tenham sobrado de antes dessa
+// correção existir.
+function deleteUploadedBackgroundsFor(leilaoId) {
+  let files;
+  try {
+    files = fs.readdirSync(UPLOADS_DIR);
+  } catch {
+    return;
+  }
+  const prefix = `${leilaoId}-`;
+  for (const file of files) {
+    if (!file.startsWith(prefix)) continue;
+    fs.unlink(path.join(UPLOADS_DIR, file), (err) => {
+      if (err && err.code !== "ENOENT") console.error("Falha ao apagar imagem de fundo órfã:", err.message);
+    });
+  }
+}
+
 const DEFAULT_AUTO_CLOSE_MS = 5 * 60 * 1000; // 5 minutos sem atividade encerra sozinho
 
 // O pix.gg manda um GET periódico na URL do webhook (ping de saúde, ver
@@ -366,6 +404,15 @@ function requireLeilaoAdmin(req, res, next) {
 
 async function processDonationMessage(leilaoId, store, { id, fallbackUsername, fallbackMessage, fallbackAmount }) {
   if (store.isAlreadyProcessed(id)) return;
+  // Reserva o id JÁ aqui, antes de qualquer await. O fluxo abaixo espera a
+  // busca de capa na RAWG (resolveParsedGame) pra jogo novo — sem marcar
+  // logo de cara, um reenvio idêntico do mesmo webhook (retry do pix.gg)
+  // chegando nesse meio tempo passaria pela checagem acima ainda vendo
+  // "não processado" e contaria a mesma doação 2x. markProcessed grava só
+  // em memória aqui (o applyContribution/logUnparsedEvent mais abaixo já
+  // persistem no disco do jeito de sempre) — o que importa é fechar a
+  // janela de corrida dentro do mesmo processo, não mudar o disco 2x.
+  store.markProcessed(id);
 
   let username = fallbackUsername;
   let message = fallbackMessage;
@@ -530,6 +577,7 @@ app.delete("/api/admin/leiloes/:id", (req, res) => {
   }
   registry.deleteLeilao(id); // primeiro: nenhuma rota nova pode mais achar esse id
   deleteStore(id); // depois: tira do cache e apaga o arquivo
+  deleteUploadedBackgroundsFor(id); // e qualquer imagem de fundo enviada por upload desse leilão
   res.json({ ok: true, id });
 });
 
@@ -906,6 +954,7 @@ app.post("/api/l/:id/admin/background-image-upload", loadLeilao, requireLeilaoAd
     if (err) return res.status(400).json({ error: err.message });
     if (!req.file) return res.status(400).json({ error: "Nenhuma imagem enviada" });
     const url = `/uploads/${req.file.filename}`;
+    deleteOldUploadedBackground(req.store);
     req.store.setState("backgroundImageUrl", url);
     broadcastUpdate(req.leilaoId, req.store, { type: "background-image" });
     res.json({ ok: true, url });
@@ -919,6 +968,7 @@ app.post("/api/l/:id/admin/background-image-upload", loadLeilao, requireLeilaoAd
 app.post("/api/l/:id/admin/background-image", loadLeilao, requireLeilaoAdmin, (req, res) => {
   const raw = (req.body?.url || "").trim();
   if (!raw) {
+    deleteOldUploadedBackground(req.store);
     req.store.setState("backgroundImageUrl", null);
     broadcastUpdate(req.leilaoId, req.store, { type: "background-image" });
     return res.json({ ok: true });
@@ -932,6 +982,7 @@ app.post("/api/l/:id/admin/background-image", loadLeilao, requireLeilaoAdmin, (r
   if (parsed.protocol !== "http:" && parsed.protocol !== "https:") {
     return res.status(400).json({ error: "A URL precisa começar com http:// ou https://" });
   }
+  deleteOldUploadedBackground(req.store);
   req.store.setState("backgroundImageUrl", parsed.href);
   broadcastUpdate(req.leilaoId, req.store, { type: "background-image" });
   res.json({ ok: true });

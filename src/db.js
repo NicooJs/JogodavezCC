@@ -413,6 +413,7 @@ function createStore(filePath) {
     getState,
     setState,
     isAlreadyProcessed,
+    markProcessed,
     applyContribution,
     logUnparsedEvent,
     getLeaderboard,
