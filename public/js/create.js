@@ -37,15 +37,51 @@ function saveLeilao(entry) {
   }
 }
 
+// /l/<id> -> <id>, ou null se a url guardada não bater nesse formato.
+function extractLeilaoId(url) {
+  const match = String(url || "").match(/\/l\/([a-z0-9_-]+)/i);
+  return match ? match[1] : null;
+}
+
+// Confere se o leilão ainda existe de verdade no servidor — sem isso, um
+// leilão apagado (ex: limpeza de teste pelo super-admin) continuava
+// aparecendo pra sempre nesse navegador como "já criado", com um link morto.
+// Em caso de erro de rede (offline, etc) assume que existe: melhor mostrar
+// um link que pode estar velho do que apagar a referência por causa de uma
+// falha passageira de conexão.
+async function leilaoStillExists(id) {
+  if (!id) return false;
+  try {
+    const res = await fetch(`/api/l/${id}/leaderboard`);
+    if (res.status === 404) return false;
+    return true;
+  } catch (err) {
+    return true;
+  }
+}
+
 // Lembrete de leilão já criado nesse navegador — pra evitar que a pessoa
 // preencha o formulário de novo sem querer. Recriar não é só redundante:
 // como o vínculo do webhook é um-por-aplicação no pix.gg, criar de novo com
 // o mesmo Client ID desliga o webhook do leilão antigo sem avisar.
-function renderExisting() {
+async function renderExisting() {
   const saved = getSavedLeiloes();
   if (saved.length === 0) return;
 
-  existingListEl.innerHTML = saved.map((item) => `
+  const checks = await Promise.all(saved.map((item) => leilaoStillExists(extractLeilaoId(item.url))));
+  const stillValid = saved.filter((_, index) => checks[index]);
+
+  if (stillValid.length !== saved.length) {
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(stillValid));
+    } catch (err) {
+      // localStorage indisponível — sem problema, só não persiste a limpeza.
+    }
+  }
+
+  if (stillValid.length === 0) return;
+
+  existingListEl.innerHTML = stillValid.map((item) => `
     <div class="create-existing-item">
       <span>${escapeHtml(item.title || "Leilão de Jogos")}</span>
       <a href="${escapeHtml(item.url)}" target="_blank">Abrir →</a>
