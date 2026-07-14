@@ -9,7 +9,7 @@ const multer = require("multer");
 const registry = require("./src/registry");
 const pixggApi = require("./src/pixggApi");
 const { getStore, deleteStore, DATA_DIR } = require("./src/stores");
-const { verifyPassword } = require("./src/passwords");
+const { verifyPassword, timingSafeEqualString } = require("./src/passwords");
 const { parseMessage, normalizeKey } = require("./src/parser");
 const livepix = require("./src/livepixClient");
 const pixgg = require("./src/pixggClient");
@@ -521,7 +521,7 @@ app.get("/api/ranking", (req, res) => {
 app.delete("/api/admin/leiloes/:id", (req, res) => {
   const secret = process.env.SUPER_ADMIN_SECRET || "";
   const supplied = req.header("x-super-admin-secret") || "";
-  if (!secret || supplied !== secret) {
+  if (!secret || !timingSafeEqualString(supplied, secret)) {
     return res.status(401).json({ error: "Segredo de super-admin inválido ou não configurado" });
   }
   const { id } = req.params;

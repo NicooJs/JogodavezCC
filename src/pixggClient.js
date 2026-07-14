@@ -23,11 +23,15 @@
 //
 // Sem assinatura em header. Combinado com o Cris: a proteção é um segredo na
 // própria URL do webhook (?assinatura=xxxx), que o pix.gg reenvia igual em
-// toda chamada — não é HMAC, é comparação direta de string.
+// toda chamada — o FORMATO do segredo é string simples (não HMAC), mas a
+// COMPARAÇÃO do nosso lado usa timingSafeEqualString (ver src/passwords.js)
+// pra não vazar o segredo por tempo de resposta — isso é só uma escolha
+// nossa de implementação, não muda nada do combinado com o pix.gg.
+const { timingSafeEqualString } = require("./passwords");
 
 function verifySignature(providedSecret, expectedSecret) {
   if (!expectedSecret) return true; // sem segredo configurado, não valida (dev local)
-  return providedSecret === expectedSecret;
+  return timingSafeEqualString(providedSecret, expectedSecret);
 }
 
 function isPaid(status) {
