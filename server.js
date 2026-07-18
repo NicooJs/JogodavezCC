@@ -10,7 +10,7 @@ const registry = require("./src/registry");
 const pixggApi = require("./src/pixggApi");
 const { getStore, deleteStore, DATA_DIR } = require("./src/stores");
 const { verifyPassword, timingSafeEqualString } = require("./src/passwords");
-const { parseMessage, normalizeKey } = require("./src/parser");
+const { parseMessage, normalizeKey, leftoverAfterMatch, looksLikeNoise } = require("./src/parser");
 const livepix = require("./src/livepixClient");
 const pixgg = require("./src/pixggClient");
 const { fetchGameImage, searchGames, identifyGameFromNoisyText } = require("./src/gameImages");
@@ -251,6 +251,23 @@ async function resolveParsedGame(store, parsed) {
 
   const matchedKey = store.resolveExistingKey(parsed.key);
   if (matchedKey) {
+    // O jogo já catalogado bate por substring dentro da mensagem nova (ver
+    // resolveExistingKey em db.js) — mas isso pode ser ruído de chat em volta
+    // do MESMO jogo ("minecraft manda ver!!") ou pode ser um jogo diferente
+    // de verdade com nome parecido ("Elden Ring Nightreign" batendo com
+    // "Elden Ring" já existente). Só aceita o match direto quando o que
+    // sobra parece ruído comum; caso contrário, confere na RAWG se o texto
+    // inteiro identifica um jogo diferente antes de fundir num lote alheio.
+    const leftover = leftoverAfterMatch(parsed.key, matchedKey);
+    if (!looksLikeNoise(leftover)) {
+      const rawgMatch = await identifyGameFromNoisyText(parsed.name);
+      if (rawgMatch) {
+        const rawgKey = normalizeKey(rawgMatch.name);
+        if (rawgKey !== matchedKey) {
+          return { ...parsed, key: rawgKey, name: rawgMatch.name };
+        }
+      }
+    }
     const existing = store.getGame(matchedKey);
     return { ...parsed, key: matchedKey, name: existing.name };
   }

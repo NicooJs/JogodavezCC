@@ -74,4 +74,33 @@ function parseMessage(rawMessage) {
   return { action, name, key };
 }
 
-module.exports = { parseMessage, normalizeKey };
+// Palavras comuns que aparecem junto do nome do jogo numa doação ("minecraft
+// manda ver!!", "coloca elden ring pfv") sem fazer parte do título de
+// verdade — usado só pra decidir se o que sobra de texto depois de bater com
+// um jogo já catalogado é ruído de chat (mesmo jogo) ou pode ser um título
+// genuinamente diferente com nome parecido (spin-off, DLC, remaster), que
+// merece conferência na RAWG antes de fundir num lote que já existe (ver
+// resolveParsedGame em server.js — o caso que motivou isso foi "Elden Ring
+// Nightreign" batendo por substring com "Elden Ring" já catalogado).
+const NOISE_WORDS = new Set([
+  "manda", "mandar", "vai", "ver", "vamo", "vamos", "bora", "coloca", "colocar",
+  "poe", "por", "favor", "pfv", "pfvr", "porfavor", "please", "pls", "plis",
+  "aew", "ae", "aqui", "logo", "isso", "essa", "esse", "jogo", "game",
+  "gogogo", "go", "quero", "queria", "da", "de", "o", "a", "os", "as",
+  "um", "uma", "no", "na", "pro", "pra", "com", "e",
+]);
+
+// Tira a primeira ocorrência de matchedKey (como frase inteira) de dentro de
+// candidateKey e devolve o que sobrou, já sem espaços nas pontas.
+function leftoverAfterMatch(candidateKey, matchedKey) {
+  const escaped = matchedKey.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const re = new RegExp(`(^|\\s)${escaped}(\\s|$)`);
+  return candidateKey.replace(re, " ").trim();
+}
+
+function looksLikeNoise(leftover) {
+  if (!leftover) return true;
+  return leftover.split(/\s+/).filter(Boolean).every((w) => NOISE_WORDS.has(w));
+}
+
+module.exports = { parseMessage, normalizeKey, leftoverAfterMatch, looksLikeNoise };
