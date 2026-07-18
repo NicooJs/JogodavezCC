@@ -17,6 +17,13 @@ const { fetchGameImage, searchGames, identifyGameFromNoisyText } = require("./sr
 const { fetchTwitchAvatar } = require("./src/twitchClient");
 
 const app = express();
+// Railway termina TLS na borda e repassa pro container em HTTP puro,
+// marcando o protocolo real no header X-Forwarded-Proto. Sem confiar nesse
+// proxy, req.protocol sempre volta "http" em produção (mesmo pra requisição
+// pública https) — e é isso que monta a URL de webhook errada em
+// buildWebhookUrlFromReq, fazendo o pix.gg tentar mandar POST pra uma URL
+// http:// que nunca chega no app.
+app.set("trust proxy", 1);
 const server = http.createServer(app);
 const io = new Server(server);
 
