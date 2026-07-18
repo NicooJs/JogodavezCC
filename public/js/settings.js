@@ -84,7 +84,7 @@ function renderWebhookState(stale, signatureIssue) {
 
 function renderSettingsThemePicker(theme) {
   document.querySelectorAll("#settings-theme-picker .theme-swatch").forEach((btn) => {
-    btn.classList.toggle("active", btn.dataset.theme === (theme || "nebulosa"));
+    btn.classList.toggle("active", btn.dataset.theme === (theme || "ametista"));
   });
 }
 

@@ -213,9 +213,9 @@ function renderThemePicker(theme) {
   // Antes só destacava a bolinha escolhida — a página do painel em si nunca
   // refletia o tema, então parecia que trocar não fazia nada (o mecanismo
   // de verdade funciona, é só o board que aplicava visualmente até aqui).
-  document.documentElement.dataset.theme = theme || "nebulosa";
+  document.documentElement.dataset.theme = theme || "ametista";
   document.querySelectorAll(".theme-swatch").forEach((btn) => {
-    btn.classList.toggle("active", btn.dataset.theme === (theme || "nebulosa"));
+    btn.classList.toggle("active", btn.dataset.theme === (theme || "ametista"));
   });
 }
 

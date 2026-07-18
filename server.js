@@ -356,7 +356,7 @@ function serializeLeaderboard(store) {
     hostAvatar: store.getState("hostAvatar", null),
     hostVerified: getHostVerified(store),
     hostTwitchLogin: store.getState("hostTwitchLogin", null),
-    theme: store.getState("theme", "nebulosa"),
+    theme: store.getState("theme", "ametista"),
     backgroundImageUrl: store.getState("backgroundImageUrl", null),
     qualifyCount,
     open: isOpen,

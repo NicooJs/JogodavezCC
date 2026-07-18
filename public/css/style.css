@@ -11,13 +11,43 @@
 
 /* Sistema de temas: cada leilão escolhe um (state.theme, ver admin.html →
    painel "Tema visual" → POST /admin/theme), aplicado via
-   document.documentElement.dataset.theme em app.js. "nebulosa" no :root é
+   document.documentElement.dataset.theme em app.js. "ametista" no :root é
    o default de verdade (novos leilões e qualquer :root antes do socket
-   conectar) — os outros dois só entram via [data-theme="..."] no <html>.
+   conectar) — os outros temas só entram via [data-theme="..."] no <html>.
    --danger/--positive/--bronze ficam FIXOS entre temas de propósito: são
    sinais semânticos (sabotagem/apoio/medalha de bronze), não identidade
    visual, então mudar por tema confundiria o significado. */
 :root {
+  --bg: #17131f;
+  --surface: #1e1829;
+  --surface-2: #251d33;
+  --border: #3a2f4d;
+  --text: #f2eff7;
+  --muted: #9891a8;
+  --accent: #b98cf5;
+  --accent-bg: rgba(185, 140, 245, 0.12);
+  --accent-text: #d1b3fa;
+  --accent-soft: #8b5fd1;
+  --accent-glow: rgba(185, 140, 245, 0.35);
+  --accent-ink: #1f1330;
+  --silver: #d6d0e0;
+  --bronze: #c99a6c;
+  --danger: #ef4470;
+  --danger-bg: rgba(239, 68, 112, 0.14);
+  --positive: #46b17f;
+  --font-display: "Nunito", sans-serif;
+  --font-title: "Abril Fatface", serif;
+  --font-body: "IBM Plex Sans", sans-serif;
+  --font-mono: "IBM Plex Mono", monospace;
+  --radius: 6px;
+  --ease: cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+/* "Nebulosa" — ciano sobre grafite escuro. Era o tema padrão do :root antes
+   de ametista assumir esse lugar; continua existindo como opção igual aos
+   outros, só que agora entra via [data-theme="nebulosa"] em vez de ser o
+   default implícito. */
+:root[data-theme="nebulosa"] {
   --bg: #14141c;
   --surface: #1b1b26;
   --surface-2: #21212e;
@@ -31,16 +61,6 @@
   --accent-glow: rgba(62, 207, 224, 0.35);
   --accent-ink: #062023;
   --silver: #cfd3dc;
-  --bronze: #c99a6c;
-  --danger: #ef4470;
-  --danger-bg: rgba(239, 68, 112, 0.14);
-  --positive: #46b17f;
-  --font-display: "Nunito", sans-serif;
-  --font-title: "Abril Fatface", serif;
-  --font-body: "IBM Plex Sans", sans-serif;
-  --font-mono: "IBM Plex Mono", monospace;
-  --radius: 6px;
-  --ease: cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 /* "Safira" — azul profundo com destaque num azul mais claro/vívido. */
@@ -93,25 +113,6 @@
   --accent-glow: rgba(224, 169, 85, 0.35);
   --accent-ink: #2b1c05;
   --silver: #cfd8d5;
-}
-
-/* "Ametista" — violeta profundo com lavanda. Acompanha roxo com um tom
-   parecido em vez de roxo+verde (evitar de propósito, ver CLAUDE.md — é o
-   combo genérico de dashboard de IA). */
-:root[data-theme="ametista"] {
-  --bg: #17131f;
-  --surface: #1e1829;
-  --surface-2: #251d33;
-  --border: #3a2f4d;
-  --text: #f2eff7;
-  --muted: #9891a8;
-  --accent: #b98cf5;
-  --accent-bg: rgba(185, 140, 245, 0.12);
-  --accent-text: #d1b3fa;
-  --accent-soft: #8b5fd1;
-  --accent-glow: rgba(185, 140, 245, 0.35);
-  --accent-ink: #1f1330;
-  --silver: #d6d0e0;
 }
 
 * { box-sizing: border-box; }

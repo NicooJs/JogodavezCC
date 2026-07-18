@@ -837,9 +837,9 @@ totalHideToggleEl.addEventListener("click", async () => {
 });
 
 socket.on("update", ({ leaderboard, lastEvent }) => {
-  document.documentElement.dataset.theme = leaderboard.theme || "nebulosa";
+  document.documentElement.dataset.theme = leaderboard.theme || "ametista";
   document.querySelectorAll(".theme-dot").forEach((dot) => {
-    dot.classList.toggle("active", dot.dataset.theme === (leaderboard.theme || "nebulosa"));
+    dot.classList.toggle("active", dot.dataset.theme === (leaderboard.theme || "ametista"));
   });
   if (leaderboard.backgroundImageUrl) {
     document.body.style.setProperty("--bg-image", `url("${leaderboard.backgroundImageUrl}")`);
