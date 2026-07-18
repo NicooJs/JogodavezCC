@@ -11,6 +11,14 @@ const existingEl = document.getElementById("create-existing");
 const existingListEl = document.getElementById("create-existing-list");
 const existingNewBtn = document.getElementById("create-existing-new");
 
+const twitchLoggedOutEl = document.getElementById("create-twitch-logged-out");
+const twitchLoggedInEl = document.getElementById("create-twitch-logged-in");
+const twitchAvatarEl = document.getElementById("create-twitch-avatar");
+const twitchNameEl = document.getElementById("create-twitch-name");
+const twitchLogoutBtn = document.getElementById("create-twitch-logout");
+
+let currentSession = null;
+
 function escapeHtml(str) {
   return String(str).replace(/[&<>"']/g, (c) => ({
     "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;",
@@ -96,19 +104,53 @@ existingNewBtn.addEventListener("click", () => {
   form.hidden = false;
 });
 
+// httpOnly esconde o cookie de sessão do JS de propósito (é o que impede um
+// XSS de roubar o login) — por isso pergunta pro servidor quem está logado,
+// em vez de tentar ler algum cookie direto.
+async function loadSession() {
+  try {
+    currentSession = await fetch("/api/session/me").then((r) => r.json());
+  } catch (err) {
+    currentSession = { loggedIn: false };
+  }
+  renderTwitchBlock();
+}
+
+function renderTwitchBlock() {
+  const loggedIn = !!(currentSession && currentSession.loggedIn);
+  twitchLoggedOutEl.hidden = loggedIn;
+  twitchLoggedInEl.hidden = !loggedIn;
+  submitBtn.disabled = !loggedIn;
+
+  if (loggedIn) {
+    twitchAvatarEl.src = currentSession.avatarUrl || "";
+    twitchNameEl.textContent = currentSession.displayName || currentSession.twitchLogin || "";
+  }
+}
+
+twitchLogoutBtn.addEventListener("click", async () => {
+  try {
+    await fetch("/api/session/logout", { method: "POST" });
+  } catch (err) {
+    // segue o baile -- pior caso, a sessão local no servidor expira sozinha
+  }
+  await loadSession();
+});
+
 renderExisting();
+loadSession();
 
 form.addEventListener("submit", async (e) => {
   e.preventDefault();
   errorEl.hidden = true;
+  if (!currentSession || !currentSession.loggedIn) return;
 
   const title = document.getElementById("f-title").value.trim();
-  const host = document.getElementById("f-host").value.trim();
   const clientId = document.getElementById("f-client-id").value.trim();
   const clientSecret = document.getElementById("f-client-secret").value.trim();
   const password = document.getElementById("f-password").value;
 
-  if (!host || !clientId || !clientSecret || !password) return;
+  if (!clientId || !clientSecret || !password) return;
 
   submitBtn.disabled = true;
   submitBtn.textContent = "Vinculando webhook…";
@@ -117,7 +159,7 @@ form.addEventListener("submit", async (e) => {
     const res = await fetch("/api/leiloes", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ title, host, clientId, clientSecret, password }),
+      body: JSON.stringify({ title, clientId, clientSecret, password }),
     });
     const data = await res.json().catch(() => ({}));
     if (!res.ok) throw new Error(data.error || `Erro ${res.status}`);

@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Meus leilões</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Abril+Fatface&family=Nunito:ital,wght@0,500;0,600;0,700;1,500;1,600;1,700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/css/style.css" />
+<link rel="stylesheet" href="/css/create.css" />
+</head>
+<body class="create-body">
+  <div class="create-page">
+    <header class="topbar create-topbar">
+      <p class="topbar-mark">
+        <span class="brand-word">Leilão de Jogos</span>
+        <span class="brand-sub">meus leilões</span>
+      </p>
+      <nav class="create-topbar-nav">
+        <a href="/">criar novo</a>
+      </nav>
+    </header>
+
+    <main class="my-leiloes-main">
+      <div class="my-leiloes-logged-out" id="my-logged-out" hidden>
+        <p class="create-existing-title">Entre com a Twitch pra ver seus leilões</p>
+        <p class="create-hint">A lista é por conta — os mesmos leilões aparecem aqui não importa o navegador ou aparelho que você usar.</p>
+        <a class="create-twitch-login" id="my-login-link" href="/auth/twitch/start?returnTo=/meus-leiloes">Continuar com a Twitch</a>
+      </div>
+
+      <div class="my-leiloes-logged-in" id="my-logged-in" hidden>
+        <div class="my-leiloes-header">
+          <div class="create-twitch-logged-in">
+            <img class="create-twitch-avatar" id="my-avatar" src="" alt="" />
+            <span class="create-twitch-name" id="my-name"></span>
+            <button class="create-twitch-logout" id="my-logout" type="button">sair</button>
+          </div>
+        </div>
+
+        <div class="create-existing-list" id="my-list"></div>
+        <p class="my-leiloes-empty" id="my-empty" hidden>Você ainda não criou nenhum leilão com essa conta.</p>
+      </div>
+    </main>
+  </div>
+
+  <script src="/js/meus-leiloes.js"></script>
+</body>
+</html>

@@ -1,6 +1,7 @@
 require("dotenv").config();
 const fs = require("fs");
 const path = require("path");
+const crypto = require("crypto");
 const express = require("express");
 const http = require("http");
 const { Server } = require("socket.io");
@@ -15,6 +16,8 @@ const livepix = require("./src/livepixClient");
 const pixgg = require("./src/pixggClient");
 const { fetchGameImage, searchGames, identifyGameFromNoisyText } = require("./src/gameImages");
 const { fetchTwitchAvatar } = require("./src/twitchClient");
+const twitchAuth = require("./src/twitchAuth");
+const session = require("./src/session");
 
 const app = express();
 // Railway termina TLS na borda e repassa pro container em HTTP puro,
@@ -134,6 +137,39 @@ function getQualifyCount(store) {
 // pessoal do streamer.
 function getHideTotalRaised(store) {
   return store.getState("hideTotalRaised", "false") === "true";
+}
+
+// Verdadeiro só quando host/hostAvatar vieram de login de verdade com a
+// Twitch (ver POST /api/leiloes) e ninguém trocou o nome manualmente depois
+// (POST /admin/host derruba isso pra "false" incondicionalmente, ver lá).
+function getHostVerified(store) {
+  return store.getState("hostVerified", "false") === "true";
+}
+
+// ---------- sessão / login com a Twitch ----------
+
+const SESSION_MAX_AGE_SECONDS = 30 * 24 * 60 * 60; // 30 dias
+const OAUTH_STATE_MAX_AGE_SECONDS = 600; // 10 min — só o tempo de ida e volta pro id.twitch.tv
+
+// Allowlist EXATA (não regex "parece caminho relativo") pra onde o login
+// pode redirecionar de volta — fecha open-redirect sem ter superfície de
+// parsing pra acertar errado (barra dupla, normalização de barra invertida
+// etc. são os jeitos clássicos de um regex desses vazar).
+const ALLOWED_RETURN_PATHS = new Set(["/", "/meus-leiloes"]);
+function safeReturnTo(value) {
+  return ALLOWED_RETURN_PATHS.has(value) ? value : "/";
+}
+
+function buildTwitchRedirectUri(req) {
+  return `${req.protocol}://${req.get("host")}/auth/twitch/callback`;
+}
+
+// payload só tem twitchUserId quando veio de um login de verdade (ver
+// /auth/twitch/callback) — nunca confiar em identidade que não passou por
+// aqui.
+function getTwitchSession(req) {
+  const payload = session.getCookie(req, "leilao_session");
+  return payload && payload.twitchUserId ? payload : null;
 }
 
 // ---------- helpers ----------
@@ -318,6 +354,8 @@ function serializeLeaderboard(store) {
     title: store.getState("title", "Leilão de Jogos"),
     host: store.getState("host", ""),
     hostAvatar: store.getState("hostAvatar", null),
+    hostVerified: getHostVerified(store),
+    hostTwitchLogin: store.getState("hostTwitchLogin", null),
     theme: store.getState("theme", "nebulosa"),
     backgroundImageUrl: store.getState("backgroundImageUrl", null),
     qualifyCount,
@@ -504,34 +542,138 @@ function buildWebhookUrlFromReq(req, leilaoId) {
   return `${publicUrl}/webhook/pixgg/${leilaoId}?assinatura=${secret}`;
 }
 
+// ---------- login com a Twitch ----------
+
+// Passo 1: manda o navegador pra tela de autorização da Twitch. GET (não
+// fetch/POST) de propósito — é uma navegação de página inteira mesmo, e uma
+// tela de consentimento cross-origin não tem como funcionar via XHR.
+app.get("/auth/twitch/start", (req, res) => {
+  if (!process.env.TWITCH_CLIENT_ID || !process.env.TWITCH_CLIENT_SECRET) {
+    return res.status(500).send("Login com a Twitch não está configurado nesse servidor.");
+  }
+
+  const state = crypto.randomBytes(32).toString("base64url");
+  const returnTo = safeReturnTo(req.query.returnTo);
+
+  try {
+    session.setCookie(req, res, "leilao_oauth_state", { state, returnTo }, OAUTH_STATE_MAX_AGE_SECONDS);
+  } catch (err) {
+    console.error("Falha ao iniciar login com a Twitch:", err.message);
+    return res.status(500).send("Não foi possível iniciar o login. Tente de novo.");
+  }
+
+  res.redirect(twitchAuth.buildAuthorizeUrl({ redirectUri: buildTwitchRedirectUri(req), state }));
+});
+
+// Passo 2: a Twitch redireciona de volta pra cá com ?code=...&state=...
+// (ou ?error=... se a pessoa cancelou). Confirma o state (defesa contra
+// CSRF), troca o code por um token de usuário, busca quem é de verdade, e
+// grava isso numa sessão nossa.
+app.get("/auth/twitch/callback", async (req, res) => {
+  const statePayload = session.getCookie(req, "leilao_oauth_state");
+  // Limpa JÁ, antes de qualquer outra checagem — torna esse cookie de uso
+  // único, fechando tanto replay de CSRF quanto replay de uma URL de
+  // callback (com code+state) que tenha vazado por algum motivo (histórico
+  // do navegador, header Referer, log de proxy).
+  session.clearCookie(req, res, "leilao_oauth_state");
+
+  if (!statePayload) {
+    return res.status(400).send("Sessão de login expirou. Volte e tente de novo.");
+  }
+  if (req.query.error) {
+    // Cancelou na tela da Twitch — não é erro nosso, só volta de mãos vazias.
+    return res.redirect(safeReturnTo(statePayload.returnTo));
+  }
+  if (!req.query.state || !timingSafeEqualString(req.query.state, statePayload.state)) {
+    return res.status(400).send("Estado de login inválido. Tente de novo.");
+  }
+  if (!req.query.code) {
+    return res.status(400).send("Código de autorização ausente.");
+  }
+
+  try {
+    const redirectUri = buildTwitchRedirectUri(req);
+    const accessToken = await twitchAuth.exchangeCodeForToken({ code: req.query.code, redirectUri });
+    const user = await twitchAuth.fetchAuthenticatedUser(accessToken);
+    // accessToken não é usado de novo depois daqui nem gravado em lugar
+    // nenhum — mesmo que o SESSION_SECRET vaze um dia, isso deixa forjar
+    // "sou o usuário X" dentro do NOSSO app, nunca agir como esse usuário
+    // de verdade na API da Twitch.
+
+    session.setCookie(req, res, "leilao_session", {
+      twitchUserId: user.id,
+      twitchLogin: user.login,
+      displayName: user.displayName,
+      avatarUrl: user.avatarUrl,
+    }, SESSION_MAX_AGE_SECONDS);
+
+    res.redirect(safeReturnTo(statePayload.returnTo));
+  } catch (err) {
+    console.error("Erro no login com a Twitch:", err.message);
+    res.status(502).send("Não foi possível confirmar seu login com a Twitch. Tente de novo.");
+  }
+});
+
+app.post("/api/session/logout", (req, res) => {
+  session.clearCookie(req, res, "leilao_session");
+  res.json({ ok: true });
+});
+
+// httpOnly esconde o cookie do JS do navegador de propósito (é o que
+// impede um XSS de roubar a sessão) — por isso o front-end precisa
+// perguntar pro servidor quem está logado, em vez de ler o cookie direto.
+app.get("/api/session/me", (req, res) => {
+  const s = getTwitchSession(req);
+  res.json(s
+    ? { loggedIn: true, twitchUserId: s.twitchUserId, twitchLogin: s.twitchLogin, displayName: s.displayName, avatarUrl: s.avatarUrl }
+    : { loggedIn: false });
+});
+
+app.get("/api/meus-leiloes", (req, res) => {
+  const twitchSession = getTwitchSession(req);
+  if (!twitchSession) return res.status(401).json({ error: "Faça login com a Twitch" });
+
+  const rows = registry.listLeiloesByOwner(twitchSession.twitchUserId)
+    .map((meta) => {
+      const store = getStore(meta.id);
+      return {
+        id: meta.id,
+        title: store.getState("title", meta.title || "Leilão de Jogos"),
+        url: `/l/${meta.id}`,
+        createdAt: meta.createdAt,
+        hostVerified: getHostVerified(store),
+      };
+    })
+    .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+  res.json({ leiloes: rows });
+});
+
+app.get("/meus-leiloes", (req, res) => {
+  res.sendFile(path.join(__dirname, "public", "meus-leiloes.html"));
+});
+
 // ---------- criação de leilão ----------
 
 app.post("/api/leiloes", async (req, res) => {
   try {
-    const { title, host, password, clientId, clientSecret } = req.body || {};
+    const twitchSession = getTwitchSession(req);
+    if (!twitchSession) {
+      return res.status(401).json({ error: "Faça login com a Twitch antes de criar o leilão" });
+    }
+
+    const { title, password, clientId, clientSecret } = req.body || {};
     const { id } = await registry.createLeilao({
       title,
-      host,
+      host: twitchSession.displayName,
+      hostAvatar: twitchSession.avatarUrl,
+      hostTwitchUserId: twitchSession.twitchUserId,
+      hostTwitchLogin: twitchSession.twitchLogin,
       password,
       clientId,
       clientSecret,
       buildWebhookUrl: (leilaoId) => buildWebhookUrlFromReq(req, leilaoId),
     });
     res.json({ ok: true, id, url: `/l/${id}` });
-
-    // Busca a foto da Twitch já na criação, sem precisar editar o nome do
-    // host manualmente depois — mesmo padrão fire-and-forget da rota
-    // /admin/host, só que aqui dispara sozinho.
-    if (host) {
-      const store = getStore(id);
-      fetchTwitchAvatar(host)
-        .then((avatarUrl) => {
-          if (!avatarUrl || store.getState("host", "") !== host) return;
-          store.setState("hostAvatar", avatarUrl);
-          broadcastUpdate(id, store, null);
-        })
-        .catch((err) => console.error("Falha ao buscar avatar da Twitch na criação:", err.message));
-    }
   } catch (err) {
     res.status(400).json({ error: err.message });
   }
@@ -573,6 +715,7 @@ app.get("/api/ranking", (req, res) => {
         id,
         host: store.getState("host", meta.host || ""),
         hostAvatar: store.getState("hostAvatar", null),
+        hostVerified: getHostVerified(store),
         totalRaised,
       };
     })
@@ -908,12 +1051,30 @@ app.post("/api/l/:id/admin/set-timer", loadLeilao, requireLeilaoAdmin, (req, res
   res.json({ ok: true, minutes });
 });
 
+// Trocar o nome manualmente aqui SEMPRE derruba a verificação da Twitch da
+// criação, incondicionalmente — não só "se o nome mudou de verdade".
+// Deliberado: comparação de string como porta de segurança é ela mesma uma
+// classe de bug (espaço, acentuação, maiúscula), e essa rota é rara e fica
+// atrás da senha de apresentador, então o custo de perder o selo num edit
+// que nem mudou nada é baixo. hostTwitchUserId/hostTwitchLogin também são
+// limpos aqui, não só hostVerified -- deixar esses campos velhos pra trás
+// seria dado morto cuja única forma de dar problema é um código futuro ler
+// esses campos sem checar hostVerified primeiro; limpar remove essa
+// armadilha de vez, em vez de confiar que todo leitor futuro vai lembrar de
+// checar a flag certa.
+//
+// Sem corrida possível com o fetchTwitchAvatar assíncrono logo abaixo:
+// store.setState é síncrono (grava em disco antes de voltar), então
+// hostVerified já está "false" muito antes desse .then() sequer rodar.
 app.post("/api/l/:id/admin/host", loadLeilao, requireLeilaoAdmin, (req, res) => {
   const { host } = req.body || {};
   const name = host || "";
   const { store, leilaoId } = req;
   store.setState("host", name);
   store.setState("hostAvatar", "");
+  store.setState("hostVerified", "false");
+  store.setState("hostTwitchLogin", null);
+  store.setState("hostTwitchUserId", null);
   broadcastUpdate(leilaoId, store, { type: "host" });
   res.json({ ok: true });
 

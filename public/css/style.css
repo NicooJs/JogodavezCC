@@ -1107,6 +1107,15 @@ body.board-body.has-bg-image {
   white-space: nowrap;
 }
 
+.ranking-verified-mark {
+  width: 12px;
+  height: 12px;
+  margin-left: 4px;
+  color: var(--accent-text);
+  vertical-align: middle;
+  flex-shrink: 0;
+}
+
 .ranking-row-total {
   font-family: var(--font-mono);
   font-size: 13px;

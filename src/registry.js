@@ -49,7 +49,18 @@ const MIN_PASSWORD_LENGTH = 6;
 // buildWebhookUrl(id) monta a URL completa de webhook pra esse leilão —
 // quem sabe montar isso é server.js (precisa do host da requisição), por
 // isso vem como função em vez de string pronta.
-async function createLeilao({ title, host, password, clientId, clientSecret, buildWebhookUrl }) {
+//
+// host/hostAvatar/hostTwitchUserId/hostTwitchLogin vêm da sessão da Twitch já
+// verificada no servidor (ver getTwitchSession em server.js) — nunca de
+// texto digitado. hostTwitchUserId é exigido aqui, não só checado do lado de
+// fora: é a mesma disciplina de "recusa barata antes de efeito colateral
+// caro" que já existe pra password/clientId/clientSecret logo abaixo, e
+// protege contra um futuro refactor de server.js que esqueça de checar a
+// sessão antes de chamar essa função.
+async function createLeilao({ title, host, hostAvatar, hostTwitchUserId, hostTwitchLogin, password, clientId, clientSecret, buildWebhookUrl }) {
+  if (!hostTwitchUserId) {
+    throw new Error("É necessário fazer login com a Twitch antes de criar o leilão");
+  }
   if (!clientId || !clientSecret) {
     throw new Error("Informe o Client ID e o Client Secret da sua aplicação no pix.gg");
   }
@@ -72,6 +83,11 @@ async function createLeilao({ title, host, password, clientId, clientSecret, bui
     title: title || "Leilão de Jogos",
     host: host || "",
     pixggClientId: clientId,
+    // Quem é "dono" desse leilão pra fins de listagem em /meus-leiloes.
+    // Separado de hostVerified (guardado no store, não aqui): posse não
+    // muda mesmo que o nome exibido seja trocado depois e perca a
+    // verificação (ver POST /admin/host em server.js).
+    ownerTwitchUserId: hostTwitchUserId,
     createdAt: new Date().toISOString(),
   };
   registry.leiloes[id] = meta;
@@ -81,6 +97,10 @@ async function createLeilao({ title, host, password, clientId, clientSecret, bui
   store.setState("adminSecretHash", hashPassword(password));
   store.setState("title", meta.title);
   store.setState("host", meta.host);
+  store.setState("hostAvatar", hostAvatar || null);
+  store.setState("hostTwitchUserId", hostTwitchUserId);
+  store.setState("hostTwitchLogin", hostTwitchLogin || null);
+  store.setState("hostVerified", "true");
   store.setState("open", "true");
   // Referência pra saber há quanto tempo esperamos o primeiro contato do
   // pix.gg (ver "webhookStale" em server.js) — se nunca chegou nenhum ping
@@ -107,6 +127,24 @@ function listLeilaoIds() {
   return Object.keys(registry.leiloes);
 }
 
+// Pra "/meus-leiloes" — varredura em memória em vez de um índice separado
+// (twitchUserId -> [ids]) de propósito: registry.leiloes inteiro já mora em
+// memória (carregado uma vez em load(), acima), então isso é O(n) sem I/O de
+// disco nenhum, e no tamanho desse app (um arquivo só, dezenas/centenas de
+// leilões, não milhões) isso nunca vai ser o gargalo. Um índice separado
+// precisaria ser mantido manualmente em TODO lugar que cria ou apaga leilão
+// (inclusive deleteLeilao, que hoje não sabe nada de dono) — cada ponto novo
+// é mais uma chance de esquecer e deixar o índice dessincronizado. Como
+// ownerTwitchUserId mora dentro do MESMO objeto que deleteLeilao já apaga,
+// essa varredura nunca pode ficar dessincronizada de um leilão apagado —
+// não existe uma segunda estrutura pra esquecer de limpar.
+function listLeiloesByOwner(twitchUserId) {
+  if (!twitchUserId) return [];
+  return Object.entries(registry.leiloes)
+    .filter(([, meta]) => meta.ownerTwitchUserId === twitchUserId)
+    .map(([id, meta]) => ({ id, ...meta }));
+}
+
 // Apaga um leilão do registro (some da listagem, do ranking, de qualquer
 // rota — loadLeilao já 404 sozinho pra id que não existe mais aqui). Não
 // apaga o arquivo de dados dele nem o cache em memória — isso é
@@ -123,5 +161,6 @@ module.exports = {
   leilaoExists,
   getLeilaoMeta,
   listLeilaoIds,
+  listLeiloesByOwner,
   deleteLeilao,
 };

@@ -13,6 +13,14 @@
 
 .create-topbar { margin-bottom: 56px; }
 
+.create-topbar-nav a {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  letter-spacing: 0.04em;
+  color: var(--muted);
+}
+.create-topbar-nav a:hover { color: var(--accent-text); }
+
 .create-hero {
   display: grid;
   grid-template-columns: 1fr 440px;
@@ -156,6 +164,66 @@
 }
 
 .create-hint { font-size: 12px; color: var(--muted); line-height: 1.5; }
+
+/* Identidade Twitch na criação — substitui o antigo campo de texto livre
+   "seu nome (host)". Nome/foto vêm confirmados pela própria Twitch, não dá
+   pra editar aqui (ver public/js/create.js). */
+.create-twitch-logged-out,
+.create-twitch-logged-in {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.create-twitch-logged-out[hidden],
+.create-twitch-logged-in[hidden] { display: none; }
+
+.create-twitch-login {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  height: 40px;
+  padding: 0 16px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  color: var(--text);
+  font-family: var(--font-body);
+  font-size: 13.5px;
+  font-weight: 600;
+}
+.create-twitch-login:hover { border-color: var(--accent); color: var(--accent-text); }
+
+.create-twitch-avatar {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  object-fit: cover;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+}
+
+.create-twitch-name {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.create-twitch-switch,
+.create-twitch-logout {
+  font-family: var(--font-body);
+  font-size: 12px;
+  color: var(--muted);
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+  margin-left: auto;
+}
+.create-twitch-switch:hover,
+.create-twitch-logout:hover { color: var(--text); }
 
 .create-submit {
   height: 48px;
@@ -313,6 +381,36 @@
   color: var(--accent-text);
 }
 .create-result-open:hover { color: var(--accent); }
+
+/* Página /meus-leiloes -- reaproveita as mesmas classes de create.css
+   (create-existing-item, create-twitch-*) em vez de inventar linguagem
+   visual nova. */
+.my-leiloes-main {
+  max-width: 560px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
+}
+
+.my-leiloes-logged-out,
+.my-leiloes-logged-in {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 26px;
+}
+.my-leiloes-logged-out[hidden],
+.my-leiloes-logged-in[hidden] { display: none; }
+
+.my-leiloes-logged-out .create-twitch-login { align-self: flex-start; }
+
+.my-leiloes-header { display: flex; justify-content: flex-end; }
+
+.my-leiloes-empty { margin: 0; font-size: 13.5px; color: var(--muted); }
 
 @media (max-width: 900px) {
   .create-hero { grid-template-columns: 1fr; gap: 40px; }

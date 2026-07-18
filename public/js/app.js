@@ -747,6 +747,15 @@ const rankingPodiumEl = document.getElementById("ranking-podium");
 const rankingListEl = document.getElementById("ranking-list");
 const rankingEmptyEl = document.getElementById("ranking-empty");
 
+// Selo pequeno pra linha/card do ranking cuja identidade veio de login de
+// verdade com a Twitch na criação (ver hostVerified em server.js) -- não
+// aparece pra leilões antigos, criados antes dessa checagem existir, nem
+// pra quem trocou o nome manualmente depois e perdeu a verificação.
+const VERIFIED_MARK_SVG = `<svg class="ranking-verified-mark" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg" title="Identidade confirmada pela Twitch">
+  <circle cx="8" cy="8" r="8" fill="currentColor" opacity="0.18"/>
+  <path d="M4.5 8.2L6.8 10.5L11.5 5.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>`;
+
 function rankingPodiumCardHtml(row) {
   const avatar = row.hostAvatar
     ? `<img class="recap-podium-thumb ranking-podium-avatar" src="${escapeHtml(row.hostAvatar)}" alt="" />`
@@ -755,7 +764,7 @@ function rankingPodiumCardHtml(row) {
     <div class="recap-podium-card rank-${row.rank}">
       <span class="recap-podium-rank">${rankBadgeHtml(row.rank)}</span>
       ${avatar}
-      <p class="recap-podium-name">${escapeHtml(row.host)}</p>
+      <p class="recap-podium-name">${escapeHtml(row.host)}${row.hostVerified ? VERIFIED_MARK_SVG : ""}</p>
       <p class="recap-podium-total">${formatBRL(row.totalRaised)}</p>
     </div>
   `;
@@ -769,7 +778,7 @@ function rankingRowHtml(row) {
     <div class="ranking-row">
       <span class="ranking-row-rank">${String(row.rank).padStart(2, "0")}</span>
       ${avatar}
-      <span class="ranking-row-host">${escapeHtml(row.host)}</span>
+      <span class="ranking-row-host">${escapeHtml(row.host)}${row.hostVerified ? VERIFIED_MARK_SVG : ""}</span>
       <span class="ranking-row-total">${formatBRL(row.totalRaised)}</span>
     </div>
   `;
@@ -848,12 +857,19 @@ socket.on("update", ({ leaderboard, lastEvent }) => {
     hostAvatarEl.hidden = true;
     hostAvatarEl.removeAttribute("src");
   }
-  if (leaderboard.host) {
-    const twitchUrl = `https://twitch.tv/${encodeURIComponent(leaderboard.host.trim())}`;
+  // Só mostra o link "ver no Twitch" quando o host veio de login de verdade
+  // com a Twitch (hostVerified) -- antes disso usava o nome de EXIBIÇÃO
+  // digitado/escolhido pra montar a URL, sem checagem nenhuma de posse:
+  // qualquer um digitando "Sabrinoca" ganhava um link clicável pro canal
+  // real dela. Usa hostTwitchLogin (o login estável da Twitch) pra montar a
+  // URL, não leaderboard.host (nome de exibição, pode ter espaço/acento --
+  // errado pra URL mesmo sem o problema de confiança).
+  if (leaderboard.hostVerified && leaderboard.hostTwitchLogin) {
+    const twitchUrl = `https://twitch.tv/${encodeURIComponent(leaderboard.hostTwitchLogin)}`;
     hostTwitchBadgeEl.href = twitchUrl;
     hostTwitchBadgeEl.hidden = false;
     hostTwitchLinkEl.href = twitchUrl;
-    hostTwitchLinkEl.textContent = `twitch.tv/${leaderboard.host.trim()}`;
+    hostTwitchLinkEl.textContent = `twitch.tv/${leaderboard.hostTwitchLogin}`;
     hostTwitchLinkEl.hidden = false;
   } else {
     hostTwitchBadgeEl.hidden = true;

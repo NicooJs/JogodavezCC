@@ -16,6 +16,9 @@
         <span class="brand-word">Leilão de Jogos</span>
         <span class="brand-sub">criar o meu</span>
       </p>
+      <nav class="create-topbar-nav">
+        <a href="/meus-leiloes">meus leilões</a>
+      </nav>
     </header>
 
     <main class="create-hero">
@@ -69,10 +72,26 @@
               <input type="text" id="f-title" placeholder="Leilão de Jogos" autocomplete="off" />
             </label>
 
-            <label class="create-field">
-              <span>Seu nome (host)</span>
-              <input type="text" id="f-host" placeholder="Como você quer aparecer no placar" autocomplete="off" required />
-            </label>
+            <div class="create-field create-twitch-block">
+              <span>Sua identidade (Twitch)</span>
+
+              <div class="create-twitch-logged-out" id="create-twitch-logged-out">
+                <a class="create-twitch-login" id="create-twitch-login" href="/auth/twitch/start?returnTo=/">Continuar com a Twitch</a>
+              </div>
+
+              <div class="create-twitch-logged-in" id="create-twitch-logged-in" hidden>
+                <img class="create-twitch-avatar" id="create-twitch-avatar" src="" alt="" />
+                <span class="create-twitch-name" id="create-twitch-name"></span>
+                <a class="create-twitch-switch" id="create-twitch-switch" href="/auth/twitch/start?returnTo=/">trocar</a>
+                <button class="create-twitch-logout" id="create-twitch-logout" type="button">sair</button>
+              </div>
+
+              <span class="create-hint">
+                É o nome e a foto confirmados pela própria Twitch — não dá
+                pra editar, pra ninguém conseguir se passar por outro
+                streamer no placar.
+              </span>
+            </div>
           </div>
 
           <div class="create-section">
@@ -108,7 +127,7 @@
             </label>
           </div>
 
-          <button class="create-submit" id="create-submit" type="submit">Criar leilão →</button>
+          <button class="create-submit" id="create-submit" type="submit" disabled>Criar leilão →</button>
           <p class="create-error" id="create-error" hidden></p>
         </form>
 
