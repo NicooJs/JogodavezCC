@@ -91,6 +91,19 @@
   padding-top: 10px;
 }
 
+/* Estado inicial de tudo que entra animado na carga da página (ver
+   create-intro.js) -- escondido só até o JS rodar, que sempre revela (com
+   animação, ou na marra dentro de um catch) mesmo se o Motion falhar ao
+   carregar do CDN. Não dá pra depender só do JS pra revelar sem essa
+   garantia -- ficaria invisível pra sempre num bloqueio de rede/ad-blocker. */
+.reveal-item { opacity: 0; }
+
+.create-word {
+  display: inline-block;
+  opacity: 0;
+  transform: translateY(0.2em);
+}
+
 .create-title {
   font-family: var(--font-display);
   font-style: italic;
@@ -111,6 +124,41 @@
 }
 
 .create-lede strong { color: var(--accent-text); }
+
+/* Prova social com dado real (GET /api/ranking, o mesmo do board -- quem
+   já pediu pra esconder o total via hideTotalRaised já sai de lá sozinho,
+   então essa reaproveita a mesma fronteira de privacidade sem precisar
+   reimplementar nada). Só aparece se tiver pelo menos 1 streamer de
+   verdade -- "0 streamers usam" no ar por padrão passa a impressão
+   errada num produto novo. */
+.create-proof {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.create-proof[hidden] { display: none; }
+
+.create-proof-avatars {
+  display: flex;
+}
+
+.create-proof-avatars img {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 2px solid var(--bg);
+  background: var(--surface-2);
+  margin-left: -10px;
+}
+.create-proof-avatars img:first-child { margin-left: 0; }
+
+.create-proof-text {
+  margin: 0;
+  font-size: 12.5px;
+  color: var(--muted);
+}
+.create-proof-text strong { color: var(--accent-text); font-weight: 600; }
 
 /* Os 3 passos são mesmo uma sequência (nessa ordem, com dependência entre
    eles) — os números não são decoração, é informação de verdade. */

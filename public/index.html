@@ -33,30 +33,35 @@
 
     <main class="create-hero">
       <div class="create-pitch">
-        <h1 class="create-title">Seu placar de leilão, no ar em menos de um minuto</h1>
-        <p class="create-lede">
+        <h1 class="create-title" id="create-title" aria-label="Seu placar de leilão, no ar em menos de um minuto">Seu placar de leilão, no ar em menos de um minuto</h1>
+        <p class="create-lede reveal-item">
           Espectadores doam pelo <strong>pix.gg</strong> e escrevem o nome do
           jogo na mensagem — o placar atualiza sozinho, ao vivo, sem você
           precisar tocar em nada. Isolado de qualquer outro streamer usando
           o site.
         </p>
 
+        <div class="create-proof reveal-item" id="create-proof" hidden>
+          <div class="create-proof-avatars" id="create-proof-avatars"></div>
+          <p class="create-proof-text" id="create-proof-text"></p>
+        </div>
+
         <ol class="create-steps">
-          <li>
+          <li class="reveal-item">
             <span class="create-step-num">01</span>
             <div class="create-step-text">
               <p class="create-step-title">Cole o Client ID e Secret</p>
               <p class="create-step-hint">Da sua aplicação no pix.gg — a gente vincula o webhook automaticamente, sem colar URL em lugar nenhum.</p>
             </div>
           </li>
-          <li>
+          <li class="reveal-item">
             <span class="create-step-num">02</span>
             <div class="create-step-text">
               <p class="create-step-title">Escolha uma senha</p>
               <p class="create-step-hint">É ela que libera o modo apresentador — editar valores, pausar o timer, lançar doações manuais — na hora da live.</p>
             </div>
           </li>
-          <li>
+          <li class="reveal-item">
             <span class="create-step-num">03</span>
             <div class="create-step-text">
               <p class="create-step-title">Capture a tela e pronto</p>
@@ -66,7 +71,7 @@
         </ol>
       </div>
 
-      <div class="create-panel">
+      <div class="create-panel reveal-item">
         <div class="create-existing" id="create-existing" hidden>
           <p class="create-existing-title">Você já criou um leilão nesse navegador</p>
           <div class="create-existing-list" id="create-existing-list"></div>
@@ -159,6 +164,7 @@
   </div>
 
   <script type="module" src="/js/create-bg.js"></script>
+  <script type="module" src="/js/create-intro.js"></script>
   <script src="/js/create.js"></script>
 </body>
 </html>
