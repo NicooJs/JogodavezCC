@@ -24,9 +24,55 @@
 
 .settings-head {
   flex-shrink: 0;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
   padding: 24px 56px 18px 26px;
   border-bottom: 1px solid var(--border);
 }
+
+.settings-tabs {
+  position: relative;
+  flex-shrink: 0;
+  display: flex;
+  gap: 4px;
+  margin: 16px 26px;
+  padding: 4px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: calc(var(--radius) + 4px);
+}
+.settings-tab {
+  position: relative;
+  z-index: 1;
+  flex: 1;
+  padding: 9px 14px;
+  background: none;
+  border: none;
+  border-radius: var(--radius);
+  color: var(--muted);
+  font-family: var(--font-body);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: color 0.2s var(--ease);
+}
+.settings-tab:hover { color: var(--text); }
+.settings-tab.active { color: var(--accent-ink); }
+.settings-tab-pill {
+  position: absolute;
+  z-index: 0;
+  top: 4px;
+  bottom: 4px;
+  left: 0;
+  width: 0;
+  background: var(--accent);
+  border-radius: var(--radius);
+  transition: transform 0.3s var(--ease), width 0.3s var(--ease);
+}
+.settings-tab-pill.no-transition { transition: none; }
 
 .settings-body {
   overflow-y: auto;
@@ -95,33 +141,16 @@
 .settings-modal .panel-row.wrap { flex-wrap: wrap; justify-content: flex-start; }
 .settings-modal .settings-bg-row { margin-top: 14px; }
 
-.settings-modal .btn {
-  height: 38px;
-  padding: 0 16px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  background: var(--surface);
-  border: 1px solid var(--border);
-  color: var(--text);
-  border-radius: 9px;
-  font-family: var(--font-body);
-  font-size: 13px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: transform 0.15s ease, box-shadow 0.15s ease, border-color 0.2s ease, background 0.15s ease;
-}
-.settings-modal .btn:hover { border-color: var(--accent); transform: translateY(-1px); }
-.settings-modal .btn:active { transform: translateY(0); }
-
-.settings-modal .btn.primary {
-  background: linear-gradient(180deg, var(--accent-text), var(--accent));
-  color: var(--accent-ink);
-  border: none;
-  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.3) inset, 0 4px 14px -5px var(--accent-glow);
-}
-.settings-modal .btn.danger { background: transparent; border-color: var(--danger); color: var(--danger); }
-.settings-modal .btn.danger:hover { background: var(--danger-bg); box-shadow: 0 8px 20px -10px rgba(239, 68, 112, 0.45); }
+/* Botão reaproveita .btn-mini (style.css) -- o mesmo componente já usado no
+   modal de lote, login do apresentador e ranking. Só um ajuste de altura
+   aqui: .btn-mini não tem altura fixa (auto, ~30-33px), e ao lado dos
+   inputs/selects desse modal (~38-40px, .panel-row usa align-items:center)
+   ficava visivelmente mais baixo, flutuando no meio da linha. Mesmo padrão
+   que o modal de lote já usa pra esse mesmo problema (.modal-actions
+   .btn-mini, style.css). Não se aplica aos botões da tabela de jogos (ficam
+   em <td>, não em .panel-row, e já têm ajuste de densidade próprio logo
+   abaixo) nem ao #reset-btn (sozinho, sem input do lado pra alinhar). */
+.settings-modal .panel-row .btn-mini { height: 38px; }
 
 .settings-modal .badge {
   display: inline-block;
@@ -192,8 +221,18 @@
 
 .settings-modal .relink-result-error { color: var(--danger); }
 
+/* Diálogos genéricos (promptDialog/confirmDialog, ver settings.js) --
+   propositalmente SEM o escopo .settings-modal: são irmãos de
+   #settings-overlay no HTML, não descendentes dela, então um seletor
+   escopado nunca bateria. z-index 70 é necessário, não estético: overlay
+   base é 50, .settings-overlay já sobe pra 60 -- um diálogo aberto por
+   cima do settings com z-index 50 ficaria escondido atrás do fundo dela. */
+.dialog-overlay { z-index: 70; }
+.modal-message { margin: 0 0 4px; font-size: 13.5px; line-height: 1.5; color: var(--text); }
+
 @media (max-width: 640px) {
   .settings-overlay { padding: 0; align-items: stretch; }
   .settings-modal { max-width: none; max-height: none; height: 100%; border-radius: 0; }
   .settings-modal .panel { padding: 16px; }
+  .settings-tabs { margin: 12px 16px; }
 }

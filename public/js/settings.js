@@ -11,11 +11,66 @@ const settingsCloseEl = document.getElementById("settings-close");
 const adminLinkEl = document.getElementById("admin-link");
 const webhookWarningLinkEl = document.getElementById("webhook-warning-link");
 
+const promptDialogOverlayEl = document.getElementById("prompt-dialog-overlay");
+const confirmDialogOverlayEl = document.getElementById("confirm-dialog-overlay");
+
+const settingsBodyEl = document.getElementById("settings-body");
+const settingsTabPillEl = document.getElementById("settings-tab-pill");
+const settingsTabButtons = [...document.querySelectorAll(".settings-tab")];
+const settingsPanelGroups = {};
+document.querySelectorAll(".settings-panel-group").forEach((el) => { settingsPanelGroups[el.dataset.tabPanel] = el; });
+
 let settingsGames = [];
 let settingsLeaderboard = null;
 
+// ---- abas do painel (Geral/Aparência/Jogos/Avançado), com pílula
+// deslizante -- ver .settings-tab-pill em settings.css ----
+
+function positionPill(tabButton) {
+  settingsTabPillEl.style.width = `${tabButton.offsetWidth}px`;
+  settingsTabPillEl.style.transform = `translateX(${tabButton.offsetLeft}px)`;
+}
+
+// Reposiciona sem animar -- mesmo truque de bumpValue() em app.js
+// (classList.remove + void offsetWidth + classList.add), adaptado de
+// keyframe animation pra transition.
+function snapPillTo(tabButton) {
+  settingsTabPillEl.classList.add("no-transition");
+  positionPill(tabButton);
+  void settingsTabPillEl.offsetWidth;
+  settingsTabPillEl.classList.remove("no-transition");
+}
+
+function activateSettingsTab(tabName, { instant = false } = {}) {
+  settingsTabButtons.forEach((btn) => {
+    const isActive = btn.dataset.tab === tabName;
+    btn.classList.toggle("active", isActive);
+    btn.setAttribute("aria-selected", String(isActive));
+  });
+  Object.entries(settingsPanelGroups).forEach(([name, el]) => { el.hidden = name !== tabName; });
+  settingsBodyEl.scrollTop = 0; // sem isso, trocar de aba rolado pode mostrar a aba nova numa posição que nem existe nela
+  const activeBtn = settingsTabButtons.find((b) => b.dataset.tab === tabName);
+  if (activeBtn) instant ? snapPillTo(activeBtn) : positionPill(activeBtn);
+}
+
+settingsTabButtons.forEach((btn) => {
+  btn.addEventListener("click", () => activateSettingsTab(btn.dataset.tab));
+});
+
+window.addEventListener("resize", () => {
+  if (settingsOverlayEl.hidden) return;
+  const activeBtn = settingsTabButtons.find((b) => b.classList.contains("active"));
+  if (activeBtn) snapPillTo(activeBtn); // só reposiciona, não é troca de aba
+});
+
 function openSettingsModal() {
   settingsOverlayEl.hidden = false;
+  // #settings-overlay começa hidden -- elemento numa árvore display:none tem
+  // offsetWidth/offsetLeft = 0 (não gera caixa de layout), então só dá pra
+  // medir a pílula DEPOIS de tirar o hidden, não antes. Reseta sempre pra
+  // "geral" ao abrir (não lembra a última aba usada) -- mesmo espírito de
+  // openLotModal() em app.js, que sempre volta pros campos limpos.
+  activateSettingsTab("geral", { instant: true });
   if (settingsLeaderboard) renderSettingsFromLeaderboard(settingsLeaderboard);
   loadSettingsHistory();
 }
@@ -38,7 +93,85 @@ webhookWarningLinkEl.addEventListener("click", requireLoginThenOpenSettings);
 
 settingsCloseEl.addEventListener("click", closeSettingsModal);
 settingsOverlayEl.addEventListener("click", (e) => { if (e.target === settingsOverlayEl) closeSettingsModal(); });
-document.addEventListener("keydown", (e) => { if (e.key === "Escape" && !settingsOverlayEl.hidden) closeSettingsModal(); });
+
+// ---- diálogos genéricos (promptDialog/confirmDialog) no lugar de
+// prompt()/confirm() nativos -- ver uso nos 5 pontos de chamada abaixo ----
+
+let promptDialogResolve = null;
+let confirmDialogResolve = null;
+
+function settlePromptDialog(result) {
+  promptDialogOverlayEl.hidden = true;
+  const resolve = promptDialogResolve;
+  promptDialogResolve = null;
+  if (resolve) resolve(result);
+}
+function settleConfirmDialog(result) {
+  confirmDialogOverlayEl.hidden = true;
+  const resolve = confirmDialogResolve;
+  confirmDialogResolve = null;
+  if (resolve) resolve(result);
+}
+
+// Resolve null no cancelar (igual prompt() nativo) ou o valor cru do input
+// no confirmar -- sem trim, nenhum dos pontos de chamada fazia trim antes,
+// não é a hora de mudar esse comportamento.
+function promptDialog({ title, label, initialValue = "", inputType = "text", confirmLabel = "Salvar" } = {}) {
+  return new Promise((resolve) => {
+    promptDialogResolve = resolve;
+    document.getElementById("prompt-dialog-title").textContent = title;
+    document.getElementById("prompt-dialog-label").textContent = label;
+    const input = document.getElementById("prompt-dialog-input");
+    input.type = inputType;
+    input.value = initialValue;
+    document.getElementById("prompt-dialog-confirm").textContent = confirmLabel;
+    promptDialogOverlayEl.hidden = false;
+    setTimeout(() => { input.focus(); input.select(); }, 40); // mesmo delay de openLotModal em app.js
+  });
+}
+
+function confirmDialog({ title, message, confirmLabel = "Confirmar", danger = false } = {}) {
+  return new Promise((resolve) => {
+    confirmDialogResolve = resolve;
+    document.getElementById("confirm-dialog-title").textContent = title;
+    document.getElementById("confirm-dialog-message").textContent = message;
+    const confirmBtn = document.getElementById("confirm-dialog-confirm");
+    const cancelBtn = document.getElementById("confirm-dialog-cancel");
+    confirmBtn.textContent = confirmLabel;
+    confirmBtn.classList.toggle("primary", !danger);
+    confirmBtn.classList.toggle("danger", danger);
+    confirmDialogOverlayEl.hidden = false;
+    // Foco no botão seguro por padrão em ação destrutiva -- Enter não
+    // confirma sabotagem sem querer (reflexo de já ter apertado Enter no
+    // confirm() nativo que isso substitui).
+    setTimeout(() => (danger ? cancelBtn : confirmBtn).focus(), 40);
+  });
+}
+
+document.getElementById("prompt-dialog-input").addEventListener("keydown", (e) => {
+  if (e.key === "Enter") { e.preventDefault(); document.getElementById("prompt-dialog-confirm").click(); }
+});
+document.getElementById("prompt-dialog-confirm").addEventListener("click", () => settlePromptDialog(document.getElementById("prompt-dialog-input").value));
+document.getElementById("prompt-dialog-cancel").addEventListener("click", () => settlePromptDialog(null));
+document.getElementById("prompt-dialog-close").addEventListener("click", () => settlePromptDialog(null));
+promptDialogOverlayEl.addEventListener("click", (e) => { if (e.target === promptDialogOverlayEl) settlePromptDialog(null); });
+
+document.getElementById("confirm-dialog-confirm").addEventListener("click", () => settleConfirmDialog(true));
+document.getElementById("confirm-dialog-cancel").addEventListener("click", () => settleConfirmDialog(false));
+document.getElementById("confirm-dialog-close").addEventListener("click", () => settleConfirmDialog(false));
+confirmDialogOverlayEl.addEventListener("click", (e) => { if (e.target === confirmDialogOverlayEl) settleConfirmDialog(false); });
+
+// Handler único de Escape, checando a camada mais alta primeiro -- um
+// diálogo aberto POR CIMA do settings é o primeiro caso desse app com duas
+// overlays simultâneas. Se cada uma tivesse seu próprio listener
+// independente (padrão usado em todo o resto do app, ver app.js), um
+// Escape fecharia as duas de uma vez no mesmo aperto.
+document.addEventListener("keydown", (e) => {
+  if (e.key !== "Escape") return;
+  if (!promptDialogOverlayEl.hidden) return settlePromptDialog(null);
+  if (!confirmDialogOverlayEl.hidden) return settleConfirmDialog(false);
+  if (!settingsOverlayEl.hidden) closeSettingsModal();
+});
 
 // socket já existe (declarado em app.js) — mais um listener no mesmo evento
 // não atrapalha o listener original, só mantém esse arquivo com os dados
@@ -106,7 +239,10 @@ document.getElementById("save-title").addEventListener("click", async () => {
 
 document.getElementById("toggle-open").addEventListener("click", async () => {
   const isOpen = document.getElementById("open-state").textContent === "aberto";
-  if (isOpen && !confirm("Encerrar o leilão agora? Ele só reabre quando você reabrir manualmente.")) return;
+  if (isOpen) {
+    const ok = await confirmDialog({ title: "Encerrar leilão", message: "Encerrar o leilão agora? Ele só reabre quando você reabrir manualmente.", confirmLabel: "Encerrar", danger: true });
+    if (!ok) return;
+  }
   await presenterFetch("/admin/toggle-open", { method: "POST", body: JSON.stringify({ open: !isOpen }) });
 });
 
@@ -181,11 +317,11 @@ function renderGamesTable() {
       <td>${escapeHtml(game.name)}</td>
       <td>${formatBRL(game.total)}</td>
       <td class="row-actions">
-        <button class="btn" data-act="plus">+10</button>
-        <button class="btn" data-act="minus">-10</button>
-        <button class="btn" data-act="set">definir valor</button>
-        <button class="btn" data-act="rename">renomear</button>
-        <button class="btn danger" data-act="delete">excluir</button>
+        <button class="btn-mini" data-act="plus">+10</button>
+        <button class="btn-mini" data-act="minus">-10</button>
+        <button class="btn-mini" data-act="set">definir valor</button>
+        <button class="btn-mini" data-act="rename">renomear</button>
+        <button class="btn-mini danger" data-act="delete">excluir</button>
       </td>
     `;
     tr.querySelector('[data-act="plus"]').addEventListener("click", () =>
@@ -194,18 +330,19 @@ function renderGamesTable() {
     tr.querySelector('[data-act="minus"]').addEventListener("click", () =>
       presenterFetch("/admin/adjust", { method: "POST", body: JSON.stringify({ key: game.key, deltaAmount: -10 }) })
     );
-    tr.querySelector('[data-act="set"]').addEventListener("click", () => {
-      const value = prompt(`Novo valor total para "${game.name}" (R$):`, game.total.toFixed(2));
+    tr.querySelector('[data-act="set"]').addEventListener("click", async () => {
+      const value = await promptDialog({ title: "Definir valor total", label: `Novo valor total para "${game.name}" (R$)`, initialValue: game.total.toFixed(2), inputType: "number", confirmLabel: "Salvar" });
       if (value === null) return;
       presenterFetch("/admin/set-total", { method: "POST", body: JSON.stringify({ key: game.key, total: value }) });
     });
-    tr.querySelector('[data-act="rename"]').addEventListener("click", () => {
-      const value = prompt("Novo nome:", game.name);
+    tr.querySelector('[data-act="rename"]').addEventListener("click", async () => {
+      const value = await promptDialog({ title: "Renomear jogo", label: "Novo nome", initialValue: game.name, confirmLabel: "Salvar" });
       if (value === null) return;
       presenterFetch("/admin/rename", { method: "POST", body: JSON.stringify({ key: game.key, newName: value }) });
     });
-    tr.querySelector('[data-act="delete"]').addEventListener("click", () => {
-      if (!confirm(`Excluir "${game.name}"?`)) return;
+    tr.querySelector('[data-act="delete"]').addEventListener("click", async () => {
+      const ok = await confirmDialog({ title: "Excluir jogo", message: `Excluir "${game.name}"?`, confirmLabel: "Excluir", danger: true });
+      if (!ok) return;
       presenterFetch(`/admin/game/${encodeURIComponent(game.key)}`, { method: "DELETE" });
     });
     body.appendChild(tr);
@@ -255,7 +392,8 @@ document.getElementById("relink-form").addEventListener("submit", async (e) => {
 });
 
 document.getElementById("reset-btn").addEventListener("click", async () => {
-  if (!confirm("Isso apaga TODOS os jogos e o histórico. Tem certeza?")) return;
+  const ok = await confirmDialog({ title: "Zerar leilão", message: "Isso apaga TODOS os jogos e o histórico. Tem certeza?", confirmLabel: "Zerar leilão", danger: true });
+  if (!ok) return;
   await presenterFetch("/admin/reset", { method: "POST" });
   loadSettingsHistory();
 });

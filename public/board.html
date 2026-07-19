@@ -332,41 +332,49 @@
     <div class="settings-modal" role="dialog" aria-modal="true" aria-labelledby="settings-title">
       <button class="modal-close" id="settings-close" type="button" aria-label="Fechar">✕</button>
       <div class="settings-head">
-        <p class="modal-eyebrow">Configurações</p>
-        <h2 class="modal-title" id="settings-title">Painel do leilão</h2>
+        <div class="settings-head-text">
+          <p class="modal-eyebrow">Configurações</p>
+          <h2 class="modal-title" id="settings-title">Painel do leilão</h2>
+        </div>
+        <span id="webhook-state" class="badge" title="Status do webhook do pix.gg">verificando…</span>
       </div>
 
-      <div class="settings-body">
+      <div class="settings-tabs" id="settings-tabs" role="tablist">
+        <span class="settings-tab-pill" id="settings-tab-pill" aria-hidden="true"></span>
+        <button class="settings-tab active" data-tab="geral" type="button" role="tab" aria-selected="true">Geral</button>
+        <button class="settings-tab" data-tab="aparencia" type="button" role="tab" aria-selected="false">Aparência</button>
+        <button class="settings-tab" data-tab="jogos" type="button" role="tab" aria-selected="false">Jogos</button>
+        <button class="settings-tab" data-tab="avancado" type="button" role="tab" aria-selected="false">Avançado</button>
+      </div>
+
+      <div class="settings-body" id="settings-body">
+      <div class="settings-panel-group" data-tab-panel="geral">
         <div class="panel">
           <div class="panel-row">
             <div>
               <label>Título exibido no placar</label>
               <input type="text" id="title-input" autocomplete="off" />
             </div>
-            <button class="btn" id="save-title">Salvar título</button>
+            <button class="btn-mini" id="save-title">Salvar título</button>
           </div>
           <div class="panel-row">
             <div>
               <label>Leilão está</label>
               <span id="open-state" class="badge">aberto</span>
             </div>
-            <button class="btn" id="toggle-open">Encerrar leilão</button>
-          </div>
-          <div class="panel-row">
-            <div>
-              <label>Webhook do pix.gg</label>
-              <span id="webhook-state" class="badge">verificando…</span>
-            </div>
+            <button class="btn-mini" id="toggle-open">Encerrar leilão</button>
           </div>
           <div class="panel-row">
             <div>
               <label>Quantos lotes contam como classificados</label>
               <input type="number" id="qualify-count-input" min="1" max="20" style="width: 70px;" />
             </div>
-            <button class="btn" id="qualify-count-save">Salvar</button>
+            <button class="btn-mini" id="qualify-count-save">Salvar</button>
           </div>
         </div>
+      </div>
 
+      <div class="settings-panel-group" data-tab-panel="aparencia" hidden>
         <div class="panel">
           <h2 class="panel-title">Tema visual</h2>
           <p class="hint">A cor de destaque do placar ao vivo.</p>
@@ -394,17 +402,19 @@
           </div>
           <div class="panel-row wrap settings-bg-row">
             <input type="text" id="bg-image-url" placeholder="URL de uma imagem (opcional)" autocomplete="off" />
-            <button class="btn" id="bg-image-save">Salvar imagem</button>
-            <button class="btn" id="bg-image-clear">Remover</button>
+            <button class="btn-mini" id="bg-image-save">Salvar imagem</button>
+            <button class="btn-mini" id="bg-image-clear">Remover</button>
           </div>
           <p class="hint">Some atrás do placar, escurecida. Cole o link de uma imagem publicada em algum lugar (Imgur, etc), ou envie um arquivo abaixo.</p>
           <div class="panel-row wrap settings-bg-row">
             <input type="file" id="bg-image-file" accept="image/png,image/jpeg,image/webp,image/gif" />
-            <button class="btn" id="bg-image-upload">Enviar arquivo</button>
+            <button class="btn-mini" id="bg-image-upload">Enviar arquivo</button>
           </div>
           <p class="hint" id="bg-image-upload-status"></p>
         </div>
+      </div>
 
+      <div class="settings-panel-group" data-tab-panel="jogos" hidden>
         <div class="panel">
           <h2 class="panel-title">Lançamento manual</h2>
           <p class="hint">Use se receber um pix fora do app, ou pra testar o sistema.</p>
@@ -416,7 +426,7 @@
               <option value="remove">Sabotar (-)</option>
             </select>
             <input type="text" id="manual-username" placeholder="Nome do doador (opcional)" autocomplete="off" />
-            <button class="btn primary" id="manual-submit">Lançar</button>
+            <button class="btn-mini primary" id="manual-submit">Lançar</button>
           </div>
         </div>
 
@@ -437,10 +447,12 @@
             <select id="merge-from"></select>
             <span>→</span>
             <select id="merge-to"></select>
-            <button class="btn" id="merge-submit">Mesclar</button>
+            <button class="btn-mini" id="merge-submit">Mesclar</button>
           </div>
         </div>
+      </div>
 
+      <div class="settings-panel-group" data-tab-panel="avancado" hidden>
         <div class="panel">
           <h2 class="panel-title">Revincular webhook do pix.gg</h2>
           <p class="hint">
@@ -451,7 +463,7 @@
           <form class="panel-row wrap" id="relink-form" autocomplete="off">
             <input type="text" id="relink-client-id" placeholder="Client ID (pix.gg)" autocomplete="off" />
             <input type="password" id="relink-client-secret" placeholder="Client Secret (pix.gg)" autocomplete="new-password" />
-            <button class="btn" id="relink-submit" type="submit">Revincular</button>
+            <button class="btn-mini" id="relink-submit" type="submit">Revincular</button>
           </form>
           <p class="hint" id="relink-result"></p>
         </div>
@@ -470,8 +482,48 @@
 
         <div class="panel danger-zone">
           <h2 class="panel-title">Zona de risco</h2>
-          <button class="btn danger" id="reset-btn">Zerar leilão inteiro</button>
+          <button class="btn-mini danger" id="reset-btn">Zerar leilão inteiro</button>
         </div>
+      </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Diálogos genéricos no lugar de prompt()/confirm() nativos -- irmãos
+       de #settings-overlay (não aninhados dentro de .settings-modal, que
+       tem overflow:hidden e poderia cortar o diálogo). Ver promptDialog()/
+       confirmDialog() em settings.js. -->
+  <div class="modal-overlay dialog-overlay" id="prompt-dialog-overlay" hidden>
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="prompt-dialog-title">
+      <button class="modal-close" id="prompt-dialog-close" type="button" aria-label="Fechar">✕</button>
+      <div class="modal-head">
+        <div class="modal-head-text">
+          <h2 class="modal-title" id="prompt-dialog-title">Título</h2>
+        </div>
+      </div>
+      <div class="modal-field">
+        <label class="modal-label" id="prompt-dialog-label" for="prompt-dialog-input">Rótulo</label>
+        <input type="text" id="prompt-dialog-input" class="modal-input" autocomplete="off" />
+      </div>
+      <div class="modal-actions">
+        <button class="btn-mini" id="prompt-dialog-cancel" type="button">Cancelar</button>
+        <button class="btn-mini primary" id="prompt-dialog-confirm" type="button">Salvar</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal-overlay dialog-overlay" id="confirm-dialog-overlay" hidden>
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="confirm-dialog-title">
+      <button class="modal-close" id="confirm-dialog-close" type="button" aria-label="Fechar">✕</button>
+      <div class="modal-head">
+        <div class="modal-head-text">
+          <h2 class="modal-title" id="confirm-dialog-title">Título</h2>
+        </div>
+      </div>
+      <p class="modal-message" id="confirm-dialog-message">Mensagem</p>
+      <div class="modal-actions">
+        <button class="btn-mini" id="confirm-dialog-cancel" type="button">Cancelar</button>
+        <button class="btn-mini" id="confirm-dialog-confirm" type="button">Confirmar</button>
       </div>
     </div>
   </div>
