@@ -756,17 +756,24 @@ const VERIFIED_MARK_SVG = `<svg class="ranking-verified-mark" viewBox="0 0 16 16
   <path d="M4.5 8.2L6.8 10.5L11.5 5.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
 </svg>`;
 
+// Linhas do ranking levam pro board mais recente daquele streamer (ver
+// group.id em server.js#/api/ranking) -- de lá já dá pra ver o histórico de
+// leilões anteriores/recap dele (painel "Histórico" no modo apresentador,
+// ou o link "Ver recap" em cada round do histórico). Sem link nenhum
+// (row.id ausente) pra leilão legado sem dono verificado que por acaso caiu
+// sozinho num grupo -- não deveria acontecer hoje (todo leilão tem id), mas
+// _blank + href vazio seria pior que só não linkar.
 function rankingPodiumCardHtml(row) {
   const avatar = row.hostAvatar
     ? `<img class="recap-podium-thumb ranking-podium-avatar" src="${escapeHtml(row.hostAvatar)}" alt="" />`
     : `<div class="recap-podium-thumb recap-podium-thumb-placeholder ranking-podium-avatar">${escapeHtml((row.host[0] || "?").toUpperCase())}</div>`;
   return `
-    <div class="recap-podium-card rank-${row.rank}">
+    <a class="recap-podium-card rank-${row.rank} ranking-clickable" href="/l/${escapeHtml(row.id || "")}" target="_blank" rel="noopener" title="Ver leilão e histórico de ${escapeHtml(row.host)}">
       <span class="recap-podium-rank">${rankBadgeHtml(row.rank)}</span>
       ${avatar}
       <p class="recap-podium-name">${escapeHtml(row.host)}${row.hostVerified ? VERIFIED_MARK_SVG : ""}</p>
       <p class="recap-podium-total">${formatBRL(row.totalRaised)}</p>
-    </div>
+    </a>
   `;
 }
 
@@ -775,12 +782,12 @@ function rankingRowHtml(row) {
     ? `<img class="ranking-row-avatar" src="${escapeHtml(row.hostAvatar)}" alt="" loading="lazy" />`
     : `<span class="ranking-row-avatar ranking-row-avatar-placeholder">${escapeHtml((row.host[0] || "?").toUpperCase())}</span>`;
   return `
-    <div class="ranking-row">
+    <a class="ranking-row ranking-clickable" href="/l/${escapeHtml(row.id || "")}" target="_blank" rel="noopener" title="Ver leilão e histórico de ${escapeHtml(row.host)}">
       <span class="ranking-row-rank">${String(row.rank).padStart(2, "0")}</span>
       ${avatar}
       <span class="ranking-row-host">${escapeHtml(row.host)}${row.hostVerified ? VERIFIED_MARK_SVG : ""}</span>
       <span class="ranking-row-total">${formatBRL(row.totalRaised)}</span>
-    </div>
+    </a>
   `;
 }
 

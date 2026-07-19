@@ -699,8 +699,15 @@ app.post("/api/leiloes", async (req, res) => {
 // receber doação sem fechar de novo ainda). Sem esse snapshot (nunca
 // arquivado, ou já finalizado por um zerar — round novo começando do zero),
 // o total ao vivo inteiro ainda não foi contado em lugar nenhum.
+// Agrupa por dono verificado da Twitch (meta.ownerTwitchUserId) -- sem isso,
+// um streamer com vários leilões (ex: um por live) aparecia como várias
+// linhas separadas disputando com ele mesmo, em vez de uma soma só. Leilão
+// sem dono (criado antes do login com a Twitch existir, ownerTwitchUserId
+// ausente) não tem chave confiável pra agrupar com nada -- fica sozinho na
+// própria linha, usando o id como chave única (nunca bate com outro leilão),
+// igual já era o comportamento de antes pra esses.
 app.get("/api/ranking", (req, res) => {
-  const rows = registry
+  const perLeilao = registry
     .listLeilaoIds()
     .filter((id) => !getHideTotalRaised(getStore(id))) // quem oculta o total não participa do ranking
     .map((id) => {
@@ -713,16 +720,45 @@ app.get("/api/ranking", (req, res) => {
       const totalRaised = archivedTotal + Math.max(0, liveTotal - alreadyReflected);
       return {
         id,
+        ownerTwitchUserId: meta.ownerTwitchUserId || null,
         host: store.getState("host", meta.host || ""),
         hostAvatar: store.getState("hostAvatar", null),
         hostVerified: getHostVerified(store),
         totalRaised,
+        createdAt: meta.createdAt || "",
       };
     })
-    .filter((row) => row.host && row.totalRaised > 0)
+    .filter((row) => row.host && row.totalRaised > 0);
+
+  const groups = new Map();
+  for (const row of perLeilao) {
+    const groupKey = row.ownerTwitchUserId || `leilao:${row.id}`;
+    if (!groups.has(groupKey)) groups.set(groupKey, { ...row, totalRaised: 0 });
+    const group = groups.get(groupKey);
+    group.totalRaised += row.totalRaised;
+    // Nome/foto/verificação/id exibidos vêm do leilão mais recente do grupo
+    // -- mais provável de estar com o nome atual do streamer, e o id é pra
+    // onde o clique no ranking leva (ver clickable-row em app.js).
+    if (row.createdAt > group.createdAt) {
+      group.id = row.id;
+      group.host = row.host;
+      group.hostAvatar = row.hostAvatar;
+      group.hostVerified = row.hostVerified;
+      group.createdAt = row.createdAt;
+    }
+  }
+
+  const rows = [...groups.values()]
     .sort((a, b) => b.totalRaised - a.totalRaised)
     .slice(0, 50)
-    .map((row, index) => ({ ...row, rank: index + 1 }));
+    .map((row, index) => ({
+      id: row.id,
+      host: row.host,
+      hostAvatar: row.hostAvatar,
+      hostVerified: row.hostVerified,
+      totalRaised: row.totalRaised,
+      rank: index + 1,
+    }));
   res.json({ ranking: rows });
 });
 
