@@ -9,7 +9,7 @@
   z-index: 1;
   max-width: 1140px;
   margin: 0 auto;
-  padding: 24px 24px 80px;
+  padding: 24px 24px 40px;
   min-height: 100vh;
 }
 
@@ -40,7 +40,7 @@
   height: 100%;
 }
 
-.create-topbar { margin-bottom: 56px; }
+.create-topbar { margin-bottom: 30px; }
 
 .create-topbar-nav a {
   font-family: var(--font-mono);
@@ -60,7 +60,7 @@
 .create-pitch {
   display: flex;
   flex-direction: column;
-  gap: 30px;
+  gap: 20px;
   padding-top: 10px;
 }
 
@@ -81,11 +81,11 @@
   font-family: var(--font-display);
   font-style: italic;
   font-weight: 700;
-  font-size: 44px;
+  font-size: 40px;
   line-height: 1.15;
   margin: 0;
   color: var(--text);
-  max-width: 15ch;
+  max-width: 22ch;
 }
 
 .create-lede {
@@ -137,11 +137,11 @@
    eles) — os números não são decoração, é informação de verdade. */
 .create-steps {
   list-style: none;
-  margin: 10px 0 0;
+  margin: 4px 0 0;
   padding: 0;
   display: flex;
   flex-direction: column;
-  gap: 24px;
+  gap: 14px;
 }
 
 .create-steps li { display: flex; gap: 16px; align-items: flex-start; }
@@ -184,11 +184,11 @@
 .create-form {
   display: flex;
   flex-direction: column;
-  gap: 22px;
+  gap: 16px;
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: 14px;
-  padding: 30px;
+  padding: 24px;
   box-shadow: 0 30px 70px -32px rgba(0, 0, 0, 0.55);
 }
 .create-form[hidden] { display: none; }
@@ -196,8 +196,8 @@
 .create-section {
   display: flex;
   flex-direction: column;
-  gap: 14px;
-  padding-bottom: 18px;
+  gap: 12px;
+  padding-bottom: 14px;
   border-bottom: 1px dashed var(--border);
 }
 .create-section:last-of-type { border-bottom: none; padding-bottom: 0; }
@@ -240,7 +240,7 @@
   box-shadow: 0 0 0 3px var(--accent-bg);
 }
 
-.create-hint { font-size: 12px; color: var(--muted); line-height: 1.5; }
+.create-hint { font-size: 12px; color: var(--muted); line-height: 1.4; }
 
 /* Identidade Twitch na criação — substitui o antigo campo de texto livre
    "seu nome (host)". Nome/foto vêm confirmados pela própria Twitch, não dá

@@ -29,9 +29,8 @@
         <h1 class="create-title" id="create-title" aria-label="Seu placar de leilão, no ar em menos de um minuto">Seu placar de leilão, no ar em menos de um minuto</h1>
         <p class="create-lede reveal-item">
           Espectadores doam pelo <strong>pix.gg</strong> e escrevem o nome do
-          jogo na mensagem — o placar atualiza sozinho, ao vivo, sem você
-          precisar tocar em nada. Isolado de qualquer outro streamer usando
-          o site.
+          jogo — o placar atualiza sozinho, ao vivo. Isolado de qualquer
+          outro streamer usando o site.
         </p>
 
         <div class="create-proof reveal-item" id="create-proof" hidden>
@@ -44,14 +43,14 @@
             <span class="create-step-num">01</span>
             <div class="create-step-text">
               <p class="create-step-title">Cole o Client ID e Secret</p>
-              <p class="create-step-hint">Da sua aplicação no pix.gg — a gente vincula o webhook automaticamente, sem colar URL em lugar nenhum.</p>
+              <p class="create-step-hint">A gente vincula o webhook automaticamente — sem colar URL em lugar nenhum.</p>
             </div>
           </li>
           <li class="reveal-item">
             <span class="create-step-num">02</span>
             <div class="create-step-text">
               <p class="create-step-title">Escolha uma senha</p>
-              <p class="create-step-hint">É ela que libera o modo apresentador — editar valores, pausar o timer, lançar doações manuais — na hora da live.</p>
+              <p class="create-step-hint">Libera o modo apresentador na hora da live: editar valores, pausar o timer, lançar doações manuais.</p>
             </div>
           </li>
           <li class="reveal-item">
@@ -93,12 +92,6 @@
                 <a class="create-twitch-switch" id="create-twitch-switch" href="/auth/twitch/start?returnTo=/">trocar</a>
                 <button class="create-twitch-logout" id="create-twitch-logout" type="button">sair</button>
               </div>
-
-              <span class="create-hint">
-                É o nome e a foto confirmados pela própria Twitch — não dá
-                pra editar, pra ninguém conseguir se passar por outro
-                streamer no placar.
-              </span>
             </div>
           </div>
 
@@ -109,17 +102,13 @@
               <span>Client ID</span>
               <input type="text" id="f-client-id" placeholder="app_..." autocomplete="off" required />
               <span class="create-hint">
-                Em <strong>pixgg.com → Aplicações</strong>, crie uma aplicação
-                com escopo "Webhook" (ou use uma que já tenha) e copie o Client ID.
+                Em <strong>pixgg.com → Aplicações</strong>, crie uma (escopo "Webhook") e copie o Client ID.
               </span>
             </label>
 
             <label class="create-field">
               <span>Client Secret</span>
               <input type="password" id="f-client-secret" placeholder="só aparece na hora que você cria/regenera" autocomplete="off" required />
-              <span class="create-hint">
-                A gente usa isso só uma vez, pra vincular o webhook — não fica guardado depois.
-              </span>
             </label>
           </div>
 
@@ -128,10 +117,7 @@
 
             <label class="create-field">
               <span>Senha do modo apresentador</span>
-              <input type="password" id="f-password" placeholder="mínimo 6 caracteres" autocomplete="new-password" required minlength="6" />
-              <span class="create-hint">
-                Só você vai saber essa senha. Guarde num lugar seguro, não tem como recuperar depois.
-              </span>
+              <input type="password" id="f-password" placeholder="mínimo 6 caracteres, sem recuperação depois" autocomplete="new-password" required minlength="6" />
             </label>
           </div>
 
