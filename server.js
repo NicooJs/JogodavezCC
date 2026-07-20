@@ -1067,9 +1067,26 @@ app.post("/api/l/:id/admin/pause", loadLeilao, requireLeilaoAdmin, (req, res) =>
   res.json({ ok: true, paused: !!paused });
 });
 
+// Soma 5 minutos ao que já falta (ou ao pausado) -- antes usava
+// touchActivity, que reseta lastActivityAt pra AGORA, ou seja, sempre
+// voltava pra duração base (5min) em vez de somar: com 4:30 sobrando, "+5"
+// virava 5:00 (só +30s na prática). Rótulo promete soma, então soma de
+// verdade agora, não importa quanto já tinha passado.
 app.post("/api/l/:id/admin/reset-timer", loadLeilao, requireLeilaoAdmin, (req, res) => {
-  touchActivity(req.store, true);
-  broadcastUpdate(req.leilaoId, req.store, { type: "timer-reset" });
+  const { store, leilaoId } = req;
+  const isOpen = store.getState("open", "true") === "true";
+  if (!isOpen) return res.status(400).json({ error: "O leilão está encerrado" });
+
+  const EXTEND_MS = 5 * 60 * 1000;
+  const isPaused = store.getState("paused", "false") === "true";
+  if (isPaused) {
+    const remaining = Number(store.getState("pausedRemainingMs", getAutoCloseMs(store)));
+    store.setState("pausedRemainingMs", Math.round(remaining + EXTEND_MS));
+  } else {
+    const lastActivityAt = Number(store.getState("lastActivityAt", Date.now()));
+    store.setState("lastActivityAt", String(lastActivityAt + EXTEND_MS));
+  }
+  broadcastUpdate(leilaoId, store, { type: "timer-reset" });
   res.json({ ok: true });
 });
 

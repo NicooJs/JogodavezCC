@@ -6,12 +6,19 @@
 <title>Leilão de Jogos</title>
 <meta name="referrer" content="no-referrer" />
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Abril+Fatface&family=Nunito:ital,wght@0,500;0,600;0,700;1,500;1,600;1,700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Abril+Fatface&family=Fredoka:wght@600;700&family=Nunito:ital,wght@0,500;0,600;0,700;1,500;1,600;1,700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/css/style.css" />
 <link rel="stylesheet" href="/css/settings.css" />
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/odometer.js/0.4.8/themes/odometer-theme-minimal.min.css" />
 </head>
 <body class="board-body">
+  <div class="board-bg" aria-hidden="true">
+    <span class="board-bg-shard board-bg-shard-1"></span>
+    <span class="board-bg-shard board-bg-shard-2"></span>
+    <span class="board-bg-shard board-bg-shard-3"></span>
+    <span class="board-bg-shard board-bg-shard-4"></span>
+    <span class="board-bg-shard board-bg-shard-5"></span>
+  </div>
   <div class="page">
     <header class="topbar">
       <p class="topbar-mark">
@@ -20,7 +27,8 @@
       </p>
       <div class="topbar-right">
         <span class="topbar-total" id="topbar-total">
-          total arrecadado
+          <svg class="icon topbar-total-icon" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><circle cx="10" cy="10" r="8" fill="currentColor"/><path d="M10 5.6v8.8M12.3 7.6c-.3-.8-1.1-1.2-2.3-1.2-1.3 0-2.3.6-2.3 1.6 0 2.1 4.6.9 4.6 3 0 1-1 1.6-2.3 1.6-1.1 0-2-.4-2.3-1.2" stroke="var(--bg)" stroke-width="1.2" stroke-linecap="round" fill="none"/></svg>
+          <span class="topbar-total-label">total arrecadado</span>
           <strong class="topbar-total-value">R$&nbsp;<span id="stat-total">0</span></strong>
           <strong class="topbar-total-hidden-label">oculto</strong>
           <button class="total-hide-toggle" id="total-hide-toggle" type="button" title="Ocultar valor arrecadado do público">
@@ -528,6 +536,7 @@
     </div>
   </div>
 
+  <script type="module" src="/js/board-bg.js"></script>
   <script src="/socket.io/socket.io.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/odometer.js/0.4.8/odometer.min.js"></script>
   <script src="/js/app.js"></script>

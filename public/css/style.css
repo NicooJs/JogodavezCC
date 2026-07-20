@@ -1,13 +1,3 @@
-/* Fonte custom pro título do leilão no board (não a marca "Leilão de Jogos"
-   da home) — arquivo em public/fonts/, sem CDN. Só uma variação (regular),
-   igual Abril Fatface antes dela. */
-@font-face {
-  font-family: "Creamy Chicken";
-  src: url("/fonts/creamy-chicken.otf") format("opentype");
-  font-weight: 400;
-  font-style: normal;
-  font-display: swap;
-}
 
 /* Sistema de temas: cada leilão escolhe um (state.theme, ver admin.html →
    painel "Tema visual" → POST /admin/theme), aplicado via
@@ -190,6 +180,45 @@ body.board-body.has-bg-image {
   background-attachment: fixed;
 }
 
+/* Fundo animado do board -- mesmo padrão de .create-bg/.bg-shard
+   (create.css, tela de criação), reaproveitado aqui com classes próprias
+   (board.html não carrega create.css, e index.html carrega os dois
+   arquivos, então nomes iguais colidiriam). Mais discreto que a versão da
+   criação de propósito: menos losangos, menores, sem o brilho central --
+   o board é bem mais denso (3 colunas de informação) e a margem morta ao
+   redor do .page (ver comentário acima) é bem menor. Some sozinho quando
+   o streamer já escolheu uma imagem de fundo própria (.has-bg-image),
+   pra não competir com a identidade visual que ele mesmo escolheu ali. */
+.board-bg {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+body.board-body.has-bg-image .board-bg { display: none; }
+
+.board-bg-shard {
+  position: absolute;
+  display: block;
+  border-radius: 6px;
+  border: 2px solid var(--accent-soft);
+  transform: rotate(45deg);
+  opacity: 0.2;
+}
+.board-bg-shard-1 { top: 6%; left: 3%; width: 26px; height: 26px; }
+.board-bg-shard-2 { top: 84%; left: 4.5%; width: 18px; height: 18px; background: var(--accent-bg); border-color: transparent; }
+.board-bg-shard-3 { top: 9%; left: 95%; width: 22px; height: 22px; background: var(--accent-bg); border-color: transparent; }
+.board-bg-shard-4 { top: 80%; left: 93%; width: 30px; height: 30px; }
+.board-bg-shard-5 { top: 45%; left: 1.5%; width: 16px; height: 16px; opacity: 0.14; }
+
+@media (max-width: 720px) {
+  /* mesmo cuidado do .bg-shard em create.css -- em telas estreitas o
+     .page perde o padding generoso (vira quase full-bleed), então os
+     losangos do lado direito ficam perto demais do conteúdo. */
+  .board-bg-shard-3, .board-bg-shard-4 { display: none; }
+}
+
 .page {
   display: flex;
   flex-direction: column;
@@ -208,10 +237,10 @@ body.board-body.has-bg-image {
 
 .topbar {
   display: flex;
-  /* center, não baseline: o título usa uma fonte de destaque (custom, ver
-     Creamy Chicken acima) com métricas de linha de base bem diferentes da
-     fonte pequena dos botões — baseline jogava os botões pra baixo do
-     título. center funciona igual não importa a fonte do título. */
+  /* center, não baseline: o título usa uma fonte de destaque (Fredoka, ver
+     .brand-word) com métricas de linha de base bem diferentes da fonte
+     pequena dos botões — baseline jogava os botões pra baixo do título.
+     center funciona igual não importa a fonte do título. */
   align-items: center;
   justify-content: space-between;
   gap: 16px;
@@ -238,14 +267,19 @@ body.board-body.has-bg-image {
 
 /* Título do leilão em si (não a marca fixa do site) — é o elemento mais
    importante da tela pra quem tá assistindo a live, então recebe o maior
-   destaque tipográfico do topbar. Só no board (.board-body): a home
-   (.create-body) continua com --font-title (Abril Fatface) pra marca
-   "Leilão de Jogos" do site, sem trocar pra Creamy Chicken. */
-.board-body .brand-word { --font-title: "Creamy Chicken", "Abril Fatface", serif; }
+   destaque tipográfico do topbar. Fredoka (arredondada, bold) pra combinar
+   com os ícones que às vezes aparecem no lugar de letras (ver title-swap-*
+   e renderBrandTitle em app.js) -- uma serifada como Abril Fatface competia
+   visualmente com o desenho geométrico dos ícones. Só no board
+   (.board-body): a home (.create-body) continua com --font-title (Abril
+   Fatface) pra marca "Leilão de Jogos" do site, sem trocar pra Fredoka. */
+/* font-weight junto (não só --font-title): Abril Fatface (home) só existe
+   numa variação/peso -- setar 700 nela não muda nada -- mas Fredoka (board)
+   tem peso de verdade, e o title-swap precisa dela beeem bold pra segurar
+   ícone do lado de letra sem ficar desequilibrado. */
+.board-body .brand-word { --font-title: "Fredoka", sans-serif; font-weight: 700; }
 
 .brand-word {
-  /* Nem Abril Fatface nem Creamy Chicken têm itálico/variação de peso
-     (ao contrário da fonte antiga, Gambetta) — só a variação regular. */
   font-family: var(--font-title);
   font-style: normal;
   font-weight: 400;
@@ -263,6 +297,26 @@ body.board-body.has-bg-image {
   color: var(--accent-text);
 }
 
+/* Letra->ícone no título (ver renderBrandTitle em app.js). .title-swap-char
+   é o único conteúdo em fluxo (o ícone é absolute), então dimensiona a
+   caixa sozinho -- o ícone só centraliza em cima por cima dele. */
+.title-swap { position: relative; display: inline-block; }
+.title-swap-char { display: inline-block; }
+.title-swap-icon {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+}
+.title-swap-icon svg { width: 0.68em; height: 0.68em; }
+.title-swap-icon.icon-coin { color: var(--positive); }
+.title-swap-icon.icon-controller { color: var(--accent); }
+.title-swap-icon.icon-dice { color: var(--bronze); }
+.title-swap-icon.icon-trophy { color: var(--silver); }
+.title-swap-icon.icon-star { color: var(--accent-text); }
+
 .topbar-right {
   display: flex;
   align-items: baseline;
@@ -271,10 +325,22 @@ body.board-body.has-bg-image {
   font-size: 12.5px;
 }
 
+/* Antes era só texto solto no topbar -- virou pílula igual aos vizinhos
+   (.status, .ranking-open-btn, .presenter-toggle), que já são todos
+   bordados/com fundo; texto solto ao lado deles destoava. */
 .topbar-total {
   display: inline-flex;
-  align-items: baseline;
+  align-items: center;
   gap: 9px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 6px 14px 6px 12px;
+}
+
+.topbar-total-icon { color: var(--positive); width: 15px; height: 15px; flex-shrink: 0; }
+
+.topbar-total-label {
   color: var(--muted);
   font-family: var(--font-mono);
   text-transform: uppercase;
@@ -333,9 +399,18 @@ body.board-body.has-bg-image {
 
 .tick { animation: tick 0.4s ease; }
 
+/* O tema do odometer.js vem com vertical-align: middle, que não bate com o
+   baseline do texto normal ao lado ("R$ " + o número, mesmo <strong>) --
+   sobra ~1.7px de diferença entre os dois, dá pra medir comparando o
+   retângulo do nó de texto "R$ " com o retângulo do dígito do odometer.
+   baseline sozinho já reduz bastante, mas não zera (o markup interno do
+   odometer tem padding/line-height próprio); o top:-1.2px fecha o resto. */
 .odometer.odometer-theme-minimal {
   font-family: var(--font-mono);
   color: var(--accent-text);
+  position: relative;
+  top: -1.2px;
+  vertical-align: baseline;
 }
 
 @keyframes tick {
@@ -375,29 +450,43 @@ body.board-body.has-bg-image {
 
 /* Botão de destaque, visível pra qualquer um vendo o board (não só o
    apresentador) — pedido explícito do cliente: "alguma parte de destaque"
-   do board, diferente do resto dos controles (que são cinza/discretos). */
+   do board, diferente do resto dos controles (que são cinza/discretos).
+   Acabamento mais técnico em repouso (rótulo mono, borda fina neutra,
+   brilho pulsando bem devagar) que só fecha pra sólido em --accent no
+   hover, em vez de já nascer com fundo/borda cheios de cor -- inspirado no
+   nível de acabamento dos exemplos de botão do motion.dev (ver plano). */
 .ranking-open-btn {
   display: inline-flex;
   align-items: center;
   gap: 7px;
-  font-family: var(--font-body);
-  font-size: 12px;
+  font-family: var(--font-mono);
+  font-size: 11px;
   font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
   color: var(--accent-text);
   background: var(--accent-bg);
-  border: 1px solid var(--accent-soft);
+  border: 1px solid var(--border);
   border-radius: 999px;
   padding: 6px 13px;
   cursor: pointer;
-  transition: transform 0.15s ease, box-shadow 0.15s ease, background 0.15s ease;
+  transition: color 0.15s ease, border-color 0.15s ease, background 0.15s ease, transform 0.15s ease, box-shadow 0.15s ease;
+  animation: ranking-btn-idle 3s ease-in-out infinite;
 }
 .ranking-open-btn:hover {
   background: var(--accent);
   color: var(--accent-ink);
+  border-color: var(--accent);
   transform: translateY(-1px);
   box-shadow: 0 6px 16px -8px var(--accent-glow);
+  animation-play-state: paused;
 }
 .ranking-open-btn .icon { width: 15px; height: 15px; }
+
+@keyframes ranking-btn-idle {
+  0%, 100% { box-shadow: 0 0 0 0 transparent; }
+  50% { box-shadow: 0 0 14px 1px var(--accent-glow); }
+}
 
 .presenter-toggle-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--accent); display: none; }
 .presenter-toggle-x { display: none; font-size: 10px; opacity: 0.75; margin-left: 1px; }
@@ -1893,11 +1982,11 @@ body.board-body.has-bg-image {
   font-size: 12px;
   font-weight: 600;
   color: var(--muted);
-  width: 30px;
+  width: 38px;
   flex-shrink: 0;
 }
 
-.lot-rank .medal-icon { width: 25px; height: 25px; }
+.lot-rank .medal-icon { width: 34px; height: 34px; }
 
 .lot-card.rank-1 .lot-rank { color: var(--accent-text); }
 .lot-card.rank-2 .lot-rank { color: var(--silver); }
@@ -2361,7 +2450,8 @@ body.board-body.has-bg-image {
   .lot-card-content { gap: 10px; padding: 12px 14px; }
   .lot-card { min-height: 90px; }
   .lot-thumb, .lot-thumb-placeholder { width: 46px; height: 46px; }
-  .lot-rank { width: 26px; }
+  .lot-rank { width: 32px; }
+  .lot-rank .medal-icon { width: 27px; height: 27px; }
   .lot-meta { gap: 6px; max-width: 112px; }
   .lot-info { min-width: 64px; }
   .lot-edit button { padding: 2px 5px; font-size: 9.5px; }

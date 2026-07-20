@@ -101,6 +101,85 @@ function escapeHtml(str) {
   }[c]));
 }
 
+// Título vira letra->ícone de vez em quando (só a 1ª ocorrência de cada
+// letra mapeada, sempre na mesma posição enquanto o texto não mudar). O
+// título é texto livre que o streamer digitou em "Título exibido no
+// placar" (settings), não uma palavra fixa -- não dá pra mirar posição por
+// palavra (tipo "L de Leilão") como na referência que o cliente mandou,
+// porque pode ser "Bora zerar a live" ou qualquer outra coisa. Em vez
+// disso mira 5 letras comuns em português, cada uma com seu ícone -- na
+// prática a maioria dos títulos acerta 3-4 delas de uma vez, o que já dá
+// bastante coisa transicionando ao mesmo tempo sem precisar repetir a
+// mesma letra várias vezes (o que ficava poluído em título com "o" ou "a"
+// repetido). Cores: moeda fixa em --positive (mesmo token de
+// apoiar/dinheiro no resto do site), troféu em --silver e dado em --bronze
+// (mesmos tokens de medalha de prata/bronze), controle e estrela seguem o
+// tema (--accent/--accent-text) -- todas emprestadas do sistema de tema já
+// existente, nenhuma cor nova inventada. Se o título não tiver nenhuma
+// dessas letras, ou o Motion não carregar, fica só o texto normal (degrade
+// seguro).
+const TITLE_SWAP_ICONS = {
+  o: {
+    className: "icon-coin",
+    svg: `<svg viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><circle cx="10" cy="10" r="8" fill="currentColor"/><path d="M10 6v8M12.1 7.7c-.3-.7-1-1.1-2.1-1.1-1.2 0-2.1.6-2.1 1.5 0 1.9 4.2.8 4.2 2.7 0 .9-.9 1.5-2.1 1.5-1 0-1.8-.4-2.1-1.1" stroke="var(--bg)" stroke-width="1.1" stroke-linecap="round" fill="none"/></svg>`,
+  },
+  a: {
+    className: "icon-controller",
+    svg: `<svg viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><rect x="3" y="7.3" width="14" height="7.4" rx="3.7" fill="currentColor"/><path d="M6.3 9.3v3.4M4.6 11h3.4" stroke="var(--bg)" stroke-width="1.1" stroke-linecap="round"/><circle cx="14.3" cy="9.9" r=".95" fill="var(--bg)"/><circle cx="12.3" cy="11.9" r=".95" fill="var(--bg)"/></svg>`,
+  },
+  e: {
+    className: "icon-dice",
+    svg: `<svg viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><rect x="3.5" y="3.5" width="13" height="13" rx="3.4" fill="currentColor"/><circle cx="7" cy="7" r="1.25" fill="var(--bg)"/><circle cx="10" cy="10" r="1.25" fill="var(--bg)"/><circle cx="13" cy="13" r="1.25" fill="var(--bg)"/></svg>`,
+  },
+  i: {
+    className: "icon-trophy",
+    svg: `<svg viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><path d="M6 4h8v3a4 4 0 0 1-8 0V4z" fill="currentColor"/><path d="M6 4.8H4.5a1.3 1.3 0 0 0-1.3 1.3c0 1.4 1.1 2.5 2.5 2.5H6M14 4.8h1.5a1.3 1.3 0 0 1 1.3 1.3c0 1.4-1.1 2.5-2.5 2.5H14" fill="currentColor"/><rect x="9.2" y="10.7" width="1.6" height="3.1" fill="currentColor"/><path d="M7 15.3h6l-.6-1.9H7.6l-.6 1.9z" fill="currentColor"/></svg>`,
+  },
+  s: {
+    className: "icon-star",
+    svg: `<svg viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><path d="M10 2.6l2.1 4.9 5.3.5-4 3.6 1.2 5.2L10 13.9l-4.6 2.9 1.2-5.2-4-3.6 5.3-.5L10 2.6z" fill="currentColor"/></svg>`,
+  },
+};
+
+function buildBrandTitleHtml(text) {
+  const used = new Set();
+  return [...text].map((ch) => {
+    const swap = TITLE_SWAP_ICONS[ch.toLowerCase()];
+    if (!swap || used.has(ch.toLowerCase())) return escapeHtml(ch);
+    used.add(ch.toLowerCase());
+    return `<span class="title-swap"><span class="title-swap-char">${escapeHtml(ch)}</span><span class="title-swap-icon ${swap.className}" aria-hidden="true">${swap.svg}</span></span>`;
+  }).join("");
+}
+
+let animateTitleSwapIcon = null; // cacheia o import do Motion (mesmo padrão de bounceRankingIcon)
+async function animateBrandTitleSwaps() {
+  const swaps = [...titleEl.querySelectorAll(".title-swap")];
+  if (!swaps.length || window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+  try {
+    if (!animateTitleSwapIcon) {
+      ({ animate: animateTitleSwapIcon } = await import("https://cdn.jsdelivr.net/npm/motion@12.42.2/+esm"));
+    }
+    swaps.forEach((swap, i) => {
+      const opts = { duration: 5.5, repeat: Infinity, delay: i * 1.1, times: [0, 0.55, 0.65, 0.9, 1], ease: "easeInOut" };
+      animateTitleSwapIcon(swap.querySelector(".title-swap-char"), { opacity: [1, 1, 0, 0, 1] }, opts);
+      animateTitleSwapIcon(swap.querySelector(".title-swap-icon"), { opacity: [0, 0, 1, 1, 0] }, opts);
+    });
+  } catch (err) {
+    console.error("Falha ao animar título:", err.message);
+  }
+}
+
+// Só reconstrói quando o texto muda de verdade -- "update" chega a cada
+// doação/timer/etc, e refazer o DOM + reiniciar a animação toda vez faria
+// os ícones nunca completarem um ciclo num leilão movimentado.
+let lastRenderedTitle = null;
+function renderBrandTitle(text) {
+  if (text === lastRenderedTitle) return;
+  lastRenderedTitle = text;
+  titleEl.innerHTML = buildBrandTitleHtml(text || "");
+  animateBrandTitleSwaps();
+}
+
 function bumpValue(el, text) {
   if (el.textContent === text) return;
   el.textContent = text;
@@ -816,7 +895,29 @@ function closeRankingOverlay() {
   rankingOverlayEl.hidden = true;
 }
 
-rankingOpenBtnEl.addEventListener("click", openRankingOverlay);
+// Bounce rápido no ícone ao clicar -- só feedback tátil, não essencial
+// (diferente da entrada animada da tela de criação, que precisa sempre
+// revelar algo escondido). import() preguiçoso, só no primeiro clique, e
+// cacheado depois; se o Motion não carregar do CDN por qualquer motivo, cai
+// no catch e o botão continua abrindo o ranking normalmente, só sem o bounce.
+let animateRankingIcon = null;
+async function bounceRankingIcon() {
+  const icon = rankingOpenBtnEl.querySelector(".icon");
+  if (!icon || window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+  try {
+    if (!animateRankingIcon) {
+      ({ animate: animateRankingIcon } = await import("https://cdn.jsdelivr.net/npm/motion@12.42.2/+esm"));
+    }
+    animateRankingIcon(icon, { scale: [1, 1.25, 1] }, { duration: 0.35, ease: "easeOut" });
+  } catch (err) {
+    console.error("Falha ao animar ícone do ranking:", err.message);
+  }
+}
+
+rankingOpenBtnEl.addEventListener("click", () => {
+  openRankingOverlay();
+  bounceRankingIcon();
+});
 rankingCloseEl.addEventListener("click", closeRankingOverlay);
 rankingOverlayEl.addEventListener("click", (e) => { if (e.target === rankingOverlayEl) closeRankingOverlay(); });
 document.addEventListener("keydown", (e) => { if (e.key === "Escape" && !rankingOverlayEl.hidden) closeRankingOverlay(); });
@@ -855,7 +956,7 @@ socket.on("update", ({ leaderboard, lastEvent }) => {
     document.body.classList.remove("has-bg-image");
     document.body.style.removeProperty("--bg-image");
   }
-  titleEl.textContent = leaderboard.title;
+  renderBrandTitle(leaderboard.title);
   hostNameEl.textContent = leaderboard.host || "Streamer";
   if (leaderboard.hostAvatar) {
     hostAvatarEl.src = leaderboard.hostAvatar;
