@@ -45,7 +45,11 @@ const recapDurationEl = document.getElementById("recap-duration");
 const recapDonorsEl = document.getElementById("recap-donors");
 const recapGamesEl = document.getElementById("recap-games");
 const recapPodiumEl = document.getElementById("recap-podium");
+const recapExtraEl = document.getElementById("recap-extra");
+const recapExtraListEl = document.getElementById("recap-extra-list");
 const recapDonorListEl = document.getElementById("recap-donor-list");
+const recapShareXEl = document.getElementById("recap-share-x");
+const recapDownloadBtnEl = document.getElementById("recap-download-btn");
 const recapDonorsLabelEl = document.getElementById("recap-donors-label");
 const recapCloseEl = document.getElementById("recap-close");
 const recapEyebrowEl = document.getElementById("recap-eyebrow");
@@ -281,6 +285,12 @@ const MEDAL_ICON_SVG = `<svg class="medal-icon" viewBox="0 0 20 20" fill="none" 
   <path d="M12.5 11L15.5 17.5L12.7 16.6L11 19L9.2 14.8" fill="currentColor" opacity="0.85"/>
   <circle cx="10" cy="7.5" r="5.5" fill="currentColor" fill-opacity="0.18" stroke="currentColor" stroke-width="1.4"/>
   <rect x="8.6" y="6.1" width="2.8" height="2.8" fill="currentColor" transform="rotate(45 10 7.5)"/>
+</svg>`;
+
+// Raio pra "recorde de doação" no recap (ver renderRecap) -- ícone
+// desenhado no lugar de emoji, mesma disciplina do resto do app.
+const RECORD_BOLT_ICON_SVG = `<svg viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <path d="M11 2.5 4.5 11.5h4.2L8 17.5l7.5-9.5h-4.5L11 2.5z" fill="currentColor"/>
 </svg>`;
 
 function rankBadgeHtml(rank) {
@@ -624,19 +634,80 @@ async function loadInitialHistory() {
   }
 }
 
+// Anéis pontilhados girando atrás do "Vencedor!" -- referência do cliente
+// era um shader WebGL de "dithering" (DitheringShader shape="swirl":
+// https://21st.dev/@designali-in/components/swirl). Mesma matemática
+// (ângulo+raio, anel concêntrico com fase ondulando por ângulo, girando no
+// tempo), só que em Canvas2D em vez de shader -- pra um flash de ~2.2s não
+// compensa montar outro pipeline WebGL inteiro (diferente do fundo da
+// tela de criação, que é permanente e por isso valeu o investimento).
+const soldSwirlCanvasEl = document.getElementById("sold-swirl-canvas");
+const soldSwirlCtx = soldSwirlCanvasEl.getContext("2d");
+let soldSwirlRaf = null;
+
+function drawSwirlFrame(ctx, w, h, time, colorFront, colorBack, pxSize) {
+  ctx.fillStyle = colorBack;
+  ctx.fillRect(0, 0, w, h);
+  const cx = w / 2;
+  const cy = h / 2;
+  const maxRadius = Math.hypot(cx, cy);
+  ctx.fillStyle = colorFront;
+  for (let y = pxSize / 2; y < h; y += pxSize) {
+    for (let x = pxSize / 2; x < w; x += pxSize) {
+      const dx = x - cx;
+      const dy = y - cy;
+      const radius = Math.hypot(dx, dy);
+      const angle = Math.atan2(dy, dx);
+      const wave = Math.sin(radius * 0.07 - time * 2.4 + Math.sin(angle * 3 + time * 0.6) * 1.8);
+      const falloff = Math.max(0, 1 - radius / maxRadius);
+      const strength = Math.max(0, wave) * falloff;
+      if (strength <= 0.12) continue;
+      const size = pxSize * Math.min(1, strength * 1.4);
+      ctx.globalAlpha = Math.min(1, strength * 1.6);
+      ctx.fillRect(x - size / 2, y - size / 2, size, size);
+    }
+  }
+  ctx.globalAlpha = 1;
+}
+
+function stopSwirl() {
+  if (soldSwirlRaf) cancelAnimationFrame(soldSwirlRaf);
+  soldSwirlRaf = null;
+}
+
+function startSwirl() {
+  stopSwirl();
+  if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+  const dpr = Math.min(window.devicePixelRatio || 1, 1.5);
+  soldSwirlCanvasEl.width = Math.round(window.innerWidth * dpr);
+  soldSwirlCanvasEl.height = Math.round(window.innerHeight * dpr);
+  soldSwirlCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  const rootStyle = getComputedStyle(document.documentElement);
+  const colorFront = rootStyle.getPropertyValue("--accent-text").trim() || "#d1b3fa";
+  const colorBack = rootStyle.getPropertyValue("--bg").trim() || "#17131f";
+  const start = performance.now();
+  function frame(now) {
+    const t = (now - start) / 1000;
+    drawSwirlFrame(soldSwirlCtx, window.innerWidth, window.innerHeight, t, colorFront, colorBack, 7);
+    if (t < 2.3) soldSwirlRaf = requestAnimationFrame(frame);
+  }
+  soldSwirlRaf = requestAnimationFrame(frame);
+}
+
 // Reta final: quando o leilão fecha (sozinho ou pelo apresentador), bate o
-// martelo — um "Vendido!" estampado por cima de tudo, uma vez só.
+// martelo — um "Vencedor" estampado por cima de tudo, uma vez só.
 let soldTimeout = null;
 function triggerSoldMoment(leaderName) {
   clearTimeout(soldTimeout);
-  soldMarkEl.textContent = leaderName ? `Vendido — ${leaderName}!` : "Vendido!";
+  soldMarkEl.textContent = leaderName ? `Vencedor — ${leaderName}!` : "Vencedor!";
   soldOverlayEl.hidden = false;
   soldOverlayEl.style.animation = "none";
   soldMarkEl.style.animation = "none";
   void soldOverlayEl.offsetWidth; // força reflow pra reiniciar a animação
   soldOverlayEl.style.animation = "";
   soldMarkEl.style.animation = "";
-  soldTimeout = setTimeout(() => { soldOverlayEl.hidden = true; }, 2300);
+  startSwirl();
+  soldTimeout = setTimeout(() => { soldOverlayEl.hidden = true; stopSwirl(); }, 2300);
 }
 
 function formatDuration(ms) {
@@ -648,6 +719,121 @@ function formatDuration(ms) {
   if (h === 0) return `${m}min`;
   return `${h}h${String(m).padStart(2, "0")}`;
 }
+
+// Baixar o recap como imagem -- desenhado num <canvas> nosso (fillText,
+// fillRect) em vez de tirar um "print" do DOM: não tem lib de
+// DOM-pra-imagem no projeto (nem vamos adicionar uma só pra isso), e
+// desenhar do zero dá controle total do layout pra um cartão feito pra
+// social (1200x630, tamanho padrão de card de link). Cores sempre lidas
+// do tema atual (getComputedStyle), nunca fixas -- mesmo princípio do
+// resto do app.
+let currentRecapForDownload = null;
+
+async function downloadRecapImage() {
+  const recap = currentRecapForDownload;
+  if (!recap) return;
+  await document.fonts.ready; // evita desenhar texto com a fonte de fallback por ainda não ter carregado
+
+  const W = 1200;
+  const H = 630;
+  const canvas = document.createElement("canvas");
+  canvas.width = W;
+  canvas.height = H;
+  const ctx = canvas.getContext("2d");
+
+  const rootStyle = getComputedStyle(document.documentElement);
+  const cVar = (name, fallback) => rootStyle.getPropertyValue(name).trim() || fallback;
+  const bg = cVar("--bg", "#17131f");
+  const surface = cVar("--surface", "#1e1829");
+  const border = cVar("--border", "#3a2f4d");
+  const textColor = cVar("--text", "#f2eff7");
+  const muted = cVar("--muted", "#9891a8");
+  const accent = cVar("--accent", "#b98cf5");
+  const accentText = cVar("--accent-text", "#d1b3fa");
+
+  ctx.fillStyle = bg;
+  ctx.fillRect(0, 0, W, H);
+  ctx.strokeStyle = border;
+  ctx.lineWidth = 2;
+  ctx.strokeRect(1, 1, W - 2, H - 2);
+
+  ctx.save();
+  ctx.translate(58, 54);
+  ctx.rotate(Math.PI / 4);
+  ctx.fillStyle = accent;
+  ctx.fillRect(-6, -6, 12, 12);
+  ctx.restore();
+  ctx.fillStyle = textColor;
+  ctx.font = "600 22px 'IBM Plex Sans', sans-serif";
+  ctx.textBaseline = "middle";
+  ctx.fillText("Leilão de Jogos", 78, 54);
+  ctx.textBaseline = "alphabetic";
+
+  ctx.fillStyle = accentText;
+  ctx.font = "600 14px 'IBM Plex Mono', monospace";
+  ctx.fillText("LEILÃO ENCERRADO", 56, 118);
+
+  ctx.fillStyle = textColor;
+  ctx.font = "italic 700 40px 'Nunito', sans-serif";
+  const title = recap.title || "Leilão de Jogos";
+  ctx.fillText(title.length > 34 ? `${title.slice(0, 33)}…` : title, 56, 160);
+
+  ctx.fillStyle = accentText;
+  ctx.font = "700 84px 'IBM Plex Mono', monospace";
+  const totalText = recap.totalRaised === null ? "oculto" : formatBRL(recap.totalRaised || 0);
+  ctx.fillText(totalText, 56, 270);
+  ctx.fillStyle = muted;
+  ctx.font = "600 15px 'IBM Plex Mono', monospace";
+  ctx.fillText("ARRECADADO", 58, 292);
+
+  const stats = [
+    [formatDuration(recap.durationMs), "DURAÇÃO"],
+    [String(recap.totalDonors || 0), "APOIADORES"],
+    [String(recap.totalGames || 0), "LOTES"],
+  ];
+  let sx = 56;
+  stats.forEach(([value, label]) => {
+    ctx.fillStyle = textColor;
+    ctx.font = "600 26px 'IBM Plex Mono', monospace";
+    ctx.fillText(value, sx, 340);
+    ctx.fillStyle = muted;
+    ctx.font = "600 12px 'IBM Plex Mono', monospace";
+    ctx.fillText(label, sx, 360);
+    sx += 170;
+  });
+
+  const top3 = (recap.topGames || []).slice(0, 3);
+  const medalColors = [accentText, "#d6d0e0", "#c99a6c"];
+  ctx.fillStyle = muted;
+  ctx.font = "600 12px 'IBM Plex Mono', monospace";
+  ctx.fillText("TOP 3", 56, 400);
+  let ty = 434;
+  top3.forEach((game, i) => {
+    ctx.fillStyle = surface;
+    ctx.fillRect(56, ty - 22, W - 112, 46);
+    ctx.fillStyle = medalColors[i] || muted;
+    ctx.font = "700 16px 'IBM Plex Mono', monospace";
+    ctx.fillText(`${i + 1}º`, 72, ty + 5);
+    ctx.fillStyle = textColor;
+    ctx.font = "600 18px 'IBM Plex Sans', sans-serif";
+    ctx.fillText(game.name, 116, ty + 6);
+    ctx.fillStyle = accentText;
+    ctx.font = "700 18px 'IBM Plex Mono', monospace";
+    const amountText = formatBRL(game.total);
+    ctx.fillText(amountText, W - 72 - ctx.measureText(amountText).width, ty + 6);
+    ty += 58;
+  });
+
+  ctx.fillStyle = muted;
+  ctx.font = "500 13px 'IBM Plex Mono', monospace";
+  ctx.fillText(`${location.origin}/l/${LEILAO_ID}`, 56, H - 30);
+
+  const link = document.createElement("a");
+  link.download = `recap-${LEILAO_ID}.png`;
+  link.href = canvas.toDataURL("image/png");
+  link.click();
+}
+recapDownloadBtnEl.addEventListener("click", downloadRecapImage);
 
 // Pódio do recap — mesma linguagem de medalha do catálogo (rankBadgeHtml),
 // só que num cartão vertical em vez da linha horizontal do lot-card.
@@ -670,6 +856,24 @@ function recapPodiumCardHtml(game) {
   `;
 }
 
+// 4º classificado em diante (ver .recap-extra em style.css) -- o pódio só
+// tem 3 posições de verdade (1º elevado no meio), então qualifyCount > 3
+// (painel "Quantos lotes contam como classificados") usa lista compacta
+// aqui em vez de tentar espremer mais cards no layout do pódio.
+function recapExtraRowHtml(game) {
+  const thumb = game.image
+    ? `<img class="recap-extra-thumb" src="${escapeHtml(game.image)}" alt="" loading="lazy" />`
+    : `<span class="recap-extra-thumb recap-extra-thumb-placeholder">${escapeHtml((game.name[0] || "?").toUpperCase())}</span>`;
+  return `
+    <div class="recap-extra-row">
+      <span class="recap-extra-rank">${String(game.rank).padStart(2, "0")}</span>
+      ${thumb}
+      <span class="recap-extra-name">${escapeHtml(game.name)}</span>
+      <span class="recap-extra-total">${formatBRL(game.total)}</span>
+    </div>
+  `;
+}
+
 // Renderiza tanto o recap ao vivo (leilão acabou de encerrar) quanto um
 // arquivado (histórico, ver showHistoricalRecap) — mesma forma de dado nos
 // dois casos (buildRecap no server.js), só muda a legenda de topo.
@@ -681,19 +885,37 @@ function renderRecap(recap, eyebrowText) {
   recapDonorsEl.textContent = String(recap.totalDonors || 0);
   recapGamesEl.textContent = String(recap.totalGames || 0);
 
+  // Compartilhar -- URL do próprio board (sem rota nova). Texto sem valor
+  // quando o total tá oculto (recap.totalRaised === null) -- mesma
+  // fronteira de privacidade do resto do recap, não vaza o número por uma
+  // porta lateral no botão de compartilhar.
+  const shareUrl = `${location.origin}/l/${LEILAO_ID}`;
+  const shareText = recap.totalRaised === null
+    ? "Acabei de fazer um leilão de jogos com a galera! Dá uma olhada:"
+    : `Acabei de arrecadar ${formatBRL(recap.totalRaised || 0)} num leilão de jogos com a galera! Dá uma olhada:`;
+  recapShareXEl.href = `https://twitter.com/intent/tweet?text=${encodeURIComponent(shareText)}&url=${encodeURIComponent(shareUrl)}`;
+  currentRecapForDownload = recap; // usado pelo botão de baixar, ver downloadRecapImage
+
   const champion = (recap.topGames || [])[0];
   const championLineEl = document.getElementById("recap-champion-line");
   const recordLineEl = document.getElementById("recap-record-line");
   const highlightEl = document.getElementById("recap-highlight");
+  // Ícones desenhados (mesmo estilo do resto do app) em vez de emoji --
+  // emoji passa "gerado por IA" (feedback direto do cliente). Troféu
+  // reaproveita o mesmo SVG do title-swap do board (ver TITLE_SWAP_ICONS).
   championLineEl.innerHTML = champion
-    ? `🏆 <strong>${escapeHtml(champion.name)}</strong> foi o campeão, arrecadando ${formatBRL(champion.total)}`
+    ? `<span class="recap-highlight-icon">${TITLE_SWAP_ICONS.i.svg}</span><strong>${escapeHtml(champion.name)}</strong> foi o campeão, arrecadando ${formatBRL(champion.total)}`
     : "";
   recordLineEl.innerHTML = recap.biggestDonation
-    ? `💥 recorde de doação: <strong>${escapeHtml(recap.biggestDonation.username || "Anônimo")}</strong> mandou ${formatBRL(recap.biggestDonation.amount)} em ${escapeHtml(recap.biggestDonation.gameName || "")}`
+    ? `<span class="recap-highlight-icon recap-highlight-icon-bolt">${RECORD_BOLT_ICON_SVG}</span>recorde de doação: <strong>${escapeHtml(recap.biggestDonation.username || "Anônimo")}</strong> mandou ${formatBRL(recap.biggestDonation.amount)} em ${escapeHtml(recap.biggestDonation.gameName || "")}`
     : "";
   highlightEl.hidden = !champion && !recap.biggestDonation;
 
-  recapPodiumEl.innerHTML = (recap.topGames || []).map(recapPodiumCardHtml).join("");
+  const topGames = recap.topGames || [];
+  recapPodiumEl.innerHTML = topGames.slice(0, 3).map(recapPodiumCardHtml).join("");
+  const extraGames = topGames.slice(3);
+  recapExtraEl.hidden = extraGames.length === 0;
+  recapExtraListEl.innerHTML = extraGames.map(recapExtraRowHtml).join("");
 
   const topDonors = recap.topDonors || [];
   recapDonorsLabelEl.hidden = topDonors.length === 0;
@@ -835,24 +1057,28 @@ const VERIFIED_MARK_SVG = `<svg class="ranking-verified-mark" viewBox="0 0 16 16
   <path d="M4.5 8.2L6.8 10.5L11.5 5.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
 </svg>`;
 
-// Linhas do ranking levam pro board mais recente daquele streamer (ver
-// group.id em server.js#/api/ranking) -- de lá já dá pra ver o histórico de
-// leilões anteriores/recap dele (painel "Histórico" no modo apresentador,
-// ou o link "Ver recap" em cada round do histórico). Sem link nenhum
-// (row.id ausente) pra leilão legado sem dono verificado que por acaso caiu
-// sozinho num grupo -- não deveria acontecer hoje (todo leilão tem id), mas
-// _blank + href vazio seria pior que só não linkar.
+// Linha/card do ranking abre o DETALHE DENTRO DO PRÓPRIO POPUP (ver
+// openRankingDetail) -- antes navegava pro board daquele streamer numa aba
+// nova, mas não era essa a intenção (feedback direto do cliente: quem
+// clica quer ver mais informação ali mesmo, não sair da página). data-*
+// carrega o que já se tem (evita um segundo fetch só pra reexibir o mesmo
+// avatar/nome/total já visível na linha). Sem data-owner-id (leilão legado
+// sem dono verificado com Twitch) o card fica só visual, sem clique --
+// não tem twitchUserId nenhum pra detalhar.
 function rankingPodiumCardHtml(row) {
   const avatar = row.hostAvatar
     ? `<img class="recap-podium-thumb ranking-podium-avatar" src="${escapeHtml(row.hostAvatar)}" alt="" />`
     : `<div class="recap-podium-thumb recap-podium-thumb-placeholder ranking-podium-avatar">${escapeHtml((row.host[0] || "?").toUpperCase())}</div>`;
+  const clickAttrs = row.ownerTwitchUserId
+    ? `data-owner-id="${escapeHtml(row.ownerTwitchUserId)}" data-host="${escapeHtml(row.host)}" data-avatar="${escapeHtml(row.hostAvatar || "")}" data-verified="${row.hostVerified ? "1" : "0"}" data-total="${row.totalRaised}" role="button" tabindex="0"`
+    : "";
   return `
-    <a class="recap-podium-card rank-${row.rank} ranking-clickable" href="/l/${escapeHtml(row.id || "")}" target="_blank" rel="noopener" title="Ver leilão e histórico de ${escapeHtml(row.host)}">
+    <div class="recap-podium-card rank-${row.rank} ${row.ownerTwitchUserId ? "ranking-clickable" : ""}" ${clickAttrs} title="${row.ownerTwitchUserId ? `Ver detalhes de ${escapeHtml(row.host)}` : ""}">
       <span class="recap-podium-rank">${rankBadgeHtml(row.rank)}</span>
       ${avatar}
       <p class="recap-podium-name">${escapeHtml(row.host)}${row.hostVerified ? VERIFIED_MARK_SVG : ""}</p>
       <p class="recap-podium-total">${formatBRL(row.totalRaised)}</p>
-    </a>
+    </div>
   `;
 }
 
@@ -860,18 +1086,22 @@ function rankingRowHtml(row) {
   const avatar = row.hostAvatar
     ? `<img class="ranking-row-avatar" src="${escapeHtml(row.hostAvatar)}" alt="" loading="lazy" />`
     : `<span class="ranking-row-avatar ranking-row-avatar-placeholder">${escapeHtml((row.host[0] || "?").toUpperCase())}</span>`;
+  const clickAttrs = row.ownerTwitchUserId
+    ? `data-owner-id="${escapeHtml(row.ownerTwitchUserId)}" data-host="${escapeHtml(row.host)}" data-avatar="${escapeHtml(row.hostAvatar || "")}" data-verified="${row.hostVerified ? "1" : "0"}" data-total="${row.totalRaised}" role="button" tabindex="0"`
+    : "";
   return `
-    <a class="ranking-row ranking-clickable" href="/l/${escapeHtml(row.id || "")}" target="_blank" rel="noopener" title="Ver leilão e histórico de ${escapeHtml(row.host)}">
+    <div class="ranking-row ${row.ownerTwitchUserId ? "ranking-clickable" : ""}" ${clickAttrs} title="${row.ownerTwitchUserId ? `Ver detalhes de ${escapeHtml(row.host)}` : ""}">
       <span class="ranking-row-rank">${String(row.rank).padStart(2, "0")}</span>
       ${avatar}
       <span class="ranking-row-host">${escapeHtml(row.host)}${row.hostVerified ? VERIFIED_MARK_SVG : ""}</span>
       <span class="ranking-row-total">${formatBRL(row.totalRaised)}</span>
-    </a>
+    </div>
   `;
 }
 
 async function openRankingOverlay() {
   rankingOverlayEl.hidden = false;
+  closeRankingDetail();
   let ranking = [];
   try {
     const data = await fetch("/api/ranking").then((r) => r.json());
@@ -889,11 +1119,68 @@ async function openRankingOverlay() {
   rankingEmptyEl.hidden = true;
   rankingPodiumEl.innerHTML = ranking.slice(0, 3).map(rankingPodiumCardHtml).join("");
   rankingListEl.innerHTML = ranking.slice(3, 10).map(rankingRowHtml).join("");
+  [...rankingModalBodyEl.querySelectorAll(".ranking-clickable")].forEach((el) => {
+    el.addEventListener("click", () => openRankingDetail(el.dataset));
+    el.addEventListener("keydown", (e) => {
+      if (e.key === "Enter" || e.key === " ") { e.preventDefault(); openRankingDetail(el.dataset); }
+    });
+  });
 }
 
 function closeRankingOverlay() {
   rankingOverlayEl.hidden = true;
 }
+
+// Detalhe de um streamer clicado no ranking -- lista os leilões individuais
+// que compõem o total agregado dele (GET /api/ranking/:twitchUserId).
+// Substitui o corpo do MESMO modal em vez de navegar pra outro lugar.
+const rankingModalBodyEl = document.getElementById("ranking-modal-body");
+const rankingDetailEl = document.getElementById("ranking-detail");
+const rankingDetailBackEl = document.getElementById("ranking-detail-back");
+const rankingDetailHeadEl = document.getElementById("ranking-detail-head");
+const rankingDetailListEl = document.getElementById("ranking-detail-list");
+const rankingDetailEmptyEl = document.getElementById("ranking-detail-empty");
+
+async function openRankingDetail(data) {
+  const avatarHtml = data.avatar
+    ? `<img class="ranking-detail-avatar" src="${escapeHtml(data.avatar)}" alt="" />`
+    : `<span class="ranking-detail-avatar ranking-detail-avatar-placeholder">${escapeHtml((data.host[0] || "?").toUpperCase())}</span>`;
+  rankingDetailHeadEl.innerHTML = `
+    ${avatarHtml}
+    <div>
+      <p class="ranking-detail-name">${escapeHtml(data.host)}${data.verified === "1" ? VERIFIED_MARK_SVG : ""}</p>
+      <p class="ranking-detail-total">${formatBRL(Number(data.total) || 0)} arrecadado no total</p>
+    </div>
+  `;
+  rankingModalBodyEl.hidden = true;
+  rankingDetailEl.hidden = false;
+  rankingDetailListEl.innerHTML = "";
+  rankingDetailEmptyEl.hidden = true;
+
+  try {
+    const res = await fetch(`/api/ranking/${encodeURIComponent(data.ownerId)}`).then((r) => r.json());
+    const leiloes = res.leiloes || [];
+    if (leiloes.length === 0) {
+      rankingDetailEmptyEl.hidden = false;
+      return;
+    }
+    rankingDetailListEl.innerHTML = leiloes.map((l) => `
+      <div class="ranking-detail-row">
+        <span class="ranking-detail-row-title">${escapeHtml(l.title)}</span>
+        <span class="ranking-detail-row-total">${formatBRL(l.totalRaised)}</span>
+      </div>
+    `).join("");
+  } catch (err) {
+    console.error("Erro ao carregar detalhe do streamer:", err.message);
+    rankingDetailEmptyEl.hidden = false;
+  }
+}
+
+function closeRankingDetail() {
+  rankingDetailEl.hidden = true;
+  rankingModalBodyEl.hidden = false;
+}
+rankingDetailBackEl.addEventListener("click", closeRankingDetail);
 
 // Bounce rápido no ícone ao clicar -- só feedback tátil, não essencial
 // (diferente da entrada animada da tela de criação, que precisa sempre
@@ -989,7 +1276,7 @@ socket.on("update", ({ leaderboard, lastEvent }) => {
   if (wasOpen === true && isOpenState === false) {
     const leader = (leaderboard.items || [])[0];
     triggerSoldMoment(leader ? leader.name : null);
-    // Espera o "Vendido!" terminar (2.3s) pra não brigar visualmente com o
+    // Espera o "Vencedor!" terminar (2.3s) pra não brigar visualmente com o
     // recap — a janela vem logo em seguida, não por cima.
     setTimeout(showRecap, 2400);
   }
@@ -1126,11 +1413,29 @@ async function submitPresenterLogin() {
   }
 }
 
-presenterToggleEl.addEventListener("click", () => {
+// Pula o modal de senha pra quem já é o dono verificado da Twitch nesse
+// navegador (ver GET .../admin/check-session, server.js) -- sem isso, o
+// dono precisava redigitar a senha do zero toda vez que abria uma aba nova
+// (getPassword() usa sessionStorage, que não sobrevive fechar/abrir aba),
+// mesmo já estando "logado" o tempo todo na própria Twitch.
+async function isVerifiedOwner() {
+  try {
+    const { isOwner } = await fetch(`/api/l/${LEILAO_ID}/admin/check-session`).then((r) => r.json());
+    return !!isOwner;
+  } catch (err) {
+    return false;
+  }
+}
+
+presenterToggleEl.addEventListener("click", async () => {
   const isActive = document.body.classList.contains("presenter-mode");
   if (isActive) {
     sessionStorage.removeItem(`admin:${LEILAO_ID}`);
     setPresenterMode(false);
+    return;
+  }
+  if (await isVerifiedOwner()) {
+    setPresenterMode(true);
     return;
   }
   openPresenterLogin();
@@ -1214,8 +1519,18 @@ timerMinutesInput.addEventListener("keydown", (e) => {
 
 document.getElementById("p-toggle-open").addEventListener("click", async () => {
   // Encerrar é definitivo (só reabre manual) — confirma antes pra evitar
-  // clique acidental. Reabrir é seguro, não precisa confirmar.
-  if (isOpenState && !confirm("Encerrar o leilão agora? Ele só reabre quando você reabrir manualmente.")) return;
+  // clique acidental. Reabrir é seguro, não precisa confirmar. Diálogo
+  // próprio (confirmDialog, settings.js) em vez de confirm() nativo -- o
+  // popup do navegador destoava visualmente do resto do site.
+  if (isOpenState) {
+    const ok = await confirmDialog({
+      title: "Encerrar leilão",
+      message: "Encerrar o leilão agora? Ele só reabre quando você reabrir manualmente.",
+      confirmLabel: "Encerrar",
+      danger: true,
+    });
+    if (!ok) return;
+  }
   try {
     await presenterFetch("/admin/toggle-open", {
       method: "POST",
@@ -1228,9 +1543,15 @@ document.getElementById("p-toggle-open").addEventListener("click", async () => {
 
 // Zerar direto do board evita ter que abrir o painel avançado no meio da
 // live (ver CLAUDE.md: controle do dia a dia é modo apresentador, não
-// admin.html) — mas continua destrutivo, por isso o confirm() explícito.
+// admin.html) — mas continua destrutivo, por isso a confirmação explícita.
 document.getElementById("p-reset-btn").addEventListener("click", async () => {
-  if (!confirm("Isso apaga TODOS os jogos e o histórico desse leilão. Título, host e senha continuam os mesmos. Tem certeza?")) return;
+  const ok = await confirmDialog({
+    title: "Zerar leilão",
+    message: "Isso apaga TODOS os jogos e o histórico desse leilão. Título, host e senha continuam os mesmos. Tem certeza?",
+    confirmLabel: "Zerar",
+    danger: true,
+  });
+  if (!ok) return;
   try {
     await presenterFetch("/admin/reset", { method: "POST" });
   } catch (err) {
@@ -1454,7 +1775,11 @@ donorInputEl.addEventListener("input", showDonorSuggestions);
 donorInputEl.addEventListener("focus", showDonorSuggestions);
 donorInputEl.addEventListener("blur", () => setTimeout(hideDonorSuggestions, 120));
 
-if (getPassword()) setPresenterMode(true);
+if (getPassword()) {
+  setPresenterMode(true);
+} else {
+  isVerifiedOwner().then((owner) => { if (owner) setPresenterMode(true); });
+}
 
 socket.on("update", ({ leaderboard }) => {
   const openBtn = document.getElementById("p-toggle-open");

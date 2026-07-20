@@ -204,7 +204,8 @@
   </div>
 
   <div class="sold-overlay" id="sold-overlay" hidden aria-hidden="true">
-    <span class="sold-mark" id="sold-mark">Vendido!</span>
+    <canvas class="sold-swirl-canvas" id="sold-swirl-canvas"></canvas>
+    <span class="sold-mark" id="sold-mark">Vencedor!</span>
   </div>
 
   <div class="history-overlay" id="history-overlay" hidden>
@@ -219,6 +220,14 @@
   <div class="recap-overlay" id="recap-overlay" hidden>
     <div class="recap-modal" role="dialog" aria-modal="true" aria-labelledby="recap-title">
       <button class="recap-close" id="recap-close" type="button" aria-label="Fechar">✕</button>
+      <div class="recap-share-corner">
+        <a class="recap-share-icon-btn" id="recap-share-x" href="#" target="_blank" rel="noopener" title="Compartilhar no X" aria-label="Compartilhar no X">
+          <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M18.9 2H22l-7.6 8.7L23 22h-6.9l-5.4-6.6L4.5 22H1.4l8.1-9.3L1 2h7.1l4.9 6.1L18.9 2z"/></svg>
+        </a>
+        <button class="recap-share-icon-btn" id="recap-download-btn" type="button" title="Baixar recap" aria-label="Baixar recap como imagem">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12m0 0l-4-4m4 4l4-4M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2"/></svg>
+        </button>
+      </div>
       <p class="recap-eyebrow" id="recap-eyebrow">leilão encerrado</p>
       <h2 class="recap-title" id="recap-title">Leilão de Jogos</h2>
 
@@ -248,6 +257,11 @@
 
       <p class="recap-section-label">TOP 3</p>
       <div class="recap-podium" id="recap-podium"></div>
+
+      <div class="recap-extra" id="recap-extra" hidden>
+        <p class="recap-section-label">também classificados</p>
+        <div class="recap-extra-list" id="recap-extra-list"></div>
+      </div>
 
       <p class="recap-section-label" id="recap-donors-label" hidden>maiores apoiadores</p>
       <div class="recap-donor-list" id="recap-donor-list"></div>
@@ -328,10 +342,18 @@
         <h2 class="modal-title" id="ranking-modal-title">Quem mais arrecadou</h2>
         <p class="ranking-modal-hint">Soma tudo que cada streamer já levantou, em todos os leilões que já rodou por aqui.</p>
       </div>
-      <div class="ranking-modal-body">
+      <div class="ranking-modal-body" id="ranking-modal-body">
         <div class="recap-podium ranking-podium" id="ranking-podium"></div>
         <div class="ranking-list" id="ranking-list"></div>
         <p class="empty-state" id="ranking-empty" hidden>Ninguém arrecadou nada ainda por aqui.</p>
+      </div>
+
+      <div class="ranking-detail" id="ranking-detail" hidden>
+        <button class="ranking-detail-back" id="ranking-detail-back" type="button">← Voltar pro ranking</button>
+        <div class="ranking-detail-head" id="ranking-detail-head"></div>
+        <p class="ranking-detail-label">leilões desse streamer</p>
+        <div class="ranking-detail-list" id="ranking-detail-list"></div>
+        <p class="empty-state" id="ranking-detail-empty" hidden>Sem leilões públicos pra mostrar.</p>
       </div>
     </div>
   </div>

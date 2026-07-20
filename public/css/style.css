@@ -317,9 +317,17 @@ body.board-body.has-bg-image .board-bg { display: none; }
 .title-swap-icon.icon-trophy { color: var(--silver); }
 .title-swap-icon.icon-star { color: var(--accent-text); }
 
+/* center, não baseline: os 4 itens aqui (total arrecadado, status, ranking,
+   apresentador) misturam fonte mono e fonte normal com padding diferente
+   entre si -- baseline alinha pelo texto, que cai em alturas diferentes
+   conforme a métrica de cada fonte (achado real: medindo o centro
+   vertical de cada pill, "total" e "ranking" batiam num Y, "status" e
+   "apresentador" batiam 4.5px mais abaixo, mesmo com box quase igual --
+   ficava visivelmente desalinhado). center usa a caixa geométrica de cada
+   item, não depende da fonte -- mesmo raciocínio já usado em .topbar. */
 .topbar-right {
   display: flex;
-  align-items: baseline;
+  align-items: center;
   gap: 20px;
   flex-wrap: wrap;
   font-size: 12.5px;
@@ -852,7 +860,7 @@ body.board-body.has-bg-image .board-bg { display: none; }
 
 .board.final-countdown { animation: board-tension 1s ease-in-out infinite; }
 
-/* "Vendido!" — o martelo bate quando o leilão fecha. */
+/* "Vencedor!" — o martelo bate quando o leilão fecha. */
 .sold-overlay {
   position: fixed;
   inset: 0;
@@ -866,6 +874,20 @@ body.board-body.has-bg-image .board-bg { display: none; }
 }
 
 .sold-overlay[hidden] { display: none; }
+
+/* Padrão de anéis pontilhados girando atrás do "Vencedor!" (ver
+   drawSwirlFrame em app.js) -- referência do cliente era um shader WebGL
+   de "dithering" (component DitheringShader, shape="swirl"); aqui é
+   Canvas2D fazendo a mesma matemática (ângulo+raio, anéis concêntricos com
+   fase girando), não shader -- pra um flash de ~2.2s isso não compensa o
+   custo/risco de outro pipeline WebGL (o fundo de fumaça da criação já é
+   o único caso onde isso vale a pena, por ser permanente). */
+.sold-swirl-canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
 
 @keyframes sold-bg {
   0% { background: rgba(10, 10, 12, 0); }
@@ -895,7 +917,7 @@ body.board-body.has-bg-image .board-bg { display: none; }
   100% { transform: scale(1) rotate(-4deg); opacity: 0; }
 }
 
-/* Resumo mostrado quando o leilão encerra — vem logo depois do "Vendido!"
+/* Resumo mostrado quando o leilão encerra — vem logo depois do "Vencedor!"
    (ver showRecap em app.js), por isso fica acima dele no z-index. */
 .recap-overlay {
   position: fixed;
@@ -997,6 +1019,35 @@ body.board-body.has-bg-image .board-bg { display: none; }
   color: var(--muted);
 }
 
+/* Compartilhar o recap -- par de ícones no canto, ao lado do fechar (não
+   mais barra larga inline: feedback direto do cliente, "não ficou legal").
+   Cor de marca só no X (logo de terceiro, diferente do resto da UI, que
+   nunca usa cor fixa) -- o de baixar é um ícone nosso, segue o tema normal. */
+.recap-share-corner {
+  position: absolute;
+  top: 16px;
+  right: 56px;
+  display: flex;
+  gap: 8px;
+}
+
+.recap-share-icon-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  color: var(--muted);
+  cursor: pointer;
+  transition: color 0.15s ease, border-color 0.15s ease, transform 0.15s ease;
+}
+.recap-share-icon-btn:hover { color: var(--text); border-color: var(--accent-soft); transform: translateY(-1px); }
+.recap-share-icon-btn svg { width: 14px; height: 14px; }
+#recap-share-x:hover { color: #fff; background: #000; border-color: #000; }
+
 /* Chamada de texto extra além do pódio (que já destaca visualmente o
    campeão por posição/tamanho) — pedido explícito do cliente pra nomear o
    campeão e o recorde de doação por escrito, não só implícito no ranking. */
@@ -1020,6 +1071,17 @@ body.board-body.has-bg-image .board-bg { display: none; }
 }
 .recap-highlight-line:empty { display: none; }
 .recap-highlight-line strong { color: var(--accent-text); }
+
+.recap-highlight-icon {
+  display: inline-flex;
+  vertical-align: -3px;
+  width: 15px;
+  height: 15px;
+  margin-right: 5px;
+  color: var(--accent-text);
+}
+.recap-highlight-icon svg { width: 100%; height: 100%; }
+.recap-highlight-icon-bolt { color: var(--bronze); }
 
 .recap-podium-top-donor {
   margin: 2px 0 0;
@@ -1141,10 +1203,176 @@ body.board-body.has-bg-image .board-bg { display: none; }
 
 .ranking-modal-body { overflow-y: auto; padding: 22px 26px 26px; }
 
+/* Detalhe de um streamer clicado no ranking -- substitui o corpo do modal
+   (ver openRankingDetail/closeRankingDetail em app.js), não navega pra
+   lugar nenhum. */
+.ranking-detail { overflow-y: auto; padding: 22px 26px 26px; }
+
+.ranking-detail-back {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: none;
+  border: none;
+  color: var(--muted);
+  font-family: var(--font-body);
+  font-size: 12.5px;
+  cursor: pointer;
+  padding: 0;
+  margin-bottom: 16px;
+}
+.ranking-detail-back:hover { color: var(--text); }
+
+.ranking-detail-head {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-bottom: 20px;
+  padding-bottom: 18px;
+  border-bottom: 1px solid var(--border);
+}
+
+.ranking-detail-avatar {
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  object-fit: cover;
+  background: var(--surface-2);
+  flex-shrink: 0;
+}
+.ranking-detail-avatar-placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 20px;
+  color: var(--muted);
+}
+
+.ranking-detail-name {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0 0 4px;
+  font-family: var(--font-display);
+  font-style: italic;
+  font-weight: 700;
+  font-size: 19px;
+  color: var(--text);
+}
+
+.ranking-detail-total {
+  margin: 0;
+  font-family: var(--font-mono);
+  font-size: 12.5px;
+  color: var(--accent-text);
+}
+
+.ranking-detail-label {
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin: 0 0 10px;
+}
+
+.ranking-detail-list { display: flex; flex-direction: column; gap: 6px; }
+
+.ranking-detail-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 12px;
+  background: var(--surface-2);
+  border-radius: 8px;
+}
+
+.ranking-detail-row-title {
+  font-size: 13.5px;
+  color: var(--text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ranking-detail-row-total {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--accent-text);
+  flex-shrink: 0;
+}
+
 /* Reaproveita o visual do pódio do recap de encerramento (mesmo padrão
    "bonito" já existente no site) — só troca a capa do jogo por avatar
    redondo do streamer. */
 .ranking-podium-avatar { border-radius: 50%; }
+
+/* 4º classificado em diante no recap (ver renderRecap em app.js) --
+   qualifyCount pode passar de 3 (painel "Quantos lotes contam como
+   classificados"), mas o pódio (.recap-podium, 3 colunas fixas com o 1º
+   elevado) só faz sentido visual pra exatamente 3 -- o resto entra aqui
+   como lista compacta, mesma ideia de .ranking-row pro 4º-10º do ranking
+   geral, adaptada pra jogo em vez de streamer. */
+.recap-extra { margin-bottom: 22px; }
+.recap-extra-list { display: flex; flex-direction: column; gap: 6px; }
+
+.recap-extra-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 10px;
+  background: var(--surface-2);
+  border-radius: 8px;
+}
+
+.recap-extra-rank {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--muted);
+  width: 20px;
+  flex-shrink: 0;
+  text-align: center;
+}
+
+.recap-extra-thumb {
+  width: 32px;
+  height: 32px;
+  border-radius: 6px;
+  object-fit: cover;
+  background: var(--surface);
+  flex-shrink: 0;
+}
+.recap-extra-thumb-placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-display);
+  font-weight: 700;
+  color: var(--muted);
+}
+
+.recap-extra-name {
+  flex: 1;
+  min-width: 0;
+  font-size: 13.5px;
+  color: var(--text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.recap-extra-total {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--accent-text);
+  flex-shrink: 0;
+}
 
 .ranking-list { display: flex; flex-direction: column; gap: 6px; }
 
@@ -1844,7 +2072,7 @@ body.board-body.has-bg-image .board-bg { display: none; }
      precisava de mais altura (ex: apoio+sabotagem quebrando linha). Um
      min-height "de verdade" (não automático) escapa dessa regra. */
   min-height: 122px;
-  transition: border-color 0.2s ease;
+  transition: border-color 0.2s ease, box-shadow 0.3s ease;
   animation: card-in 0.25s var(--ease);
 }
 
@@ -1853,7 +2081,22 @@ body.board-body.has-bg-image .board-bg { display: none; }
   to { opacity: 1; transform: translateY(0); }
 }
 
-.lot-card:hover { border-color: var(--accent-soft); }
+/* Brilho no hover -- inspirado num "glowing shadow" que o cliente mandou
+   de referência (halo colorido atrás do card). Lá era um gradiente cônico
+   girando atrás do elemento, mas isso não dá pra fazer com um
+   pseudo-elemento aqui: .lot-card precisa de overflow:hidden pra clipar o
+   .lot-card-bg (capa desfocada, logo abaixo, que "vaza" da própria caixa
+   via inset negativo) -- um pseudo-elemento tentando vazar do mesmo jeito
+   pro halo seria cortado por esse mesmo overflow. box-shadow no PRÓPRIO
+   .lot-card não tem esse problema (nunca é clipado pelo overflow do
+   elemento que o declara, só o de um pai cliparia, e aqui é o próprio) --
+   por isso o halo é box-shadow direto no :hover, não um pseudo-elemento
+   animado (que também colidiria com a animação de entrada card-in, já
+   dona da propriedade animation aqui). */
+.lot-card:hover {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 1px var(--accent-soft), 0 0 26px 4px var(--accent-glow), 0 0 48px 12px var(--accent-glow);
+}
 
 /* Capa do jogo desfocada como fundo do card, com véu escuro pra manter a
    leitura do texto por cima. Cards sem capa (thumb placeholder) simplesmente

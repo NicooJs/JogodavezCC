@@ -385,7 +385,10 @@ function buildRecap(store) {
   const rows = store.getLeaderboard();
   const donorCounts = store.getDonorCountByGame();
   const topDonorByGame = store.getTopDonorByGame();
-  const topGames = rows.slice(0, 3).map((row, index) => {
+  // slice(0, 3) fixo antes -- leilão configurado pra mais de 3 classificados
+  // (getQualifyCount, painel "Quantos lotes contam como classificados")
+  // arrecadava certo mas o recap só mostrava os 3 primeiros mesmo assim.
+  const topGames = rows.slice(0, getQualifyCount(store)).map((row, index) => {
     const topDonor = topDonorByGame[row.key];
     return {
       rank: index + 1,
@@ -457,10 +460,24 @@ function loadLeilao(req, res, next) {
   next();
 }
 
+// Aditivo, não substitui a senha: o dono verificado da Twitch (sessão
+// logada nesse navegador, comparada ao ownerTwitchUserId PERMANENTE do
+// registro -- não ao hostTwitchUserId do state, que POST /admin/host limpa
+// de propósito ao editar o nome manualmente pra evitar personificação de
+// EXIBIÇÃO; posse de admin é outra coisa e não deve depender disso) também
+// libera acesso, sem precisar digitar senha. Continua funcionando por
+// senha pra quem administra de outro dispositivo/navegador sem sessão.
 function requireLeilaoAdmin(req, res, next) {
   const supplied = req.header("x-admin-password") || "";
   const hash = req.store.getState("adminSecretHash");
   if (verifyPassword(supplied, hash)) return next();
+
+  const session = getTwitchSession(req);
+  const meta = registry.getLeilaoMeta(req.leilaoId);
+  if (session && meta && meta.ownerTwitchUserId && session.twitchUserId === meta.ownerTwitchUserId) {
+    return next();
+  }
+
   return res.status(401).json({ error: "Senha de admin inválida" });
 }
 
@@ -706,6 +723,19 @@ app.post("/api/leiloes", async (req, res) => {
 // ausente) não tem chave confiável pra agrupar com nada -- fica sozinho na
 // própria linha, usando o id como chave única (nunca bate com outro leilão),
 // igual já era o comportamento de antes pra esses.
+// Soma o arquivado (rounds já zerados) com o que sobrou do round aberto que
+// ainda não foi refletido no arquivo -- extraído do que já era o cálculo de
+// /api/ranking porque o novo /api/ranking/:twitchUserId (detalhe de um
+// streamer, ver ranking clicável em app.js) precisa do mesmo número por
+// leilão individual, não só do agregado.
+function computeLeilaoTotalRaised(store) {
+  const pastAuctions = store.getPastAuctions();
+  const archivedTotal = pastAuctions.reduce((sum, a) => sum + (a.totalRaised || 0), 0);
+  const alreadyReflected = pastAuctions[0] && pastAuctions[0].openRound ? (pastAuctions[0].totalRaised || 0) : 0;
+  const liveTotal = centsToNumber(store.getTotalRaised());
+  return archivedTotal + Math.max(0, liveTotal - alreadyReflected);
+}
+
 app.get("/api/ranking", (req, res) => {
   const perLeilao = registry
     .listLeilaoIds()
@@ -713,18 +743,13 @@ app.get("/api/ranking", (req, res) => {
     .map((id) => {
       const meta = registry.getLeilaoMeta(id) || {};
       const store = getStore(id);
-      const pastAuctions = store.getPastAuctions();
-      const archivedTotal = pastAuctions.reduce((sum, a) => sum + (a.totalRaised || 0), 0);
-      const alreadyReflected = pastAuctions[0] && pastAuctions[0].openRound ? (pastAuctions[0].totalRaised || 0) : 0;
-      const liveTotal = centsToNumber(store.getTotalRaised());
-      const totalRaised = archivedTotal + Math.max(0, liveTotal - alreadyReflected);
       return {
         id,
         ownerTwitchUserId: meta.ownerTwitchUserId || null,
         host: store.getState("host", meta.host || ""),
         hostAvatar: store.getState("hostAvatar", null),
         hostVerified: getHostVerified(store),
-        totalRaised,
+        totalRaised: computeLeilaoTotalRaised(store),
         createdAt: meta.createdAt || "",
       };
     })
@@ -736,9 +761,8 @@ app.get("/api/ranking", (req, res) => {
     if (!groups.has(groupKey)) groups.set(groupKey, { ...row, totalRaised: 0 });
     const group = groups.get(groupKey);
     group.totalRaised += row.totalRaised;
-    // Nome/foto/verificação/id exibidos vêm do leilão mais recente do grupo
-    // -- mais provável de estar com o nome atual do streamer, e o id é pra
-    // onde o clique no ranking leva (ver clickable-row em app.js).
+    // Nome/foto/verificação exibidos vêm do leilão mais recente do grupo --
+    // mais provável de estar com o nome atual do streamer.
     if (row.createdAt > group.createdAt) {
       group.id = row.id;
       group.host = row.host;
@@ -753,6 +777,7 @@ app.get("/api/ranking", (req, res) => {
     .slice(0, 50)
     .map((row, index) => ({
       id: row.id,
+      ownerTwitchUserId: row.ownerTwitchUserId,
       host: row.host,
       hostAvatar: row.hostAvatar,
       hostVerified: row.hostVerified,
@@ -760,6 +785,31 @@ app.get("/api/ranking", (req, res) => {
       rank: index + 1,
     }));
   res.json({ ranking: rows });
+});
+
+// Detalhe de um streamer do ranking -- clicar numa linha do ranking geral
+// abre isso NO PRÓPRIO popup (ver openRankingDetail em app.js), sem navegar
+// pra fora: lista os leilões individuais que compõem o total agregado dele.
+// twitchUserId (não o id de um leilão específico) porque um streamer com
+// vários leilões aparece como uma linha só, somada -- ver agrupamento acima.
+app.get("/api/ranking/:twitchUserId", (req, res) => {
+  const { twitchUserId } = req.params;
+  const leiloes = registry
+    .listLeiloesByOwner(twitchUserId)
+    .map((meta) => {
+      const store = getStore(meta.id);
+      if (getHideTotalRaised(store)) return null;
+      return {
+        id: meta.id,
+        title: store.getState("title", meta.title || "Leilão de Jogos"),
+        totalRaised: computeLeilaoTotalRaised(store),
+        createdAt: meta.createdAt || "",
+      };
+    })
+    .filter((row) => row && row.totalRaised > 0)
+    .sort((a, b) => (b.createdAt || "").localeCompare(a.createdAt || ""));
+
+  res.json({ leiloes });
 });
 
 // Apaga um leilão inteiro (registro + arquivo de dados) — moderação/limpeza
@@ -918,6 +968,17 @@ app.post("/api/l/:id/admin/login", loadLeilao, (req, res) => {
     return res.status(401).json({ error: "Senha incorreta" });
   }
   res.json({ ok: true });
+});
+
+// Deixa o board pular o modal de senha pra quem já é o dono verificado da
+// Twitch (mesmo critério de requireLeilaoAdmin, ver lá) -- chamado na carga
+// da página e ao clicar em "modo apresentador". Não expõe nada sensível
+// (só um booleano), então não precisa passar por requireLeilaoAdmin.
+app.get("/api/l/:id/admin/check-session", loadLeilao, (req, res) => {
+  const session = getTwitchSession(req);
+  const meta = registry.getLeilaoMeta(req.leilaoId);
+  const isOwner = !!(session && meta && meta.ownerTwitchUserId && session.twitchUserId === meta.ownerTwitchUserId);
+  res.json({ isOwner });
 });
 
 app.get("/api/l/:id/admin/game-search", loadLeilao, requireLeilaoAdmin, async (req, res) => {
