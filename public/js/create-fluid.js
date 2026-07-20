@@ -34,18 +34,24 @@ if (canvas && !reduceMotion) {
 }
 
 function startFluid(canvas) {
+  // Ajustado pra baixo depois de ver rodando de verdade -- valores de
+  // referência de simulação de fluido (tipo o componente que o cliente
+  // mandou) são pensados pra demo de vitrine, não pra fundo discreto atrás
+  // de formulário de verdade. CURL/FORCE/RADIUS menores = redemoinho mais
+  // contido; DISSIPATION maior = some mais rápido, sem acumular.
   const config = {
     SIM_RESOLUTION: 128,
     DYE_RESOLUTION: 512,
-    DENSITY_DISSIPATION: 1.35,
-    VELOCITY_DISSIPATION: 0.25,
+    DENSITY_DISSIPATION: 2.4,
+    VELOCITY_DISSIPATION: 0.4,
     PRESSURE: 0.8,
     PRESSURE_ITERATIONS: 20,
-    CURL: 28,
-    SPLAT_RADIUS: 0.22,
-    SPLAT_FORCE: 4000,
+    CURL: 16,
+    SPLAT_RADIUS: 0.16,
+    SPLAT_FORCE: 2000,
+    DISPLAY_BRIGHTNESS: 0.5,
     IDLE_MS: 2200,
-    AUTO_SPLAT_INTERVAL_MS: 1200,
+    AUTO_SPLAT_INTERVAL_MS: 1600,
   };
 
   const { gl, ext } = getWebGLContext(canvas);
@@ -232,14 +238,22 @@ function startFluid(canvas) {
     }
   `);
 
+  // uBrightness + tone mapping (c/(1+c)) garantem um teto de brilho -- sem
+  // isso, acumular fumaça numa área (mouse parado ali, ou vários splats
+  // seguidos) empurra a cor pra perto do branco puro, que é exatamente o
+  // problema relatado: por trás de texto claro, isso apaga o contraste e
+  // "apaga a escrita". Com o teto, não importa quanto acumule, nunca chega
+  // perto do branco.
   const displayShader = compileShader(gl, gl.FRAGMENT_SHADER, `
     precision highp float;
     precision highp sampler2D;
     varying vec2 vUv;
     uniform sampler2D uTexture;
+    uniform float uBrightness;
     void main () {
       vec3 c = texture2D(uTexture, vUv).rgb;
-      gl_FragColor = vec4(c, 1.0);
+      c = c / (1.0 + c);
+      gl_FragColor = vec4(c * uBrightness, 1.0);
     }
   `);
 
@@ -308,8 +322,9 @@ function startFluid(canvas) {
 
   function nextColor() {
     const base = palette[Math.floor(Math.random() * palette.length)];
-    // leve variação de intensidade pra não repetir sempre o mesmo tom exato
-    const k = 0.7 + Math.random() * 0.5;
+    // intensidade baixa de propósito (fundo discreto, não vitrine) + leve
+    // variação pra não repetir sempre o mesmo tom exato
+    const k = 0.28 + Math.random() * 0.22;
     return [base[0] * k, base[1] * k, base[2] * k];
   }
 
@@ -375,8 +390,8 @@ function startFluid(canvas) {
     autoTargetY += (Math.random() - 0.5) * 0.3;
     autoTargetX = Math.min(0.85, Math.max(0.15, autoTargetX));
     autoTargetY = Math.min(0.85, Math.max(0.15, autoTargetY));
-    const dx = (Math.random() - 0.5) * config.SPLAT_FORCE * 0.5;
-    const dy = (Math.random() - 0.5) * config.SPLAT_FORCE * 0.5;
+    const dx = (Math.random() - 0.5) * config.SPLAT_FORCE * 0.35;
+    const dy = (Math.random() - 0.5) * config.SPLAT_FORCE * 0.35;
     splat(autoTargetX, autoTargetY, dx, dy, nextColor());
   }
 
@@ -454,6 +469,7 @@ function startFluid(canvas) {
     gl.disable(gl.BLEND);
     gl.useProgram(displayProgram.program);
     gl.uniform1i(displayProgram.uniforms.uTexture, dye.read.attach(0));
+    gl.uniform1f(displayProgram.uniforms.uBrightness, config.DISPLAY_BRIGHTNESS);
     blit(null);
   }
 
