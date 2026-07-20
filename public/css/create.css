@@ -13,17 +13,18 @@
   min-height: 100vh;
 }
 
-/* Fundo animado da tela de criação -- ecoa o próprio losango da marca
-   (.topbar-mark::before em style.css) em vez de blob/gradiente genérico.
-   z-index 0 + .create-page em z-index 1 (mesmo padrão de .page em
-   style.css, pro board) -- tentamos z-index -1 primeiro, mas nesse motor
-   de renderização isso pintava atrás até do background sólido do body, não
-   só do conteúdo (confirmado testando um elemento de teste gigante/opaco
-   que simplesmente não aparecia); esse padrão de "conteúdo em z-index
-   maior" já é o que o resto do site usa, então é mais garantido. Animação
-   de verdade fica em public/js/create-bg.js (Motion) -- aqui só a
-   posição/aparência estática, que já funciona sozinha se o JS não
-   carregar por qualquer motivo. */
+/* Fundo animado da tela de criação -- simulação de fluido em WebGL
+   reagindo ao cursor (ver public/js/create-fluid.js). z-index 0 +
+   .create-page em z-index 1 (mesmo padrão de .page em style.css, pro
+   board) -- tentamos z-index -1 primeiro, num teste bem anterior a esse
+   fundo, mas nesse motor de renderização isso pintava atrás até do
+   background sólido do body, não só do conteúdo (confirmado testando um
+   elemento de teste gigante/opaco que simplesmente não aparecia); esse
+   padrão de "conteúdo em z-index maior" já é o que o resto do site usa,
+   então é mais garantido. Se o WebGL não iniciar por qualquer motivo
+   (navegador sem suporte, prefers-reduced-motion, etc), o canvas
+   simplesmente não desenha nada e sobra só a cor sólida do tema (--bg,
+   aplicada em html/body no style.css) -- nunca fica quebrado/em branco. */
 .create-bg {
   position: fixed;
   inset: 0;
@@ -32,39 +33,11 @@
   pointer-events: none;
 }
 
-.bg-shard {
+.create-fx-canvas {
   position: absolute;
-  display: block;
-  border-radius: 7px;
-  border: 2px solid var(--accent-soft);
-  transform: rotate(45deg);
-  opacity: 0.4;
-}
-.bg-shard-1 { top: 10%; left: 6%; width: 46px; height: 46px; }
-.bg-shard-2 { top: 64%; left: 4%; width: 30px; height: 30px; background: var(--accent-bg); border-color: transparent; }
-.bg-shard-3 { top: 16%; left: 90%; width: 64px; height: 64px; }
-.bg-shard-4 { top: 76%; left: 87%; width: 38px; height: 38px; background: var(--accent-bg); border-color: transparent; }
-.bg-shard-5 { top: 44%; left: 50%; width: 22px; height: 22px; opacity: 0.28; }
-.bg-shard-6 { top: 5%; left: 42%; width: 18px; height: 18px; background: var(--accent-bg); border-color: transparent; }
-.bg-shard-7 { top: 90%; left: 22%; width: 28px; height: 28px; }
-
-.bg-spotlight {
-  position: absolute;
-  top: -24%;
-  left: 50%;
-  width: min(900px, 90vw);
-  height: min(900px, 90vw);
-  transform: translateX(-50%);
-  border-radius: 50%;
-  background: radial-gradient(circle, var(--accent-glow), transparent 68%);
-  filter: blur(20px);
-  opacity: 0.7;
-}
-
-@media (max-width: 640px) {
-  /* nas laterais bem estreitas os losangos maiores vazam pra dentro do
-     conteúdo em vez de ficar de fundo discreto */
-  .bg-shard-3, .bg-shard-4 { display: none; }
+  inset: 0;
+  width: 100%;
+  height: 100%;
 }
 
 .create-topbar { margin-bottom: 56px; }
