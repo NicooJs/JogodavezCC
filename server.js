@@ -964,17 +964,26 @@ app.get("/webhook/pixgg/:leilaoId", (req, res) => {
 app.post("/webhook/pixgg/:leilaoId", (req, res) => {
   res.sendStatus(200); // confirma recebimento primeiro
 
+  // Log de cada etapa de propósito -- achado real em produção (2026-07-21):
+  // uma doação real chegou ao pix.gg (confirmada no painel deles) mas não
+  // deixou rastro nenhum aqui, nem como evento "ignorado". Sem log em cada
+  // decisão, não dá pra saber se o POST nem chegou no servidor, chegou com
+  // assinatura errada, ou chegou como "created" (não pago) -- os três casos
+  // ficam idênticos do lado de fora. Prefixo "[webhook pix.gg]" pra filtrar
+  // fácil no log do Railway.
+  const leilaoId = req.params.leilaoId;
+  console.log(`[webhook pix.gg] POST recebido -- leilaoId="${leilaoId}" assinatura=${req.query.assinatura ? "presente" : "ausente"}`);
+
   try {
-    const leilaoId = req.params.leilaoId;
     if (!/^[a-z0-9_-]+$/i.test(leilaoId) || !registry.leilaoExists(leilaoId)) {
-      console.warn(`Webhook pix.gg: leilão "${leilaoId}" não encontrado, ignorando.`);
+      console.warn(`[webhook pix.gg] leilão "${leilaoId}" não encontrado, ignorando.`);
       return;
     }
     const store = getStore(leilaoId);
 
     const secret = process.env.PIXGG_WEBHOOK_SECRET || "";
     if (!pixgg.verifySignature(req.query.assinatura, secret)) {
-      console.warn("Webhook pix.gg ignorado: assinatura inválida");
+      console.warn(`[webhook pix.gg] assinatura inválida pra leilaoId="${leilaoId}", ignorado.`);
       store.setState("webhookSignatureBroken", "true");
       return;
     }
@@ -982,7 +991,11 @@ app.post("/webhook/pixgg/:leilaoId", (req, res) => {
     touchWebhookPing(store);
 
     const donation = pixgg.parseDonation(req.body);
-    if (!pixgg.isPaid(donation.status)) return; // ignora o "created", só conta o "paid"
+    console.log(`[webhook pix.gg] assinatura ok -- id=${donation.id} status="${donation.status}" username="${donation.username}" mensagem="${donation.message}" valor=${donation.amountCents}`);
+    if (!pixgg.isPaid(donation.status)) {
+      console.log(`[webhook pix.gg] status "${donation.status}" não é "paid", ignorando por enquanto (espera o próximo webhook dessa mesma transação).`);
+      return;
+    }
 
     processDonationMessage(leilaoId, store, {
       id: donation.id,
@@ -991,7 +1004,7 @@ app.post("/webhook/pixgg/:leilaoId", (req, res) => {
       fallbackAmount: donation.amountCents,
     });
   } catch (err) {
-    console.error("Erro ao processar webhook do pix.gg:", err.message);
+    console.error(`[webhook pix.gg] erro ao processar (leilaoId="${leilaoId}"):`, err.message);
   }
 });
 
