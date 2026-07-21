@@ -17,6 +17,10 @@ const { fetchGameImage, searchGames, identifyGameFromNoisyText, fetchPopularCove
 const { fetchTwitchAvatar } = require("./src/twitchClient");
 const twitchAuth = require("./src/twitchAuth");
 const session = require("./src/session");
+const mpAuth = require("./src/mpAuth");
+const mpApi = require("./src/mpApi");
+const streamersStore = require("./src/streamersStore");
+const paymentsStore = require("./src/paymentsStore");
 
 const app = express();
 // Railway termina TLS na borda e repassa pro container em HTTP puro,
@@ -163,6 +167,23 @@ function safeReturnTo(value) {
 
 function buildTwitchRedirectUri(req) {
   return `${req.protocol}://${req.get("host")}/auth/twitch/callback`;
+}
+
+// Mesma disciplina de allowlist EXATA de safeReturnTo, mas conectar o
+// Mercado Pago também pode acontecer de dentro do board de um leilão
+// específico (aba Avançado das configurações) — precisa voltar pra
+// /l/<id>, não só pras duas páginas estáticas. Âncoras ^ e $ (não regex
+// solto) garantem que só bate exatamente esse formato, sem brecha de
+// open-redirect (nunca casa com "//evil.com" nem com URL absoluta).
+const LEILAO_RETURN_PATH_RE = /^\/l\/[a-z0-9_-]+$/i;
+function safeReturnToMp(value) {
+  if (value === "/" || value === "/meus-leiloes") return value;
+  if (typeof value === "string" && LEILAO_RETURN_PATH_RE.test(value)) return value;
+  return "/";
+}
+
+function buildMpRedirectUri(req) {
+  return `${req.protocol}://${req.get("host")}/auth/mercadopago/callback`;
 }
 
 // payload só tem twitchUserId quando veio de um login de verdade (ver
@@ -658,6 +679,74 @@ app.get("/auth/twitch/callback", async (req, res) => {
   }
 });
 
+// ---------- conexão com o Mercado Pago (OAuth marketplace) ----------
+// Diferente do login com a Twitch: aqui a sessão Twitch já precisa
+// existir ANTES (é ela que diz de QUEM é a conta MP sendo conectada).
+// Uma conexão vale pro streamer inteiro (chave twitch_user_id, ver
+// src/streamersStore.js), não por leilão -- reconectar de qualquer
+// leilão dele atualiza a mesma linha.
+
+app.get("/auth/mercadopago/start", (req, res) => {
+  if (!process.env.MP_CLIENT_ID || !process.env.MP_CLIENT_SECRET) {
+    return res.status(500).send("Conexão com o Mercado Pago não está configurada nesse servidor.");
+  }
+  const twitchSession = getTwitchSession(req);
+  if (!twitchSession) {
+    return res.status(401).send("Faça login com a Twitch antes de conectar o Mercado Pago.");
+  }
+
+  const state = crypto.randomBytes(32).toString("base64url");
+  const returnTo = safeReturnToMp(req.query.returnTo);
+
+  try {
+    // twitchUserId vai DENTRO do cookie assinado, não é lido de novo da
+    // sessão Twitch no callback -- assim a conexão fica presa a quem
+    // iniciou o fluxo, mesmo que a sessão Twitch mude nesse meio tempo
+    // (ex: logout em outra aba enquanto autoriza no Mercado Pago).
+    session.setCookie(req, res, "leilao_mp_oauth_state", { state, returnTo, twitchUserId: twitchSession.twitchUserId }, OAUTH_STATE_MAX_AGE_SECONDS);
+  } catch (err) {
+    console.error("Falha ao iniciar conexão com o Mercado Pago:", err.message);
+    return res.status(500).send("Não foi possível iniciar a conexão. Tente de novo.");
+  }
+
+  res.redirect(mpAuth.buildAuthorizeUrl({ redirectUri: buildMpRedirectUri(req), state }));
+});
+
+app.get("/auth/mercadopago/callback", async (req, res) => {
+  const statePayload = session.getCookie(req, "leilao_mp_oauth_state");
+  session.clearCookie(req, res, "leilao_mp_oauth_state");
+
+  if (!statePayload) {
+    return res.status(400).send("Sessão de conexão expirou. Volte e tente de novo.");
+  }
+  if (req.query.error) {
+    return res.redirect(safeReturnToMp(statePayload.returnTo));
+  }
+  if (!req.query.state || !timingSafeEqualString(req.query.state, statePayload.state)) {
+    return res.status(400).send("Estado de conexão inválido. Tente de novo.");
+  }
+  if (!req.query.code) {
+    return res.status(400).send("Código de autorização ausente.");
+  }
+
+  try {
+    const redirectUri = buildMpRedirectUri(req);
+    const tokenResult = await mpAuth.exchangeCodeForToken({ code: req.query.code, redirectUri });
+    await streamersStore.upsertStreamer({
+      twitchUserId: statePayload.twitchUserId,
+      mpUserId: tokenResult.userId,
+      accessToken: tokenResult.accessToken,
+      refreshToken: tokenResult.refreshToken,
+      publicKey: tokenResult.publicKey,
+      expiresAt: tokenResult.expiresAt,
+    });
+    res.redirect(safeReturnToMp(statePayload.returnTo));
+  } catch (err) {
+    console.error("Erro ao conectar Mercado Pago:", err.message);
+    res.status(502).send("Não foi possível confirmar a conexão com o Mercado Pago. Tente de novo.");
+  }
+});
+
 app.post("/api/session/logout", (req, res) => {
   session.clearCookie(req, res, "leilao_session");
   res.json({ ok: true });
@@ -938,6 +1027,83 @@ app.get("/api/l/:id/events/recent", loadLeilao, (req, res) => {
     amount: centsToNumber(e.amount_cents),
   }));
   res.json({ events });
+});
+
+// Cria a cobrança Pix pro modal de doação in-app (ver Fase 5, ainda não
+// existe UI chamando isso) -- pública, sem senha de admin, qualquer
+// visitante do board pode doar. O dinheiro é criado como sendo da conta
+// MP do STREAMER (application_fee retém a parte da plataforma), nunca
+// passa pela nossa conta. Não aplica a contribuição no catálogo aqui --
+// isso só acontece quando o webhook confirmar "paid" de verdade (ver
+// Fase 4), mesma disciplina que já existia pro pix.gg.
+app.post("/api/l/:id/doacao", loadLeilao, async (req, res) => {
+  const { leilaoId, store } = req;
+  const { name, amount, action, donorUsername } = req.body || {};
+
+  if (!name || !amount || Number.isNaN(Number(amount)) || Number(amount) <= 0) {
+    return res.status(400).json({ error: "Informe o jogo e um valor válido" });
+  }
+  const isOpen = store.getState("open", "true") === "true";
+  if (!isOpen) {
+    return res.status(400).json({ error: "Esse leilão está encerrado no momento" });
+  }
+  const parsed = parseMessage(`${action === "remove" ? "-" : "+"}${name}`);
+  if (!parsed) return res.status(400).json({ error: "Nome de jogo inválido" });
+
+  const meta = registry.getLeilaoMeta(leilaoId);
+  const ownerTwitchUserId = meta && meta.ownerTwitchUserId;
+  const streamer = ownerTwitchUserId ? await streamersStore.findByTwitchUserId(ownerTwitchUserId) : null;
+  if (!streamer) {
+    return res.status(409).json({ error: "O streamer ainda não conectou o Mercado Pago nesse leilão -- avise ele." });
+  }
+
+  const valorTotalCents = Math.round(Number(amount) * 100);
+  const applicationFeeCents = Math.round(valorTotalCents * 0.03);
+  const externalReference = paymentsStore.buildExternalReference(leilaoId);
+  const cleanDonorUsername = (donorUsername || "").trim().slice(0, 60) || "Anônimo";
+  const rawMessage = `${action === "remove" ? "-" : "+"}${name}`;
+
+  await paymentsStore.createPending({
+    leilaoId,
+    streamerId: streamer.id,
+    externalReference,
+    valorTotalCents,
+    applicationFeeCents,
+    donorUsername: cleanDonorUsername,
+    donorMessage: rawMessage,
+  });
+
+  try {
+    // Placeholder de email: o doador não faz cadastro nenhum aqui, só
+    // escolhe um nome de exibição -- se o Pix da API do MP exigir um
+    // payer.email validado de verdade (não confirmado ainda, precisa de
+    // teste contra o sandbox real), isso vai precisar virar um campo
+    // real no modal (Fase 5).
+    const payerEmail = `${normalizeKey(cleanDonorUsername).replace(/\s+/g, ".") || "doador"}@doador.leilao-de-jogos.local`;
+    const payment = await mpApi.createPixPayment({
+      accessToken: streamer.accessToken,
+      transactionAmountCents: valorTotalCents,
+      applicationFeeCents,
+      description: `Doação -- ${rawMessage}`,
+      externalReference,
+      payerEmail,
+      idempotencyKey: externalReference,
+    });
+    await paymentsStore.markCreated(externalReference, payment.mpPaymentId);
+    res.json({
+      paymentId: payment.mpPaymentId,
+      qrCodeBase64: payment.qrCodeBase64,
+      copyPaste: payment.qrCode,
+      valorTotal: centsToNumber(valorTotalCents),
+    });
+  } catch (err) {
+    if (err.status === 401) {
+      // Token do streamer não é mais válido -- ele precisa reconectar.
+      await streamersStore.markDisconnected(ownerTwitchUserId);
+    }
+    console.error(`[doação] erro ao criar cobrança Pix (leilaoId="${leilaoId}"):`, err.message);
+    res.status(502).json({ error: "Não foi possível gerar o Pix agora. Tente de novo em instantes." });
+  }
 });
 
 // O pix.gg faz um "ping" periódico com GET nessa URL pra confirmar que ela
