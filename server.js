@@ -139,9 +139,11 @@ function getHideTotalRaised(store) {
   return store.getState("hideTotalRaised", "false") === "true";
 }
 
-// Verdadeiro só quando host/hostAvatar vieram de login de verdade com a
-// Twitch (ver POST /api/leiloes) e ninguém trocou o nome manualmente depois
-// (POST /admin/host derruba isso pra "false" incondicionalmente, ver lá).
+// Verdadeiro quando host/hostAvatar vieram do login de verdade com a Twitch
+// na criação (ver POST /api/leiloes) -- não editável depois (o recurso de
+// renomear o host foi removido: com o login obrigatório, não fazia mais
+// sentido deixar trocar o nome manualmente). Só falso pra leilão criado
+// antes desse login existir.
 function getHostVerified(store) {
   return store.getState("hostVerified", "false") === "true";
 }
@@ -461,12 +463,9 @@ function loadLeilao(req, res, next) {
 }
 
 // Aditivo, não substitui a senha: o dono verificado da Twitch (sessão
-// logada nesse navegador, comparada ao ownerTwitchUserId PERMANENTE do
-// registro -- não ao hostTwitchUserId do state, que POST /admin/host limpa
-// de propósito ao editar o nome manualmente pra evitar personificação de
-// EXIBIÇÃO; posse de admin é outra coisa e não deve depender disso) também
-// libera acesso, sem precisar digitar senha. Continua funcionando por
-// senha pra quem administra de outro dispositivo/navegador sem sessão.
+// logada nesse navegador, comparada ao ownerTwitchUserId do registro)
+// também libera acesso, sem precisar digitar senha. Continua funcionando
+// por senha pra quem administra de outro dispositivo/navegador sem sessão.
 function requireLeilaoAdmin(req, res, next) {
   const supplied = req.header("x-admin-password") || "";
   const hash = req.store.getState("adminSecretHash");
@@ -1163,43 +1162,6 @@ app.post("/api/l/:id/admin/set-timer", loadLeilao, requireLeilaoAdmin, (req, res
   touchActivity(store, true);
   broadcastUpdate(leilaoId, store, { type: "timer-reset" });
   res.json({ ok: true, minutes });
-});
-
-// Trocar o nome manualmente aqui SEMPRE derruba a verificação da Twitch da
-// criação, incondicionalmente — não só "se o nome mudou de verdade".
-// Deliberado: comparação de string como porta de segurança é ela mesma uma
-// classe de bug (espaço, acentuação, maiúscula), e essa rota é rara e fica
-// atrás da senha de apresentador, então o custo de perder o selo num edit
-// que nem mudou nada é baixo. hostTwitchUserId/hostTwitchLogin também são
-// limpos aqui, não só hostVerified -- deixar esses campos velhos pra trás
-// seria dado morto cuja única forma de dar problema é um código futuro ler
-// esses campos sem checar hostVerified primeiro; limpar remove essa
-// armadilha de vez, em vez de confiar que todo leitor futuro vai lembrar de
-// checar a flag certa.
-//
-// Sem corrida possível com o fetchTwitchAvatar assíncrono logo abaixo:
-// store.setState é síncrono (grava em disco antes de voltar), então
-// hostVerified já está "false" muito antes desse .then() sequer rodar.
-app.post("/api/l/:id/admin/host", loadLeilao, requireLeilaoAdmin, (req, res) => {
-  const { host } = req.body || {};
-  const name = host || "";
-  const { store, leilaoId } = req;
-  store.setState("host", name);
-  store.setState("hostAvatar", "");
-  store.setState("hostVerified", "false");
-  store.setState("hostTwitchLogin", null);
-  store.setState("hostTwitchUserId", null);
-  broadcastUpdate(leilaoId, store, { type: "host" });
-  res.json({ ok: true });
-
-  if (!name) return;
-  fetchTwitchAvatar(name)
-    .then((avatarUrl) => {
-      if (!avatarUrl || store.getState("host", "") !== name) return;
-      store.setState("hostAvatar", avatarUrl);
-      broadcastUpdate(leilaoId, store, null);
-    })
-    .catch((err) => console.error("Falha ao buscar avatar da Twitch:", err.message));
 });
 
 app.post("/api/l/:id/admin/title", loadLeilao, requireLeilaoAdmin, (req, res) => {

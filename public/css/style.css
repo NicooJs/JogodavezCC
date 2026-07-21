@@ -1841,7 +1841,6 @@ body.board-body.has-bg-image .board-bg { display: none; }
 }
 .host-twitch-link:hover { color: var(--accent); text-decoration: underline; }
 .host-twitch-link[hidden] { display: none; }
-.presenter-mode.host-editing .host-twitch-link { display: none; }
 
 /* Selo da Twitch, cantinho inferior direito do avatar — cor da marca só
    aqui, num elemento pequeno e reconhecível, não vira paleta do site. */
@@ -1863,78 +1862,6 @@ body.board-body.has-bg-image .board-bg { display: none; }
 .host-twitch-badge .icon { width: 12px; height: 12px; }
 .host-twitch-badge:hover { transform: scale(1.1); }
 .host-twitch-badge[hidden] { display: none; }
-
-/* Botão "editar" — ícone só, fixado no canto do card (fora do fluxo da
-   linha, pra não competir por espaço com o nome), só no modo apresentador,
-   e some enquanto está editando. */
-.host-edit-btn {
-  display: none;
-  position: absolute;
-  top: 12px;
-  right: 12px;
-  align-items: center;
-  justify-content: center;
-  width: 26px;
-  height: 26px;
-  flex-shrink: 0;
-  background: none;
-  border: 1px solid var(--border);
-  color: var(--muted);
-  border-radius: 50%;
-  cursor: pointer;
-  transition: border-color 0.15s ease, color 0.15s ease;
-}
-
-.host-edit-btn .icon { width: 12px; height: 12px; }
-.host-edit-btn:hover { border-color: var(--accent); color: var(--accent-text); }
-.presenter-mode .host-edit-btn { display: inline-flex; }
-
-/* Foto + nome ficam visíveis por padrão; ao clicar em "editar"
-   (body.host-editing) troca pra uma pílula de edição em largura total. */
-.host-edit {
-  display: none;
-  align-items: center;
-  gap: 4px;
-  margin-top: 12px;
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: 999px;
-  padding: 4px;
-}
-.presenter-mode.host-editing .host-edit { display: flex; }
-.presenter-mode.host-editing .host-row { display: none; }
-
-.host-edit input {
-  flex: 1;
-  min-width: 0;
-  background: none;
-  border: none;
-  color: var(--text);
-  padding: 0 12px;
-  font-family: var(--font-body);
-  font-size: 13.5px;
-  height: 32px;
-}
-
-.host-edit input:focus { outline: none; }
-
-.host-edit-confirm {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 32px;
-  height: 32px;
-  flex-shrink: 0;
-  background: var(--accent);
-  color: var(--accent-ink);
-  border: none;
-  border-radius: 50%;
-  cursor: pointer;
-  transition: background 0.15s ease;
-}
-
-.host-edit-confirm:hover { background: var(--accent-text); }
-.host-edit-confirm .icon { width: 14px; height: 14px; }
 
 .donors-panel { flex: 1; min-height: 160px; }
 
@@ -2446,9 +2373,9 @@ body.board-body.has-bg-image .board-bg { display: none; }
 
 /* Segunda tentativa: texto puro ("editar" sublinhado) ficou fraco demais
    pra reconhecer como botão de cara (feedback direto do cliente). Ícone
-   ghost em vez de texto ghost -- mesmo padrão já usado em .host-edit-btn
-   (lápis, círculo, borda fina que acende no hover), só um pouco menor
-   pra caber numa linha de card em vez de flutuar isolado num canto. */
+   ghost em vez de texto ghost (lápis, círculo, borda fina que acende no
+   hover) -- mesma linguagem visual usada nos outros botões pequenos do
+   app, só um pouco menor pra caber numa linha de card. */
 .lot-edit button {
   display: flex;
   align-items: center;

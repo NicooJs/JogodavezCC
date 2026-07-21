@@ -33,8 +33,6 @@ const donorCountEl = document.getElementById("donor-count");
 const presenterToggleEl = document.getElementById("presenter-toggle");
 const presenterDrawerEl = document.getElementById("presenter-drawer");
 const timerRingFillEl = document.getElementById("timer-ring-fill");
-const hostEditBtn = document.getElementById("host-edit-btn");
-const hostInputEl = document.getElementById("p-host-input");
 const boardEl = document.querySelector(".board");
 const soldOverlayEl = document.getElementById("sold-overlay");
 const soldMarkEl = document.getElementById("sold-mark");
@@ -1353,7 +1351,6 @@ async function presenterFetch(path, options = {}) {
 
 function setPresenterMode(active) {
   document.body.classList.toggle("presenter-mode", active);
-  if (!active) document.body.classList.remove("host-editing");
   presenterToggleEl.classList.toggle("active", active);
   presenterToggleEl.title = active ? "Sair do modo apresentador" : "Entrar no modo apresentador";
   presenterDrawerEl.hidden = !active;
@@ -1456,30 +1453,6 @@ presenterLoginCancel.addEventListener("click", closePresenterLogin);
 presenterLoginClose.addEventListener("click", closePresenterLogin);
 presenterLoginModal.addEventListener("click", (e) => { if (e.target === presenterLoginModal) closePresenterLogin(); });
 document.addEventListener("keydown", (e) => { if (e.key === "Escape" && !presenterLoginModal.hidden) closePresenterLogin(); });
-
-hostEditBtn.addEventListener("click", () => {
-  document.body.classList.add("host-editing");
-  const current = hostNameEl.textContent.trim();
-  hostInputEl.value = current === "Streamer" ? "" : current;
-  hostInputEl.focus();
-  hostInputEl.select();
-});
-
-const hostSaveBtn = document.getElementById("p-host-save");
-hostSaveBtn.addEventListener("click", async () => {
-  const host = hostInputEl.value.trim();
-  try {
-    await presenterFetch("/admin/host", { method: "POST", body: JSON.stringify({ host }) });
-    document.body.classList.remove("host-editing");
-  } catch (err) {
-    alert(err.message);
-  }
-});
-
-hostInputEl.addEventListener("keydown", (e) => {
-  if (e.key === "Enter") hostSaveBtn.click();
-  if (e.key === "Escape") document.body.classList.remove("host-editing");
-});
 
 document.getElementById("p-pause-toggle").addEventListener("click", async () => {
   try {

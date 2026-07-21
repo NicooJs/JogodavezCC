@@ -83,10 +83,10 @@ async function createLeilao({ title, host, hostAvatar, hostTwitchUserId, hostTwi
     title: title || "Leilão de Jogos",
     host: host || "",
     pixggClientId: clientId,
-    // Quem é "dono" desse leilão pra fins de listagem em /meus-leiloes.
-    // Separado de hostVerified (guardado no store, não aqui): posse não
-    // muda mesmo que o nome exibido seja trocado depois e perca a
-    // verificação (ver POST /admin/host em server.js).
+    // Quem é "dono" desse leilão pra fins de listagem em /meus-leiloes e
+    // pra liberar modo apresentador sem senha (ver requireLeilaoAdmin em
+    // server.js). Separado de hostVerified (guardado no store, não aqui)
+    // por serem conceitos diferentes -- esse é posse, aquele é exibição.
     ownerTwitchUserId: hostTwitchUserId,
     createdAt: new Date().toISOString(),
   };
