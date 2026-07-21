@@ -84,6 +84,7 @@ let webhookStaleState = false;
 let webhookSignatureIssueState = false;
 let historyItems = [];
 let currentLeaderKey = null;
+let lastTotalRaised = null;
 let previousTotals = new Map();
 let currentItems = [];
 let donorNames = [];
@@ -188,6 +189,16 @@ function bumpValue(el, text) {
   el.classList.remove("tick");
   void el.offsetWidth;
   el.classList.add("tick");
+}
+
+// Filete de luz percorrendo a pílula do total (ver .topbar-total.beam em
+// style.css) -- remove/força reflow/readiciona pra reiniciar a animação CSS
+// mesmo se ela ainda tiver rodando de uma mudança de valor anterior bem
+// recente, mesmo truque do remove/offsetWidth/add acima.
+function flashTotalBeam() {
+  topbarTotalEl.classList.remove("beam");
+  void topbarTotalEl.offsetWidth;
+  topbarTotalEl.classList.add("beam");
 }
 
 function setStatus(online) {
@@ -1214,6 +1225,11 @@ socket.on("update", ({ leaderboard, lastEvent }) => {
     const totalValue = leaderboard.totalRaised || 0;
     if (totalOdometer) totalOdometer.update(Math.round(totalValue));
     else bumpValue(statTotalEl, String(Math.round(totalValue)));
+    // lastTotalRaised !== null exclui o primeiro render (carregar a página
+    // não é "uma doação caindo") -- mesmo cuidado já usado no lead-shift
+    // do card líder (ver currentLeaderKey mais abaixo).
+    if (lastTotalRaised !== null && totalValue !== lastTotalRaised) flashTotalBeam();
+    lastTotalRaised = totalValue;
   }
 
   currentItems = leaderboard.items || [];
@@ -1589,6 +1605,7 @@ function openLotModal(game) {
   setModalAction("add");
   lotModalAmount.value = "";
   lotModalDonor.value = "";
+  lotModalSubmit.disabled = false;
   hideDonorSuggestions();
   lotModalEl.hidden = false;
   setTimeout(() => lotModalAmount.focus(), 40);
@@ -1600,10 +1617,18 @@ function closeLotModal() {
   modalGame = null;
 }
 
+// lotModalSubmit.disabled é checado (não só setado) de propósito: o clique
+// no botão já para de disparar sozinho quando disabled=true (padrão do
+// navegador), mas o Enter no campo de valor (ver listener de keydown
+// abaixo) é OUTRO listener, em OUTRO elemento -- sem essa checagem aqui
+// dentro, apertar Enter várias vezes rápido enquanto a primeira requisição
+// ainda não voltou disparava um /admin/manual-entry por vez, multiplicando
+// o valor lançado (achado real: delay de rede + duplo clique).
 async function submitLotModal() {
-  if (!modalGame) return;
+  if (!modalGame || lotModalSubmit.disabled) return;
   const amount = lotModalAmount.value;
   if (!amount || Number(amount) <= 0) return lotModalAmount.focus();
+  lotModalSubmit.disabled = true;
   try {
     await presenterFetch("/admin/manual-entry", {
       method: "POST",
@@ -1617,6 +1642,8 @@ async function submitLotModal() {
     closeLotModal();
   } catch (err) {
     alert(err.message);
+  } finally {
+    lotModalSubmit.disabled = false;
   }
 }
 

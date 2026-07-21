@@ -414,25 +414,62 @@ body.board-body.has-bg-image .board-cover-bg { display: none; }
 
 /* Antes era só texto solto no topbar -- virou pílula igual aos vizinhos
    (.status, .ranking-open-btn, .presenter-toggle), que já são todos
-   bordados/com fundo; texto solto ao lado deles destoava. */
+   bordados/com fundo; texto solto ao lado deles destoava. Vidro (fundo
+   translúcido + blur) em vez de --surface chapado -- branco fixo de
+   propósito (não token de tema): é um efeito de "luz ambiente atrás do
+   vidro", não uma cor de marca, mesmo raciocínio já usado no zebra
+   striping do histórico (ver .history-list li:nth-child(even)). */
 .topbar-total {
   display: inline-flex;
   align-items: center;
   gap: 9px;
-  background: var(--surface);
-  border: 1px solid var(--border);
+  position: relative;
+  background: rgba(255, 255, 255, 0.045);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.09);
   border-radius: 999px;
   padding: 5px 14px 5px 12px;
 }
 
-.topbar-total-icon { color: var(--positive); width: 15px; height: 15px; flex-shrink: 0; }
+/* Filete de luz que percorre o contorno da pílula quando o total muda de
+   verdade (ver flashTotalBeam em app.js -- só dispara numa mudança real de
+   valor, não em toda atualização do placar). padding:1px + mask "furando"
+   o miolo desenha só o anel, sem cobrir o conteúdo -- a borda sólida da
+   regra acima continua cuidando do contorno em repouso. */
+.topbar-total::before {
+  content: "";
+  position: absolute;
+  inset: -1px;
+  border-radius: inherit;
+  padding: 1px;
+  background: conic-gradient(from 0deg, transparent, var(--accent) 15%, transparent 30%);
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  opacity: 0;
+  pointer-events: none;
+}
+.topbar-total.beam::before { animation: topbar-total-beam 1.1s ease-out; }
+@keyframes topbar-total-beam {
+  0% { transform: rotate(0deg); opacity: 0; }
+  12% { opacity: 1; }
+  100% { transform: rotate(320deg); opacity: 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .topbar-total.beam::before { animation: none; }
+}
+
+/* Cinza neutro (não mais --positive verde) -- o verde puxava atenção pro
+   lugar errado e destoava do resto do topbar, que é todo monocromático. */
+.topbar-total-icon { color: var(--muted); width: 15px; height: 15px; flex-shrink: 0; }
 
 .topbar-total-label {
   color: var(--muted);
   font-family: var(--font-mono);
   text-transform: uppercase;
-  letter-spacing: 0.04em;
-  font-size: 10px;
+  letter-spacing: 0.1em;
+  font-size: 9px;
 }
 
 .topbar-total strong {
@@ -517,8 +554,29 @@ body.board-body.has-bg-image .board-cover-bg { display: none; }
   font-family: var(--font-mono);
 }
 
-.dot { width: 6px; height: 6px; border-radius: 50%; background: var(--muted); }
+.dot { position: relative; width: 6px; height: 6px; border-radius: 50%; background: var(--muted); }
 .status.online .dot { background: var(--accent); }
+
+/* Anel "de radar" que se expande e some, só quando de fato ao vivo --
+   comunica que a página tá ativa sem ser chamativo (achado igual origem
+   do beam da pílula do total: efeito curto/sutil, não um loop chamativo
+   -- aqui contínuo por natureza, mas em escala mínima, então não briga
+   com o resto da UI). */
+.status.online .dot::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background: var(--accent);
+  animation: dot-ping 1.8s cubic-bezier(0, 0, 0.2, 1) infinite;
+}
+@keyframes dot-ping {
+  0% { transform: scale(1); opacity: 0.6; }
+  100% { transform: scale(2.8); opacity: 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .status.online .dot::after { animation: none; }
+}
 
 .presenter-toggle {
   display: inline-flex;
