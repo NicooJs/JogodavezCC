@@ -1037,10 +1037,12 @@ historyCloseEl.addEventListener("click", closeHistoryOverlay);
 historyOverlayEl.addEventListener("click", (e) => { if (e.target === historyOverlayEl) closeHistoryOverlay(); });
 document.addEventListener("keydown", (e) => { if (e.key === "Escape" && !historyOverlayEl.hidden) closeHistoryOverlay(); });
 
-// Ranking público de streamers do site inteiro (GET /api/ranking, ver
-// server.js) — botão de destaque no topbar, aberto pra qualquer um vendo o
-// board, não só o apresentador. Pódio pros 3 primeiros (mesmo visual do
-// recap de encerramento) + lista pro resto até o 10º.
+// Ranking dos PRÓPRIOS leilões do streamer dono deste board (GET
+// /api/l/:id/ranking, ver server.js) -- antes comparava com outros
+// streamers do site inteiro (cross-tenant), mas o cliente decidiu que não
+// queria mais expor/comparar arrecadação entre streamers diferentes, só
+// ranquear os próprios leilões um contra o outro. Pódio pros 3 primeiros
+// (mesmo visual do recap de encerramento) + lista pro resto até o 10º.
 const rankingOpenBtnEl = document.getElementById("ranking-open-btn");
 const rankingOverlayEl = document.getElementById("ranking-overlay");
 const rankingCloseEl = document.getElementById("ranking-close");
@@ -1048,52 +1050,21 @@ const rankingPodiumEl = document.getElementById("ranking-podium");
 const rankingListEl = document.getElementById("ranking-list");
 const rankingEmptyEl = document.getElementById("ranking-empty");
 
-// Selo pequeno pra linha/card do ranking cuja identidade veio de login de
-// verdade com a Twitch na criação (ver hostVerified em server.js) -- não
-// aparece pra leilões antigos, criados antes dessa checagem existir, nem
-// pra quem trocou o nome manualmente depois e perdeu a verificação.
-const VERIFIED_MARK_SVG = `<svg class="ranking-verified-mark" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg" title="Identidade confirmada pela Twitch">
-  <circle cx="8" cy="8" r="8" fill="currentColor" opacity="0.18"/>
-  <path d="M4.5 8.2L6.8 10.5L11.5 5.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
-</svg>`;
-
-// Linha/card do ranking abre o DETALHE DENTRO DO PRÓPRIO POPUP (ver
-// openRankingDetail) -- antes navegava pro board daquele streamer numa aba
-// nova, mas não era essa a intenção (feedback direto do cliente: quem
-// clica quer ver mais informação ali mesmo, não sair da página). data-*
-// carrega o que já se tem (evita um segundo fetch só pra reexibir o mesmo
-// avatar/nome/total já visível na linha). Sem data-owner-id (leilão legado
-// sem dono verificado com Twitch) o card fica só visual, sem clique --
-// não tem twitchUserId nenhum pra detalhar.
 function rankingPodiumCardHtml(row) {
-  const avatar = row.hostAvatar
-    ? `<img class="recap-podium-thumb ranking-podium-avatar" src="${escapeHtml(row.hostAvatar)}" alt="" />`
-    : `<div class="recap-podium-thumb recap-podium-thumb-placeholder ranking-podium-avatar">${escapeHtml((row.host[0] || "?").toUpperCase())}</div>`;
-  const clickAttrs = row.ownerTwitchUserId
-    ? `data-owner-id="${escapeHtml(row.ownerTwitchUserId)}" data-host="${escapeHtml(row.host)}" data-avatar="${escapeHtml(row.hostAvatar || "")}" data-verified="${row.hostVerified ? "1" : "0"}" data-total="${row.totalRaised}" role="button" tabindex="0"`
-    : "";
   return `
-    <div class="recap-podium-card rank-${row.rank} ${row.ownerTwitchUserId ? "ranking-clickable" : ""}" ${clickAttrs} title="${row.ownerTwitchUserId ? `Ver detalhes de ${escapeHtml(row.host)}` : ""}">
+    <div class="recap-podium-card rank-${row.rank}">
       <span class="recap-podium-rank">${rankBadgeHtml(row.rank)}</span>
-      ${avatar}
-      <p class="recap-podium-name">${escapeHtml(row.host)}${row.hostVerified ? VERIFIED_MARK_SVG : ""}</p>
+      <p class="recap-podium-name">${escapeHtml(row.title)}</p>
       <p class="recap-podium-total">${formatBRL(row.totalRaised)}</p>
     </div>
   `;
 }
 
 function rankingRowHtml(row) {
-  const avatar = row.hostAvatar
-    ? `<img class="ranking-row-avatar" src="${escapeHtml(row.hostAvatar)}" alt="" loading="lazy" />`
-    : `<span class="ranking-row-avatar ranking-row-avatar-placeholder">${escapeHtml((row.host[0] || "?").toUpperCase())}</span>`;
-  const clickAttrs = row.ownerTwitchUserId
-    ? `data-owner-id="${escapeHtml(row.ownerTwitchUserId)}" data-host="${escapeHtml(row.host)}" data-avatar="${escapeHtml(row.hostAvatar || "")}" data-verified="${row.hostVerified ? "1" : "0"}" data-total="${row.totalRaised}" role="button" tabindex="0"`
-    : "";
   return `
-    <div class="ranking-row ${row.ownerTwitchUserId ? "ranking-clickable" : ""}" ${clickAttrs} title="${row.ownerTwitchUserId ? `Ver detalhes de ${escapeHtml(row.host)}` : ""}">
+    <div class="ranking-row">
       <span class="ranking-row-rank">${String(row.rank).padStart(2, "0")}</span>
-      ${avatar}
-      <span class="ranking-row-host">${escapeHtml(row.host)}${row.hostVerified ? VERIFIED_MARK_SVG : ""}</span>
+      <span class="ranking-row-host">${escapeHtml(row.title)}</span>
       <span class="ranking-row-total">${formatBRL(row.totalRaised)}</span>
     </div>
   `;
@@ -1101,10 +1072,9 @@ function rankingRowHtml(row) {
 
 async function openRankingOverlay() {
   rankingOverlayEl.hidden = false;
-  closeRankingDetail();
   let ranking = [];
   try {
-    const data = await fetch("/api/ranking").then((r) => r.json());
+    const data = await fetch(`/api/l/${LEILAO_ID}/ranking`).then((r) => r.json());
     ranking = data.ranking || [];
   } catch (err) {
     console.error("Erro ao carregar ranking:", err.message);
@@ -1119,68 +1089,11 @@ async function openRankingOverlay() {
   rankingEmptyEl.hidden = true;
   rankingPodiumEl.innerHTML = ranking.slice(0, 3).map(rankingPodiumCardHtml).join("");
   rankingListEl.innerHTML = ranking.slice(3, 10).map(rankingRowHtml).join("");
-  [...rankingModalBodyEl.querySelectorAll(".ranking-clickable")].forEach((el) => {
-    el.addEventListener("click", () => openRankingDetail(el.dataset));
-    el.addEventListener("keydown", (e) => {
-      if (e.key === "Enter" || e.key === " ") { e.preventDefault(); openRankingDetail(el.dataset); }
-    });
-  });
 }
 
 function closeRankingOverlay() {
   rankingOverlayEl.hidden = true;
 }
-
-// Detalhe de um streamer clicado no ranking -- lista os leilões individuais
-// que compõem o total agregado dele (GET /api/ranking/:twitchUserId).
-// Substitui o corpo do MESMO modal em vez de navegar pra outro lugar.
-const rankingModalBodyEl = document.getElementById("ranking-modal-body");
-const rankingDetailEl = document.getElementById("ranking-detail");
-const rankingDetailBackEl = document.getElementById("ranking-detail-back");
-const rankingDetailHeadEl = document.getElementById("ranking-detail-head");
-const rankingDetailListEl = document.getElementById("ranking-detail-list");
-const rankingDetailEmptyEl = document.getElementById("ranking-detail-empty");
-
-async function openRankingDetail(data) {
-  const avatarHtml = data.avatar
-    ? `<img class="ranking-detail-avatar" src="${escapeHtml(data.avatar)}" alt="" />`
-    : `<span class="ranking-detail-avatar ranking-detail-avatar-placeholder">${escapeHtml((data.host[0] || "?").toUpperCase())}</span>`;
-  rankingDetailHeadEl.innerHTML = `
-    ${avatarHtml}
-    <div>
-      <p class="ranking-detail-name">${escapeHtml(data.host)}${data.verified === "1" ? VERIFIED_MARK_SVG : ""}</p>
-      <p class="ranking-detail-total">${formatBRL(Number(data.total) || 0)} arrecadado no total</p>
-    </div>
-  `;
-  rankingModalBodyEl.hidden = true;
-  rankingDetailEl.hidden = false;
-  rankingDetailListEl.innerHTML = "";
-  rankingDetailEmptyEl.hidden = true;
-
-  try {
-    const res = await fetch(`/api/ranking/${encodeURIComponent(data.ownerId)}`).then((r) => r.json());
-    const leiloes = res.leiloes || [];
-    if (leiloes.length === 0) {
-      rankingDetailEmptyEl.hidden = false;
-      return;
-    }
-    rankingDetailListEl.innerHTML = leiloes.map((l) => `
-      <div class="ranking-detail-row">
-        <span class="ranking-detail-row-title">${escapeHtml(l.title)}</span>
-        <span class="ranking-detail-row-total">${formatBRL(l.totalRaised)}</span>
-      </div>
-    `).join("");
-  } catch (err) {
-    console.error("Erro ao carregar detalhe do streamer:", err.message);
-    rankingDetailEmptyEl.hidden = false;
-  }
-}
-
-function closeRankingDetail() {
-  rankingDetailEl.hidden = true;
-  rankingModalBodyEl.hidden = false;
-}
-rankingDetailBackEl.addEventListener("click", closeRankingDetail);
 
 // Bounce rápido no ícone ao clicar -- só feedback tátil, não essencial
 // (diferente da entrada animada da tela de criação, que precisa sempre

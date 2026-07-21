@@ -257,24 +257,35 @@ function hasWebhookSignatureIssue(store) {
 // funciona quando bate (a maioria dos apoiadores usa o mesmo nick), e
 // silenciosamente não mostra nada quando não bate (não tem como confirmar
 // identidade a partir só do nome digitado). Cache global (não por leilão,
-// login é global) e um Set pra não disparar duas buscas em paralelo pro
-// mesmo nome. Nunca bloqueia a resposta: se ainda não tem no cache, devolve
-// null nessa chamada e a foto aparece na próxima atualização normal do
-// placar (uma doação nova, por exemplo) depois que a busca resolver.
+// login é global). Nunca bloqueia a resposta: se ainda não tem no cache,
+// devolve null nessa chamada -- mas quem chamou pode passar onResolved, que
+// dispara um broadcast assim que a busca terminar, pra quem já tava vendo o
+// placar receber a foto sem precisar que role outra doação (ou um F5) nesse
+// meio tempo. donorAvatarFetching guarda os onResolved de todo mundo
+// esperando o MESMO username (pode vir de leilões diferentes ao mesmo
+// tempo) -- um Set evita chamar o mesmo callback 2x se dois lotes do mesmo
+// leilão pedirem o mesmo doador na mesma passada de serializeLeaderboard.
 const donorAvatarCache = new Map(); // username normalizado -> url|null
-const donorAvatarFetching = new Set();
+const donorAvatarFetching = new Map(); // username normalizado -> Set de onResolved esperando
 
-function getDonorAvatar(username) {
+function getDonorAvatar(username, onResolved) {
   if (!username) return null;
   const key = username.trim().toLowerCase();
   if (donorAvatarCache.has(key)) return donorAvatarCache.get(key);
-  if (!donorAvatarFetching.has(key)) {
-    donorAvatarFetching.add(key);
+
+  let waiters = donorAvatarFetching.get(key);
+  if (!waiters) {
+    waiters = new Set();
+    donorAvatarFetching.set(key, waiters);
     fetchTwitchAvatar(key)
-      .then((url) => donorAvatarCache.set(key, url))
+      .then((url) => {
+        donorAvatarCache.set(key, url);
+        if (url) waiters.forEach((cb) => cb());
+      })
       .catch(() => {})
       .finally(() => donorAvatarFetching.delete(key));
   }
+  if (onResolved) waiters.add(onResolved);
   return null;
 }
 
@@ -318,7 +329,14 @@ async function resolveParsedGame(store, parsed) {
   return parsed;
 }
 
-function serializeLeaderboard(store) {
+function serializeLeaderboard(store, leilaoId) {
+  // Passado pro getDonorAvatar de cada doador nessa passada -- se a foto
+  // ainda não tava em cache e precisou buscar na Twitch, isso é o que avisa
+  // quem já tava vendo o placar assim que ela chegar (ver comentário de
+  // getDonorAvatar acima). Sem leilaoId (nenhum call site hoje cai nisso,
+  // mas é uma guarda barata) simplesmente não teria como fazer esse
+  // broadcast, então nem tenta.
+  const onAvatarResolved = leilaoId ? () => broadcastUpdate(leilaoId, store, null) : undefined;
   const rows = store.getLeaderboard();
   const isOpen = store.getState("open", "true") === "true";
   const isPaused = isOpen && store.getState("paused", "false") === "true";
@@ -340,7 +358,7 @@ function serializeLeaderboard(store) {
       winning: index < qualifyCount,
       image: row.image_url || null,
       topDonor: topDonor
-        ? { username: topDonor.username, total: centsToNumber(topDonor.total_cents), avatar: getDonorAvatar(topDonor.username) }
+        ? { username: topDonor.username, total: centsToNumber(topDonor.total_cents), avatar: getDonorAvatar(topDonor.username, onAvatarResolved) }
         : null,
     };
   });
@@ -349,7 +367,7 @@ function serializeLeaderboard(store) {
     username: d.username,
     total: centsToNumber(d.total_cents),
     rank: index + 1,
-    avatar: getDonorAvatar(d.username),
+    avatar: getDonorAvatar(d.username, onAvatarResolved),
   }));
 
   return {
@@ -432,7 +450,7 @@ function buildRecap(store) {
 }
 
 function broadcastUpdate(leilaoId, store, lastEvent) {
-  io.to(leilaoId).emit("update", { leaderboard: serializeLeaderboard(store), lastEvent });
+  io.to(leilaoId).emit("update", { leaderboard: serializeLeaderboard(store, leilaoId), lastEvent });
 }
 
 // Roda em segundo plano: não atrasa a resposta do webhook nem do formulário.
@@ -786,14 +804,14 @@ app.get("/api/ranking", (req, res) => {
   res.json({ ranking: rows });
 });
 
-// Detalhe de um streamer do ranking -- clicar numa linha do ranking geral
-// abre isso NO PRÓPRIO popup (ver openRankingDetail em app.js), sem navegar
-// pra fora: lista os leilões individuais que compõem o total agregado dele.
-// twitchUserId (não o id de um leilão específico) porque um streamer com
-// vários leilões aparece como uma linha só, somada -- ver agrupamento acima.
-app.get("/api/ranking/:twitchUserId", (req, res) => {
-  const { twitchUserId } = req.params;
-  const leiloes = registry
+// Ranking dos leilões de UM streamer contra ele mesmo -- não mais
+// cross-streamer (o cliente decidiu não expor/comparar arrecadação entre
+// streamers diferentes, só ranquear os próprios leilões um contra o
+// outro). Usado pelo botão "Ranking" do board (ver GET /api/l/:id/ranking
+// logo abaixo, que resolve o twitchUserId do dono e chama isso).
+function computeOwnerRanking(twitchUserId) {
+  if (!twitchUserId) return [];
+  return registry
     .listLeiloesByOwner(twitchUserId)
     .map((meta) => {
       const store = getStore(meta.id);
@@ -806,9 +824,18 @@ app.get("/api/ranking/:twitchUserId", (req, res) => {
       };
     })
     .filter((row) => row && row.totalRaised > 0)
-    .sort((a, b) => (b.createdAt || "").localeCompare(a.createdAt || ""));
+    .sort((a, b) => b.totalRaised - a.totalRaised)
+    .map((row, index) => ({ ...row, rank: index + 1 }));
+}
 
-  res.json({ leiloes });
+// Leilão-scoped pra não precisar expor o twitchUserId (identificador
+// interno) pro cliente -- resolve o dono a partir do :id, igual
+// check-session logo acima. Sem dono verificado (leilão antigo, criado
+// antes do login com Twitch existir), não tem como agrupar nada -- volta
+// ranking vazio em vez de tentar adivinhar.
+app.get("/api/l/:id/ranking", loadLeilao, (req, res) => {
+  const meta = registry.getLeilaoMeta(req.leilaoId);
+  res.json({ ranking: computeOwnerRanking(meta && meta.ownerTwitchUserId) });
 });
 
 // Capas populares pro fundo decorativo do board (mosaico estilo tela de
@@ -860,7 +887,7 @@ app.get("/l/:id/admin", (req, res) => {
 // ---------- rotas públicas (id-scoped) ----------
 
 app.get("/api/l/:id/leaderboard", loadLeilao, (req, res) => {
-  res.json(serializeLeaderboard(req.store));
+  res.json(serializeLeaderboard(req.store, req.leilaoId));
 });
 
 app.get("/api/l/:id/recap", loadLeilao, (req, res) => {
@@ -1293,7 +1320,7 @@ io.on("connection", (socket) => {
   const leilaoId = socket.handshake.query.leilaoId;
   if (!leilaoId || !registry.leilaoExists(leilaoId)) return;
   socket.join(leilaoId);
-  socket.emit("update", { leaderboard: serializeLeaderboard(getStore(leilaoId)), lastEvent: null });
+  socket.emit("update", { leaderboard: serializeLeaderboard(getStore(leilaoId), leilaoId), lastEvent: null });
 });
 
 // Confere a cada 5s, em todo leilão cadastrado, se passou o tempo sem

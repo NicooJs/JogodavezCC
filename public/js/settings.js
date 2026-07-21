@@ -79,8 +79,19 @@ function closeSettingsModal() {
   settingsOverlayEl.hidden = true;
 }
 
-function requireLoginThenOpenSettings() {
+// Antes só checava getPassword() (sessionStorage) -- pra quem já é dono
+// verificado da Twitch mas nunca digitou a senha nessa aba (ex: entrou
+// direto no board e clicou logo em "configurações"), isso pedia senha à
+// toa. Mesmo critério do botão "modo apresentador" em app.js: pergunta pro
+// servidor se esse navegador já é o dono verificado antes de cair pro
+// modal de senha.
+async function requireLoginThenOpenSettings() {
   if (getPassword()) {
+    openSettingsModal();
+    return;
+  }
+  if (await isVerifiedOwner()) {
+    setPresenterMode(true);
     openSettingsModal();
     return;
   }
