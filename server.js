@@ -889,6 +889,28 @@ app.delete("/api/admin/leiloes/:id", (req, res) => {
   res.json({ ok: true, id });
 });
 
+// Igual a rota acima, mas apaga TODOS os leilões registrados de uma vez --
+// faxina geral (ex: leilões de teste de antes do login com Twitch existir,
+// misturados com leilões novos, sem lista de ids em mãos pra apagar um por
+// um). Mesmo segredo, mesma disciplina de negar sempre sem
+// SUPER_ADMIN_SECRET configurado -- ainda mais importante aqui, já que é
+// uma ação destrutiva e irreversível multiplicada por todo mundo de uma
+// vez só.
+app.delete("/api/admin/leiloes", (req, res) => {
+  const secret = process.env.SUPER_ADMIN_SECRET || "";
+  const supplied = req.header("x-super-admin-secret") || "";
+  if (!secret || !timingSafeEqualString(supplied, secret)) {
+    return res.status(401).json({ error: "Segredo de super-admin inválido ou não configurado" });
+  }
+  const ids = registry.listLeilaoIds();
+  for (const id of ids) {
+    registry.deleteLeilao(id);
+    deleteStore(id);
+    deleteUploadedBackgroundsFor(id);
+  }
+  res.json({ ok: true, deletedCount: ids.length, deletedIds: ids });
+});
+
 // ---------- board e painel por leilão ----------
 
 app.get("/l/:id", (req, res) => {
