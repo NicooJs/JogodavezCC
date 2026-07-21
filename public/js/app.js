@@ -338,7 +338,9 @@ function lotCardInnerHtml(item, barPct, hitBadge, changed) {
         <span class="lot-total${changed ? " tick" : ""}">${formatBRL(item.total)}</span>
         ${hitBadge}
         <div class="lot-edit">
-          <button data-key="${item.key}">editar</button>
+          <button data-key="${item.key}" type="button" aria-label="Editar ${escapeHtml(item.name)}" title="Editar">
+            <svg class="icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M13 3.5l3.5 3.5L6.5 17 2.5 17.5 3 13.5 13 3.5z"/><path d="M11.3 5.2l3.5 3.5"/></svg>
+          </button>
         </div>
       </div>
     </div>
