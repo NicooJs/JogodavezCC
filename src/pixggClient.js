@@ -27,10 +27,15 @@
 // COMPARAÇÃO do nosso lado usa timingSafeEqualString (ver src/passwords.js)
 // pra não vazar o segredo por tempo de resposta — isso é só uma escolha
 // nossa de implementação, não muda nada do combinado com o pix.gg.
+//
+// expectedSecret sempre vem preenchido agora (gerado por leilão, ver
+// getOrCreateWebhookSecret em server.js -- nunca mais uma env var global
+// que podia ficar vazia). Sem bypass de "sem segredo, não valida": um
+// expectedSecret vazio aqui seria bug em outro lugar, não motivo pra
+// aceitar qualquer assinatura (falhar fechado, não aberto).
 const { timingSafeEqualString } = require("./passwords");
 
 function verifySignature(providedSecret, expectedSecret) {
-  if (!expectedSecret) return true; // sem segredo configurado, não valida (dev local)
   return timingSafeEqualString(providedSecret, expectedSecret);
 }
 

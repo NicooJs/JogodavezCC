@@ -57,10 +57,10 @@ async function setWebhookUrl(clientId, clientSecret, webhookUrl) {
   return data;
 }
 
-// Esconde o segredo compartilhado (?assinatura=..., o mesmo pra TODOS os
-// leilões, ver PIXGG_WEBHOOK_SECRET no CLAUDE.md) antes de mostrar a URL
-// confirmada pro streamer — sem isso, qualquer apresentador veria o
-// segredo de todo mundo, não só do próprio leilão.
+// Esconde o segredo (?assinatura=..., um por leilão -- ver
+// getOrCreateWebhookSecret em server.js) antes de mostrar a URL confirmada
+// pro streamer — não tem motivo pra expor esse valor de volta na tela,
+// mesmo sendo só o segredo do próprio leilão dele.
 function redactWebhookUrl(url) {
   return String(url).replace(/([?&]assinatura=)[^&]*/i, "$1••••••••");
 }

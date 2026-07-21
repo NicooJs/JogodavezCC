@@ -567,12 +567,31 @@ async function processDonationMessage(leilaoId, store, { id, fallbackUsername, f
   maybeFetchGameImage(leilaoId, store, game.key, game.name, needsImage);
 }
 
+// Segredo que vira ?assinatura= na URL de webhook -- gerado UMA VEZ por
+// leilão e guardado no próprio estado dele (igual adminSecretHash), não
+// mais uma env var global (PIXGG_WEBHOOK_SECRET, removida daqui). Achado
+// real em produção (2026-07-21): um valor compartilhado entre TODOS os
+// leilões significa que qualquer alteração nele (reconfigurar a variável
+// no Railway, por exemplo) invalida o vínculo de TODOS de uma vez só, sem
+// erro visível em lugar nenhum -- foi exatamente isso que fez uma doação
+// real sumir em silêncio. Por leilão, cada um tem seu próprio segredo
+// independente: mexer num nunca afeta os outros, e não existe mais uma
+// variável de ambiente pra esquecer de levar em conta num redeploy.
+function getOrCreateWebhookSecret(store) {
+  let secret = store.getState("webhookSecret", null);
+  if (!secret) {
+    secret = crypto.randomBytes(24).toString("hex");
+    store.setState("webhookSecret", secret);
+  }
+  return secret;
+}
+
 // Monta a URL de webhook de um leilão a partir da própria requisição (não
 // depende de nenhuma env var de URL pública, funciona igual local e em
 // produção).
 function buildWebhookUrlFromReq(req, leilaoId) {
   const publicUrl = `${req.protocol}://${req.get("host")}`;
-  const secret = process.env.PIXGG_WEBHOOK_SECRET || "";
+  const secret = getOrCreateWebhookSecret(getStore(leilaoId));
   return `${publicUrl}/webhook/pixgg/${leilaoId}?assinatura=${secret}`;
 }
 
@@ -852,8 +871,8 @@ app.get("/api/board-bg-covers", async (req, res) => {
 // de leilões de teste, sem precisar saber a senha de apresentador de cada
 // um. Diferente da senha por leilão: exige um segredo do DONO do site
 // (SUPER_ADMIN_SECRET no .env). Sem essa variável configurada, a rota
-// nega sempre — "em branco = pula validação" (como o PIXGG_WEBHOOK_SECRET
-// faz) seria perigoso demais pra uma ação destrutiva e irreversível.
+// nega sempre — "em branco = pula validação" seria perigoso demais pra uma
+// ação destrutiva e irreversível.
 app.delete("/api/admin/leiloes/:id", (req, res) => {
   const secret = process.env.SUPER_ADMIN_SECRET || "";
   const supplied = req.header("x-super-admin-secret") || "";
@@ -938,9 +957,9 @@ app.get("/webhook/pixgg/:leilaoId", (req, res) => {
     return res.status(200).send("OK — mas esse leilão não existe. Essa URL parece incompleta ou errada.");
   }
 
-  const secret = process.env.PIXGG_WEBHOOK_SECRET || "";
-  const signatureOk = pixgg.verifySignature(req.query.assinatura, secret);
   const store = getStore(leilaoId);
+  const secret = getOrCreateWebhookSecret(store);
+  const signatureOk = pixgg.verifySignature(req.query.assinatura, secret);
   touchWebhookPing(store); // a URL bateu certo no leilão, isso já prova que o host/id estão certos
 
   if (!signatureOk) {
@@ -981,7 +1000,7 @@ app.post("/webhook/pixgg/:leilaoId", (req, res) => {
     }
     const store = getStore(leilaoId);
 
-    const secret = process.env.PIXGG_WEBHOOK_SECRET || "";
+    const secret = getOrCreateWebhookSecret(store);
     if (!pixgg.verifySignature(req.query.assinatura, secret)) {
       console.warn(`[webhook pix.gg] assinatura inválida pra leilaoId="${leilaoId}", ignorado.`);
       store.setState("webhookSignatureBroken", "true");
