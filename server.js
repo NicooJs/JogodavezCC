@@ -14,7 +14,7 @@ const { verifyPassword, timingSafeEqualString } = require("./src/passwords");
 const { parseMessage, normalizeKey, leftoverAfterMatch, looksLikeNoise } = require("./src/parser");
 const livepix = require("./src/livepixClient");
 const pixgg = require("./src/pixggClient");
-const { fetchGameImage, searchGames, identifyGameFromNoisyText } = require("./src/gameImages");
+const { fetchGameImage, searchGames, identifyGameFromNoisyText, fetchPopularCovers } = require("./src/gameImages");
 const { fetchTwitchAvatar } = require("./src/twitchClient");
 const twitchAuth = require("./src/twitchAuth");
 const session = require("./src/session");
@@ -809,6 +809,16 @@ app.get("/api/ranking/:twitchUserId", (req, res) => {
     .sort((a, b) => (b.createdAt || "").localeCompare(a.createdAt || ""));
 
   res.json({ leiloes });
+});
+
+// Capas populares pro fundo decorativo do board (mosaico estilo tela de
+// login da Steam) -- não é dado de nenhum leilão específico, então sem
+// exigir :id nem auth. fetchPopularCovers já cacheia/degrada sozinho (lista
+// vazia se faltar RAWG_API_KEY); o board cai pro fundo antigo nesse caso.
+app.get("/api/board-bg-covers", async (req, res) => {
+  const covers = await fetchPopularCovers();
+  res.set("Cache-Control", "public, max-age=1800"); // 30min: navegador/proxy evitam repetir a mesma lista o tempo todo
+  res.json({ covers });
 });
 
 // Apaga um leilão inteiro (registro + arquivo de dados) — moderação/limpeza

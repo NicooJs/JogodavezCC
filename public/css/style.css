@@ -246,6 +246,58 @@ body.board-body.has-bg-image .board-bg { display: none; }
   .board-bg-shard-3, .board-bg-shard-4 { display: none; }
 }
 
+/* Mosaico de capas de jogos (estilo tela de login da Steam) -- criado por
+   board-cover-bg.js, que busca /api/board-bg-covers (lista genérica, não
+   depende do leilão) e monta os tiles. Camada por cima do .board-bg acima:
+   os losangos continuam sendo o fundo GARANTIDO (sem depender de rede
+   externa nem de RAWG_API_KEY configurada) -- o mosaico só aparece (via
+   .has-covers no body, adicionado depois que a 1a capa carrega de verdade)
+   e some sozinho se a RAWG não tiver key, a lista vier vazia, ou a rede
+   falhar. Board nunca fica sem fundo nenhum. */
+.board-cover-bg {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  overflow: hidden;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 1.4s ease;
+}
+body.board-body.has-covers .board-cover-bg { opacity: 1; }
+body.board-body.has-covers .board-bg { display: none; }
+body.board-body.has-bg-image .board-cover-bg { display: none; }
+
+.board-cover-bg-grid {
+  position: absolute;
+  top: -12%;
+  left: -12%;
+  width: 130%;
+  height: 150%;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));
+  gap: 3px;
+  animation: board-cover-pan 110s linear infinite alternate;
+}
+.board-cover-bg-tile {
+  background-color: var(--surface-alt, #1a1a22);
+  background-size: cover;
+  background-position: center;
+  aspect-ratio: 3 / 4;
+  filter: saturate(0.85);
+}
+@keyframes board-cover-pan {
+  from { transform: translate(0, 0); }
+  to { transform: translate(-6%, -5%); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .board-cover-bg-grid { animation: none; }
+}
+.board-cover-bg-veil {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(rgba(8, 8, 14, 0.8), rgba(8, 8, 14, 0.86));
+}
+
 .page {
   display: flex;
   flex-direction: column;

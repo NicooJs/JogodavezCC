@@ -6,6 +6,50 @@ const { normalizeKey } = require("./parser");
 
 const cache = new Map(); // nome normalizado -> URL da imagem (ou null se não achou)
 
+// Lista genérica de capas populares, pro fundo decorativo do board (não é
+// busca por nome, é "me dá um bando de jogos conhecidos"). Cacheada com TTL
+// em vez de por-nome: é a MESMA lista pra qualquer leilão/visitante, então
+// sem cache cada carregamento de board bateria na RAWG de novo -- numa
+// stream com centenas de espectadores abrindo o board junto, isso rate
+// limitaria a chave rápido. TTL (não cache eterno) só pra lista não ficar
+// idêntica pra sempre entre deploys.
+let popularCoversCache = { covers: null, fetchedAt: 0 };
+const POPULAR_COVERS_TTL_MS = 6 * 60 * 60 * 1000; // 6 horas
+
+async function fetchPopularCovers(count = 30) {
+  const apiKey = process.env.RAWG_API_KEY;
+  if (!apiKey) return [];
+
+  if (popularCoversCache.covers && Date.now() - popularCoversCache.fetchedAt < POPULAR_COVERS_TTL_MS) {
+    return popularCoversCache.covers;
+  }
+
+  try {
+    // ordering=-added: mais adicionados por usuários na RAWG, um proxy
+    // razoável de "jogo conhecido" sem precisar de um termo de busca.
+    const url = `https://api.rawg.io/api/games?ordering=-added&page_size=${count}&key=${apiKey}`;
+    const res = await fetch(url, {
+      headers: { "User-Agent": "leilao-de-jogos (uso pessoal)" },
+    });
+
+    if (!res.ok) {
+      console.error("RAWG respondeu", res.status, "ao buscar capas populares");
+      return popularCoversCache.covers || []; // erro passageiro: mantém a lista antiga se tiver uma
+    }
+
+    const json = await res.json();
+    const covers = (json.results || [])
+      .map((g) => g.background_image)
+      .filter(Boolean);
+
+    popularCoversCache = { covers, fetchedAt: Date.now() };
+    return covers;
+  } catch (err) {
+    console.error("Erro ao buscar capas populares na RAWG:", err.message);
+    return popularCoversCache.covers || [];
+  }
+}
+
 async function fetchGameImage(name) {
   const apiKey = process.env.RAWG_API_KEY;
   if (!apiKey) return null;
@@ -99,4 +143,4 @@ async function identifyGameFromNoisyText(text) {
   }
 }
 
-module.exports = { fetchGameImage, searchGames, identifyGameFromNoisyText };
+module.exports = { fetchGameImage, searchGames, identifyGameFromNoisyText, fetchPopularCovers };
