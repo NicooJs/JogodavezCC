@@ -58,7 +58,9 @@ async function getPayment({ accessToken, paymentId }) {
   });
   if (!res.ok) {
     const detail = await res.text().catch(() => "");
-    throw new Error(`Falha ao buscar pagamento ${paymentId} no Mercado Pago (status ${res.status}). ${detail}`.trim());
+    const err = new Error(`Falha ao buscar pagamento ${paymentId} no Mercado Pago (status ${res.status}). ${detail}`.trim());
+    err.status = res.status; // mesmo motivo do createPixPayment -- quem chama usa isso pra distinguir 401
+    throw err;
   }
   return res.json();
 }

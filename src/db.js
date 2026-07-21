@@ -12,7 +12,7 @@ function emptyData() {
   return {
     games: {},          // key -> { key, name, total_cents, updated_at }
     events: [],         // lista de eventos, mais recente por último
-    processedMessages: {}, // livepix_id -> true (evita contar 2x)
+    processedMessages: {}, // provider_id -> true (evita contar 2x)
     state: {},           // ex: { open: "true", title: "..." }
     pastAuctions: [],   // recaps arquivados de rounds anteriores (ver archiveAuction)
     nextEventId: 1,
@@ -76,19 +76,19 @@ function createStore(filePath) {
 
   // ---------------- idempotência ----------------
 
-  function isAlreadyProcessed(livepixId) {
-    if (!livepixId) return false;
-    return !!data.processedMessages[livepixId];
+  function isAlreadyProcessed(providerId) {
+    if (!providerId) return false;
+    return !!data.processedMessages[providerId];
   }
 
-  function markProcessed(livepixId) {
-    if (!livepixId) return;
-    data.processedMessages[livepixId] = true;
+  function markProcessed(providerId) {
+    if (!providerId) return;
+    data.processedMessages[providerId] = true;
   }
 
   // ---------------- jogos / contribuições ----------------
 
-  function applyContribution({ key, name, action, amountCents, username, rawMessage, livepixId }) {
+  function applyContribution({ key, name, action, amountCents, username, rawMessage, providerId }) {
     const signedAmount = action === "remove" ? -Math.abs(amountCents) : Math.abs(amountCents);
 
     if (!data.games[key]) {
@@ -105,17 +105,17 @@ function createStore(filePath) {
       amount_cents: amountCents,
       username: username || null,
       raw_message: rawMessage || null,
-      livepix_id: livepixId || null,
+      provider_id: providerId || null,
       created_at: nowISO(),
     });
 
-    markProcessed(livepixId);
+    markProcessed(providerId);
     save();
 
     return { ...data.games[key] };
   }
 
-  function logUnparsedEvent({ amountCents, username, rawMessage, livepixId }) {
+  function logUnparsedEvent({ amountCents, username, rawMessage, providerId }) {
     data.events.push({
       id: data.nextEventId++,
       game_key: null,
@@ -124,10 +124,10 @@ function createStore(filePath) {
       amount_cents: amountCents,
       username: username || null,
       raw_message: rawMessage || null,
-      livepix_id: livepixId || null,
+      provider_id: providerId || null,
       created_at: nowISO(),
     });
-    markProcessed(livepixId);
+    markProcessed(providerId);
     save();
   }
 

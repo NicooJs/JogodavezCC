@@ -50,8 +50,19 @@ async function findByTwitchUserId(twitchUserId) {
   return rowToStreamer(res.rows[0]);
 }
 
+// Pelo id numérico do Postgres (não o twitch_user_id) -- usado no webhook
+// (ver server.js), que só tem o streamer_id gravado na linha de payments,
+// não o twitch_user_id direto. Diferente de findByTwitchUserId, NÃO
+// filtra disconnected_at: o webhook ainda precisa saber quem é o streamer
+// mesmo que ele tenha sido marcado como desconectado nesse meio tempo
+// (ex: pra decidir se tenta renovar o token em vez de só desistir).
+async function findById(id) {
+  const res = await query(`SELECT * FROM streamers WHERE id = $1`, [id]);
+  return rowToStreamer(res.rows[0]);
+}
+
 async function markDisconnected(twitchUserId) {
   await query(`UPDATE streamers SET disconnected_at = now(), updated_at = now() WHERE twitch_user_id = $1`, [twitchUserId]);
 }
 
-module.exports = { upsertStreamer, findByTwitchUserId, markDisconnected };
+module.exports = { upsertStreamer, findByTwitchUserId, findById, markDisconnected };

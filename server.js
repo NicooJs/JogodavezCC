@@ -19,6 +19,7 @@ const twitchAuth = require("./src/twitchAuth");
 const session = require("./src/session");
 const mpAuth = require("./src/mpAuth");
 const mpApi = require("./src/mpApi");
+const mpWebhook = require("./src/mpWebhook");
 const streamersStore = require("./src/streamersStore");
 const paymentsStore = require("./src/paymentsStore");
 
@@ -536,14 +537,14 @@ async function processDonationMessage(leilaoId, store, { id, fallbackUsername, f
 
   const isOpen = store.getState("open", "true") === "true";
   if (!isOpen) {
-    store.logUnparsedEvent({ amountCents, username, rawMessage: message, livepixId: id });
+    store.logUnparsedEvent({ amountCents, username, rawMessage: message, providerId: id });
     broadcastUpdate(leilaoId, store, { type: "closed", username, amount: centsToNumber(amountCents), message });
     return;
   }
 
   let parsed = parseMessage(message);
   if (!parsed) {
-    store.logUnparsedEvent({ amountCents, username, rawMessage: message, livepixId: id });
+    store.logUnparsedEvent({ amountCents, username, rawMessage: message, providerId: id });
     broadcastUpdate(leilaoId, store, {
       type: "ignored",
       username,
@@ -563,7 +564,7 @@ async function processDonationMessage(leilaoId, store, { id, fallbackUsername, f
     amountCents,
     username,
     rawMessage: message,
-    livepixId: id,
+    providerId: id,
   });
   if (parsed.action === "remove") store.setState("lastSabotagedKey", game.key);
 
@@ -573,6 +574,12 @@ async function processDonationMessage(leilaoId, store, { id, fallbackUsername, f
     amount: centsToNumber(amountCents),
     message,
     game: { key: game.key, name: game.name, total: centsToNumber(game.total_cents) },
+    // id (não só nesse type "add"/"remove", mas em qualquer processDonationMessage
+    // que aplique de verdade) -- é isso que deixa o modal de doação (Fase 5)
+    // reconhecer "foi O MEU pagamento que confirmou" e fechar sozinho, sem
+    // afetar quem só está assistindo o board normalmente (campo extra, nenhum
+    // listener existente em app.js lê ou quebra com isso).
+    paymentId: id,
   });
 
   touchActivity(store);
@@ -1194,6 +1201,85 @@ app.post("/webhook/pixgg/:leilaoId", (req, res) => {
   }
 });
 
+// Webhook do Mercado Pago -- UMA URL só pro app inteiro (registrada uma vez
+// na aplicação, não por leilão como era o do pix.gg), porque o MP não sabe
+// de leilão nenhum -- quem correlaciona é a nossa própria tabela payments
+// (por mp_payment_id). Log em cada etapa, mesmo espírito do webhook do
+// pix.gg (achado real: sem isso, uma doação sumida não deixa pista
+// nenhuma pra investigar depois).
+app.post("/webhook/mercadopago", async (req, res) => {
+  res.sendStatus(200); // confirma recebimento primeiro
+
+  const dataId = req.query["data.id"] || req.query.id;
+  const type = req.query.type || req.query.topic;
+  console.log(`[webhook mercadopago] POST recebido -- type="${type}" dataId="${dataId}" x-request-id="${req.header("x-request-id")}"`);
+
+  if (type !== "payment" || !dataId) {
+    console.log(`[webhook mercadopago] ignorado -- type/dataId não é uma notificação de pagamento reconhecida.`);
+    return;
+  }
+
+  const secret = process.env.MP_WEBHOOK_SECRET || "";
+  const signatureOk = mpWebhook.verifySignature({
+    signatureHeader: req.header("x-signature"),
+    requestId: req.header("x-request-id"),
+    dataId,
+    secret,
+  });
+  if (!signatureOk) {
+    console.warn(`[webhook mercadopago] assinatura inválida pra dataId="${dataId}", ignorado.`);
+    return;
+  }
+
+  try {
+    const payment = await paymentsStore.findByMpPaymentId(Number(dataId));
+    if (!payment) {
+      console.warn(`[webhook mercadopago] nenhum pagamento nosso encontrado pra mp_payment_id=${dataId}.`);
+      return;
+    }
+    if (payment.status === "PAID") {
+      console.log(`[webhook mercadopago] mp_payment_id=${dataId} já estava PAID, ignorando (idempotência).`);
+      return;
+    }
+
+    const streamer = await streamersStore.findById(payment.streamerId);
+    if (!streamer) {
+      console.warn(`[webhook mercadopago] streamer id=${payment.streamerId} não encontrado pra mp_payment_id=${dataId}.`);
+      return;
+    }
+
+    let mpPayment;
+    try {
+      mpPayment = await mpApi.getPayment({ accessToken: streamer.accessToken, paymentId: dataId });
+    } catch (err) {
+      if (err.status === 401) await streamersStore.markDisconnected(streamer.twitchUserId);
+      throw err;
+    }
+    console.log(`[webhook mercadopago] mp_payment_id=${dataId} status="${mpPayment.status}" leilaoId="${payment.leilaoId}"`);
+
+    if (mpPayment.status !== "approved") {
+      console.log(`[webhook mercadopago] status "${mpPayment.status}" não é "approved" ainda, nada a fazer por enquanto.`);
+      return;
+    }
+
+    const marked = await paymentsStore.markPaid(Number(dataId));
+    if (!marked) {
+      console.log(`[webhook mercadopago] mp_payment_id=${dataId} já tinha sido marcado PAID por outra chamada (corrida entre webhooks), ignorando.`);
+      return;
+    }
+
+    const store = getStore(payment.leilaoId);
+    await processDonationMessage(payment.leilaoId, store, {
+      id: String(dataId),
+      fallbackUsername: payment.donorUsername,
+      fallbackMessage: payment.donorMessage,
+      fallbackAmount: payment.valorTotalCents,
+    });
+  } catch (err) {
+    console.error(`[webhook mercadopago] erro ao processar dataId="${dataId}":`, err.message);
+  }
+});
+
 // ---------- rotas de admin (id-scoped) ----------
 
 app.post("/api/l/:id/admin/login", loadLeilao, (req, res) => {
@@ -1242,7 +1328,7 @@ app.post("/api/l/:id/admin/manual-entry", loadLeilao, requireLeilaoAdmin, async 
     amountCents: Math.round(Number(amount) * 100),
     username: username || "admin (manual)",
     rawMessage: `[lançamento manual] ${name}`,
-    livepixId: null,
+    providerId: null,
   });
   if (parsed.action === "remove") store.setState("lastSabotagedKey", game.key);
 
