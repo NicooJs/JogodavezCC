@@ -17,6 +17,11 @@ const twitchAvatarEl = document.getElementById("create-twitch-avatar");
 const twitchNameEl = document.getElementById("create-twitch-name");
 const twitchLogoutBtn = document.getElementById("create-twitch-logout");
 
+const mpDisconnectedEl = document.getElementById("create-mp-disconnected");
+const mpConnectedEl = document.getElementById("create-mp-connected");
+const mpConnectLinkEl = document.getElementById("create-mp-connect");
+const mpHintEl = document.getElementById("create-mp-hint");
+
 let currentSession = null;
 
 function escapeHtml(str) {
@@ -69,9 +74,7 @@ async function leilaoStillExists(id) {
 }
 
 // Lembrete de leilão já criado nesse navegador — pra evitar que a pessoa
-// preencha o formulário de novo sem querer. Recriar não é só redundante:
-// como o vínculo do webhook é um-por-aplicação no pix.gg, criar de novo com
-// o mesmo Client ID desliga o webhook do leilão antigo sem avisar.
+// preencha o formulário de novo sem querer.
 async function renderExisting() {
   const saved = getSavedLeiloes();
   if (saved.length === 0) return;
@@ -116,16 +119,26 @@ async function loadSession() {
   renderTwitchBlock();
 }
 
+// Criar leilão exige os dois: login com a Twitch (identidade) E Mercado
+// Pago conectado (senão o leilão nasceria sem nenhum jeito de receber
+// doação -- ver checagem espelhada no servidor em POST /api/leiloes).
 function renderTwitchBlock() {
   const loggedIn = !!(currentSession && currentSession.loggedIn);
+  const mpConnected = !!(currentSession && currentSession.mpConnected);
+
   twitchLoggedOutEl.hidden = loggedIn;
   twitchLoggedInEl.hidden = !loggedIn;
-  submitBtn.disabled = !loggedIn;
-
   if (loggedIn) {
     twitchAvatarEl.src = currentSession.avatarUrl || "";
     twitchNameEl.textContent = currentSession.displayName || currentSession.twitchLogin || "";
   }
+
+  mpDisconnectedEl.hidden = mpConnected;
+  mpConnectedEl.hidden = !mpConnected;
+  mpConnectLinkEl.classList.toggle("is-disabled", !loggedIn);
+  mpHintEl.hidden = loggedIn;
+
+  submitBtn.disabled = !(loggedIn && mpConnected);
 }
 
 twitchLogoutBtn.addEventListener("click", async () => {
@@ -143,23 +156,21 @@ loadSession();
 form.addEventListener("submit", async (e) => {
   e.preventDefault();
   errorEl.hidden = true;
-  if (!currentSession || !currentSession.loggedIn) return;
+  if (!currentSession || !currentSession.loggedIn || !currentSession.mpConnected) return;
 
   const title = document.getElementById("f-title").value.trim();
-  const clientId = document.getElementById("f-client-id").value.trim();
-  const clientSecret = document.getElementById("f-client-secret").value.trim();
   const password = document.getElementById("f-password").value;
 
-  if (!clientId || !clientSecret || !password) return;
+  if (!password) return;
 
   submitBtn.disabled = true;
-  submitBtn.textContent = "Vinculando webhook…";
+  submitBtn.textContent = "Criando…";
 
   try {
     const res = await fetch("/api/leiloes", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ title, clientId, clientSecret, password }),
+      body: JSON.stringify({ title, password }),
     });
     const data = await res.json().catch(() => ({}));
     if (!res.ok) throw new Error(data.error || `Erro ${res.status}`);

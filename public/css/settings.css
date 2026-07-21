@@ -219,8 +219,6 @@
 
 .settings-modal .danger-zone { border-color: rgba(239, 68, 112, 0.35); }
 
-.settings-modal .relink-result-error { color: var(--danger); }
-
 /* Diálogos genéricos (promptDialog/confirmDialog, ver settings.js) --
    propositalmente SEM o escopo .settings-modal: são irmãos de
    #settings-overlay no HTML, não descendentes dela, então um seletor

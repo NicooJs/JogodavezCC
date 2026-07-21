@@ -8,11 +8,9 @@ const { Server } = require("socket.io");
 const multer = require("multer");
 
 const registry = require("./src/registry");
-const pixggApi = require("./src/pixggApi");
 const { getStore, deleteStore, DATA_DIR } = require("./src/stores");
 const { verifyPassword, timingSafeEqualString } = require("./src/passwords");
 const { parseMessage, normalizeKey, leftoverAfterMatch, looksLikeNoise } = require("./src/parser");
-const pixgg = require("./src/pixggClient");
 const { fetchGameImage, searchGames, identifyGameFromNoisyText, fetchPopularCovers } = require("./src/gameImages");
 const { fetchTwitchAvatar } = require("./src/twitchClient");
 const twitchAuth = require("./src/twitchAuth");
@@ -27,9 +25,8 @@ const app = express();
 // Railway termina TLS na borda e repassa pro container em HTTP puro,
 // marcando o protocolo real no header X-Forwarded-Proto. Sem confiar nesse
 // proxy, req.protocol sempre volta "http" em produção (mesmo pra requisição
-// pública https) — e é isso que monta a URL de webhook errada em
-// buildWebhookUrlFromReq, fazendo o pix.gg tentar mandar POST pra uma URL
-// http:// que nunca chega no app.
+// pública https) — e é isso que monta a URL de redirect errada em
+// buildMpRedirectUri/buildTwitchRedirectUri.
 app.set("trust proxy", 1);
 const server = http.createServer(app);
 const io = new Server(server);
@@ -107,14 +104,6 @@ function deleteUploadedBackgroundsFor(leilaoId) {
 }
 
 const DEFAULT_AUTO_CLOSE_MS = 5 * 60 * 1000; // 5 minutos sem atividade encerra sozinho
-
-// O pix.gg manda um GET periódico na URL do webhook (ping de saúde, ver
-// CLAUDE.md), mas a frequência real não é documentada e variou bastante na
-// prática — um threshold de 5min já deu alarme falso em uso normal. 30min é
-// bem mais folgado; combinado com só checar isso enquanto o leilão está
-// aberto (ver isWebhookStale), o objetivo é só pegar um desvínculo real no
-// meio de uma live longa, não qualquer intervalo maior entre pings.
-const WEBHOOK_STALE_MS = 30 * 60 * 1000;
 
 function getAutoCloseMs(store) {
   const stored = Number(store.getState("timerDurationMs", DEFAULT_AUTO_CLOSE_MS));
@@ -203,10 +192,7 @@ function centsToNumber(cents) {
 
 // Marca "agora" como o último lance recebido (reinicia a contagem de 5 min).
 // reopen=true também garante que o leilão volte a ficar aberto, e marca
-// "agora" como início dessa sessão aberta (ver leilaoOpenedAt em
-// isWebhookStale) — sem isso, reabrir um leilão que ficou fechado um tempo
-// mostra o aviso de webhook desvinculado na hora, mesmo sem nada quebrado,
-// só porque o último ping/contato é de antes de fechar.
+// "agora" como início dessa sessão aberta.
 function touchActivity(store, reopen = false) {
   store.setState("lastActivityAt", String(Date.now()));
   if (reopen) {
@@ -236,41 +222,22 @@ function archiveOpenRoundSnapshot(store) {
   if (recap.totalGames > 0) store.archiveAuction(recap, { openRound: true });
 }
 
-// Marca "agora" como o último contato de verdade do pix.gg nessa URL de
-// webhook (GET de ping ou POST com assinatura válida) — usado só pra
-// detectar desvinculação, ver WEBHOOK_STALE_MS e isWebhookStale.
-function touchWebhookPing(store) {
-  store.setState("lastWebhookPingAt", String(Date.now()));
-}
-
-// Só considera "desvinculado por silêncio" enquanto o leilão está aberto —
-// fora de uma live, silêncio é o esperado, não é sinal de nada quebrado.
-// Isso mais o threshold folgado (WEBHOOK_STALE_MS) é a resposta ao falso
-// positivo que já rolou em produção com um threshold de 5min sem essa
-// condição de "aberto".
-//
-// A referência é a mais recente entre: último ping/POST de verdade, criação
-// do leilão, e início da sessão aberta atual (leilaoOpenedAt, marcado no
-// reabrir — ver touchActivity). Sem esse último, reabrir um leilão que
-// ficou fechado (silêncio normal, esperado) fazia o aviso aparecer na hora,
-// porque o último contato real podia ser de muito antes de fechar — outro
-// falso positivo já visto em produção.
-function isWebhookStale(store, isOpen) {
-  if (!isOpen) return false;
-  const lastPing = Number(store.getState("lastWebhookPingAt", 0));
-  const createdAt = new Date(store.getState("createdAt", new Date().toISOString())).getTime();
-  const openedAt = Number(store.getState("leilaoOpenedAt", 0));
-  const referenceTime = Math.max(lastPing, createdAt, openedAt);
-  return Date.now() - referenceTime > WEBHOOK_STALE_MS;
-}
-
-// Diferente de isWebhookStale (que olha só se ALGUM contato chegou nessa
-// URL, via GET ou POST): isso olha especificamente se o POST de doação real
-// tem batido com a assinatura errada/ausente — sinal concreto de URL
-// incompleta/cortada (ver rota POST /webhook/pixgg/:leilaoId). Baseado numa
-// falha de verdade que aconteceu, não em inferência de silêncio.
-function hasWebhookSignatureIssue(store) {
-  return store.getState("webhookSignatureBroken", "false") === "true";
+// Espelha o padrão antigo do pix.gg (um flag síncrono guardado no state
+// JSON do leilão, ver webhookSignatureBroken removido) -- mas agora
+// atualizado por CONTA (twitch_user_id, via registry.listLeiloesByOwner),
+// já que a conexão com o Mercado Pago é uma coisa só por streamer, não por
+// leilão. Guardar isso no JSON (e não consultar streamersStore/Postgres
+// direto dentro de serializeLeaderboard) mantém serializeLeaderboard
+// síncrona, que é chamada em todo broadcastUpdate. Chamado com true quando
+// uma chamada de verdade à API do MP devolve 401 (token caiu, ver
+// streamersStore.markDisconnected), e com false assim que o streamer
+// reconecta (ver /auth/mercadopago/callback).
+function setLeiloesMpDisconnected(twitchUserId, disconnected) {
+  for (const { id } of registry.listLeiloesByOwner(twitchUserId)) {
+    const store = getStore(id);
+    store.setState("mpDisconnected", disconnected ? "true" : "false");
+    broadcastUpdate(id, store, null);
+  }
 }
 
 // Melhor esforço pra achar a foto de perfil de um doador na Twitch, usando
@@ -411,8 +378,7 @@ function serializeLeaderboard(store, leilaoId) {
     timerEndsAt: isOpen && !isPaused ? lastActivityAt + autoCloseMs : null,
     timerRemainingMs: isPaused ? Number(store.getState("pausedRemainingMs", autoCloseMs)) : null,
     timerDurationMs: autoCloseMs,
-    webhookStale: isWebhookStale(store, isOpen),
-    webhookSignatureIssue: hasWebhookSignatureIssue(store),
+    mpDisconnected: store.getState("mpDisconnected", "false") === "true",
   };
 }
 
@@ -586,34 +552,6 @@ async function processDonationMessage(leilaoId, store, { id, fallbackUsername, f
   maybeFetchGameImage(leilaoId, store, game.key, game.name, needsImage);
 }
 
-// Segredo que vira ?assinatura= na URL de webhook -- gerado UMA VEZ por
-// leilão e guardado no próprio estado dele (igual adminSecretHash), não
-// mais uma env var global (PIXGG_WEBHOOK_SECRET, removida daqui). Achado
-// real em produção (2026-07-21): um valor compartilhado entre TODOS os
-// leilões significa que qualquer alteração nele (reconfigurar a variável
-// no Railway, por exemplo) invalida o vínculo de TODOS de uma vez só, sem
-// erro visível em lugar nenhum -- foi exatamente isso que fez uma doação
-// real sumir em silêncio. Por leilão, cada um tem seu próprio segredo
-// independente: mexer num nunca afeta os outros, e não existe mais uma
-// variável de ambiente pra esquecer de levar em conta num redeploy.
-function getOrCreateWebhookSecret(store) {
-  let secret = store.getState("webhookSecret", null);
-  if (!secret) {
-    secret = crypto.randomBytes(24).toString("hex");
-    store.setState("webhookSecret", secret);
-  }
-  return secret;
-}
-
-// Monta a URL de webhook de um leilão a partir da própria requisição (não
-// depende de nenhuma env var de URL pública, funciona igual local e em
-// produção).
-function buildWebhookUrlFromReq(req, leilaoId) {
-  const publicUrl = `${req.protocol}://${req.get("host")}`;
-  const secret = getOrCreateWebhookSecret(getStore(leilaoId));
-  return `${publicUrl}/webhook/pixgg/${leilaoId}?assinatura=${secret}`;
-}
-
 // ---------- login com a Twitch ----------
 
 // Passo 1: manda o navegador pra tela de autorização da Twitch. GET (não
@@ -747,6 +685,9 @@ app.get("/auth/mercadopago/callback", async (req, res) => {
       publicKey: tokenResult.publicKey,
       expiresAt: tokenResult.expiresAt,
     });
+    // (Re)conectar limpa o aviso de desconectado em TODOS os leilões dessa
+    // conta de uma vez -- a conexão é por streamer, não por leilão.
+    setLeiloesMpDisconnected(statePayload.twitchUserId, false);
     res.redirect(safeReturnToMp(statePayload.returnTo));
   } catch (err) {
     console.error("Erro ao conectar Mercado Pago:", err.message);
@@ -762,11 +703,22 @@ app.post("/api/session/logout", (req, res) => {
 // httpOnly esconde o cookie do JS do navegador de propósito (é o que
 // impede um XSS de roubar a sessão) — por isso o front-end precisa
 // perguntar pro servidor quem está logado, em vez de ler o cookie direto.
-app.get("/api/session/me", (req, res) => {
+app.get("/api/session/me", async (req, res) => {
   const s = getTwitchSession(req);
-  res.json(s
-    ? { loggedIn: true, twitchUserId: s.twitchUserId, twitchLogin: s.twitchLogin, displayName: s.displayName, avatarUrl: s.avatarUrl }
-    : { loggedIn: false });
+  if (!s) return res.json({ loggedIn: false });
+
+  // mpConnected é por CONTA (twitch_user_id), não por leilão -- ver
+  // streamersStore.js. É o que decide se o formulário de criação libera
+  // o botão de submeter (mesmo critério que já existe pro login da Twitch).
+  const streamer = await streamersStore.findByTwitchUserId(s.twitchUserId);
+  res.json({
+    loggedIn: true,
+    twitchUserId: s.twitchUserId,
+    twitchLogin: s.twitchLogin,
+    displayName: s.displayName,
+    avatarUrl: s.avatarUrl,
+    mpConnected: !!streamer,
+  });
 });
 
 app.get("/api/meus-leiloes", (req, res) => {
@@ -801,7 +753,15 @@ app.post("/api/leiloes", async (req, res) => {
       return res.status(401).json({ error: "Faça login com a Twitch antes de criar o leilão" });
     }
 
-    const { title, password, clientId, clientSecret } = req.body || {};
+    // Reconfere no servidor (nunca confia numa flag mandada pelo cliente):
+    // sem Mercado Pago conectado nessa conta, o leilão nasceria sem
+    // nenhum jeito de receber doação nenhuma.
+    const streamer = await streamersStore.findByTwitchUserId(twitchSession.twitchUserId);
+    if (!streamer) {
+      return res.status(409).json({ error: "Conecte sua conta do Mercado Pago antes de criar o leilão" });
+    }
+
+    const { title, password } = req.body || {};
     const { id } = await registry.createLeilao({
       title,
       host: twitchSession.displayName,
@@ -809,9 +769,6 @@ app.post("/api/leiloes", async (req, res) => {
       hostTwitchUserId: twitchSession.twitchUserId,
       hostTwitchLogin: twitchSession.twitchLogin,
       password,
-      clientId,
-      clientSecret,
-      buildWebhookUrl: (leilaoId) => buildWebhookUrlFromReq(req, leilaoId),
     });
     res.json({ ok: true, id, url: `/l/${id}` });
   } catch (err) {
@@ -1107,106 +1064,19 @@ app.post("/api/l/:id/doacao", loadLeilao, async (req, res) => {
     if (err.status === 401) {
       // Token do streamer não é mais válido -- ele precisa reconectar.
       await streamersStore.markDisconnected(ownerTwitchUserId);
+      setLeiloesMpDisconnected(ownerTwitchUserId, true);
     }
     console.error(`[doação] erro ao criar cobrança Pix (leilaoId="${leilaoId}"):`, err.message);
     res.status(502).json({ error: "Não foi possível gerar o Pix agora. Tente de novo em instantes." });
   }
 });
 
-// O pix.gg faz um "ping" periódico com GET nessa URL pra confirmar que ela
-// está de pé (descoberto em 2026-07-10 pelos logs de produção — a doc deles
-// não menciona isso). Sem responder 200 aqui, o pix.gg parece considerar o
-// endpoint quebrado e não manda o POST de verdade da doação.
-//
-// IMPORTANTE: essa rota sempre respondia só "OK" pra qualquer GET, mesmo
-// sem o ?assinatura= — isso é uma armadilha real: se alguém copia uma URL
-// incompleta (ex: cortada, sem a assinatura) e testa no navegador, vê "OK"
-// e acha que está tudo certo, enquanto o POST de doação de verdade (que
-// SIM exige assinatura) seria recusado em silêncio. Agora o texto da
-// resposta avisa isso, mesmo mantendo status 200 (não quebra o ping
-// automático do pix.gg, que só olha o status).
-app.get("/webhook/pixgg/:leilaoId", (req, res) => {
-  const leilaoId = req.params.leilaoId;
-  if (!/^[a-z0-9_-]+$/i.test(leilaoId) || !registry.leilaoExists(leilaoId)) {
-    return res.status(200).send("OK — mas esse leilão não existe. Essa URL parece incompleta ou errada.");
-  }
-
-  const store = getStore(leilaoId);
-  const secret = getOrCreateWebhookSecret(store);
-  const signatureOk = pixgg.verifySignature(req.query.assinatura, secret);
-  touchWebhookPing(store); // a URL bateu certo no leilão, isso já prova que o host/id estão certos
-
-  if (!signatureOk) {
-    // Não mexe em webhookSignatureBroken aqui (só o POST de verdade decide
-    // isso) — não dá pra confiar que o GET de ping do pix.gg sempre carrega
-    // a assinatura, então um GET sem ela não é necessariamente um problema.
-    return res.status(200).send(
-      "OK — só que o parâmetro ?assinatura= dessa URL está ausente ou errado. " +
-      "As doações de verdade seriam recusadas até isso ser corrigido. " +
-      "Revincule o webhook pelo painel avançado do leilão pra gerar a URL completa de novo."
-    );
-  }
-
-  res.status(200).send("OK — webhook desse leilão configurado corretamente.");
-});
-
-// Webhook do pix.gg — uma URL própria por leilão (vinculada automaticamente
-// na aplicação do streamer no momento da criação, ver registry.createLeilao
-// + pixggApi.setWebhookUrl). O :leilaoId na própria URL já diz de quem é a
-// doação — não precisa mais casar por streamerUsername no corpo.
-app.post("/webhook/pixgg/:leilaoId", (req, res) => {
-  res.sendStatus(200); // confirma recebimento primeiro
-
-  // Log de cada etapa de propósito -- achado real em produção (2026-07-21):
-  // uma doação real chegou ao pix.gg (confirmada no painel deles) mas não
-  // deixou rastro nenhum aqui, nem como evento "ignorado". Sem log em cada
-  // decisão, não dá pra saber se o POST nem chegou no servidor, chegou com
-  // assinatura errada, ou chegou como "created" (não pago) -- os três casos
-  // ficam idênticos do lado de fora. Prefixo "[webhook pix.gg]" pra filtrar
-  // fácil no log do Railway.
-  const leilaoId = req.params.leilaoId;
-  console.log(`[webhook pix.gg] POST recebido -- leilaoId="${leilaoId}" assinatura=${req.query.assinatura ? "presente" : "ausente"}`);
-
-  try {
-    if (!/^[a-z0-9_-]+$/i.test(leilaoId) || !registry.leilaoExists(leilaoId)) {
-      console.warn(`[webhook pix.gg] leilão "${leilaoId}" não encontrado, ignorando.`);
-      return;
-    }
-    const store = getStore(leilaoId);
-
-    const secret = getOrCreateWebhookSecret(store);
-    if (!pixgg.verifySignature(req.query.assinatura, secret)) {
-      console.warn(`[webhook pix.gg] assinatura inválida pra leilaoId="${leilaoId}", ignorado.`);
-      store.setState("webhookSignatureBroken", "true");
-      return;
-    }
-    store.setState("webhookSignatureBroken", "false");
-    touchWebhookPing(store);
-
-    const donation = pixgg.parseDonation(req.body);
-    console.log(`[webhook pix.gg] assinatura ok -- id=${donation.id} status="${donation.status}" username="${donation.username}" mensagem="${donation.message}" valor=${donation.amountCents}`);
-    if (!pixgg.isPaid(donation.status)) {
-      console.log(`[webhook pix.gg] status "${donation.status}" não é "paid", ignorando por enquanto (espera o próximo webhook dessa mesma transação).`);
-      return;
-    }
-
-    processDonationMessage(leilaoId, store, {
-      id: donation.id,
-      fallbackUsername: donation.username,
-      fallbackMessage: donation.message,
-      fallbackAmount: donation.amountCents,
-    });
-  } catch (err) {
-    console.error(`[webhook pix.gg] erro ao processar (leilaoId="${leilaoId}"):`, err.message);
-  }
-});
-
 // Webhook do Mercado Pago -- UMA URL só pro app inteiro (registrada uma vez
-// na aplicação, não por leilão como era o do pix.gg), porque o MP não sabe
-// de leilão nenhum -- quem correlaciona é a nossa própria tabela payments
-// (por mp_payment_id). Log em cada etapa, mesmo espírito do webhook do
-// pix.gg (achado real: sem isso, uma doação sumida não deixa pista
-// nenhuma pra investigar depois).
+// na aplicação), porque o MP não sabe de leilão nenhum -- quem correlaciona
+// é a nossa própria tabela payments (por mp_payment_id). Log em cada etapa
+// de propósito: sem isso, uma doação sumida não deixa pista nenhuma pra
+// investigar depois (achado real em produção com o webhook antigo do
+// pix.gg, 2026-07-21).
 app.post("/webhook/mercadopago", async (req, res) => {
   res.sendStatus(200); // confirma recebimento primeiro
 
@@ -1252,7 +1122,10 @@ app.post("/webhook/mercadopago", async (req, res) => {
     try {
       mpPayment = await mpApi.getPayment({ accessToken: streamer.accessToken, paymentId: dataId });
     } catch (err) {
-      if (err.status === 401) await streamersStore.markDisconnected(streamer.twitchUserId);
+      if (err.status === 401) {
+        await streamersStore.markDisconnected(streamer.twitchUserId);
+        setLeiloesMpDisconnected(streamer.twitchUserId, true);
+      }
       throw err;
     }
     console.log(`[webhook mercadopago] mp_payment_id=${dataId} status="${mpPayment.status}" leilaoId="${payment.leilaoId}"`);
@@ -1415,7 +1288,7 @@ app.post("/api/l/:id/admin/toggle-open", loadLeilao, requireLeilaoAdmin, (req, r
   const { store, leilaoId } = req;
   store.setState("open", open ? "true" : "false");
   if (open) {
-    touchActivity(store, true); // reabrir dá um fôlego novo (e reseta a referência do aviso de webhook, ver isWebhookStale)
+    touchActivity(store, true); // reabrir dá um fôlego novo
   } else {
     store.setState("paused", "false"); // encerrar limpa qualquer pausa pendente
     captureAuctionDuration(store); // precisa rodar antes do snapshot: buildRecap lê lastAuctionDurationMs
@@ -1569,23 +1442,6 @@ app.post("/api/l/:id/admin/background-image", loadLeilao, requireLeilaoAdmin, (r
   req.store.setState("backgroundImageUrl", parsed.href);
   broadcastUpdate(req.leilaoId, req.store, { type: "background-image" });
   res.json({ ok: true });
-});
-
-// Revincula o webhook do leilão já existente na aplicação do pix.gg — pra
-// quando o link se perde (ex: o streamer regenerou o clientSecret, o que
-// limpa o campo "Webhook URL" do lado do pix.gg). Não recria o leilão, só
-// refaz a chamada de vínculo com um client id/secret atuais.
-app.post("/api/l/:id/admin/relink-webhook", loadLeilao, requireLeilaoAdmin, async (req, res) => {
-  try {
-    const { clientId, clientSecret } = req.body || {};
-    if (!clientId || !clientSecret) {
-      return res.status(400).json({ error: "Informe o Client ID e o Client Secret do pix.gg" });
-    }
-    const confirmed = await pixggApi.setWebhookUrl(clientId, clientSecret, buildWebhookUrlFromReq(req, req.leilaoId));
-    res.json({ ok: true, webhookUrl: pixggApi.redactWebhookUrl(confirmed.webhookUrl) });
-  } catch (err) {
-    res.status(400).json({ error: err.message });
-  }
 });
 
 // ---------- estáticos ----------

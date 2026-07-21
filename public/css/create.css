@@ -244,17 +244,24 @@
 
 /* Identidade Twitch na criação — substitui o antigo campo de texto livre
    "seu nome (host)". Nome/foto vêm confirmados pela própria Twitch, não dá
-   pra editar aqui (ver public/js/create.js). */
+   pra editar aqui (ver public/js/create.js). Mesmas classes reaproveitadas
+   pro bloco de conexão do Mercado Pago logo abaixo (create-mp-*) -- é o
+   mesmo componente visual "conectado/desconectado", só outra conta. */
 .create-twitch-logged-out,
-.create-twitch-logged-in {
+.create-twitch-logged-in,
+.create-mp-disconnected,
+.create-mp-connected {
   display: flex;
   align-items: center;
   gap: 10px;
 }
 .create-twitch-logged-out[hidden],
-.create-twitch-logged-in[hidden] { display: none; }
+.create-twitch-logged-in[hidden],
+.create-mp-disconnected[hidden],
+.create-mp-connected[hidden] { display: none; }
 
-.create-twitch-login {
+.create-twitch-login,
+.create-mp-login {
   display: inline-flex;
   align-items: center;
   gap: 8px;
@@ -268,7 +275,12 @@
   font-size: 13.5px;
   font-weight: 600;
 }
-.create-twitch-login:hover { border-color: var(--accent); color: var(--accent-text); }
+.create-twitch-login:hover,
+.create-mp-login:hover { border-color: var(--accent); color: var(--accent-text); }
+.create-mp-login.is-disabled {
+  opacity: 0.5;
+  pointer-events: none;
+}
 
 .create-twitch-avatar {
   width: 36px;
@@ -279,7 +291,20 @@
   border: 1px solid var(--border);
 }
 
-.create-twitch-name {
+.create-mp-status-icon {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--accent-bg);
+  color: var(--accent-text);
+  border: 1px solid var(--border);
+}
+
+.create-twitch-name,
+.create-mp-status-text {
   font-size: 14px;
   font-weight: 600;
   color: var(--text);
@@ -289,7 +314,8 @@
 }
 
 .create-twitch-switch,
-.create-twitch-logout {
+.create-twitch-logout,
+.create-mp-reconnect {
   font-family: var(--font-body);
   font-size: 12px;
   color: var(--muted);
@@ -300,7 +326,8 @@
   margin-left: auto;
 }
 .create-twitch-switch:hover,
-.create-twitch-logout:hover { color: var(--text); }
+.create-twitch-logout:hover,
+.create-mp-reconnect:hover { color: var(--text); }
 
 .create-submit {
   height: 48px;

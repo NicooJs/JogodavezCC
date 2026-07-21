@@ -56,8 +56,7 @@ const historyCloseEl = document.getElementById("history-close");
 const historyGridEl = document.getElementById("history-grid");
 const historyModalEmptyEl = document.getElementById("history-modal-empty");
 const historyOpenBtnEl = document.getElementById("history-open-btn");
-const webhookWarningEl = document.getElementById("webhook-warning");
-const webhookWarningTextEl = document.getElementById("webhook-warning-text");
+const webhookWarningEl = document.getElementById("mp-warning");
 
 const lotModalEl = document.getElementById("lot-modal");
 const lotModalThumb = document.getElementById("lot-modal-thumb");
@@ -80,8 +79,7 @@ let timerDurationMs = 5 * 60 * 1000; // atualizado a cada "update" com o valor r
 let isOpenState = null; // null = ainda não recebemos a primeira atualização
 let isPausedState = false;
 let pausedRemainingMs = null;
-let webhookStaleState = false;
-let webhookSignatureIssueState = false;
+let mpDisconnectedState = false;
 let historyItems = [];
 let currentLeaderKey = null;
 let lastTotalRaised = null;
@@ -207,18 +205,10 @@ function setStatus(online) {
 }
 
 // Só mostra o aviso no modo apresentador — não faz sentido (e pode
-// confundir espectador) aparecer isso no board público. webhookStale só é
-// true com o leilão aberto e depois de 30min de silêncio real (ver
-// isWebhookStale em server.js) — threshold folgado de propósito, um de
-// 5min já causou alarme falso em uso normal.
+// confundir espectador) aparecer isso no board público.
 function updateWebhookWarning() {
   const active = document.body.classList.contains("presenter-mode");
-  if (webhookSignatureIssueState) {
-    webhookWarningTextEl.textContent = "O pix.gg está mandando doações, mas a assinatura da URL não bate — provavelmente a URL do webhook está incompleta ou cortada. As doações não estão sendo contabilizadas.";
-  } else {
-    webhookWarningTextEl.textContent = "Sem contato do pix.gg há mais de 30 minutos com o leilão aberto — o webhook pode estar desvinculado e as doações podem não estar chegando.";
-  }
-  webhookWarningEl.hidden = !(active && (webhookStaleState || webhookSignatureIssueState));
+  webhookWarningEl.hidden = !(active && mpDisconnectedState);
 }
 
 socket.on("connect", () => {
@@ -1211,8 +1201,7 @@ socket.on("update", ({ leaderboard, lastEvent }) => {
   if (leaderboard.timerDurationMs) timerDurationMs = leaderboard.timerDurationMs;
   tickTimer();
 
-  webhookStaleState = !!leaderboard.webhookStale;
-  webhookSignatureIssueState = !!leaderboard.webhookSignatureIssue;
+  mpDisconnectedState = !!leaderboard.mpDisconnected;
   updateWebhookWarning();
 
   topbarTotalEl.classList.toggle("is-hidden", !!leaderboard.hideTotalRaised);
@@ -1251,6 +1240,143 @@ socket.on("update", ({ leaderboard, lastEvent }) => {
 
   if (flashKey && lastEvent && (lastEvent.type === "add" || lastEvent.type === "remove") && (lastEvent.amount || 0) > 100) {
     triggerBigWinCelebration(flashKey, lastEvent.type);
+  }
+
+  if (lastEvent && lastEvent.paymentId != null && pendingDonationPaymentId && String(lastEvent.paymentId) === pendingDonationPaymentId) {
+    handleDonationConfirmed();
+  }
+});
+
+// ---------- modal de doação (Pix in-app, ver POST /api/l/:id/doacao) ----------
+// Diferente do #lot-modal (só apresentador, lança valor direto): esse é
+// público, qualquer visitante do board abre. Fluxo em 3 passos dentro do
+// MESMO modal (troca de qual .donate-step está hidden, sem trocar de
+// overlay): formulário -> QR Pix aguardando -> confirmado. A confirmação
+// chega pelo MESMO socket "update" que já atualiza o placar inteiro (ver
+// checagem de lastEvent.paymentId logo acima) -- nenhum canal/room novo.
+const donateOpenBtnEl = document.getElementById("donate-open-btn");
+const donateModalEl = document.getElementById("donate-modal");
+const donateModalCloseEl = document.getElementById("donate-modal-close");
+const donateModalCancelEl = document.getElementById("donate-modal-cancel");
+const donateStepFormEl = document.getElementById("donate-step-form");
+const donateStepPixEl = document.getElementById("donate-step-pix");
+const donateStepSuccessEl = document.getElementById("donate-step-success");
+const donateModalActionSeg = document.getElementById("donate-modal-action");
+const donateModalGameEl = document.getElementById("donate-modal-game");
+const donateModalAmountEl = document.getElementById("donate-modal-amount");
+const donateModalNameEl = document.getElementById("donate-modal-name");
+const donateModalErrorEl = document.getElementById("donate-modal-error");
+const donateModalSubmitEl = document.getElementById("donate-modal-submit");
+const donateQrImgEl = document.getElementById("donate-qr-img");
+const donateCopyInputEl = document.getElementById("donate-copy-input");
+const donateCopyBtnEl = document.getElementById("donate-copy-btn");
+
+let pendingDonationPaymentId = null; // String(mpPaymentId) do Pix aberto nesse navegador, ou null
+
+function setDonateAction(action) {
+  donateModalActionSeg.querySelectorAll("button").forEach((b) => {
+    b.classList.toggle("active", b.dataset.action === action);
+  });
+}
+
+function getDonateAction() {
+  const active = donateModalActionSeg.querySelector("button.active");
+  return active ? active.dataset.action : "add";
+}
+
+function showDonateStep(step) {
+  donateStepFormEl.hidden = step !== "form";
+  donateStepPixEl.hidden = step !== "pix";
+  donateStepSuccessEl.hidden = step !== "success";
+}
+
+function openDonateModal() {
+  showDonateStep("form");
+  setDonateAction("add");
+  donateModalGameEl.value = "";
+  donateModalAmountEl.value = "";
+  donateModalNameEl.value = "";
+  donateModalErrorEl.hidden = true;
+  donateModalSubmitEl.disabled = false;
+  donateModalSubmitEl.textContent = "Gerar Pix →";
+  pendingDonationPaymentId = null;
+  donateModalEl.hidden = false;
+  setTimeout(() => donateModalGameEl.focus(), 40);
+}
+
+function closeDonateModal() {
+  donateModalEl.hidden = true;
+  pendingDonationPaymentId = null;
+}
+
+async function submitDonateModal() {
+  const game = donateModalGameEl.value.trim();
+  const amount = donateModalAmountEl.value;
+  donateModalErrorEl.hidden = true;
+  if (!game) {
+    donateModalErrorEl.textContent = "Informe o nome do jogo";
+    donateModalErrorEl.hidden = false;
+    return donateModalGameEl.focus();
+  }
+  if (!amount || Number(amount) <= 0) {
+    donateModalErrorEl.textContent = "Informe um valor válido";
+    donateModalErrorEl.hidden = false;
+    return donateModalAmountEl.focus();
+  }
+
+  donateModalSubmitEl.disabled = true;
+  donateModalSubmitEl.textContent = "Gerando…";
+  try {
+    const res = await fetch(`/api/l/${LEILAO_ID}/doacao`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        name: game,
+        amount,
+        action: getDonateAction(),
+        donorUsername: donateModalNameEl.value.trim(),
+      }),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(data.error || `Erro ${res.status}`);
+
+    pendingDonationPaymentId = String(data.paymentId);
+    donateQrImgEl.src = `data:image/png;base64,${data.qrCodeBase64}`;
+    donateCopyInputEl.value = data.copyPaste;
+    showDonateStep("pix");
+  } catch (err) {
+    donateModalErrorEl.textContent = err.message;
+    donateModalErrorEl.hidden = false;
+  } finally {
+    donateModalSubmitEl.disabled = false;
+    donateModalSubmitEl.textContent = "Gerar Pix →";
+  }
+}
+
+function handleDonationConfirmed() {
+  pendingDonationPaymentId = null;
+  showDonateStep("success");
+  setTimeout(() => { if (!donateModalEl.hidden) closeDonateModal(); }, 2200);
+}
+
+donateOpenBtnEl.addEventListener("click", openDonateModal);
+donateModalCloseEl.addEventListener("click", closeDonateModal);
+donateModalCancelEl.addEventListener("click", closeDonateModal);
+donateModalEl.addEventListener("click", (e) => { if (e.target === donateModalEl) closeDonateModal(); });
+document.addEventListener("keydown", (e) => { if (e.key === "Escape" && !donateModalEl.hidden) closeDonateModal(); });
+donateModalActionSeg.querySelectorAll("button").forEach((b) => {
+  b.addEventListener("click", () => setDonateAction(b.dataset.action));
+});
+donateModalSubmitEl.addEventListener("click", submitDonateModal);
+donateModalAmountEl.addEventListener("keydown", (e) => { if (e.key === "Enter") submitDonateModal(); });
+
+donateCopyBtnEl.addEventListener("click", async () => {
+  try {
+    await navigator.clipboard.writeText(donateCopyInputEl.value);
+    donateCopyBtnEl.textContent = "Copiado!";
+    setTimeout(() => { donateCopyBtnEl.textContent = "Copiar"; }, 1500);
+  } catch (err) {
+    donateCopyInputEl.select();
   }
 });
 

@@ -28,9 +28,9 @@
       <div class="create-pitch">
         <h1 class="create-title" id="create-title" aria-label="Seu placar de leilão, no ar em menos de um minuto">Seu placar de leilão, no ar em menos de um minuto</h1>
         <p class="create-lede reveal-item">
-          Espectadores doam pelo <strong>pix.gg</strong> e escrevem o nome do
-          jogo — o placar atualiza sozinho, ao vivo. Isolado de qualquer
-          outro streamer usando o site.
+          Espectadores doam via <strong>Pix</strong> direto no seu placar e
+          escrevem o nome do jogo — sem sair da página, sem redirecionamento.
+          O dinheiro cai direto na sua conta do Mercado Pago.
         </p>
 
         <div class="create-proof reveal-item" id="create-proof" hidden>
@@ -42,8 +42,8 @@
           <li class="reveal-item">
             <span class="create-step-num">01</span>
             <div class="create-step-text">
-              <p class="create-step-title">Cole o Client ID e Secret</p>
-              <p class="create-step-hint">A gente vincula o webhook automaticamente — sem colar URL em lugar nenhum.</p>
+              <p class="create-step-title">Conecte seu Mercado Pago</p>
+              <p class="create-step-hint">Só uma vez — vale pra todos os leilões que você criar depois.</p>
             </div>
           </li>
           <li class="reveal-item">
@@ -96,20 +96,23 @@
           </div>
 
           <div class="create-section">
-            <p class="create-section-title">vínculo com o pix.gg</p>
+            <p class="create-section-title">recebimento</p>
 
-            <label class="create-field">
-              <span>Client ID</span>
-              <input type="text" id="f-client-id" placeholder="app_..." autocomplete="off" required />
-              <span class="create-hint">
-                Em <strong>pixgg.com → Aplicações</strong>, crie uma (escopo "Webhook") e copie o Client ID.
-              </span>
-            </label>
+            <div class="create-field create-twitch-block">
+              <span>Mercado Pago</span>
 
-            <label class="create-field">
-              <span>Client Secret</span>
-              <input type="password" id="f-client-secret" placeholder="só aparece na hora que você cria/regenera" autocomplete="off" required />
-            </label>
+              <div class="create-mp-disconnected" id="create-mp-disconnected">
+                <a class="create-mp-login is-disabled" id="create-mp-connect" href="/auth/mercadopago/start?returnTo=/">Conectar Mercado Pago</a>
+              </div>
+
+              <div class="create-mp-connected" id="create-mp-connected" hidden>
+                <span class="create-mp-status-icon" aria-hidden="true">✓</span>
+                <span class="create-mp-status-text">Mercado Pago conectado</span>
+                <a class="create-mp-reconnect" id="create-mp-reconnect" href="/auth/mercadopago/start?returnTo=/">reconectar</a>
+              </div>
+
+              <span class="create-hint" id="create-mp-hint">Faça login com a Twitch primeiro pra liberar a conexão.</span>
+            </div>
           </div>
 
           <div class="create-section">

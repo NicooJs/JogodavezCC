@@ -9,7 +9,7 @@
 const settingsOverlayEl = document.getElementById("settings-overlay");
 const settingsCloseEl = document.getElementById("settings-close");
 const adminLinkEl = document.getElementById("admin-link");
-const webhookWarningLinkEl = document.getElementById("webhook-warning-link");
+const mpWarningLinkEl = document.getElementById("mp-warning-link");
 
 const promptDialogOverlayEl = document.getElementById("prompt-dialog-overlay");
 const confirmDialogOverlayEl = document.getElementById("confirm-dialog-overlay");
@@ -100,7 +100,7 @@ async function requireLoginThenOpenSettings() {
 }
 
 adminLinkEl.addEventListener("click", requireLoginThenOpenSettings);
-webhookWarningLinkEl.addEventListener("click", requireLoginThenOpenSettings);
+mpWarningLinkEl.addEventListener("click", requireLoginThenOpenSettings);
 
 settingsCloseEl.addEventListener("click", closeSettingsModal);
 settingsOverlayEl.addEventListener("click", (e) => { if (e.target === settingsOverlayEl) closeSettingsModal(); });
@@ -197,7 +197,7 @@ function renderSettingsFromLeaderboard(leaderboard) {
   const titleInput = document.getElementById("title-input");
   if (document.activeElement !== titleInput) titleInput.value = leaderboard.title;
   renderOpenState(leaderboard.open);
-  renderWebhookState(leaderboard.webhookStale, leaderboard.webhookSignatureIssue);
+  renderMpState(leaderboard.mpDisconnected);
   renderSettingsThemePicker(leaderboard.theme);
   const bgInput = document.getElementById("bg-image-url");
   if (document.activeElement !== bgInput) bgInput.value = leaderboard.backgroundImageUrl || "";
@@ -214,16 +214,19 @@ function renderOpenState(open) {
   document.getElementById("toggle-open").textContent = open ? "Encerrar leilão" : "Reabrir leilão";
 }
 
-function renderWebhookState(stale, signatureIssue) {
-  const badge = document.getElementById("webhook-state");
-  if (signatureIssue) {
-    badge.textContent = "assinatura errada — URL provavelmente incompleta";
-  } else if (stale) {
-    badge.textContent = "sem contato há 30+ min (leilão aberto) — pode estar desvinculado";
-  } else {
-    badge.textContent = "vinculado";
-  }
-  badge.className = "badge" + (stale || signatureIssue ? " closed" : "");
+function renderMpState(disconnected) {
+  const text = disconnected ? "desconectado — reconecte pra continuar recebendo" : "conectado";
+  const badgeClass = "badge" + (disconnected ? " closed" : "");
+
+  const badge = document.getElementById("mp-state");
+  badge.textContent = text;
+  badge.className = badgeClass;
+
+  const advancedBadge = document.getElementById("mp-advanced-state");
+  advancedBadge.textContent = text;
+  advancedBadge.className = badgeClass;
+
+  document.getElementById("mp-reconnect-link").href = `/auth/mercadopago/start?returnTo=/l/${LEILAO_ID}`;
 }
 
 function renderSettingsThemePicker(theme) {
@@ -378,27 +381,6 @@ document.getElementById("merge-submit").addEventListener("click", async () => {
     await presenterFetch("/admin/merge", { method: "POST", body: JSON.stringify({ fromKey, toKey }) });
   } catch (err) {
     alert(err.message);
-  }
-});
-
-document.getElementById("relink-form").addEventListener("submit", async (e) => {
-  e.preventDefault();
-  const clientId = document.getElementById("relink-client-id").value.trim();
-  const clientSecret = document.getElementById("relink-client-secret").value.trim();
-  const resultEl = document.getElementById("relink-result");
-  resultEl.textContent = "";
-  if (!clientId || !clientSecret) return alert("Preencha Client ID e Client Secret");
-  try {
-    const data = await presenterFetch("/admin/relink-webhook", {
-      method: "POST",
-      body: JSON.stringify({ clientId, clientSecret }),
-    });
-    resultEl.textContent = `Webhook revinculado com sucesso. URL confirmada pelo pix.gg: ${data.webhookUrl}`;
-    resultEl.classList.remove("relink-result-error");
-    document.getElementById("relink-client-secret").value = "";
-  } catch (err) {
-    resultEl.textContent = "Erro: " + err.message;
-    resultEl.classList.add("relink-result-error");
   }
 });
 
