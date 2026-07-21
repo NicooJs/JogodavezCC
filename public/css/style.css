@@ -1993,6 +1993,18 @@ body.board-body.has-bg-image .board-bg { display: none; }
   padding: 2px 4px 4px;
 }
 
+/* Card sozinho na última linha (total de jogos ímpar, grid de 2 colunas)
+   ocupava só metade da linha, deixando um vazio do lado -- acontece toda
+   vez que dá um número ímpar de jogos (3, 5, 7...), não só com
+   "classificados" configurado ímpar. :last-child:nth-child(odd) pega
+   exatamente o item que sobra sozinho na linha final de um grid de 2
+   colunas, sem precisar contar quantos cards existem. Em telas de 1
+   coluna só (mobile, ver media query abaixo) isso não muda nada -- o
+   card já ocupa a linha inteira de qualquer forma. */
+.arena-grid > .lot-card:last-child:nth-child(odd) {
+  grid-column: 1 / -1;
+}
+
 .arena-empty {
   grid-column: 1 / -1;
   display: flex;
