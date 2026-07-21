@@ -12,7 +12,6 @@ const pixggApi = require("./src/pixggApi");
 const { getStore, deleteStore, DATA_DIR } = require("./src/stores");
 const { verifyPassword, timingSafeEqualString } = require("./src/passwords");
 const { parseMessage, normalizeKey, leftoverAfterMatch, looksLikeNoise } = require("./src/parser");
-const livepix = require("./src/livepixClient");
 const pixgg = require("./src/pixggClient");
 const { fetchGameImage, searchGames, identifyGameFromNoisyText, fetchPopularCovers } = require("./src/gameImages");
 const { fetchTwitchAvatar } = require("./src/twitchClient");
@@ -510,17 +509,9 @@ async function processDonationMessage(leilaoId, store, { id, fallbackUsername, f
   // janela de corrida dentro do mesmo processo, não mudar o disco 2x.
   store.markProcessed(id);
 
-  let username = fallbackUsername;
-  let message = fallbackMessage;
-  let amountCents = fallbackAmount;
-
-  // Se não veio detalhe (fluxo normal do webhook do LivePix), busca na API
-  if (message === undefined) {
-    const details = await livepix.fetchMessage(id);
-    username = details.username;
-    message = details.message;
-    amountCents = details.amount; // já vem em centavos
-  }
+  const username = fallbackUsername;
+  const message = fallbackMessage;
+  const amountCents = fallbackAmount;
 
   const isOpen = store.getState("open", "true") === "true";
   if (!isOpen) {
@@ -912,17 +903,14 @@ app.delete("/api/admin/leiloes", (req, res) => {
 });
 
 // ---------- board e painel por leilão ----------
+// (o painel de admin virou o próprio board em modo apresentador -- ver
+// presenter-toggle/settings.js; a página separada /l/:id/admin foi apagada
+// por não estar mais linkada de lugar nenhum)
 
 app.get("/l/:id", (req, res) => {
   if (!registry.leilaoExists(req.params.id)) return res.status(404).send("Leilão não encontrado");
   res.set("Referrer-Policy", "no-referrer");
   res.sendFile(path.join(__dirname, "public", "board.html"));
-});
-
-app.get("/l/:id/admin", (req, res) => {
-  if (!registry.leilaoExists(req.params.id)) return res.status(404).send("Leilão não encontrado");
-  res.set("Referrer-Policy", "no-referrer");
-  res.sendFile(path.join(__dirname, "public", "admin.html"));
 });
 
 // ---------- rotas públicas (id-scoped) ----------
@@ -950,15 +938,6 @@ app.get("/api/l/:id/events/recent", loadLeilao, (req, res) => {
     amount: centsToNumber(e.amount_cents),
   }));
   res.json({ events });
-});
-
-// Webhook do LivePix — mantido só como referência (ver CLAUDE.md), a
-// integração real hoje é a do pix.gg logo abaixo. Não tem streamerUsername
-// pra rotear pra um leilão específico, então no modelo multi-tenant essa
-// rota fica só confirmando recebimento sem fazer nada — não desativamos de
-// vez até decidir se vale ressuscitar pra algum caso de uso.
-app.post("/webhook/livepix", (req, res) => {
-  res.sendStatus(200);
 });
 
 // O pix.gg faz um "ping" periódico com GET nessa URL pra confirmar que ela
@@ -1358,9 +1337,9 @@ app.post("/api/l/:id/admin/relink-webhook", loadLeilao, requireLeilaoAdmin, asyn
 });
 
 // ---------- estáticos ----------
-// Depois das rotas de página (/, /l/:id, /l/:id/admin) pra elas terem
-// prioridade; os arquivos de public/ (css, js, board.html, admin.html
-// direto) continuam acessíveis por trás.
+// Depois das rotas de página (/, /l/:id) pra elas terem prioridade; os
+// arquivos de public/ (css, js, board.html direto) continuam acessíveis
+// por trás.
 app.use(express.static(path.join(__dirname, "public")));
 
 // Imagens de fundo enviadas por upload (ver background-image-upload acima)

@@ -1,7 +1,7 @@
 {
   "name": "leilao-de-jogos",
   "version": "1.0.0",
-  "description": "Leilão de jogos ao vivo integrado com doações do LivePix (pix.gg)",
+  "description": "Leilão de jogos ao vivo integrado com doações do pix.gg",
   "type": "commonjs",
   "main": "server.js",
   "engines": {
@@ -9,7 +9,6 @@
   },
   "scripts": {
     "start": "node server.js",
-    "setup-webhook": "node scripts/setup-webhook.js",
     "test-webhook": "node scripts/test-webhook.js"
   },
   "dependencies": {
