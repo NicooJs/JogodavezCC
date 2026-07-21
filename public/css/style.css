@@ -1993,15 +1993,20 @@ body.board-body.has-bg-image .board-bg { display: none; }
   padding: 2px 4px 4px;
 }
 
-/* Card sozinho na última linha (total de jogos ímpar, grid de 2 colunas)
-   ocupava só metade da linha, deixando um vazio do lado -- acontece toda
-   vez que dá um número ímpar de jogos (3, 5, 7...), não só com
-   "classificados" configurado ímpar. :last-child:nth-child(odd) pega
-   exatamente o item que sobra sozinho na linha final de um grid de 2
-   colunas, sem precisar contar quantos cards existem. Em telas de 1
-   coluna só (mobile, ver media query abaixo) isso não muda nada -- o
-   card já ocupa a linha inteira de qualquer forma. */
-.arena-grid > .lot-card:last-child:nth-child(odd) {
+/* 1º lugar sempre ocupa a linha inteira, de propósito -- é destaque
+   pensado (o líder do leilão), não só um acaso de sobra de grid; ficar do
+   tamanho de qualquer outro card (ou pior, menor que o 3º quando esse é
+   quem sobra sozinho numa linha) é contraintuitivo. Isso empurra os
+   demais pra um grid de 2 colunas próprio a partir do 2º card.
+   nth-child(even) no último (não mais odd): com o 1º sempre esticado, o
+   card que sobra sozinho na ÚLTIMA linha DESSE grid secundário é o último
+   de verdade quando o total geral é par (2º-Nº formam pares perfeitos só
+   quando N-1 é ímpar, ou seja, N par) -- mesma ideia de antes, só a
+   paridade inverte por causa do 1º já não contar mais nesse sub-grid. Em
+   telas de 1 coluna (mobile) nenhuma das duas regras muda nada visível,
+   já ocupa a linha inteira de qualquer forma. */
+.arena-grid > .lot-card:first-child,
+.arena-grid > .lot-card:last-child:nth-child(even) {
   grid-column: 1 / -1;
 }
 
