@@ -1,0 +1,238 @@
+/* Página standalone de doação (/l/:id/doar) — o mesmo fluxo do modal
+   "Doar" do board (ver #donate-modal em board.html/style.css), só que
+   como página própria em vez de overlay, pra dar um link fixável no chat
+   da live. Reaproveita os tokens de :root e as classes de formulário do
+   modal (.modal-field/.seg/.amount-wrap/.modal-input/.modal-error) —
+   só o que é de LAYOUT DE PÁGINA (hero, card, estados) é definido aqui.
+   Mobile-first de propósito: a maioria de quem abre esse link vem de um
+   toque no chat da Twitch pelo celular. */
+
+.doar-body { height: auto; overflow-y: auto; }
+
+.doar-page {
+  position: relative;
+  z-index: 1;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.doar-topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 18px 20px;
+}
+
+.doar-brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-family: var(--font-mono);
+  font-size: 12.5px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  color: var(--muted);
+}
+.doar-brand:hover { color: var(--text); }
+
+.doar-brand-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 2px;
+  background: var(--accent);
+  transform: rotate(45deg);
+}
+
+.doar-board-link {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--muted);
+}
+.doar-board-link:hover { color: var(--accent-text); }
+.doar-board-link[hidden] { display: none; }
+
+.doar-main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 100%;
+  max-width: 440px;
+  margin: 0 auto;
+  padding: 12px 20px 48px;
+}
+
+.doar-hero {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 6px;
+  margin-bottom: 24px;
+}
+
+.doar-avatar-wrap {
+  position: relative;
+  width: 84px;
+  height: 84px;
+  margin-bottom: 10px;
+}
+
+.doar-avatar,
+.doar-avatar-fallback {
+  width: 84px;
+  height: 84px;
+  border-radius: 50%;
+  object-fit: cover;
+  background: var(--surface-2);
+  border: 2px solid var(--border);
+  box-shadow: 0 0 0 5px var(--accent-bg);
+}
+
+.doar-avatar-fallback {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-title);
+  font-size: 34px;
+  color: var(--accent-text);
+}
+.doar-avatar-fallback[hidden] { display: none; }
+
+.doar-eyebrow {
+  margin: 0;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--accent-text);
+}
+
+.doar-host-name {
+  margin: 0;
+  font-family: var(--font-title);
+  font-size: 32px;
+  font-weight: 400;
+  line-height: 1.15;
+  color: var(--text);
+}
+
+.doar-leilao-title {
+  margin: 2px 0 0;
+  font-size: 13.5px;
+  color: var(--muted);
+}
+.doar-leilao-title[hidden] { display: none; }
+
+.doar-card {
+  width: 100%;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 24px;
+  box-shadow: 0 30px 70px -32px rgba(0, 0, 0, 0.55);
+}
+
+.doar-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 10px;
+  padding: 20px 4px;
+  color: var(--muted);
+  font-size: 13.5px;
+}
+.doar-state[hidden] { display: none; }
+.doar-closed .icon { width: 26px; height: 26px; color: var(--danger); }
+
+.doar-spinner {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  border: 2.5px solid var(--border);
+  border-top-color: var(--accent);
+  animation: doar-spin 0.8s linear infinite;
+}
+@keyframes doar-spin { to { transform: rotate(360deg); } }
+
+.doar-step[hidden] { display: none; }
+.doar-step .modal-field:not(:last-child) { margin-bottom: 16px; }
+
+.doar-quick-amounts {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+  margin-top: 8px;
+}
+.doar-quick-amounts button {
+  height: 40px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  color: var(--muted);
+  font-family: var(--font-mono);
+  font-size: 12.5px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: border-color 0.15s ease, color 0.15s ease, background 0.15s ease;
+}
+.doar-quick-amounts button:hover { color: var(--text); border-color: var(--accent); }
+.doar-quick-amounts button.active {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--accent-ink);
+}
+
+.doar-submit {
+  width: 100%;
+  height: 50px;
+  margin-top: 22px;
+  background: linear-gradient(180deg, var(--accent-text), var(--accent));
+  color: var(--accent-ink);
+  border: none;
+  border-radius: var(--radius);
+  font-family: var(--font-body);
+  font-size: 15px;
+  font-weight: 700;
+  cursor: pointer;
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.3) inset, 0 10px 24px -10px var(--accent-glow);
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+.doar-submit:hover { transform: translateY(-1px); box-shadow: 0 1px 0 rgba(255, 255, 255, 0.35) inset, 0 14px 30px -10px var(--accent-glow); }
+.doar-submit:active { transform: translateY(0); }
+.doar-submit:disabled { opacity: 0.55; cursor: not-allowed; transform: none; }
+
+.doar-again {
+  width: 100%;
+  height: 42px;
+  margin-top: 16px;
+  background: none;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  color: var(--muted);
+  font-family: var(--font-body);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: color 0.15s ease, border-color 0.15s ease;
+}
+.doar-again:hover { color: var(--text); border-color: var(--accent); }
+
+.doar-footnote {
+  margin: 20px 0 0;
+  text-align: center;
+  font-size: 11.5px;
+  line-height: 1.5;
+  color: var(--muted);
+}
+.doar-footnote strong { color: var(--accent-text); font-weight: 600; }
+
+@media (min-width: 600px) {
+  .doar-hero { margin-bottom: 28px; }
+  .doar-host-name { font-size: 38px; }
+  .doar-card { padding: 30px; }
+}

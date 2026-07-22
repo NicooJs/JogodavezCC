@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="pt-BR" data-theme="ametista">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Doar — Leilão de Jogos</title>
+<meta name="referrer" content="no-referrer" />
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Abril+Fatface&family=Nunito:ital,wght@0,500;0,600;0,700;1,500;1,600;1,700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/css/style.css" />
+<link rel="stylesheet" href="/css/doar.css" />
+</head>
+<body class="doar-body">
+  <div class="page doar-page">
+    <header class="doar-topbar">
+      <a class="doar-brand" href="/">
+        <span class="doar-brand-dot" aria-hidden="true"></span>
+        Leilão de Jogos
+      </a>
+      <a class="doar-board-link" id="doar-board-link" href="#">Ver placar ao vivo →</a>
+    </header>
+
+    <main class="doar-main">
+      <div class="doar-hero">
+        <div class="doar-avatar-wrap">
+          <img class="doar-avatar" id="doar-avatar" alt="" hidden />
+          <span class="doar-avatar-fallback" id="doar-avatar-fallback" aria-hidden="true"></span>
+        </div>
+        <p class="doar-eyebrow">apoie</p>
+        <h1 class="doar-host-name" id="doar-host-name">Streamer</h1>
+        <p class="doar-leilao-title" id="doar-leilao-title" hidden></p>
+      </div>
+
+      <div class="doar-card">
+        <div class="doar-state doar-loading" id="doar-loading">
+          <span class="doar-spinner" aria-hidden="true"></span>
+          Carregando…
+        </div>
+
+        <div class="doar-state doar-closed" id="doar-closed" hidden>
+          <svg class="icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 3.5l7.5 13h-15l7.5-13z"/><path d="M10 8.5v3.2"/><circle cx="10" cy="14.2" r="0.9" fill="currentColor" stroke="none"/></svg>
+          <p>Esse leilão não está recebendo doações no momento.</p>
+        </div>
+
+        <form class="doar-step" id="doar-step-form" hidden autocomplete="off">
+          <div class="modal-field">
+            <span class="modal-label">ação</span>
+            <div class="seg" id="doar-action">
+              <button type="button" data-action="add" class="active">Apoiar (+)</button>
+              <button type="button" data-action="remove">Sabotar (−)</button>
+            </div>
+          </div>
+
+          <div class="modal-field">
+            <label class="modal-label" for="doar-game">jogo</label>
+            <input type="text" id="doar-game" class="modal-input" placeholder="nome do jogo" autocomplete="off" />
+          </div>
+
+          <div class="modal-field">
+            <label class="modal-label" for="doar-amount">valor</label>
+            <div class="amount-wrap modal-amount">
+              <span class="amount-prefix">R$</span>
+              <input type="number" id="doar-amount" placeholder="0,00" step="0.01" min="1" inputmode="decimal" />
+            </div>
+            <div class="doar-quick-amounts" id="doar-quick-amounts">
+              <button type="button" data-amount="5">R$ 5</button>
+              <button type="button" data-amount="10">R$ 10</button>
+              <button type="button" data-amount="20">R$ 20</button>
+              <button type="button" data-amount="50">R$ 50</button>
+            </div>
+          </div>
+
+          <div class="modal-field">
+            <label class="modal-label" for="doar-name">seu nome <span class="modal-opt">(opcional)</span></label>
+            <input type="text" id="doar-name" class="modal-input" placeholder="anônimo" autocomplete="off" />
+          </div>
+
+          <p class="modal-error" id="doar-error" hidden></p>
+
+          <button class="doar-submit" id="doar-submit" type="submit">Gerar Pix →</button>
+        </form>
+
+        <div class="doar-step" id="doar-step-pix" hidden>
+          <div class="donate-qr-wrap">
+            <img class="donate-qr" id="doar-qr-img" alt="QR code Pix" />
+          </div>
+          <div class="donate-copy-wrap">
+            <input type="text" id="doar-copy-input" class="modal-input" readonly />
+            <button class="btn-mini" id="doar-copy-btn" type="button">Copiar</button>
+          </div>
+          <p class="donate-waiting">
+            <span class="donate-waiting-dot" aria-hidden="true"></span>
+            Aguardando pagamento…
+          </p>
+          <button class="doar-again" id="doar-back-btn" type="button">← Mudar valor</button>
+        </div>
+
+        <div class="doar-step donate-step-success" id="doar-step-success" hidden>
+          <div class="donate-success-icon" aria-hidden="true">✓</div>
+          <p class="donate-success-text">Pagamento confirmado — valeu!</p>
+          <button class="doar-again" id="doar-again-btn" type="button">Doar de novo</button>
+        </div>
+      </div>
+
+      <p class="doar-footnote">Pagamento processado pelo Mercado Pago — o valor cai direto na conta de <strong id="doar-footnote-host">streamer</strong>, menos a taxa da plataforma.</p>
+    </main>
+  </div>
+
+  <script src="/socket.io/socket.io.js"></script>
+  <script src="/js/doar.js"></script>
+</body>
+</html>

@@ -966,6 +966,15 @@ app.get("/l/:id", (req, res) => {
   res.sendFile(path.join(__dirname, "public", "board.html"));
 });
 
+// Página de doação standalone -- o mesmo fluxo do modal "Doar" do board,
+// só que como link próprio (sem precisar abrir o board e achar o botão),
+// pra dar pro streamer fixar/compartilhar direto no chat da live.
+app.get("/l/:id/doar", (req, res) => {
+  if (!registry.leilaoExists(req.params.id)) return res.status(404).send("Leilão não encontrado");
+  res.set("Referrer-Policy", "no-referrer");
+  res.sendFile(path.join(__dirname, "public", "doar.html"));
+});
+
 // ---------- rotas públicas (id-scoped) ----------
 
 app.get("/api/l/:id/leaderboard", loadLeilao, (req, res) => {
@@ -1014,9 +1023,20 @@ app.post("/api/l/:id/doacao", loadLeilao, async (req, res) => {
   const parsed = parseMessage(`${action === "remove" ? "-" : "+"}${name}`);
   if (!parsed) return res.status(400).json({ error: "Nome de jogo inválido" });
 
-  const meta = registry.getLeilaoMeta(leilaoId);
-  const ownerTwitchUserId = meta && meta.ownerTwitchUserId;
-  const streamer = ownerTwitchUserId ? await streamersStore.findByTwitchUserId(ownerTwitchUserId) : null;
+  let streamer;
+  try {
+    const meta = registry.getLeilaoMeta(leilaoId);
+    const ownerTwitchUserId = meta && meta.ownerTwitchUserId;
+    streamer = ownerTwitchUserId ? await streamersStore.findByTwitchUserId(ownerTwitchUserId) : null;
+  } catch (err) {
+    // Erro de verdade no Postgres (ex: instância fora do ar) -- sem esse
+    // catch, isso vira uma promise rejeitada sem handler e derruba o
+    // processo Node inteiro (Node 15+ mata o processo em unhandled
+    // rejection), tirando do ar TODOS os leilões de uma vez, não só essa
+    // doação. Achado real testando local sem DATABASE_URL configurado.
+    console.error(`[doação] erro ao buscar streamer (leilaoId="${leilaoId}"):`, err.message);
+    return res.status(502).json({ error: "Não foi possível verificar a conexão com o Mercado Pago agora. Tente de novo em instantes." });
+  }
   if (!streamer) {
     return res.status(409).json({ error: "O streamer ainda não conectou o Mercado Pago nesse leilão -- avise ele." });
   }
@@ -1027,15 +1047,20 @@ app.post("/api/l/:id/doacao", loadLeilao, async (req, res) => {
   const cleanDonorUsername = (donorUsername || "").trim().slice(0, 60) || "Anônimo";
   const rawMessage = `${action === "remove" ? "-" : "+"}${name}`;
 
-  await paymentsStore.createPending({
-    leilaoId,
-    streamerId: streamer.id,
-    externalReference,
-    valorTotalCents,
-    applicationFeeCents,
-    donorUsername: cleanDonorUsername,
-    donorMessage: rawMessage,
-  });
+  try {
+    await paymentsStore.createPending({
+      leilaoId,
+      streamerId: streamer.id,
+      externalReference,
+      valorTotalCents,
+      applicationFeeCents,
+      donorUsername: cleanDonorUsername,
+      donorMessage: rawMessage,
+    });
+  } catch (err) {
+    console.error(`[doação] erro ao registrar pagamento pendente (leilaoId="${leilaoId}"):`, err.message);
+    return res.status(502).json({ error: "Não foi possível gerar o Pix agora. Tente de novo em instantes." });
+  }
 
   try {
     // Placeholder de email: o doador não faz cadastro nenhum aqui, só
