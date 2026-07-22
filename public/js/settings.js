@@ -105,21 +105,26 @@ mpWarningLinkEl.addEventListener("click", requireLoginThenOpenSettings);
 settingsCloseEl.addEventListener("click", closeSettingsModal);
 settingsOverlayEl.addEventListener("click", (e) => { if (e.target === settingsOverlayEl) closeSettingsModal(); });
 
-// Link pra página standalone de doação (ver public/doar.html) -- fixo por
-// leilão, não depende de nada do placar, então só precisa ser montado uma
-// vez (diferente de renderSettingsFromLeaderboard, que roda a cada update).
-const donateLinkInputEl = document.getElementById("donate-link-input");
-donateLinkInputEl.value = `${location.origin}/l/${LEILAO_ID}/doar`;
-document.getElementById("donate-link-copy").addEventListener("click", async () => {
-  const btn = document.getElementById("donate-link-copy");
-  try {
-    await navigator.clipboard.writeText(donateLinkInputEl.value);
-    btn.textContent = "Copiado!";
-    setTimeout(() => { btn.textContent = "Copiar"; }, 1500);
-  } catch (err) {
-    donateLinkInputEl.select();
-  }
-});
+// Link pra página standalone de doação (ver public/doar.html) e pro
+// overlay de alerta (ver public/alerta.html) -- fixos por leilão, não
+// dependem de nada do placar, então só precisam ser montados uma vez
+// (diferente de renderSettingsFromLeaderboard, que roda a cada update).
+function wireCopyLink(inputId, btnId, path) {
+  const inputEl = document.getElementById(inputId);
+  inputEl.value = `${location.origin}/l/${LEILAO_ID}${path}`;
+  document.getElementById(btnId).addEventListener("click", async () => {
+    const btn = document.getElementById(btnId);
+    try {
+      await navigator.clipboard.writeText(inputEl.value);
+      btn.textContent = "Copiado!";
+      setTimeout(() => { btn.textContent = "Copiar"; }, 1500);
+    } catch (err) {
+      inputEl.select();
+    }
+  });
+}
+wireCopyLink("donate-link-input", "donate-link-copy", "/doar");
+wireCopyLink("alert-link-input", "alert-link-copy", "/alerta");
 
 // ---- diálogos genéricos (promptDialog/confirmDialog) no lugar de
 // prompt()/confirm() nativos -- ver uso nos 5 pontos de chamada abaixo ----

@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="pt-BR" data-theme="ametista">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Alerta de doação — Leilão de Jogos</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Abril+Fatface&family=Nunito:ital,wght@0,600;0,700;1,600;1,700&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/css/style.css" />
+<link rel="stylesheet" href="/css/alerta.css" />
+</head>
+<body class="alerta-body">
+  <div class="alerta-card" id="alerta-card" hidden>
+    <span class="alerta-icon" id="alerta-icon" aria-hidden="true">+</span>
+    <div class="alerta-text">
+      <p class="alerta-line">
+        <span class="alerta-donor" id="alerta-donor">Alguém</span>
+        <span class="alerta-action" id="alerta-action">apoiou</span>
+      </p>
+      <p class="alerta-game" id="alerta-game">Nome do Jogo</p>
+      <p class="alerta-amount" id="alerta-amount">R$ 0,00</p>
+    </div>
+  </div>
+
+  <script src="/socket.io/socket.io.js"></script>
+  <script src="/js/alerta.js"></script>
+</body>
+</html>

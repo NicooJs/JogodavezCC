@@ -975,6 +975,17 @@ app.get("/l/:id/doar", (req, res) => {
   res.sendFile(path.join(__dirname, "public", "doar.html"));
 });
 
+// Overlay de alerta pra Browser Source do OBS/Streamlabs -- fundo
+// transparente, mostra um card animado a cada doação de verdade (ver
+// public/js/alerta.js). Página própria (não o board) porque um Browser
+// Source precisa de uma URL fixa e isolada, sem nenhum outro elemento do
+// site por trás.
+app.get("/l/:id/alerta", (req, res) => {
+  if (!registry.leilaoExists(req.params.id)) return res.status(404).send("Leilão não encontrado");
+  res.set("Referrer-Policy", "no-referrer");
+  res.sendFile(path.join(__dirname, "public", "alerta.html"));
+});
+
 // ---------- rotas públicas (id-scoped) ----------
 
 app.get("/api/l/:id/leaderboard", loadLeilao, (req, res) => {

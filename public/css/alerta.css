@@ -1,0 +1,107 @@
+/* Overlay de alerta de doação pro OBS/Streamlabs (Browser Source) --
+   fundo TEM que ficar transparente (não var(--bg) sólido, que o resto do
+   site usa em html/body via style.css) pra sobrepor o jogo/webcam sem
+   caixa preta atrás. A textura de ruído (body::before em style.css)
+   também é desligada aqui pelo mesmo motivo -- ela é sutil o bastante
+   sobre --bg, mas fica visível/feia sobre qualquer imagem de verdade. */
+html, body {
+  background: transparent !important;
+  overflow: hidden;
+}
+body::before { display: none; }
+
+.alerta-body {
+  width: 100vw;
+  height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.alerta-card {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  padding: 20px 30px 20px 22px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  box-shadow: 0 24px 60px -16px rgba(0, 0, 0, 0.7), 0 0 0 1px rgba(0, 0, 0, 0.4);
+  opacity: 0;
+  transform: translateY(18px) scale(0.94);
+}
+.alerta-card[hidden] { display: none; }
+
+.alerta-card.is-in {
+  animation: alerta-in 0.55s var(--ease) forwards;
+}
+.alerta-card.is-out {
+  animation: alerta-out 0.35s ease-in forwards;
+}
+
+@keyframes alerta-in {
+  from { opacity: 0; transform: translateY(18px) scale(0.94); }
+  60% { opacity: 1; transform: translateY(-4px) scale(1.02); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+@keyframes alerta-out {
+  from { opacity: 1; transform: translateY(0) scale(1); }
+  to { opacity: 0; transform: translateY(-14px) scale(0.96); }
+}
+
+.alerta-icon {
+  flex-shrink: 0;
+  width: 56px;
+  height: 56px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  font-family: var(--font-mono);
+  font-size: 30px;
+  font-weight: 700;
+  line-height: 1;
+  background: var(--accent-bg);
+  color: var(--positive);
+  border: 2px solid var(--positive);
+}
+.alerta-icon.is-remove {
+  background: var(--danger-bg);
+  color: var(--danger);
+  border-color: var(--danger);
+}
+
+.alerta-text { display: flex; flex-direction: column; gap: 2px; }
+
+.alerta-line { margin: 0; display: flex; align-items: baseline; gap: 6px; flex-wrap: wrap; }
+
+.alerta-donor {
+  font-family: var(--font-body);
+  font-size: 17px;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.alerta-action {
+  font-family: var(--font-body);
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--muted);
+}
+
+.alerta-game {
+  margin: 1px 0 0;
+  font-family: var(--font-title);
+  font-size: 24px;
+  font-weight: 400;
+  line-height: 1.1;
+  color: var(--accent-text);
+}
+
+.alerta-amount {
+  margin: 3px 0 0;
+  font-family: var(--font-mono);
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text);
+}
