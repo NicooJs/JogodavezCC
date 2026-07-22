@@ -1075,11 +1075,14 @@ app.post("/api/l/:id/doacao", loadLeilao, async (req, res) => {
 
   try {
     // Placeholder de email: o doador não faz cadastro nenhum aqui, só
-    // escolhe um nome de exibição -- se o Pix da API do MP exigir um
-    // payer.email validado de verdade (não confirmado ainda, precisa de
-    // teste contra o sandbox real), isso vai precisar virar um campo
-    // real no modal (Fase 5).
-    const payerEmail = `${normalizeKey(cleanDonorUsername).replace(/\s+/g, ".") || "doador"}@doador.leilao-de-jogos.local`;
+    // escolhe um nome de exibição. Confirmado em produção (2026-07-22):
+    // a API do MP valida o FORMATO do e-mail (não a entrega -- nunca
+    // manda nada pra cá) e recusa qualquer domínio ".local" com "payer.email
+    // must be a valid email", porque .local é um TLD reservado (uso só em
+    // rede local, junto com .test/.invalid/.localhost) que validadores de
+    // e-mail tratam como inválido de propósito. .com resolve por ser um
+    // TLD comum de verdade, mesmo esse domínio específico não existindo.
+    const payerEmail = `${normalizeKey(cleanDonorUsername).replace(/\s+/g, ".") || "doador"}@doador.leilao-de-jogos.com`;
     const payment = await mpApi.createPixPayment({
       accessToken: streamer.accessToken,
       transactionAmountCents: valorTotalCents,
