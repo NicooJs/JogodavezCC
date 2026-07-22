@@ -1,9 +1,7 @@
-/* Overlay de alerta de doação pro OBS/Streamlabs (Browser Source) --
-   fundo TEM que ficar transparente (não var(--bg) sólido, que o resto do
-   site usa em html/body via style.css) pra sobrepor o jogo/webcam sem
-   caixa preta atrás. A textura de ruído (body::before em style.css)
-   também é desligada aqui pelo mesmo motivo -- ela é sutil o bastante
-   sobre --bg, mas fica visível/feia sobre qualquer imagem de verdade. */
+/* Fundo precisa ficar transparente (não o --bg sólido do resto do site)
+   pra sobrepor jogo/webcam sem caixa preta atrás. Textura de ruído
+   (body::before em style.css) desligada pelo mesmo motivo -- fica feia
+   sobre qualquer imagem de verdade. */
 html, body {
   background: transparent !important;
   overflow: hidden;

@@ -1,23 +1,13 @@
-// Fundo animado da tela de criação, versão "fluido de verdade" -- simulação
-// de dinâmica de fluidos (Navier-Stokes, método "stable fluids") rodando em
-// shaders WebGL, reagindo ao cursor. Referência visual: o usuário mandou
-// https://21st.dev/@uniquesonu/components/smokey-cursor-effect (componente
-// React que descreve a própria técnica: "simulation uses WebGL shaders to
-// create realistic fluid dynamics in real-time"). Isso aqui é uma
-// implementação nossa, vanilla, dessa técnica bem conhecida -- não código
-// copiado do componente deles (que é React/Tailwind, framework diferente).
-//
-// Sem lib nova nenhuma: é só JS + strings de GLSL, carregado puro pelo
-// navegador, mesma filosofia zero-dependência do resto do projeto (só que
-// aqui nem tem import nenhum -- WebGL é API nativa do browser).
+// Fundo animado da tela de criação: simulação "stable fluids" (Navier-Stokes)
+// rodando em shaders WebGL, reagindo ao cursor. Sem dependência nova: só JS
+// + strings GLSL, WebGL é API nativa do navegador.
 //
 // Pipeline por frame: splat (injeta cor+velocidade no cursor) -> curl
-// (vorticidade) -> vorticity confinement (realimenta rotação, é isso que dá
-// o "redemoinho" de fumaça) -> divergence -> pressure (Jacobi, ~20
-// iterações) -> gradient subtraction (tira a divergência da velocidade) ->
-// advection (arrasta velocidade e cor pelo campo). Cada campo (velocidade,
-// densidade/cor, pressão) vive em um par de texturas ping-pong (framebuffer
-// A/B, troca de qual é "leitura" e qual é "escrita" a cada passo).
+// (vorticidade) -> vorticity confinement (realimenta a rotação, gera o
+// redemoinho) -> divergence -> pressure (Jacobi, ~20 iterações) -> gradient
+// subtraction (remove a divergência da velocidade) -> advection (arrasta
+// velocidade e cor pelo campo). Cada campo (velocidade, cor, pressão) vive
+// num par de texturas ping-pong (framebuffer A/B, trocados a cada passo).
 
 const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 const canvas = document.getElementById("create-fx-canvas");
@@ -26,19 +16,15 @@ if (canvas && !reduceMotion) {
   try {
     startFluid(canvas);
   } catch (err) {
-    // WebGL indisponível, extensão faltando, shader não compilou, etc --
-    // degrade seguro: o fundo sólido do tema (--bg) já está sempre por
-    // baixo do canvas (que só não desenha nada em cima dele nesse caso).
+    // Degrade seguro: o --bg sólido do tema sempre fica por baixo do canvas.
     console.error("Fundo de fluido não iniciou, seguindo com fundo sólido:", err.message);
   }
 }
 
 function startFluid(canvas) {
-  // Ajustado pra baixo depois de ver rodando de verdade -- valores de
-  // referência de simulação de fluido (tipo o componente que o cliente
-  // mandou) são pensados pra demo de vitrine, não pra fundo discreto atrás
-  // de formulário de verdade. CURL/FORCE/RADIUS menores = redemoinho mais
-  // contido; DISSIPATION maior = some mais rápido, sem acumular.
+  // Ajustado abaixo dos valores padrão de demo: CURL/FORCE/RADIUS menores
+  // contêm o redemoinho, DISSIPATION maior some mais rápido sem acumular
+  // atrás do formulário.
   const config = {
     SIM_RESOLUTION: 128,
     DYE_RESOLUTION: 512,
@@ -238,12 +224,8 @@ function startFluid(canvas) {
     }
   `);
 
-  // uBrightness + tone mapping (c/(1+c)) garantem um teto de brilho -- sem
-  // isso, acumular fumaça numa área (mouse parado ali, ou vários splats
-  // seguidos) empurra a cor pra perto do branco puro, que é exatamente o
-  // problema relatado: por trás de texto claro, isso apaga o contraste e
-  // "apaga a escrita". Com o teto, não importa quanto acumule, nunca chega
-  // perto do branco.
+  // uBrightness + tone mapping (c/(1+c)) limitam o brilho pra a cor
+  // acumulada nunca chegar perto do branco e apagar o contraste do texto.
   const displayShader = compileShader(gl, gl.FRAGMENT_SHADER, `
     precision highp float;
     precision highp sampler2D;
@@ -300,11 +282,8 @@ function startFluid(canvas) {
     return { width: min, height: max };
   }
 
-  // --- cor: sempre puxada do tema (var(--accent) etc), nunca fixa. A tela
-  // de criação não troca de tema ao vivo (diferente do board), então lê uma
-  // vez só no início. --positive entra pra dar variedade de matiz (é um
-  // token fixo entre temas, já usado decorativamente em outros lugares do
-  // site, tipo o ícone de moeda do título do board).
+  // Cor sempre vem do tema (var(--accent) etc), lida uma vez só já que a
+  // tela de criação não troca de tema ao vivo como o board.
   function hexToRgb(hex) {
     const clean = hex.trim().replace("#", "");
     const full = clean.length === 3 ? clean.split("").map((c) => c + c).join("") : clean;
@@ -322,15 +301,12 @@ function startFluid(canvas) {
 
   function nextColor() {
     const base = palette[Math.floor(Math.random() * palette.length)];
-    // intensidade baixa de propósito (fundo discreto, não vitrine) + leve
-    // variação pra não repetir sempre o mesmo tom exato
     const k = 0.28 + Math.random() * 0.22;
     return [base[0] * k, base[1] * k, base[2] * k];
   }
 
-  // --- ponteiro: um listener só na window (não no canvas), assim
-  // .create-bg continua com pointer-events:none e não existe risco nenhum
-  // de roubar clique do formulário.
+  // Listener na window, não no canvas, assim .create-bg continua
+  // pointer-events:none e nunca rouba clique do formulário.
   const pointer = { x: 0.5, y: 0.5, prevX: 0.5, prevY: 0.5, moved: false };
   let lastMoveAt = performance.now();
 
@@ -338,9 +314,8 @@ function startFluid(canvas) {
     pointer.prevX = pointer.x;
     pointer.prevY = pointer.y;
     pointer.x = e.clientX / window.innerWidth;
-    // Y invertido: UV do WebGL cresce de baixo pra cima, coordenada de
-    // mouse cresce de cima pra baixo -- sem inverter aqui, o rastro sai de
-    // cabeça pra baixo em relação ao cursor de verdade.
+    // UV do WebGL cresce de baixo pra cima, Y do mouse cresce de cima pra
+    // baixo -- sem inverter, o rastro sai de cabeça pra baixo.
     pointer.y = 1 - e.clientY / window.innerHeight;
     pointer.moved = true;
     lastMoveAt = performance.now();
@@ -477,8 +452,7 @@ function startFluid(canvas) {
   function update() {
     const now = performance.now();
     let dt = (now - lastUpdateAt) / 1000;
-    dt = Math.min(dt, 0.0334); // capa em ~2 frames de 60fps -- sem isso, voltar de uma aba
-                               // em segundo plano dá um "dt" gigante e a simulação explode
+    dt = Math.min(dt, 0.0334); // capa em ~2 frames a 60fps -- voltar de aba em segundo plano dá um dt gigante e a simulação explode
     lastUpdateAt = now;
 
     resizeCanvasIfNeeded();

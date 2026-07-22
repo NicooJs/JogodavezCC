@@ -1,25 +1,19 @@
-// Anima a entrada da tela de criação (título palavra por palavra, resto do
-// conteúdo em sequência) e monta a tira de prova social com dado real —
-// GET /api/ranking, o mesmo endpoint que já alimenta o ranking do board,
-// então segue a mesma fronteira de privacidade de quem já pediu pra
-// esconder o total (hideTotalRaised) sem precisar reimplementar nada disso
+// Tira de prova social reaproveita GET /api/ranking (mesmo endpoint do
+// board), então já respeita hideTotalRaised sem reimplementar essa lógica
 // aqui.
 //
-// import() dinâmico (não import estático no topo) de propósito: se o CDN
-// do Motion falhar (rede, ad-blocker, etc.), cai no catch e revela tudo na
-// marra em vez de deixar a página com conteúdo escondido pra sempre — os
-// elementos animados começam com opacity:0 no CSS (.reveal-item,
-// .create-word em create.css), então SEMPRE precisam de alguém revelando,
-// com ou sem a animação de verdade.
+// import() dinâmico (não estático) de propósito: se o CDN do Motion
+// falhar, o catch revela o conteúdo na hora em vez de deixá-lo preso em
+// opacity:0 pra sempre (.reveal-item/.create-word começam escondidos no
+// CSS e dependem do JS pra revelar, com ou sem animação).
 const titleEl = document.getElementById("create-title");
 const revealEls = [...document.querySelectorAll(".reveal-item")];
 const proofEl = document.getElementById("create-proof");
 const proofAvatarsEl = document.getElementById("create-proof-avatars");
 const proofTextEl = document.getElementById("create-proof-text");
 
-// Quebra o título em palavras dentro de spans, pra animar uma de cada vez.
-// aria-label no <h1> (já no HTML) garante que leitor de tela anuncia a
-// frase inteira, não palavra por palavra dos spans.
+// Quebra em spans por palavra pra animar em sequência; aria-label no <h1>
+// (no HTML) mantém leitor de tela anunciando a frase inteira.
 function splitTitleIntoWords(el) {
   const words = el.textContent.trim().split(/\s+/);
   el.innerHTML = words.map((w) => `<span class="create-word">${w}</span>`).join(" ");

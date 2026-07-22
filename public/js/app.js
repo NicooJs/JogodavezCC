@@ -1,6 +1,4 @@
-// A página do board é servida em /l/<id> — o id é a única coisa que
-// diferencia o leilão de um streamer do de outro, então tudo (fetch, socket)
-// passa por ele.
+// /l/<id> — id filtra todo fetch/socket abaixo pra esse leilão.
 const LEILAO_ID = location.pathname.match(/^\/l\/([a-z0-9_-]+)/i)?.[1] || null;
 if (!LEILAO_ID) {
   document.body.innerHTML = '<p style="padding:40px;font-family:sans-serif;color:#ccc;background:#1c1c1f;">Link de leilão inválido. Volte pra <a href="/" style="color:#ff7a45;">criar ou achar o seu</a>.</p>';
@@ -75,8 +73,8 @@ const donorSuggestionsEl = document.getElementById("donor-suggestions");
 const TIMER_RING_CIRCUMFERENCE = 2 * Math.PI * 28;
 
 let timerEndsAt = null;
-let timerDurationMs = 5 * 60 * 1000; // atualizado a cada "update" com o valor real do server
-let isOpenState = null; // null = ainda não recebemos a primeira atualização
+let timerDurationMs = 5 * 60 * 1000; // placeholder, atualizado no primeiro "update"
+let isOpenState = null; // null = antes do primeiro "update"
 let isPausedState = false;
 let pausedRemainingMs = null;
 let mpDisconnectedState = false;
@@ -102,23 +100,9 @@ function escapeHtml(str) {
   }[c]));
 }
 
-// Título vira letra->ícone de vez em quando (só a 1ª ocorrência de cada
-// letra mapeada, sempre na mesma posição enquanto o texto não mudar). O
-// título é texto livre que o streamer digitou em "Título exibido no
-// placar" (settings), não uma palavra fixa -- não dá pra mirar posição por
-// palavra (tipo "L de Leilão") como na referência que o cliente mandou,
-// porque pode ser "Bora zerar a live" ou qualquer outra coisa. Em vez
-// disso mira 5 letras comuns em português, cada uma com seu ícone -- na
-// prática a maioria dos títulos acerta 3-4 delas de uma vez, o que já dá
-// bastante coisa transicionando ao mesmo tempo sem precisar repetir a
-// mesma letra várias vezes (o que ficava poluído em título com "o" ou "a"
-// repetido). Cores: moeda fixa em --positive (mesmo token de
-// apoiar/dinheiro no resto do site), troféu em --silver e dado em --bronze
-// (mesmos tokens de medalha de prata/bronze), controle e estrela seguem o
-// tema (--accent/--accent-text) -- todas emprestadas do sistema de tema já
-// existente, nenhuma cor nova inventada. Se o título não tiver nenhuma
-// dessas letras, ou o Motion não carregar, fica só o texto normal (degrade
-// seguro).
+// Título é texto livre (definido pelo streamer), não uma palavra fixa, então
+// os ícones miram 5 letras comuns em português (só a 1ª ocorrência de cada)
+// em vez de uma posição fixa. Sem match ou sem Motion, fica só o texto normal.
 const TITLE_SWAP_ICONS = {
   o: {
     className: "icon-coin",
@@ -152,7 +136,7 @@ function buildBrandTitleHtml(text) {
   }).join("");
 }
 
-let animateTitleSwapIcon = null; // cacheia o import do Motion (mesmo padrão de bounceRankingIcon)
+let animateTitleSwapIcon = null; // import do Motion, cacheado
 async function animateBrandTitleSwaps() {
   const swaps = [...titleEl.querySelectorAll(".title-swap")];
   if (!swaps.length || window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
@@ -170,9 +154,8 @@ async function animateBrandTitleSwaps() {
   }
 }
 
-// Só reconstrói quando o texto muda de verdade -- "update" chega a cada
-// doação/timer/etc, e refazer o DOM + reiniciar a animação toda vez faria
-// os ícones nunca completarem um ciclo num leilão movimentado.
+// "update" chega a cada doação/timer; sem essa guarda a animação dos
+// ícones reiniciaria antes de completar um ciclo.
 let lastRenderedTitle = null;
 function renderBrandTitle(text) {
   if (text === lastRenderedTitle) return;
@@ -189,10 +172,7 @@ function bumpValue(el, text) {
   el.classList.add("tick");
 }
 
-// Filete de luz percorrendo a pílula do total (ver .topbar-total.beam em
-// style.css) -- remove/força reflow/readiciona pra reiniciar a animação CSS
-// mesmo se ela ainda tiver rodando de uma mudança de valor anterior bem
-// recente, mesmo truque do remove/offsetWidth/add acima.
+// remove/reflow/readiciona pra reiniciar a animação CSS mesmo se ainda rodando
 function flashTotalBeam() {
   topbarTotalEl.classList.remove("beam");
   void topbarTotalEl.offsetWidth;
@@ -204,8 +184,7 @@ function setStatus(online) {
   statusTextEl.textContent = online ? "ao vivo" : "reconectando…";
 }
 
-// Só mostra o aviso no modo apresentador — não faz sentido (e pode
-// confundir espectador) aparecer isso no board público.
+// Aviso só no modo apresentador; confundiria o espectador no board público.
 function updateWebhookWarning() {
   const active = document.body.classList.contains("presenter-mode");
   webhookWarningEl.hidden = !(active && mpDisconnectedState);
@@ -276,9 +255,7 @@ function thumbHtml(item, className) {
     : `<div class="${className} ${className}-placeholder">${escapeHtml((item.name[0] || "?").toUpperCase())}</div>`;
 }
 
-// Medalha (coroa/prata/bronze) pros 3 primeiros do leilão — mesmo desenho
-// pros três, só a cor muda (herda a cor já definida por .lot-card.rank-N).
-// O losango no centro ecoa a marca do site (o losango ao lado do título).
+// Mesmo desenho pro top-3, cor vem de .lot-card.rank-N via currentColor.
 const MEDAL_ICON_SVG = `<svg class="medal-icon" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
   <path d="M7.5 11L4.5 17.5L7.3 16.6L9 19L10.8 14.8" fill="currentColor" opacity="0.85"/>
   <path d="M12.5 11L15.5 17.5L12.7 16.6L11 19L9.2 14.8" fill="currentColor" opacity="0.85"/>
@@ -286,8 +263,6 @@ const MEDAL_ICON_SVG = `<svg class="medal-icon" viewBox="0 0 20 20" fill="none" 
   <rect x="8.6" y="6.1" width="2.8" height="2.8" fill="currentColor" transform="rotate(45 10 7.5)"/>
 </svg>`;
 
-// Raio pra "recorde de doação" no recap (ver renderRecap) -- ícone
-// desenhado no lugar de emoji, mesma disciplina do resto do app.
 const RECORD_BOLT_ICON_SVG = `<svg viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
   <path d="M11 2.5 4.5 11.5h4.2L8 17.5l7.5-9.5h-4.5L11 2.5z" fill="currentColor"/>
 </svg>`;
@@ -346,12 +321,8 @@ function lotCardInnerHtml(item, barPct, hitBadge, changed) {
   `;
 }
 
-// Lance de peso (mais de R$100 num único apoio/sabotagem): efeito mais
-// chamativo que o flash normal — confete pra apoio, faíscas vermelhas pra
-// sabotagem. burst é position:fixed ancorado no retângulo do card (não
-// filho dele) — anexar dentro do card cortava quase tudo pelo
-// overflow:hidden que ele usa pra imagem de fundo, deixando o efeito quase
-// invisível na prática.
+// burst é position:fixed ancorado no rect do card, não filho dele -- o
+// overflow:hidden do card (pra imagem de fundo) cortaria o efeito.
 function triggerBigWinCelebration(key, type) {
   const card = lotListEl.querySelector(`.lot-card[data-key="${CSS.escape(key)}"]`);
   if (!card) return;
@@ -386,10 +357,8 @@ function triggerBigWinCelebration(key, type) {
   setTimeout(() => burst.remove(), 2900);
 }
 
-// Placar que se mexe ao vivo: em vez de recriar tudo a cada atualização,
-// reaproveita os cards existentes (por data-key) e só reordena via
-// appendChild — assim dá pra medir a posição antes/depois (técnica FLIP) e
-// os lotes deslizam suavemente pra nova posição no ranking.
+// Reaproveita os cards existentes por data-key e reordena via appendChild
+// (técnica FLIP abaixo) em vez de recriar o DOM a cada update.
 function renderLots(items, flashKey, flashType, lastSabotagedKey, qualifyCount) {
   lotCountEl.textContent = String(items.length);
 
@@ -437,9 +406,7 @@ function renderLots(items, flashKey, flashType, lastSabotagedKey, qualifyCount) 
     card.innerHTML = lotCardInnerHtml(item, barPct, hitBadge, changed);
     lotListEl.appendChild(card);
 
-    // Linha de corte entre os classificados e o resto do catálogo — quantos
-    // contam como classificados é configurável por leilão (ver
-    // getQualifyCount no server.js, painel de configurações), não fixo em 3.
+    // qualifyCount é config por leilão (ver getQualifyCount em server.js), não fixo em 3.
     if (item.rank === qualifyCount && items.length > qualifyCount) {
       let divider = lotListEl.querySelector(".qualify-divider");
       if (!divider) {
@@ -468,9 +435,8 @@ function renderLots(items, flashKey, flashType, lastSabotagedKey, qualifyCount) 
     });
   });
 
-  // FLIP: inverte pro deslocamento anterior e anima de volta a zero. Conta
-  // deltaX também (não só deltaY) — na arena em grade de 2 colunas, um lote
-  // pode mudar de coluna ao subir/descer no ranking, não só de linha.
+  // FLIP: conta deltaX também, não só deltaY — na grade de 2 colunas um
+  // lote pode trocar de coluna ao mudar de posição, não só de linha.
   requestAnimationFrame(() => {
     lotListEl.querySelectorAll(".lot-card").forEach((el) => {
       const first = firstRects.get(el.dataset.key);
@@ -493,10 +459,8 @@ function renderLots(items, flashKey, flashType, lastSabotagedKey, qualifyCount) 
     if (flashedCard) {
       setTimeout(() => {
         flashedCard.classList.remove("flash-add", "flash-remove");
-        // Vira o badge persistente em vez de simplesmente sumir — sem isso
-        // ficava um buraco vazio até o próximo evento qualquer forçar um
-        // re-render (achado testando: o badge sumia de vez depois de 4s e
-        // só voltava se algo mais acontecesse no leilão).
+        // Vira badge persistente em vez de sumir -- sem isso ficava um
+        // buraco até o próximo re-render qualquer.
         const badge = flashedCard.querySelector(".badge-hit:not(.badge-hit-last)");
         if (badge) {
           badge.textContent = "último sabotado";
@@ -635,13 +599,8 @@ async function loadInitialHistory() {
   }
 }
 
-// Anéis pontilhados girando atrás do "Vencedor!" -- referência do cliente
-// era um shader WebGL de "dithering" (DitheringShader shape="swirl":
-// https://21st.dev/@designali-in/components/swirl). Mesma matemática
-// (ângulo+raio, anel concêntrico com fase ondulando por ângulo, girando no
-// tempo), só que em Canvas2D em vez de shader -- pra um flash de ~2.2s não
-// compensa montar outro pipeline WebGL inteiro (diferente do fundo da
-// tela de criação, que é permanente e por isso valeu o investimento).
+// Anéis pontilhados girando atrás do "Vencedor!", em Canvas2D em vez de
+// shader WebGL -- não compensa montar um pipeline WebGL pra um flash de ~2.2s.
 const soldSwirlCanvasEl = document.getElementById("sold-swirl-canvas");
 const soldSwirlCtx = soldSwirlCanvasEl.getContext("2d");
 let soldSwirlRaf = null;
@@ -695,8 +654,6 @@ function startSwirl() {
   soldSwirlRaf = requestAnimationFrame(frame);
 }
 
-// Reta final: quando o leilão fecha (sozinho ou pelo apresentador), bate o
-// martelo — um "Vencedor" estampado por cima de tudo, uma vez só.
 let soldTimeout = null;
 function triggerSoldMoment(leaderName) {
   clearTimeout(soldTimeout);
@@ -721,19 +678,14 @@ function formatDuration(ms) {
   return `${h}h${String(m).padStart(2, "0")}`;
 }
 
-// Baixar o recap como imagem -- desenhado num <canvas> nosso (fillText,
-// fillRect) em vez de tirar um "print" do DOM: não tem lib de
-// DOM-pra-imagem no projeto (nem vamos adicionar uma só pra isso), e
-// desenhar do zero dá controle total do layout pra um cartão feito pra
-// social (1200x630, tamanho padrão de card de link). Cores sempre lidas
-// do tema atual (getComputedStyle), nunca fixas -- mesmo princípio do
-// resto do app.
+// Recap desenhado manualmente num <canvas> (sem lib de DOM-pra-imagem no
+// projeto), 1200x630, tamanho padrão de card de link social.
 let currentRecapForDownload = null;
 
 async function downloadRecapImage() {
   const recap = currentRecapForDownload;
   if (!recap) return;
-  await document.fonts.ready; // evita desenhar texto com a fonte de fallback por ainda não ter carregado
+  await document.fonts.ready; // evita desenhar com fonte de fallback antes de carregar
 
   const W = 1200;
   const H = 630;
@@ -836,8 +788,6 @@ async function downloadRecapImage() {
 }
 recapDownloadBtnEl.addEventListener("click", downloadRecapImage);
 
-// Pódio do recap — mesma linguagem de medalha do catálogo (rankBadgeHtml),
-// só que num cartão vertical em vez da linha horizontal do lot-card.
 function recapPodiumCardHtml(game) {
   const thumb = game.image
     ? `<img class="recap-podium-thumb" src="${escapeHtml(game.image)}" alt="" />`
@@ -857,10 +807,8 @@ function recapPodiumCardHtml(game) {
   `;
 }
 
-// 4º classificado em diante (ver .recap-extra em style.css) -- o pódio só
-// tem 3 posições de verdade (1º elevado no meio), então qualifyCount > 3
-// (painel "Quantos lotes contam como classificados") usa lista compacta
-// aqui em vez de tentar espremer mais cards no layout do pódio.
+// O pódio só tem 3 posições; do 4º em diante (qualifyCount > 3) usa essa
+// lista compacta.
 function recapExtraRowHtml(game) {
   const thumb = game.image
     ? `<img class="recap-extra-thumb" src="${escapeHtml(game.image)}" alt="" loading="lazy" />`
@@ -875,9 +823,8 @@ function recapExtraRowHtml(game) {
   `;
 }
 
-// Renderiza tanto o recap ao vivo (leilão acabou de encerrar) quanto um
-// arquivado (histórico, ver showHistoricalRecap) — mesma forma de dado nos
-// dois casos (buildRecap no server.js), só muda a legenda de topo.
+// Compartilhado entre o recap ao vivo e os arquivados (showHistoricalRecap)
+// -- mesma forma de dado (buildRecap em server.js), só muda o eyebrow.
 function renderRecap(recap, eyebrowText) {
   recapEyebrowEl.textContent = eyebrowText;
   recapTitleEl.textContent = recap.title || "Leilão de Jogos";
@@ -886,24 +833,19 @@ function renderRecap(recap, eyebrowText) {
   recapDonorsEl.textContent = String(recap.totalDonors || 0);
   recapGamesEl.textContent = String(recap.totalGames || 0);
 
-  // Compartilhar -- URL do próprio board (sem rota nova). Texto sem valor
-  // quando o total tá oculto (recap.totalRaised === null) -- mesma
-  // fronteira de privacidade do resto do recap, não vaza o número por uma
-  // porta lateral no botão de compartilhar.
   const shareUrl = `${location.origin}/l/${LEILAO_ID}`;
+  // Omite o valor quando totalRaised tá oculto, mesma regra de privacidade do resto do recap.
   const shareText = recap.totalRaised === null
     ? "Acabei de fazer um leilão de jogos com a galera! Dá uma olhada:"
     : `Acabei de arrecadar ${formatBRL(recap.totalRaised || 0)} num leilão de jogos com a galera! Dá uma olhada:`;
   recapShareXEl.href = `https://twitter.com/intent/tweet?text=${encodeURIComponent(shareText)}&url=${encodeURIComponent(shareUrl)}`;
-  currentRecapForDownload = recap; // usado pelo botão de baixar, ver downloadRecapImage
+  currentRecapForDownload = recap;
 
   const champion = (recap.topGames || [])[0];
   const championLineEl = document.getElementById("recap-champion-line");
   const recordLineEl = document.getElementById("recap-record-line");
   const highlightEl = document.getElementById("recap-highlight");
-  // Ícones desenhados (mesmo estilo do resto do app) em vez de emoji --
-  // emoji passa "gerado por IA" (feedback direto do cliente). Troféu
-  // reaproveita o mesmo SVG do title-swap do board (ver TITLE_SWAP_ICONS).
+  // Troféu reaproveita o SVG do title-swap (TITLE_SWAP_ICONS.i).
   championLineEl.innerHTML = champion
     ? `<span class="recap-highlight-icon">${TITLE_SWAP_ICONS.i.svg}</span><strong>${escapeHtml(champion.name)}</strong> foi o campeão, arrecadando ${formatBRL(champion.total)}`
     : "";
@@ -940,9 +882,7 @@ async function showRecap() {
   }
 }
 
-// Reabre o recap de um round já zerado (link "Ver recap" no painel
-// avançado, /l/:id?recap=<index> — index é a posição na lista devolvida por
-// /recap/history, mais recente primeiro).
+// /l/:id?recap=<index> — index na lista de /recap/history, mais recente primeiro.
 async function showHistoricalRecap(index) {
   try {
     const data = await fetch(`/api/l/${LEILAO_ID}/recap/history`).then((r) => r.json());
@@ -970,9 +910,6 @@ recapCloseEl.addEventListener("click", closeRecap);
 recapOverlayEl.addEventListener("click", (e) => { if (e.target === recapOverlayEl) closeRecap(); });
 document.addEventListener("keydown", (e) => { if (e.key === "Escape" && !recapOverlayEl.hidden) closeRecap(); });
 
-// Lista de rounds anteriores — popup por cima do board (ver
-// history-open-btn), não abre aba nem navega pra outra página. Clicar num
-// card troca pro mesmo overlay de recap usado ao vivo.
 function historyCardHtml(h, index) {
   const when = h.archivedAt ? new Date(h.archivedAt).toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" }) : "—";
   const champion = h.topGames && h.topGames[0] ? h.topGames[0] : null;
@@ -1038,12 +975,8 @@ historyCloseEl.addEventListener("click", closeHistoryOverlay);
 historyOverlayEl.addEventListener("click", (e) => { if (e.target === historyOverlayEl) closeHistoryOverlay(); });
 document.addEventListener("keydown", (e) => { if (e.key === "Escape" && !historyOverlayEl.hidden) closeHistoryOverlay(); });
 
-// Ranking dos PRÓPRIOS leilões do streamer dono deste board (GET
-// /api/l/:id/ranking, ver server.js) -- antes comparava com outros
-// streamers do site inteiro (cross-tenant), mas o cliente decidiu que não
-// queria mais expor/comparar arrecadação entre streamers diferentes, só
-// ranquear os próprios leilões um contra o outro. Pódio pros 3 primeiros
-// (mesmo visual do recap de encerramento) + lista pro resto até o 10º.
+// Ranqueia os próprios leilões passados desse streamer entre si, nunca
+// contra outros streamers (GET /api/l/:id/ranking, server.js).
 const rankingOpenBtnEl = document.getElementById("ranking-open-btn");
 const rankingOverlayEl = document.getElementById("ranking-overlay");
 const rankingCloseEl = document.getElementById("ranking-close");
@@ -1096,11 +1029,8 @@ function closeRankingOverlay() {
   rankingOverlayEl.hidden = true;
 }
 
-// Bounce rápido no ícone ao clicar -- só feedback tátil, não essencial
-// (diferente da entrada animada da tela de criação, que precisa sempre
-// revelar algo escondido). import() preguiçoso, só no primeiro clique, e
-// cacheado depois; se o Motion não carregar do CDN por qualquer motivo, cai
-// no catch e o botão continua abrindo o ranking normalmente, só sem o bounce.
+// Carregado sob demanda e cacheado no 1º clique; se o import do Motion
+// falhar, o botão continua abrindo o ranking, só sem o bounce.
 let animateRankingIcon = null;
 async function bounceRankingIcon() {
   const icon = rankingOpenBtnEl.querySelector(".icon");
@@ -1123,9 +1053,6 @@ rankingCloseEl.addEventListener("click", closeRankingOverlay);
 rankingOverlayEl.addEventListener("click", (e) => { if (e.target === rankingOverlayEl) closeRankingOverlay(); });
 document.addEventListener("keydown", (e) => { if (e.key === "Escape" && !rankingOverlayEl.hidden) closeRankingOverlay(); });
 
-// Troca rápida de tema direto do board (mesma rota do seletor no painel
-// avançado) — só bolinhas, sem rótulo, pra não competir por espaço com os
-// outros controles da barra.
 document.querySelectorAll(".theme-dot").forEach((dot) => {
   dot.addEventListener("click", async () => {
     try {
@@ -1166,13 +1093,9 @@ socket.on("update", ({ leaderboard, lastEvent }) => {
     hostAvatarEl.hidden = true;
     hostAvatarEl.removeAttribute("src");
   }
-  // Só mostra o link "ver no Twitch" quando o host veio de login de verdade
-  // com a Twitch (hostVerified) -- antes disso usava o nome de EXIBIÇÃO
-  // digitado/escolhido pra montar a URL, sem checagem nenhuma de posse:
-  // qualquer um digitando "Sabrinoca" ganhava um link clicável pro canal
-  // real dela. Usa hostTwitchLogin (o login estável da Twitch) pra montar a
-  // URL, não leaderboard.host (nome de exibição, pode ter espaço/acento --
-  // errado pra URL mesmo sem o problema de confiança).
+  // Só mostra o link com hostVerified (login real da Twitch), e usa
+  // hostTwitchLogin, nunca o nome de exibição livre -- senão daria pra
+  // digitar o nome de outra pessoa e ganhar link pro canal real dela.
   if (leaderboard.hostVerified && leaderboard.hostTwitchLogin) {
     const twitchUrl = `https://twitch.tv/${encodeURIComponent(leaderboard.hostTwitchLogin)}`;
     hostTwitchBadgeEl.href = twitchUrl;
@@ -1190,9 +1113,7 @@ socket.on("update", ({ leaderboard, lastEvent }) => {
   if (wasOpen === true && isOpenState === false) {
     const leader = (leaderboard.items || [])[0];
     triggerSoldMoment(leader ? leader.name : null);
-    // Espera o "Vencedor!" terminar (2.3s) pra não brigar visualmente com o
-    // recap — a janela vem logo em seguida, não por cima.
-    setTimeout(showRecap, 2400);
+    setTimeout(showRecap, 2400); // espera o "Vencedor!" (2.3s) terminar antes de abrir o recap
   }
 
   timerEndsAt = leaderboard.timerEndsAt;
@@ -1208,15 +1129,11 @@ socket.on("update", ({ leaderboard, lastEvent }) => {
   totalHideToggleEl.classList.toggle("active", !!leaderboard.hideTotalRaised);
   totalHideToggleEl.title = leaderboard.hideTotalRaised ? "Mostrar valor arrecadado pro público" : "Ocultar valor arrecadado do público";
   if (!leaderboard.hideTotalRaised) {
-    // Só atualiza o número quando ele está de fato visível — evita mexer
-    // no DOM interno do Odometer enquanto .is-hidden esconde tudo via CSS
-    // (ver .topbar-total-hidden-label em board.html/style.css).
+    // Só mexe no DOM interno do Odometer enquanto o total está de fato visível.
     const totalValue = leaderboard.totalRaised || 0;
     if (totalOdometer) totalOdometer.update(Math.round(totalValue));
     else bumpValue(statTotalEl, String(Math.round(totalValue)));
-    // lastTotalRaised !== null exclui o primeiro render (carregar a página
-    // não é "uma doação caindo") -- mesmo cuidado já usado no lead-shift
-    // do card líder (ver currentLeaderKey mais abaixo).
+    // lastTotalRaised !== null exclui o carregamento inicial da página.
     if (lastTotalRaised !== null && totalValue !== lastTotalRaised) flashTotalBeam();
     lastTotalRaised = totalValue;
   }
@@ -1227,11 +1144,7 @@ socket.on("update", ({ leaderboard, lastEvent }) => {
   renderLots(leaderboard.items, flashKey, lastEvent ? lastEvent.type : null, leaderboard.lastSabotagedKey, leaderboard.qualifyCount || 3);
   renderDonors(leaderboard.donors || []);
   if (lastEvent && lastEvent.type === "reset") {
-    // resetAll() apaga os events no servidor, mas o historyItems local (só
-    // preenchido 1x no connect + acumulado via pushHistory) não sabia disso
-    // e continuava mostrando doações de antes do zerar. pushHistory() por si
-    // só não resolvia: "reset" não bate em nenhum case de historyLabel(),
-    // então virava um no-op em vez de limpar.
+    // pushHistory() sozinho não limparia isso: "reset" não bate em nenhum case de historyLabel().
     historyItems = [];
     renderHistory();
   } else {
@@ -1247,13 +1160,11 @@ socket.on("update", ({ leaderboard, lastEvent }) => {
   }
 });
 
-// ---------- modal de doação (Pix in-app, ver POST /api/l/:id/doacao) ----------
-// Diferente do #lot-modal (só apresentador, lança valor direto): esse é
-// público, qualquer visitante do board abre. Fluxo em 3 passos dentro do
-// MESMO modal (troca de qual .donate-step está hidden, sem trocar de
-// overlay): formulário -> QR Pix aguardando -> confirmado. A confirmação
-// chega pelo MESMO socket "update" que já atualiza o placar inteiro (ver
-// checagem de lastEvent.paymentId logo acima) -- nenhum canal/room novo.
+// ---------- modal de doação (Pix in-app, POST /api/l/:id/doacao) ----------
+// Modal público (diferente do #lot-modal, só apresentador). 3 passos num
+// mesmo overlay: formulário -> QR aguardando -> confirmado. Confirmação
+// chega pelo mesmo socket "update" do placar (ver checagem de
+// lastEvent.paymentId acima) -- nenhum canal novo.
 const donateOpenBtnEl = document.getElementById("donate-open-btn");
 const donateModalEl = document.getElementById("donate-modal");
 const donateModalCloseEl = document.getElementById("donate-modal-close");
@@ -1385,9 +1296,7 @@ function getPassword() {
 }
 
 async function presenterFetch(path, options = {}) {
-  // FormData (upload de arquivo) monta seu próprio Content-Type com
-  // boundary — se a gente fixar "application/json" aqui, o multipart do
-  // upload de imagem de fundo quebra silenciosamente no servidor.
+  // FormData define seu próprio Content-Type com boundary; fixar "application/json" quebraria o upload multipart.
   const isFormData = options.body instanceof FormData;
   const res = await fetch(`/api/l/${LEILAO_ID}${path}`, {
     ...options,
@@ -1412,9 +1321,8 @@ function setPresenterMode(active) {
   updateWebhookWarning();
 }
 
-// Modal próprio em vez de prompt() nativo — o prompt() do navegador não
-// mascara o texto digitado, então a senha ficava visível em texto puro na
-// tela (problema real: a tela do streamer é capturada ao vivo no OBS).
+// Modal próprio em vez de prompt() nativo — prompt() não mascara o texto
+// digitado, e a tela do streamer é capturada ao vivo no OBS.
 const presenterLoginModal = document.getElementById("presenter-login-modal");
 const presenterLoginForm = document.getElementById("presenter-login-form");
 const presenterLoginPassword = document.getElementById("presenter-login-password");
@@ -1423,9 +1331,7 @@ const presenterLoginSubmit = document.getElementById("presenter-login-submit");
 const presenterLoginCancel = document.getElementById("presenter-login-cancel");
 const presenterLoginClose = document.getElementById("presenter-login-close");
 
-// Deixa quem chamou openPresenterLogin() (ex: o botão de configurações, que
-// também exige a senha do apresentador) fazer algo assim que o login der
-// certo, sem precisar duplicar o fluxo de login inteiro — ver settings.js.
+// Callback pós-login pra quem chamou openPresenterLogin() (ver settings.js), sem duplicar o fluxo de login.
 let pendingAfterLogin = null;
 
 function openPresenterLogin() {
@@ -1467,11 +1373,9 @@ async function submitPresenterLogin() {
   }
 }
 
-// Pula o modal de senha pra quem já é o dono verificado da Twitch nesse
-// navegador (ver GET .../admin/check-session, server.js) -- sem isso, o
-// dono precisava redigitar a senha do zero toda vez que abria uma aba nova
-// (getPassword() usa sessionStorage, que não sobrevive fechar/abrir aba),
-// mesmo já estando "logado" o tempo todo na própria Twitch.
+// Pula o modal de senha pro dono verificado da Twitch (GET
+// .../admin/check-session) -- getPassword() usa sessionStorage, que não
+// sobrevive entre abas, então sem isso o dono redigitaria a senha toda vez.
 async function isVerifiedOwner() {
   try {
     const { isOwner } = await fetch(`/api/l/${LEILAO_ID}/admin/check-session`).then((r) => r.json());
@@ -1495,11 +1399,9 @@ presenterToggleEl.addEventListener("click", async () => {
   openPresenterLogin();
 });
 
-// Campo de senha real dentro de um <form> de verdade (não filho solto de
-// uma div) — sem isso o Chrome, ao ver um input de senha sem nenhum campo
-// de usuário por perto, buscava o texto mais recente digitado em QUALQUER
-// lugar da página (ex: o nome de um jogo pesquisado) e oferecia salvar como
-// se fosse login. O <form> dá o limite que o Chrome respeita.
+// Precisa ser um <form> de verdade -- sem ele, o Chrome associava o campo de
+// senha ao texto mais recente digitado em qualquer lugar da página (ex: uma
+// busca de jogo) e oferecia salvar isso como login.
 presenterLoginForm.addEventListener("submit", (e) => {
   e.preventDefault();
   submitPresenterLogin();
@@ -1548,10 +1450,7 @@ timerMinutesInput.addEventListener("keydown", (e) => {
 });
 
 document.getElementById("p-toggle-open").addEventListener("click", async () => {
-  // Encerrar é definitivo (só reabre manual) — confirma antes pra evitar
-  // clique acidental. Reabrir é seguro, não precisa confirmar. Diálogo
-  // próprio (confirmDialog, settings.js) em vez de confirm() nativo -- o
-  // popup do navegador destoava visualmente do resto do site.
+  // Confirma só pra encerrar (definitivo); reabrir é seguro e não precisa.
   if (isOpenState) {
     const ok = await confirmDialog({
       title: "Encerrar leilão",
@@ -1571,9 +1470,7 @@ document.getElementById("p-toggle-open").addEventListener("click", async () => {
   }
 });
 
-// Zerar direto do board evita ter que abrir o painel avançado no meio da
-// live (ver CLAUDE.md: controle do dia a dia é modo apresentador, não
-// admin.html) — mas continua destrutivo, por isso a confirmação explícita.
+// Zerar direto do board evita abrir o painel avançado no meio da live; continua destrutivo, daí a confirmação.
 document.getElementById("p-reset-btn").addEventListener("click", async () => {
   const ok = await confirmDialog({
     title: "Zerar leilão",
@@ -1589,15 +1486,13 @@ document.getElementById("p-reset-btn").addEventListener("click", async () => {
   }
 });
 
-// Procura um jogo já no catálogo pelo nome (pra o modal mostrar o total atual).
 function findGameByName(name) {
   const norm = name.trim().toLowerCase();
   return currentItems.find((i) => i.name.trim().toLowerCase() === norm) || null;
 }
 
-// Não lança direto — abre o modal (mesmo que clicar numa sugestão da busca),
-// só que com o texto digitado ao pé da letra, sem escolher um resultado da
-// RAWG (útil quando o jogo não aparece na busca).
+// Abre o modal com o texto digitado ao pé da letra, sem escolher resultado
+// da RAWG -- útil quando o jogo não aparece na busca.
 function submitManualSearch() {
   const name = manualNameEl.value.trim();
   if (!name) return manualNameEl.focus();
@@ -1743,13 +1638,10 @@ function closeLotModal() {
   modalGame = null;
 }
 
-// lotModalSubmit.disabled é checado (não só setado) de propósito: o clique
-// no botão já para de disparar sozinho quando disabled=true (padrão do
-// navegador), mas o Enter no campo de valor (ver listener de keydown
-// abaixo) é OUTRO listener, em OUTRO elemento -- sem essa checagem aqui
-// dentro, apertar Enter várias vezes rápido enquanto a primeira requisição
-// ainda não voltou disparava um /admin/manual-entry por vez, multiplicando
-// o valor lançado (achado real: delay de rede + duplo clique).
+// Guarda contra double-submit: o botão já ignora clique quando disabled,
+// mas o Enter no campo de valor é outro listener em outro elemento e não é
+// bloqueado automaticamente por isso -- sem essa checagem aqui, Enter
+// repetido antes da resposta voltar lançava o valor mais de uma vez.
 async function submitLotModal() {
   if (!modalGame || lotModalSubmit.disabled) return;
   const amount = lotModalAmount.value;

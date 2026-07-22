@@ -50,18 +50,15 @@ function saveLeilao(entry) {
   }
 }
 
-// /l/<id> -> <id>, ou null se a url guardada não bater nesse formato.
 function extractLeilaoId(url) {
   const match = String(url || "").match(/\/l\/([a-z0-9_-]+)/i);
   return match ? match[1] : null;
 }
 
-// Confere se o leilão ainda existe de verdade no servidor — sem isso, um
-// leilão apagado (ex: limpeza de teste pelo super-admin) continuava
-// aparecendo pra sempre nesse navegador como "já criado", com um link morto.
-// Em caso de erro de rede (offline, etc) assume que existe: melhor mostrar
-// um link que pode estar velho do que apagar a referência por causa de uma
-// falha passageira de conexão.
+// Confere se o leilão ainda existe no servidor, pra um leilão apagado não
+// ficar pra sempre como link morto na lista salva desse navegador. Em erro
+// de rede, assume que existe -- melhor um link velho do que perder a
+// referência por uma falha passageira.
 async function leilaoStillExists(id) {
   if (!id) return false;
   try {
@@ -73,8 +70,6 @@ async function leilaoStillExists(id) {
   }
 }
 
-// Lembrete de leilão já criado nesse navegador — pra evitar que a pessoa
-// preencha o formulário de novo sem querer.
 async function renderExisting() {
   const saved = getSavedLeiloes();
   if (saved.length === 0) return;
@@ -107,9 +102,8 @@ existingNewBtn.addEventListener("click", () => {
   form.hidden = false;
 });
 
-// httpOnly esconde o cookie de sessão do JS de propósito (é o que impede um
-// XSS de roubar o login) — por isso pergunta pro servidor quem está logado,
-// em vez de tentar ler algum cookie direto.
+// Cookie de sessão é httpOnly (XSS não lê), então pergunta pro servidor
+// quem está logado em vez de ler cookie direto.
 async function loadSession() {
   try {
     currentSession = await fetch("/api/session/me").then((r) => r.json());
@@ -119,9 +113,9 @@ async function loadSession() {
   renderTwitchBlock();
 }
 
-// Criar leilão exige os dois: login com a Twitch (identidade) E Mercado
-// Pago conectado (senão o leilão nasceria sem nenhum jeito de receber
-// doação -- ver checagem espelhada no servidor em POST /api/leiloes).
+// Exige login Twitch (identidade) E Mercado Pago conectado, senão o leilão
+// nasceria sem jeito de receber doação; checagem espelhada em
+// POST /api/leiloes no servidor.
 function renderTwitchBlock() {
   const loggedIn = !!(currentSession && currentSession.loggedIn);
   const mpConnected = !!(currentSession && currentSession.mpConnected);

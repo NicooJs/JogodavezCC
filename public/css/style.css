@@ -1,12 +1,8 @@
 
-/* Sistema de temas: cada leilão escolhe um (state.theme, ver admin.html →
-   painel "Tema visual" → POST /admin/theme), aplicado via
-   document.documentElement.dataset.theme em app.js. "ametista" no :root é
-   o default de verdade (novos leilões e qualquer :root antes do socket
-   conectar) — os outros temas só entram via [data-theme="..."] no <html>.
-   --danger/--positive/--bronze ficam FIXOS entre temas de propósito: são
-   sinais semânticos (sabotagem/apoio/medalha de bronze), não identidade
-   visual, então mudar por tema confundiria o significado. */
+/* Sistema de temas: aplicado via document.documentElement.dataset.theme
+   (app.js). "ametista" no :root é o default; outros temas entram via
+   [data-theme="..."]. --danger/--positive/--bronze ficam fixos entre temas:
+   são sinais semânticos (sabotagem/apoio/bronze), não identidade visual. */
 :root {
   --bg: #17131f;
   --surface: #1e1829;
@@ -33,10 +29,7 @@
   --ease: cubic-bezier(0.22, 1, 0.36, 1);
 }
 
-/* "Nebulosa" — ciano sobre grafite escuro. Era o tema padrão do :root antes
-   de ametista assumir esse lugar; continua existindo como opção igual aos
-   outros, só que agora entra via [data-theme="nebulosa"] em vez de ser o
-   default implícito. */
+/* Nebulosa — ciano sobre grafite escuro. */
 :root[data-theme="nebulosa"] {
   --bg: #14141c;
   --surface: #1b1b26;
@@ -70,8 +63,7 @@
   --silver: #c9d2e3;
 }
 
-/* "Grafite" — cinza-chumbo neutro com destaque em platina/prata, sem cor
-   saturada — opção discreta pra quem quer algo mais "profissional". */
+/* Grafite — cinza-chumbo neutro, destaque em platina/prata, sem cor saturada. */
 :root[data-theme="grafite"] {
   --bg: #16171a;
   --surface: #1d1e22;
@@ -154,15 +146,9 @@ body::before {
 ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 999px; }
 ::-webkit-scrollbar-thumb:hover { background: var(--accent-soft); }
 
-/* Scrollbar "invisível até o hover" nas listas dos painéis laterais
-   (histórico/apoiadores) -- pedido do cliente foi o componente Scroll Area
-   do Shadcn, mas Shadcn é React (Radix por baixo); esse projeto é
-   HTML/JS puro sem build step, então incompatível de verdade, não só por
-   escolha. O MESMO resultado visual (fino, some em repouso, aparece no
-   hover do painel) dá pra fazer só com CSS -- não perde nada trocando a
-   ferramenta pelo efeito que ela produziria. Firefox não tem hover em
-   scrollbar-color (só thumb/track estáticos), então fica só fino lá, sem
-   o fade -- degradação aceitável. */
+/* Scrollbar invisível até o hover nas listas dos painéis laterais.
+   Firefox não suporta hover em scrollbar-color (só thumb/track estáticos),
+   então fica só fino lá, sem o fade — degradação aceitável. */
 .history-list, .donor-list {
   scrollbar-width: thin;
   scrollbar-color: transparent transparent;
@@ -181,14 +167,10 @@ body::before {
   background: var(--accent-soft);
 }
 
-/* body.board-body centraliza o .page nos dois eixos — sem isso, em
-   monitores bem maiores que o design (altura > 1000px), os painéis
-   flex:1 (quadro de honra, histórico) esticavam até preencher a tela
-   inteira e ficavam com muito espaço vazio abaixo do conteúdo curto que
-   tinham (medido: painéis com só ~8 linhas ocupando 900px+ de altura).
-   Capar a altura do .page no tamanho que já foi desenhado/testado e
-   centralizar o resto como fundo neutro resolve sem mudar como o board
-   se comporta em telas normais/menores (min() sempre escolhe o menor). */
+/* Centraliza .page nos dois eixos: em monitores mais altos que o design,
+   os painéis flex:1 esticariam até preencher a tela com espaço vazio.
+   Capar a altura do .page e centralizar o resto resolve isso sem afetar
+   telas normais (min() sempre escolhe o menor). */
 body.board-body {
   display: flex;
   align-items: center;
@@ -196,10 +178,8 @@ body.board-body {
   min-height: 100vh;
 }
 
-/* Imagem de fundo custom (state.backgroundImageUrl, definida em
-   admin.html → painel "Tema visual"). Um véu escuro por cima garante que
-   a imagem não compita com o texto/paineis translúcidos que sobram visível
-   nas bordas do .page em monitores maiores (ver o cap de altura acima). */
+/* Véu escuro sobre a imagem de fundo custom garante contraste com o
+   texto/painéis translúcidos. */
 body.board-body.has-bg-image {
   background-image: linear-gradient(rgba(8, 8, 14, 0.72), rgba(8, 8, 14, 0.72)), var(--bg-image);
   background-size: cover;
@@ -207,15 +187,10 @@ body.board-body.has-bg-image {
   background-attachment: fixed;
 }
 
-/* Fundo animado do board -- mesmo padrão de .create-bg/.bg-shard
-   (create.css, tela de criação), reaproveitado aqui com classes próprias
-   (board.html não carrega create.css, e index.html carrega os dois
-   arquivos, então nomes iguais colidiriam). Mais discreto que a versão da
-   criação de propósito: menos losangos, menores, sem o brilho central --
-   o board é bem mais denso (3 colunas de informação) e a margem morta ao
-   redor do .page (ver comentário acima) é bem menor. Some sozinho quando
-   o streamer já escolheu uma imagem de fundo própria (.has-bg-image),
-   pra não competir com a identidade visual que ele mesmo escolheu ali. */
+/* Mesmo padrão visual de .create-bg/.bg-shard (create.css), com classes
+   próprias porque index.html carrega os dois arquivos e nomes iguais
+   colidiriam. Some quando o streamer define uma imagem de fundo própria
+   (.has-bg-image). */
 .board-bg {
   position: fixed;
   inset: 0;
@@ -240,20 +215,15 @@ body.board-body.has-bg-image .board-bg { display: none; }
 .board-bg-shard-5 { top: 45%; left: 1.5%; width: 16px; height: 16px; opacity: 0.14; }
 
 @media (max-width: 720px) {
-  /* mesmo cuidado do .bg-shard em create.css -- em telas estreitas o
-     .page perde o padding generoso (vira quase full-bleed), então os
-     losangos do lado direito ficam perto demais do conteúdo. */
+  /* Em telas estreitas o .page perde o padding, então os losangos da
+     direita ficariam perto demais do conteúdo. */
   .board-bg-shard-3, .board-bg-shard-4 { display: none; }
 }
 
-/* Mosaico de capas de jogos (estilo tela de login da Steam) -- criado por
-   board-cover-bg.js, que busca /api/board-bg-covers (lista genérica, não
-   depende do leilão) e monta os tiles. Camada por cima do .board-bg acima:
-   os losangos continuam sendo o fundo GARANTIDO (sem depender de rede
-   externa nem de RAWG_API_KEY configurada) -- o mosaico só aparece (via
-   .has-covers no body, adicionado depois que a 1a capa carrega de verdade)
-   e some sozinho se a RAWG não tiver key, a lista vier vazia, ou a rede
-   falhar. Board nunca fica sem fundo nenhum. */
+/* Mosaico de capas (board-cover-bg.js), camada por cima do .board-bg: os
+   losangos são o fallback garantido (não dependem de rede/RAWG_API_KEY);
+   o mosaico só aparece via .has-covers depois que a 1ª capa carrega. Board
+   nunca fica sem fundo. */
 .board-cover-bg {
   position: fixed;
   inset: 0;
@@ -303,23 +273,16 @@ body.board-body.has-bg-image .board-cover-bg { display: none; }
   flex-direction: column;
   height: min(100vh, 1000px);
   width: 100%;
-  /* 1400 -> 1600 -> 1850px: em telas largas (1920px+) sobrava muita
-     margem morta nas laterais (visto e medido pelo cliente comparando
-     antes/depois). Combinado com a arena virar grade de 2 colunas (ver
-     .arena-grid), o espaço extra passa a ser usado por um segundo lote
-     lado a lado, não só esticar cards ou aumentar margem. Continua
-     responsivo: em telas menores que 1850px, o max-width simplesmente não
-     é atingido. */
+  /* Em telas largas o espaço extra vira uma 2ª coluna de lotes (ver
+     .arena-grid) em vez de só esticar cards/margens. */
   max-width: 1850px;
   padding: 18px 24px 14px;
 }
 
 .topbar {
   display: flex;
-  /* center, não baseline: o título usa uma fonte de destaque (Fredoka, ver
-     .brand-word) com métricas de linha de base bem diferentes da fonte
-     pequena dos botões — baseline jogava os botões pra baixo do título.
-     center funciona igual não importa a fonte do título. */
+  /* center, não baseline: a fonte de destaque do título (.brand-word) tem
+     métricas de linha de base bem diferentes da fonte dos botões. */
   align-items: center;
   justify-content: space-between;
   gap: 16px;
@@ -344,18 +307,12 @@ body.board-body.has-bg-image .board-cover-bg { display: none; }
   flex-shrink: 0;
 }
 
-/* Título do leilão em si (não a marca fixa do site) — é o elemento mais
-   importante da tela pra quem tá assistindo a live, então recebe o maior
-   destaque tipográfico do topbar. Fredoka (arredondada, bold) pra combinar
-   com os ícones que às vezes aparecem no lugar de letras (ver title-swap-*
-   e renderBrandTitle em app.js) -- uma serifada como Abril Fatface competia
-   visualmente com o desenho geométrico dos ícones. Só no board
-   (.board-body): a home (.create-body) continua com --font-title (Abril
-   Fatface) pra marca "Leilão de Jogos" do site, sem trocar pra Fredoka. */
-/* font-weight junto (não só --font-title): Abril Fatface (home) só existe
-   numa variação/peso -- setar 700 nela não muda nada -- mas Fredoka (board)
-   tem peso de verdade, e o title-swap precisa dela beeem bold pra segurar
-   ícone do lado de letra sem ficar desequilibrado. */
+/* Fredoka (arredondada, bold) só no board: combina com os ícones que
+   substituem letras no título (ver title-swap-* / renderBrandTitle em
+   app.js) — uma serifada como Abril Fatface (usada na home) competiria
+   visualmente com o desenho geométrico dos ícones. font-weight explícito
+   porque Abril Fatface só tem um peso (setar 700 nela não faz nada), mas
+   Fredoka precisa do peso alto pra equilibrar ícone e letra lado a lado. */
 .board-body .brand-word { --font-title: "Fredoka", sans-serif; font-weight: 700; }
 
 .brand-word {
@@ -396,14 +353,8 @@ body.board-body.has-bg-image .board-cover-bg { display: none; }
 .title-swap-icon.icon-trophy { color: var(--silver); }
 .title-swap-icon.icon-star { color: var(--accent-text); }
 
-/* center, não baseline: os 4 itens aqui (total arrecadado, status, ranking,
-   apresentador) misturam fonte mono e fonte normal com padding diferente
-   entre si -- baseline alinha pelo texto, que cai em alturas diferentes
-   conforme a métrica de cada fonte (achado real: medindo o centro
-   vertical de cada pill, "total" e "ranking" batiam num Y, "status" e
-   "apresentador" batiam 4.5px mais abaixo, mesmo com box quase igual --
-   ficava visivelmente desalinhado). center usa a caixa geométrica de cada
-   item, não depende da fonte -- mesmo raciocínio já usado em .topbar. */
+/* center, não baseline: os itens aqui misturam fonte mono e normal com
+   métricas diferentes — baseline desalinhava as pills visivelmente. */
 .topbar-right {
   display: flex;
   align-items: center;
@@ -412,13 +363,9 @@ body.board-body.has-bg-image .board-cover-bg { display: none; }
   font-size: 12.5px;
 }
 
-/* Antes era só texto solto no topbar -- virou pílula igual aos vizinhos
-   (.status, .ranking-open-btn, .presenter-toggle), que já são todos
-   bordados/com fundo; texto solto ao lado deles destoava. Vidro (fundo
-   translúcido + blur) em vez de --surface chapado -- branco fixo de
-   propósito (não token de tema): é um efeito de "luz ambiente atrás do
-   vidro", não uma cor de marca, mesmo raciocínio já usado no zebra
-   striping do histórico (ver .history-list li:nth-child(even)). */
+/* Branco fixo (não token de tema) de propósito: é um efeito de luz ambiente
+   atrás do vidro, não uma cor de marca — mesmo raciocínio do zebra striping
+   em .history-list li:nth-child(even). */
 .topbar-total {
   display: inline-flex;
   align-items: center;
@@ -432,11 +379,8 @@ body.board-body.has-bg-image .board-cover-bg { display: none; }
   padding: 5px 14px 5px 12px;
 }
 
-/* Filete de luz que percorre o contorno da pílula quando o total muda de
-   verdade (ver flashTotalBeam em app.js -- só dispara numa mudança real de
-   valor, não em toda atualização do placar). padding:1px + mask "furando"
-   o miolo desenha só o anel, sem cobrir o conteúdo -- a borda sólida da
-   regra acima continua cuidando do contorno em repouso. */
+/* padding:1px + mask furando o miolo desenha só o anel, sem cobrir o
+   conteúdo — a borda sólida da regra acima cuida do contorno em repouso. */
 .topbar-total::before {
   content: "";
   position: absolute;
@@ -460,8 +404,6 @@ body.board-body.has-bg-image .board-cover-bg { display: none; }
   .topbar-total.beam::before { animation: none; }
 }
 
-/* Cinza neutro (não mais --positive verde) -- o verde puxava atenção pro
-   lugar errado e destoava do resto do topbar, que é todo monocromático. */
 .topbar-total-icon { color: var(--muted); width: 15px; height: 15px; flex-shrink: 0; }
 
 .topbar-total-label {
@@ -483,11 +425,9 @@ body.board-body.has-bg-image .board-cover-bg { display: none; }
   transition: transform 0.15s ease;
 }
 
-/* Duas classes de propósito (não uma): ".topbar-total strong" (regra
-   acima) já tem especificidade 0-1-1, e "strong.topbar-total-hidden-label"
-   sozinho (0-1-1 também) empataria e perderia no empate por ordem de
-   cascata — escopar com o pai ".topbar-total" (0-2-0) garante que index
-   ganha sem depender de ordem no arquivo. */
+/* Escopado com o pai (0-2-0) em vez de "strong.topbar-total-hidden-label"
+   (0-1-1): essa especificidade empataria com ".topbar-total strong" acima
+   e perderia no empate por ordem de cascata. */
 .topbar-total .topbar-total-hidden-label {
   display: none;
   font-size: 14px;
@@ -500,9 +440,6 @@ body.board-body.has-bg-image .board-cover-bg { display: none; }
 .topbar-total.is-hidden .topbar-total-value { display: none; }
 .topbar-total.is-hidden .topbar-total-hidden-label { display: inline-block; }
 
-/* Botão de alternar fica sempre ao lado do valor (pedido explícito do
-   cliente), mas só é clicável em modo apresentador — pra quem só tá
-   assistindo, não faz sentido ter um botão ali. */
 .total-hide-toggle {
   display: none;
   align-items: center;
@@ -524,13 +461,9 @@ body.board-body.has-bg-image .board-cover-bg { display: none; }
 .tick { animation: tick 0.4s ease; }
 
 /* O tema do odometer.js vem com vertical-align: middle, que não bate com o
-   baseline do texto normal ao lado ("R$ " + o número, mesmo <strong>) --
-   dá pra medir comparando o retângulo do nó de texto "R$ " com o retângulo
-   do dígito do odometer. baseline sozinho já reduz bastante, mas não zera
-   (o markup interno do odometer tem padding/line-height próprio); o
-   top:-2.8px fecha o resto -- valor reajustado quando o font-size do valor
-   (.topbar-total strong) mudou de 20px pra 17px, porque a métrica de fonte
-   muda a diferença de baseline entre os dois. */
+   baseline do texto ao lado ("R$ " + número). baseline reduz o desalinho
+   mas não zera (markup interno do odometer tem padding/line-height
+   próprios); top:-2.8px fecha o resto. */
 .odometer.odometer-theme-minimal {
   font-family: var(--font-mono);
   color: var(--accent-text);
@@ -557,11 +490,7 @@ body.board-body.has-bg-image .board-cover-bg { display: none; }
 .dot { position: relative; width: 6px; height: 6px; border-radius: 50%; background: var(--muted); }
 .status.online .dot { background: var(--accent); }
 
-/* Anel "de radar" que se expande e some, só quando de fato ao vivo --
-   comunica que a página tá ativa sem ser chamativo (achado igual origem
-   do beam da pílula do total: efeito curto/sutil, não um loop chamativo
-   -- aqui contínuo por natureza, mas em escala mínima, então não briga
-   com o resto da UI). */
+/* Anel "de radar" que se expande e some, só quando ao vivo. */
 .status.online .dot::after {
   content: "";
   position: absolute;
@@ -595,13 +524,9 @@ body.board-body.has-bg-image .board-cover-bg { display: none; }
 
 .presenter-toggle:hover { color: var(--text); border-color: var(--accent-soft); }
 
-/* Botão de destaque, visível pra qualquer um vendo o board (não só o
-   apresentador) — pedido explícito do cliente: "alguma parte de destaque"
-   do board, diferente do resto dos controles (que são cinza/discretos).
-   Acabamento mais técnico em repouso (rótulo mono, borda fina neutra,
-   brilho pulsando bem devagar) que só fecha pra sólido em --accent no
-   hover, em vez de já nascer com fundo/borda cheios de cor -- inspirado no
-   nível de acabamento dos exemplos de botão do motion.dev (ver plano). */
+/* Botão de destaque, visível pra qualquer um vendo o board — diferente do
+   resto dos controles (cinza/discretos). Nasce discreto (borda fina, brilho
+   pulsando devagar) e só fecha pra sólido em --accent no hover. */
 .ranking-open-btn {
   display: inline-flex;
   align-items: center;
@@ -635,11 +560,8 @@ body.board-body.has-bg-image .board-cover-bg { display: none; }
   50% { box-shadow: 0 0 14px 1px var(--accent-glow); }
 }
 
-/* Botão de doação -- é a ação que gera dinheiro de verdade, então usa fundo
-   sólido (não outline como .ranking-open-btn) pra destacar como CTA
-   principal do topbar. Visível pra QUALQUER visitante (não só apresentador,
-   ver #donate-open-btn em app.js), diferente da maioria dos outros botões
-   dessa barra. */
+/* Fundo sólido (não outline como .ranking-open-btn) para destacar como CTA
+   principal do topbar. Visível pra qualquer visitante, não só apresentador. */
 .donate-open-btn {
   display: inline-flex;
   align-items: center;
@@ -734,11 +656,8 @@ body.board-body.has-bg-image .board-cover-bg { display: none; }
 .presenter-bar-icon-link .icon { width: 17px; height: 17px; }
 .presenter-bar-link:hover { color: var(--accent-text); }
 
-/* Troca rápida de tema direto no board — versão discreta (só bolinhas, sem
-   texto) do seletor completo do painel avançado, pra não precisar sair da
-   tela principal pra ajustar a cor no meio da live. Cores fixas de
-   propósito (não var()), são a pré-visualização de cada paleta, não podem
-   depender de qual tema o documento "está" usando agora. */
+/* Cores fixas de propósito (não var()): são a pré-visualização de cada
+   paleta, não podem depender do tema atual do documento. */
 .theme-dots { display: flex; align-items: center; gap: 7px; margin-left: auto; }
 
 .theme-dot {
@@ -760,12 +679,8 @@ body.board-body.has-bg-image .board-cover-bg { display: none; }
 .theme-dot-safira { background: linear-gradient(135deg, #0f1420 50%, #4d80f5 50%); }
 .theme-dot-grafite { background: linear-gradient(135deg, #16171a 50%, #9fb0c2 50%); }
 
-/* Botões da barra do apresentador — um sistema só, com três pesos visuais
-   (primário sólido / perigo contornado / fantasma), todos com a mesma
-   altura, raio e ritmo de ícone, pra lerem como um conjunto desenhado de
-   propósito, não uma mistura de estilos soltos. Sombra em duas camadas
-   (brilho fino por cima + sombra difusa da cor do tema por baixo) dá uma
-   sensação de profundidade sutil, sem exagero. */
+/* Sistema único com três pesos visuais (primário sólido / perigo
+   contornado / fantasma), mesma altura/raio/ritmo de ícone entre eles. */
 .pbar-btn {
   height: 38px;
   padding: 0 16px;
@@ -813,11 +728,9 @@ body.board-body.has-bg-image .board-cover-bg { display: none; }
 }
 .pbar-btn-ghost:hover { color: var(--accent-text); background: var(--surface-2); }
 
-/* Aviso de Mercado Pago desconectado — só aparece no modo apresentador,
-   quando uma chamada real à API do MP devolve 401 (ver mpDisconnected em
-   server.js). Visibilidade é controlada 100% via JS (attribute hidden), não
-   por classe combinada com .presenter-mode — por isso não precisa da regra
-   [hidden] explícita de outros componentes. */
+/* Aviso de Mercado Pago desconectado (ver mpDisconnected em server.js).
+   Visibilidade controlada 100% via JS (attribute hidden), não por classe
+   combinada com .presenter-mode. */
 .webhook-warning {
   display: flex;
   align-items: center;
@@ -1006,10 +919,6 @@ body.board-body.has-bg-image .board-cover-bg { display: none; }
   flex: 1;
   min-height: 0;
   display: grid;
-  /* Histórico de larguras: 260/280 → 300/323 (2026-07-10) → 340/366
-     (2026-07-10, segundo pedido) — sempre o mesmo fator entre as duas
-     (~1.077x), mantendo a proporção original. Central continua flexível
-     (minmax(0, 1fr)) e absorve a diferença. */
   grid-template-columns: 340px minmax(0, 1fr) 366px;
   background: var(--surface);
   border: 1px solid var(--border);
@@ -1018,7 +927,6 @@ body.board-body.has-bg-image .board-cover-bg { display: none; }
   transition: border-color 0.3s ease, box-shadow 0.3s ease;
 }
 
-/* Reta final: nos últimos segundos, o board inteiro entra em tensão. */
 @keyframes board-tension {
   0%, 100% { box-shadow: 0 0 0 0 rgba(239, 68, 112, 0); border-color: var(--border); }
   50% { box-shadow: 0 0 28px 1px rgba(239, 68, 112, 0.28); border-color: rgba(239, 68, 112, 0.55); }
@@ -1026,7 +934,6 @@ body.board-body.has-bg-image .board-cover-bg { display: none; }
 
 .board.final-countdown { animation: board-tension 1s ease-in-out infinite; }
 
-/* "Vencedor!" — o martelo bate quando o leilão fecha. */
 .sold-overlay {
   position: fixed;
   inset: 0;
@@ -1041,13 +948,9 @@ body.board-body.has-bg-image .board-cover-bg { display: none; }
 
 .sold-overlay[hidden] { display: none; }
 
-/* Padrão de anéis pontilhados girando atrás do "Vencedor!" (ver
-   drawSwirlFrame em app.js) -- referência do cliente era um shader WebGL
-   de "dithering" (component DitheringShader, shape="swirl"); aqui é
-   Canvas2D fazendo a mesma matemática (ângulo+raio, anéis concêntricos com
-   fase girando), não shader -- pra um flash de ~2.2s isso não compensa o
-   custo/risco de outro pipeline WebGL (o fundo de fumaça da criação já é
-   o único caso onde isso vale a pena, por ser permanente). */
+/* Padrão de anéis pontilhados girando atrás do "Vencedor!" (drawSwirlFrame
+   em app.js), em Canvas2D em vez de shader WebGL: pra um flash de ~2.2s não
+   compensa o custo/risco de outro pipeline WebGL. */
 .sold-swirl-canvas {
   position: absolute;
   inset: 0;
@@ -1083,8 +986,8 @@ body.board-body.has-bg-image .board-cover-bg { display: none; }
   100% { transform: scale(1) rotate(-4deg); opacity: 0; }
 }
 
-/* Resumo mostrado quando o leilão encerra — vem logo depois do "Vencedor!"
-   (ver showRecap em app.js), por isso fica acima dele no z-index. */
+/* Vem logo depois do "Vencedor!" (.sold-overlay, z-index 60), por isso
+   fica acima dele. */
 .recap-overlay {
   position: fixed;
   inset: 0;
@@ -1185,10 +1088,8 @@ body.board-body.has-bg-image .board-cover-bg { display: none; }
   color: var(--muted);
 }
 
-/* Compartilhar o recap -- par de ícones no canto, ao lado do fechar (não
-   mais barra larga inline: feedback direto do cliente, "não ficou legal").
-   Cor de marca só no X (logo de terceiro, diferente do resto da UI, que
-   nunca usa cor fixa) -- o de baixar é um ícone nosso, segue o tema normal. */
+/* Cor de marca só no ícone do X (logo de terceiro) — o de baixar segue o
+   tema normal, como o resto da UI. */
 .recap-share-corner {
   position: absolute;
   top: 16px;
@@ -1214,9 +1115,6 @@ body.board-body.has-bg-image .board-cover-bg { display: none; }
 .recap-share-icon-btn svg { width: 14px; height: 14px; }
 #recap-share-x:hover { color: #fff; background: #000; border-color: #000; }
 
-/* Chamada de texto extra além do pódio (que já destaca visualmente o
-   campeão por posição/tamanho) — pedido explícito do cliente pra nomear o
-   campeão e o recorde de doação por escrito, não só implícito no ranking. */
 .recap-highlight {
   display: flex;
   flex-direction: column;
@@ -1369,12 +1267,9 @@ body.board-body.has-bg-image .board-cover-bg { display: none; }
 
 .ranking-modal-body { overflow-y: auto; padding: 22px 26px 26px; }
 
-/* 4º classificado em diante no recap (ver renderRecap em app.js) --
-   qualifyCount pode passar de 3 (painel "Quantos lotes contam como
-   classificados"), mas o pódio (.recap-podium, 3 colunas fixas com o 1º
-   elevado) só faz sentido visual pra exatamente 3 -- o resto entra aqui
-   como lista compacta, mesma ideia de .ranking-row pro 4º-10º do ranking
-   geral, adaptada pra jogo em vez de streamer. */
+/* 4º classificado em diante (renderRecap em app.js): qualifyCount pode
+   passar de 3, mas .recap-podium só faz sentido visual pra exatamente 3 —
+   o resto entra aqui como lista compacta. */
 .recap-extra { margin-bottom: 22px; }
 .recap-extra-list { display: flex; flex-direction: column; gap: 6px; }
 
@@ -1526,9 +1421,6 @@ body.board-body.has-bg-image .board-cover-bg { display: none; }
   .recap-podium-card.rank-1 { transform: none; }
 }
 
-/* Lista de rounds anteriores — popup por cima do board (não abre aba nova
-   nem navega pra outra página, ver history-open-btn em app.js), clicar num
-   card troca pra .recap-overlay com os detalhes daquele round. */
 .history-overlay {
   position: fixed;
   inset: 0;
@@ -1606,9 +1498,8 @@ body.board-body.has-bg-image .board-cover-bg { display: none; }
   color: var(--muted);
 }
 
-/* Round arquivado sozinho ao encerrar (openRound: true, ver archiveAuction
-   em src/db.js), ainda não finalizado por um "zerar leilão" — os números
-   ainda podem mudar se reabrir e continuar. */
+/* Round arquivado ao encerrar (openRound: true, archiveAuction em
+   src/db.js) mas não finalizado — números ainda podem mudar se reabrir. */
 .history-card-inprogress {
   background: var(--accent-bg);
   color: var(--accent-text);
@@ -1705,9 +1596,9 @@ body.board-body.has-bg-image .board-cover-bg { display: none; }
   font-size: 10.5px;
 }
 
-/* Ciclo recentes -> maior valor -> menor valor -> recentes (ver
-   cycleHistorySort em app.js) — texto do estado atual ao lado do ícone, já
-   que "só uma setinha" sozinha não deixa claro qual das 3 ordens tá ativa. */
+/* Ciclo recentes -> maior valor -> menor valor -> recentes (cycleHistorySort
+   em app.js) — texto ao lado do ícone porque só a seta não deixa claro
+   qual das 3 ordens tá ativa. */
 .history-sort-btn {
   margin-left: auto;
   display: inline-flex;
@@ -1740,14 +1631,9 @@ body.board-body.has-bg-image .board-cover-bg { display: none; }
 
 .panel-hint strong { color: var(--text); }
 
-/* Glow atrás dos dois painéis mais "vitais" pra quem tá assistindo (quem
-   tá hospedando + quanto tempo falta) -- não em todos os painéis de
-   propósito, senão vira poluição em vez de destaque. position:relative
-   aqui é o que faz o ::before (position:absolute) ancorar no painel, não
-   pular pro ancestral posicionado mais próximo (.board, que também é
-   relative). z-index 0 (não -1): o resto do app já usa 0-embaixo/1-emcima
-   como padrão comprovado nesse ambiente de renderização -- negativo já
-   deu problema antes num contexto parecido (fundo da tela de criação). */
+/* position:relative faz o ::before (absolute) ancorar no painel, não no
+   .board (também relative). z-index 0, não -1: negativo já causou
+   problemas de empilhamento em contexto parecido (fundo da criação). */
 .host-panel, .timer-panel { position: relative; }
 .host-panel::before, .timer-panel::before {
   content: "";
@@ -1766,10 +1652,8 @@ body.board-body.has-bg-image .board-cover-bg { display: none; }
 
 .host-panel { flex-shrink: 0; padding: 20px 10px; }
 
-/* Cartão próprio pra destacar o host dentro do painel — mais respiro e um
-   contorno sutil que separa do resto da coluna, em vez de ficar solto. O
-   padding aqui substitui (não soma) o padding lateral do .panel, senão
-   sobra pouco espaço pro nome numa coluna de 260px. */
+/* padding aqui substitui (não soma) o do .panel pai, senão sobra pouco
+   espaço pro nome numa coluna estreita. */
 .host-card {
   position: relative;
   background: var(--surface-2);
@@ -1778,9 +1662,6 @@ body.board-body.has-bg-image .board-cover-bg { display: none; }
   padding: 18px 10px;
 }
 
-/* Vertical e centralizado: numa coluna fixa de 260px não dá pra caber foto
-   + nome grande lado a lado sem quebrar no meio da palavra. Empilhado, o
-   nome ganha a largura toda do card pra si. */
 .host-row { display: flex; flex-direction: column; align-items: center; gap: 12px; text-align: center; }
 
 .host-name {
@@ -1814,9 +1695,6 @@ body.board-body.has-bg-image .board-cover-bg { display: none; }
 
 .host-avatar[hidden] { display: none; }
 
-/* Link de texto pro canal, além do selo/ícone que já fica em cima do
-   avatar — pedido explícito do cliente, o ícone sozinho já funcionava bem
-   mas ele queria o link visível por escrito também. */
 .host-twitch-link {
   display: block;
   text-align: center;
@@ -1831,8 +1709,8 @@ body.board-body.has-bg-image .board-cover-bg { display: none; }
 .host-twitch-link:hover { color: var(--accent); text-decoration: underline; }
 .host-twitch-link[hidden] { display: none; }
 
-/* Selo da Twitch, cantinho inferior direito do avatar — cor da marca só
-   aqui, num elemento pequeno e reconhecível, não vira paleta do site. */
+/* Cor da marca Twitch só aqui, num elemento pequeno e reconhecível — não
+   vira paleta do site. */
 .host-twitch-badge {
   position: absolute;
   bottom: -2px;
@@ -1882,8 +1760,7 @@ body.board-body.has-bg-image .board-cover-bg { display: none; }
 
 .donor-row:hover { background: var(--surface-2); }
 
-/* Barra fina proporcional ao maior doador — ecoa a mesma linguagem visual
-   do .lot-card-fill na arena, dá noção de escala de primeira vista. */
+/* Ecoa a mesma linguagem visual de .lot-card-fill na arena. */
 .donor-row-fill {
   position: absolute;
   inset: 0;
@@ -1894,11 +1771,9 @@ body.board-body.has-bg-image .board-cover-bg { display: none; }
 }
 .donor-row.rank-1 .donor-row-fill { background: rgba(255, 122, 69, 0.16); }
 
-/* Sibling combinator (não ">*") de propósito: uma regra ">*" teria a mesma
-   especificidade de ".donor-row-fill" e, vindo depois na cascata, cancelaria
-   o position:absolute dela — a barra viraria item de flex de verdade e
-   engoliria o espaço do nome (bug real, visto via screenshot: nome do
-   doador líder sumia, largura calculada em 0px). */
+/* Sibling combinator (~), não ">*": ">*" empataria em especificidade com
+   .donor-row-fill e, vindo depois, cancelaria seu position:absolute — a
+   barra viraria item de flex e engoliria o espaço do nome. */
 .donor-row-fill ~ * { position: relative; z-index: 1; }
 
 .donor-rank {
@@ -1920,9 +1795,8 @@ body.board-body.has-bg-image .board-cover-bg { display: none; }
 .donor-row.rank-2 .donor-rank { color: var(--silver); }
 .donor-row.rank-3 .donor-rank { color: var(--bronze); }
 
-/* Foto da Twitch quando o nome digitado na doação bate com um login de
-   verdade (melhor esforço, ver getDonorAvatar em server.js) — sem isso, cai
-   pro círculo com a inicial, igual o placeholder do host/lote. */
+/* Foto da Twitch quando o nome digitado bate com um login real (melhor
+   esforço, getDonorAvatar em server.js); senão cai no placeholder. */
 .donor-avatar {
   width: 24px;
   height: 24px;
@@ -1965,11 +1839,8 @@ body.board-body.has-bg-image .board-cover-bg { display: none; }
 
 .arena-panel { flex: 1; min-height: 0; }
 
-/* Grade de verdade (não só uma lista empilhada) — em telas largas o
-   catálogo usa a largura extra pra mostrar 2 lotes lado a lado em vez de
-   esticar cada card sozinho por toda a largura (ficava um vão vazio enorme
-   entre a miniatura e o valor). auto-fill colapsa pra 1 coluna sozinho
-   quando não cabem 2 de minmax(430px, 1fr) — sem media query própria. */
+/* auto-fill colapsa pra 1 coluna sozinho quando não cabem 2 de
+   minmax(430px, 1fr) — sem precisar de media query própria. */
 .arena-grid {
   overflow-y: auto;
   min-height: 0;
@@ -1982,18 +1853,11 @@ body.board-body.has-bg-image .board-cover-bg { display: none; }
   padding: 2px 4px 4px;
 }
 
-/* 1º lugar sempre ocupa a linha inteira, de propósito -- é destaque
-   pensado (o líder do leilão), não só um acaso de sobra de grid; ficar do
-   tamanho de qualquer outro card (ou pior, menor que o 3º quando esse é
-   quem sobra sozinho numa linha) é contraintuitivo. Isso empurra os
-   demais pra um grid de 2 colunas próprio a partir do 2º card.
-   nth-child(even) no último (não mais odd): com o 1º sempre esticado, o
-   card que sobra sozinho na ÚLTIMA linha DESSE grid secundário é o último
-   de verdade quando o total geral é par (2º-Nº formam pares perfeitos só
-   quando N-1 é ímpar, ou seja, N par) -- mesma ideia de antes, só a
-   paridade inverte por causa do 1º já não contar mais nesse sub-grid. Em
-   telas de 1 coluna (mobile) nenhuma das duas regras muda nada visível,
-   já ocupa a linha inteira de qualquer forma. */
+/* 1º lugar sempre ocupa a linha inteira (destaque do líder), empurrando os
+   demais pra um grid de 2 colunas a partir do 2º card. Por isso o último
+   ímpar usa :nth-child(even), não (odd): como o 1º não conta mais nesse
+   sub-grid, o card que sobra sozinho na última linha é o Nº-ésimo quando o
+   total geral é par — a paridade se inverte em relação a uma grade normal. */
 .arena-grid > .lot-card:first-child,
 .arena-grid > .lot-card:last-child:nth-child(even) {
   grid-column: 1 / -1;
@@ -2012,8 +1876,7 @@ body.board-body.has-bg-image .board-cover-bg { display: none; }
 
 .arena-empty-title { font-family: var(--font-display); font-style: italic; font-size: 19px; color: var(--text); }
 
-/* Linha entre os classificados (top 3) e o resto do catálogo. grid-column
-   1/-1 pra atravessar as duas colunas da grade, não ficar preso numa só. */
+/* grid-column 1/-1 pra atravessar as duas colunas da grade. */
 .qualify-divider {
   display: flex;
   align-items: center;
@@ -2048,13 +1911,10 @@ body.board-body.has-bg-image .board-cover-bg { display: none; }
   border: 1px solid var(--border);
   border-radius: var(--radius);
   overflow: hidden;
-  /* Achado real: overflow != visible faz o navegador tratar a altura
-     mínima automática do item como 0 pro cálculo de linha do CSS Grid
-     (regra de espec de overflow) — sem min-height explícito aqui, a linha
-     da grade colapsava bem menor que o conteúdo de verdade (thumb 92px +
-     padding), cortando ao meio nome/valores/badge sempre que uma delas
-     precisava de mais altura (ex: apoio+sabotagem quebrando linha). Um
-     min-height "de verdade" (não automático) escapa dessa regra. */
+  /* overflow != visible faz o navegador tratar a altura mínima automática
+     do item como 0 no cálculo de linha do Grid (regra de espec de
+     overflow) — sem min-height explícito, a linha colapsava menor que o
+     conteúdo real e cortava nome/valores/badge. */
   min-height: 122px;
   transition: border-color 0.2s ease, box-shadow 0.3s ease;
   animation: card-in 0.25s var(--ease);
@@ -2065,26 +1925,15 @@ body.board-body.has-bg-image .board-cover-bg { display: none; }
   to { opacity: 1; transform: translateY(0); }
 }
 
-/* Brilho no hover -- inspirado num "glowing shadow" que o cliente mandou
-   de referência (halo colorido atrás do card). Lá era um gradiente cônico
-   girando atrás do elemento, mas isso não dá pra fazer com um
-   pseudo-elemento aqui: .lot-card precisa de overflow:hidden pra clipar o
-   .lot-card-bg (capa desfocada, logo abaixo, que "vaza" da própria caixa
-   via inset negativo) -- um pseudo-elemento tentando vazar do mesmo jeito
-   pro halo seria cortado por esse mesmo overflow. box-shadow no PRÓPRIO
-   .lot-card não tem esse problema (nunca é clipado pelo overflow do
-   elemento que o declara, só o de um pai cliparia, e aqui é o próprio) --
-   por isso o halo é box-shadow direto no :hover, não um pseudo-elemento
-   animado (que também colidiria com a animação de entrada card-in, já
-   dona da propriedade animation aqui). */
+/* Halo via box-shadow, não pseudo-elemento: .lot-card precisa de
+   overflow:hidden pra clipar .lot-card-bg (que vaza via inset negativo), o
+   que cortaria um pseudo-elemento tentando vazar do mesmo jeito.
+   box-shadow no próprio elemento não é afetado pelo seu overflow. */
 .lot-card:hover {
   border-color: var(--accent);
   box-shadow: 0 0 0 1px var(--accent-soft), 0 0 26px 4px var(--accent-glow), 0 0 48px 12px var(--accent-glow);
 }
 
-/* Capa do jogo desfocada como fundo do card, com véu escuro pra manter a
-   leitura do texto por cima. Cards sem capa (thumb placeholder) simplesmente
-   não têm essa camada e caem no --surface-2 do .lot-card. */
 .lot-card-bg {
   position: absolute;
   inset: -14px;
@@ -2137,20 +1986,17 @@ body.board-body.has-bg-image .board-cover-bg { display: none; }
   to { background-position: 160% 0; }
 }
 
-/* Guerra de lances: apoio pulsa em verde, sabotagem sacode em vermelho.
-   O tremor vai no conteúdo (não no .lot-card), pra não brigar com o
-   translateY que o reposicionamento ao vivo aplica no card inteiro. */
+/* O tremor de sabotagem vai no conteúdo (não no .lot-card), pra não brigar
+   com o translateY do reposicionamento ao vivo do card. */
 @keyframes fill-pulse-add {
   0% { box-shadow: inset 0 0 0 0 rgba(70, 177, 127, 0.55); }
   45% { box-shadow: inset 0 0 32px 6px rgba(70, 177, 127, 0.4); }
   100% { box-shadow: inset 0 0 0 0 rgba(70, 177, 127, 0); }
 }
 
-/* Lance de peso (ver triggerBigWinCelebration em app.js): confete/faíscas.
-   position:fixed ancorado no retângulo do card (não filho dele) de
-   propósito — o card tem overflow:hidden pra cortar a imagem de fundo, o
-   que também cortava o confete quase inteiro e deixava o efeito quase
-   invisível. Assim ele estoura livre por cima de tudo. */
+/* position:fixed (não filho do card) de propósito: o card tem
+   overflow:hidden pra cortar a imagem de fundo, o que também cortaria o
+   confete quase inteiro. */
 .confetti-burst { position: fixed; pointer-events: none; z-index: 80; overflow: visible; }
 
 .confetti-piece {
@@ -2259,9 +2105,6 @@ body.board-body.has-bg-image .board-cover-bg { display: none; }
 
 .lot-card.rank-1 .lot-name { color: var(--text); font-weight: 600; }
 
-/* Quanto o lote recebeu de apoio vs. de sabotagem, separado do total
-   líquido (que já aparece grande em .lot-total) — só aparece quando o lote
-   já tomou sabotagem ou já passou de zero, pra não poluir lotes novos. */
 .lot-funding {
   display: flex;
   align-items: center;
@@ -2276,12 +2119,9 @@ body.board-body.has-bg-image .board-cover-bg { display: none; }
 
 .lot-funding-add,
 .lot-funding-remove {
-  /* Cada valor tem seu próprio teto de largura (não a linha toda) — assim,
-     quando apoio e sabotagem não cabem lado a lado, o de sabotagem quebra
-     pra uma segunda linha em vez de ficar cortado/invisível (achado real:
-     um overflow:hidden na linha inteira escondia o valor de sabotagem por
-     completo quando os dois apareciam juntos). Só trunca com "..." se um
-     valor sozinho for longo demais mesmo tendo a linha toda pra ele. */
+  /* Teto de largura por valor, não na linha toda: um overflow:hidden na
+     linha inteira escondia o valor de sabotagem por completo quando os
+     dois apareciam juntos. Assim ele quebra pra 2ª linha em vez de sumir. */
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -2291,9 +2131,8 @@ body.board-body.has-bg-image .board-cover-bg { display: none; }
 .lot-funding-add { color: var(--positive); }
 .lot-funding-remove { color: var(--danger); }
 
-/* Quem mais apoiou esse lote especificamente (topDonor por game_key, ver
-   getTopDonorByGame em src/db.js) — diferente do quadro de honra, que é o
-   ranking geral do leilão inteiro, não por jogo. */
+/* topDonor por game_key (getTopDonorByGame em src/db.js) — diferente do
+   quadro de honra, que é o ranking geral do leilão, não por jogo. */
 .lot-top-donor {
   display: flex;
   align-items: center;
@@ -2337,13 +2176,9 @@ body.board-body.has-bg-image .board-cover-bg { display: none; }
   row-gap: 4px;
   gap: 10px;
   flex-shrink: 0;
-  /* Sem isso, o badge "último sabotado" (texto comprido) fazia .lot-meta
-     pedir mais largura do que a linha 2 colunas tinha sobrando, e como
-     flex-shrink:0 nunca cedia, sobrava 0px pro .lot-info vizinho — nome,
-     valores de apoio/sabotagem e top doador do lote inteiro somem juntos
-     (achado real: card ficava com um buraco vazio do lado da capa). Com
-     max-width, o badge quebra pra uma segunda linha em vez de expulsar o
-     resto do card. */
+  /* Sem max-width, o badge "último sabotado" (texto comprido) pedia mais
+     largura do que sobrava na coluna, e como flex-shrink:0 nunca cedia,
+     sobrava 0px pro .lot-info vizinho. Assim ele quebra pra 2ª linha. */
   max-width: 150px;
 }
 
@@ -2362,9 +2197,8 @@ body.board-body.has-bg-image .board-cover-bg { display: none; }
 
 .badge-hit { font-size: 10.5px; padding: 2px 6px; border-radius: 3px; background: var(--danger-bg); color: var(--danger); }
 
-/* Fica no lote depois que o flash "sabotado agora" (4s) some — marca qual
-   foi o último sabotado até o próximo acontecer em outro lugar, mais
-   discreto que o flash (sem fundo sólido, só contorno). */
+/* Fica no lote depois que o flash "sabotado agora" some — marca o último
+   sabotado até o próximo acontecer em outro lugar. */
 .badge-hit-last {
   background: transparent;
   border: 1px solid rgba(239, 68, 112, 0.4);
@@ -2377,11 +2211,6 @@ body.board-body.has-bg-image .board-cover-bg { display: none; }
 .lot-edit { display: none; gap: 4px; }
 .presenter-mode .lot-edit { display: flex; }
 
-/* Segunda tentativa: texto puro ("editar" sublinhado) ficou fraco demais
-   pra reconhecer como botão de cara (feedback direto do cliente). Ícone
-   ghost em vez de texto ghost (lápis, círculo, borda fina que acende no
-   hover) -- mesma linguagem visual usada nos outros botões pequenos do
-   app, só um pouco menor pra caber numa linha de card. */
 .lot-edit button {
   display: flex;
   align-items: center;
@@ -2441,9 +2270,6 @@ body.board-body.has-bg-image .board-cover-bg { display: none; }
 .timer.paused .timer-clock { color: var(--muted); }
 .timer.paused .timer-ring-fill { stroke: var(--muted); }
 
-/* Barra única de controles do timer: um só container em pílula, com ícones
-   em vez de texto empilhado em várias caixas (toggle pausa/play, +5 rápido,
-   e duração customizada — tudo lado a lado, separado por divisores finos). */
 .timer-toolbar {
   display: none;
   align-items: stretch;
@@ -2484,17 +2310,11 @@ body.board-body.has-bg-image .board-cover-bg { display: none; }
 .tbar-btn:disabled { opacity: 0.35; cursor: not-allowed; }
 .tbar-btn:disabled:hover { color: var(--muted); background: none; }
 
-/* Pausar/retomar: ícone de play some o pause enquanto tocando, e vice-versa
-   quando pausado (classe alternada via JS). Fica em âmbar quando pausado,
-   pra ficar claro que o timer tá congelado, não morto. */
 .tbar-btn .icon-play { display: none; }
 .tbar-btn.is-paused .icon-pause { display: none; }
 .tbar-btn.is-paused .icon-play { display: block; }
 .tbar-btn.is-paused { color: var(--accent-text); }
 
-/* Encerrar/reabrir: ação com peso maior (fecha até reabrir manual), por
-   isso ganha um tom de perigo sutil só no hover — não grita por padrão,
-   mas avisa antes do clique. Confirmação de verdade acontece via JS. */
 .tbar-btn-danger:hover { color: var(--danger); background: var(--danger-bg); }
 .tbar-btn-danger .icon-reopen { display: none; }
 .tbar-btn-danger.is-closed .icon-stop { display: none; }
@@ -2527,7 +2347,6 @@ body.board-body.has-bg-image .board-cover-bg { display: none; }
 .tbar-input:focus { outline: none; }
 .tbar-input::placeholder { color: var(--muted); }
 
-/* remove as setinhas do input number pra não brigar com o resto do UI */
 .tbar-input::-webkit-outer-spin-button,
 .tbar-input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
 .tbar-input { -moz-appearance: textfield; }
@@ -2590,16 +2409,12 @@ body.board-body.has-bg-image .board-cover-bg { display: none; }
   transition: background 0.15s ease;
 }
 
-/* Zebra bem sutil -- só pra guiar o olho linha a linha numa lista densa,
-   rgba branco fixo (não var(--surface-2) nem token de tema) de propósito:
-   é só uma clareada de ~2.5%, não precisa acompanhar tema nenhum, e um
+/* rgba branco fixo, não token de tema: é só uma clareada de ~2.5%, um
    token de superfície nessa opacidade ficaria forte/errado demais. */
 .history-list li:nth-child(even) { background: rgba(255, 255, 255, 0.025); }
 
 .history-list li:hover { background: var(--surface-2); }
 
-/* A entrada mais recente sempre anima ao renderizar (tanto no carregamento
-   inicial quanto em tempo real) — um jeito sutil de sinalizar "algo novo". */
 .history-list li:first-child { animation: history-in 0.35s var(--ease); }
 
 @keyframes history-in {
@@ -2630,9 +2445,8 @@ body.board-body.has-bg-image .board-cover-bg { display: none; }
   gap: 3px;
 }
 
-/* Texto quebra em até 2 linhas em vez de truncar — a coluna da direita é
-   estreita (~220px), então cortar com "..." escondia demais (ex: o nome do
-   jogo, que é a parte que mais importa aqui). */
+/* Quebra em até 2 linhas em vez de truncar: a coluna é estreita e cortar
+   com "..." escondia o nome do jogo, a parte que mais importa aqui. */
 .history-text {
   overflow: hidden;
   display: -webkit-box;
@@ -2682,14 +2496,11 @@ body.board-body.has-bg-image .board-cover-bg { display: none; }
   .panel { min-height: 0; border-right: none; }
   .donors-panel, .history-panel { max-height: 260px; }
   .arena-panel { min-height: 0; }
-  /* grid-template-columns: 1fr fixo (não o minmax(430px, 1fr) da regra
-     base) — 430px de mínimo por track é mais largo que a tela em muitos
-     celulares, o que causaria overflow horizontal em vez de colapsar. */
+  /* 1fr fixo, não o minmax(430px, 1fr) da regra base: 430px de mínimo é
+     mais largo que muitas telas de celular e causaria overflow horizontal. */
   .arena-grid { max-height: none; overflow: visible; grid-template-columns: 1fr; }
   .presenter-toggle span { display: inline; }
 
-  /* Card do lote mais compacto: sem isso, o nome do jogo é espremido a
-     zero pela miniatura + valor + botão "editar" competindo no mesmo eixo. */
   .lot-card-content { gap: 10px; padding: 12px 14px; }
   .lot-card { min-height: 90px; }
   .lot-thumb, .lot-thumb-placeholder { width: 46px; height: 46px; }
@@ -2852,10 +2663,9 @@ body.board-body.has-bg-image .board-cover-bg { display: none; }
 .modal-actions { display: flex; gap: 8px; margin-top: 20px; }
 .modal-actions .btn-mini { flex: 1; height: 38px; }
 
-/* Modal de doação (Pix in-app, ver #donate-modal em board.html + app.js) --
-   reaproveita .modal/.modal-overlay/.modal-field/.seg/.amount-wrap/
-   .modal-input/.modal-actions inteiros, só define o que é específico dos
-   3 passos (formulário -> QR aguardando -> confirmado, ver .donate-step). */
+/* Modal de doação Pix in-app: reaproveita .modal/.modal-overlay/.seg/
+   .amount-wrap/.modal-input inteiros, só define o específico dos 3 passos
+   (formulário -> QR aguardando -> confirmado, ver .donate-step). */
 .donate-modal { max-width: 400px; }
 
 .donate-step-success { text-align: center; padding: 12px 0 4px; }

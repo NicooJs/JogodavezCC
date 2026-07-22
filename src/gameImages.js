@@ -6,13 +6,8 @@ const { normalizeKey } = require("./parser");
 
 const cache = new Map(); // nome normalizado -> URL da imagem (ou null se não achou)
 
-// Lista genérica de capas populares, pro fundo decorativo do board (não é
-// busca por nome, é "me dá um bando de jogos conhecidos"). Cacheada com TTL
-// em vez de por-nome: é a MESMA lista pra qualquer leilão/visitante, então
-// sem cache cada carregamento de board bateria na RAWG de novo -- numa
-// stream com centenas de espectadores abrindo o board junto, isso rate
-// limitaria a chave rápido. TTL (não cache eterno) só pra lista não ficar
-// idêntica pra sempre entre deploys.
+// Mesma lista pra qualquer leilão/visitante — cacheada com TTL pra não bater
+// na RAWG a cada carregamento de board (rate limit com muitos espectadores).
 let popularCoversCache = { covers: null, fetchedAt: 0 };
 const POPULAR_COVERS_TTL_MS = 6 * 60 * 60 * 1000; // 6 horas
 
@@ -25,8 +20,7 @@ async function fetchPopularCovers(count = 30) {
   }
 
   try {
-    // ordering=-added: mais adicionados por usuários na RAWG, um proxy
-    // razoável de "jogo conhecido" sem precisar de um termo de busca.
+    // ordering=-added: mais adicionados na RAWG, proxy de "jogo conhecido".
     const url = `https://api.rawg.io/api/games?ordering=-added&page_size=${count}&key=${apiKey}`;
     const res = await fetch(url, {
       headers: { "User-Agent": "leilao-de-jogos (uso pessoal)" },
@@ -81,7 +75,6 @@ async function fetchGameImage(name) {
   }
 }
 
-// Sugestões pro autocomplete do lançamento manual (modo apresentador).
 async function searchGames(query) {
   const apiKey = process.env.RAWG_API_KEY;
   if (!apiKey || !query || !query.trim()) return [];
@@ -105,15 +98,14 @@ async function searchGames(query) {
   }
 }
 
-// Tenta extrair o nome "limpo" de um jogo dentro de uma mensagem barulhenta
-// (ex: "minecraft coloca ele ai!!" -> "Minecraft"). Só serve pra PRIMEIRA
-// menção de um jogo — quando já existe um lote no catálogo, quem resolve
-// isso é resolveExistingKey em db.js, mais barato (não bate na RAWG).
+// Extrai o nome "limpo" de um jogo de uma mensagem barulhenta (ex:
+// "minecraft coloca ele ai!!" -> "Minecraft"). Só pra PRIMEIRA menção de um
+// jogo — pra jogo já catalogado quem resolve é resolveExistingKey em db.js,
+// mais barato por não bater na RAWG.
 //
-// Só confia no resultado da RAWG se o nome dele aparecer de verdade, por
-// palavra inteira, dentro do texto original — isso impede a busca fuzzy
-// deles de "inventar" um jogo não relacionado pra um texto barulhento
-// demais (ex: alguém só mandando um emoji ou uma frase aleatória).
+// Só confia no resultado se o nome aparecer, por palavra inteira, no texto
+// original — evita a busca fuzzy da RAWG "inventar" um jogo pra texto
+// barulhento demais (ex: só um emoji).
 async function identifyGameFromNoisyText(text) {
   const apiKey = process.env.RAWG_API_KEY;
   if (!apiKey || !text || !text.trim()) return null;

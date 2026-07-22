@@ -1,7 +1,6 @@
-// Página standalone de doação -- mesmo fluxo do modal "Doar" do board
-// (ver app.js), só que como página própria pra dar um link fixável no
-// chat da live. Sem admin/apresentador nenhum aqui: é 100% público, então
-// não reaproveita presenterFetch/getPassword nem nada ligado a sessão.
+// Página standalone de doação, mesmo fluxo do modal "Doar" do board, só
+// que como página própria pra dar link fixável no chat. 100% público, sem
+// sessão de admin/apresentador aqui.
 const LEILAO_ID = location.pathname.match(/^\/l\/([a-z0-9_-]+)\/doar/i)?.[1] || null;
 if (!LEILAO_ID) {
   document.body.innerHTML = '<p style="padding:40px;font-family:sans-serif;color:#ccc;background:#1c1c1f;">Link inválido.</p>';
@@ -178,9 +177,8 @@ socket.on("update", ({ leaderboard, lastEvent }) => {
     resetForm();
     showStep(leaderboard.open ? "form" : "closed");
   } else if (currentStep === "form" || currentStep === "closed") {
-    // Só reage a abrir/fechar em tempo real enquanto ainda não gerou
-    // nenhum Pix -- uma vez na tela de pagamento ou confirmado, não faz
-    // sentido puxar o tapete de quem já está no meio do fluxo.
+    // Só reage a abrir/fechar em tempo real antes de gerar um Pix -- não
+    // puxa o tapete de quem já está no meio do pagamento ou já confirmou.
     showStep(leaderboard.open ? "form" : "closed");
   }
 

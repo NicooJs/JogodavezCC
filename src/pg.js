@@ -1,7 +1,6 @@
-// Pool de conexão Postgres + helper de query -- papel equivalente ao
-// stores.js pro mundo JSON, mas pro banco novo (credenciais OAuth do MP e
-// histórico de transações; o catálogo do leilão continua 100% em JSON,
-// esse arquivo não mexe nisso).
+// Pool de conexão Postgres + helper de query — guarda credenciais OAuth do
+// MP e histórico de transações. O catálogo do leilão continua em JSON
+// (src/stores.js), esse arquivo não mexe nisso.
 const { Pool } = require("pg");
 
 let pool = null;
@@ -12,19 +11,17 @@ function getPool() {
   if (!connectionString) throw new Error("DATABASE_URL não configurado");
   pool = new Pool({
     connectionString,
-    // Railway Postgres exige SSL na conexão pública; a interna
-    // (railway.internal) não, mas aceitar SSL nos dois casos é mais simples
-    // que detectar qual URL é essa -- rejectUnauthorized:false porque o
-    // certificado do Railway não é validável pela cadeia padrão do Node.
+    // Railway Postgres exige SSL na conexão pública (não na interna), mas
+    // detectar qual URL é qual é mais frágil que aceitar SSL nos dois casos.
+    // rejectUnauthorized:false porque o certificado do Railway não valida
+    // pela cadeia padrão do Node.
     ssl: connectionString.includes("railway.internal") ? false : { rejectUnauthorized: false },
   });
   return pool;
 }
 
-// Log de query só com o texto (sem parâmetros -- é aqui que token cifrado
-// ou qualquer outro dado sensível passaria se alguém esquecesse e logasse
-// os params por engano) e a duração, útil pra debugar sem nunca arriscar
-// vazar segredo em log.
+// Loga só o texto da query e a duração, nunca os parâmetros — é ali que
+// token cifrado ou outro dado sensível passaria se alguém logasse os params.
 async function query(text, params) {
   const start = Date.now();
   const res = await getPool().query(text, params);

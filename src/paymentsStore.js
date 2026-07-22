@@ -38,9 +38,8 @@ async function createPending({ leilaoId, streamerId, externalReference, valorTot
   return rowToPayment(res.rows[0]);
 }
 
-// Preenche o mp_payment_id assim que o MP confirma a criação da cobrança
-// (a linha já existia como PENDING desde createPending -- isso só liga o
-// id deles ao nosso registro, pra o webhook conseguir achar por mp_payment_id também).
+// Liga o id do MP ao registro já criado como PENDING em createPending, pra
+// o webhook conseguir achar a linha por mp_payment_id também.
 async function markCreated(externalReference, mpPaymentId) {
   const res = await query(
     `UPDATE payments SET mp_payment_id = $2, updated_at = now() WHERE external_reference = $1 RETURNING *`,

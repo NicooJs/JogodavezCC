@@ -1,9 +1,8 @@
-// Criptografia dos tokens OAuth do Mercado Pago (access_token/refresh_token)
-// guardados no Postgres -- são credenciais reais que deixam o app agir em
-// nome da conta MP do streamer, então nunca ficam em texto puro em disco.
-// AES-256-GCM via crypto nativo do Node (mesma disciplina de só usar
-// built-ins pra criptografia já seguida em src/passwords.js/src/session.js
-// -- sem dependência nova só pra isso).
+// Criptografia dos tokens OAuth do Mercado Pago guardados no Postgres --
+// são credenciais reais que deixam o app agir em nome da conta MP do
+// streamer, então nunca ficam em texto puro em disco. AES-256-GCM via
+// crypto nativo do Node (mesma disciplina de src/passwords.js/session.js:
+// sem dependência nova só pra isso).
 const crypto = require("crypto");
 
 const ALGO = "aes-256-gcm";

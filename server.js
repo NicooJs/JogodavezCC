@@ -22,22 +22,17 @@ const streamersStore = require("./src/streamersStore");
 const paymentsStore = require("./src/paymentsStore");
 
 const app = express();
-// Railway termina TLS na borda e repassa pro container em HTTP puro,
-// marcando o protocolo real no header X-Forwarded-Proto. Sem confiar nesse
-// proxy, req.protocol sempre volta "http" em produção (mesmo pra requisição
-// pública https) — e é isso que monta a URL de redirect errada em
-// buildMpRedirectUri/buildTwitchRedirectUri.
+// Railway termina TLS na borda; sem confiar no proxy (X-Forwarded-Proto),
+// req.protocol sempre volta "http" mesmo em produção.
 app.set("trust proxy", 1);
 const server = http.createServer(app);
 const io = new Server(server);
 
 app.use(express.json());
 
-// Upload de imagem de fundo do board — salvo no mesmo DATA_DIR persistente
-// dos dados dos leilões (volume do Railway em produção), não em disco
-// efêmero do container. Nome do arquivo prefixado com o leilaoId + horário
-// pra não colidir entre leilões nem ficar em cache velho do navegador
-// quando o streamer troca a imagem.
+// Salvo no mesmo DATA_DIR persistente dos dados dos leilões, não em disco
+// efêmero do container. Nome prefixado com leilaoId + horário pra não
+// colidir entre leilões nem ficar em cache velho do navegador.
 const UPLOADS_DIR = path.join(DATA_DIR, "uploads");
 fs.mkdirSync(UPLOADS_DIR, { recursive: true });
 
@@ -65,12 +60,9 @@ const backgroundImageUpload = multer({
   },
 });
 
-// Se a imagem de fundo ATUAL desse leilão foi um upload nosso (serve de
-// /uploads/...), apaga o arquivo antes de trocar por outra — sem isso, cada
-// troca de imagem (ou volta pra uma URL externa) deixava o arquivo antigo
-// órfão pra sempre no volume persistente. Uma URL externa (Imgur etc) não
-// tem arquivo nosso pra apagar, então é no-op nesse caso. Best-effort: erro
-// ao apagar só loga, não impede a troca da imagem nova.
+// Apaga o upload anterior se a imagem de fundo atual veio de /uploads/
+// (URL externa como Imgur não tem arquivo nosso pra apagar, é no-op).
+// Best-effort: erro ao apagar só loga, não impede a troca da imagem nova.
 function deleteOldUploadedBackground(store) {
   const current = store.getState("backgroundImageUrl");
   if (!current || !current.startsWith("/uploads/")) return;
@@ -80,13 +72,9 @@ function deleteOldUploadedBackground(store) {
   });
 }
 
-// Apaga qualquer imagem de fundo que esse leilão tenha enviado por upload
-// (nome sempre prefixado "<leilaoId>-", ver backgroundImageUpload acima) —
-// chamado ao apagar o leilão inteiro (rota de super-admin), senão o arquivo
-// ficava pra trás no volume pra sempre (deleteStore só apaga o JSON de
-// dados). Varre por prefixo em vez de confiar só no backgroundImageUrl
-// guardado, então também limpa órfãos que já tenham sobrado de antes dessa
-// correção existir.
+// Chamado ao apagar o leilão inteiro (deleteStore só remove o JSON de
+// dados, não uploads). Varre por prefixo em vez de confiar só no
+// backgroundImageUrl guardado, pra também limpar arquivos órfãos.
 function deleteUploadedBackgroundsFor(leilaoId) {
   let files;
   try {
@@ -113,30 +101,23 @@ function getAutoCloseMs(store) {
 const DEFAULT_QUALIFY_COUNT = 3;
 
 // Quantos lotes contam como "classificados" (linha de corte no catálogo,
-// ver .qualify-divider em app.js) — configurável por leilão desde que
-// streamers com catálogos maiores (mais de 3 jogos "de verdade" em disputa)
-// pediram pra não ficar preso em top 3 fixo.
+// ver .qualify-divider em app.js) — configurável por leilão.
 function getQualifyCount(store) {
   const stored = Number(store.getState("qualifyCount", DEFAULT_QUALIFY_COUNT));
   return Number.isFinite(stored) && stored > 0 ? Math.floor(stored) : DEFAULT_QUALIFY_COUNT;
 }
 
-// Nem todo streamer quer expor quanto arrecadou pro público — pedido
-// explícito do cliente. Quando ligado, o total agregado (topbar + recap)
-// vira null na API pública (não só escondido via CSS: alguém olhando a
-// rede/inspecionar elemento não pode simplesmente ler o número real, ver
-// CLAUDE.md sobre cuidado com informação exposta). Os valores de CADA lote
-// continuam aparecendo — isso é o mecanismo do leilão em si, não o total
-// pessoal do streamer.
+// Nem todo streamer quer expor quanto arrecadou pro público. Quando
+// ligado, o total agregado (topbar + recap) vira null na API pública
+// (não só escondido via CSS — o valor real não fica na resposta). Os
+// valores de CADA lote continuam aparecendo normalmente.
 function getHideTotalRaised(store) {
   return store.getState("hideTotalRaised", "false") === "true";
 }
 
-// Verdadeiro quando host/hostAvatar vieram do login de verdade com a Twitch
-// na criação (ver POST /api/leiloes) -- não editável depois (o recurso de
-// renomear o host foi removido: com o login obrigatório, não fazia mais
-// sentido deixar trocar o nome manualmente). Só falso pra leilão criado
-// antes desse login existir.
+// Verdadeiro quando host/hostAvatar vieram do login de verdade com a
+// Twitch na criação (ver POST /api/leiloes) -- não editável depois. Só
+// falso pra leilão criado antes desse login existir.
 function getHostVerified(store) {
   return store.getState("hostVerified", "false") === "true";
 }
@@ -161,10 +142,8 @@ function buildTwitchRedirectUri(req) {
 
 // Mesma disciplina de allowlist EXATA de safeReturnTo, mas conectar o
 // Mercado Pago também pode acontecer de dentro do board de um leilão
-// específico (aba Avançado das configurações) — precisa voltar pra
-// /l/<id>, não só pras duas páginas estáticas. Âncoras ^ e $ (não regex
-// solto) garantem que só bate exatamente esse formato, sem brecha de
-// open-redirect (nunca casa com "//evil.com" nem com URL absoluta).
+// específico — precisa voltar pra /l/<id>, não só pras páginas estáticas.
+// Âncoras ^ e $ garantem que só bate exatamente esse formato.
 const LEILAO_RETURN_PATH_RE = /^\/l\/[a-z0-9_-]+$/i;
 function safeReturnToMp(value) {
   if (value === "/" || value === "/meus-leiloes") return value;
@@ -201,10 +180,8 @@ function touchActivity(store, reopen = false) {
   }
 }
 
-// Guarda quanto tempo essa sessão aberta durou, no momento de fechar (manual
-// ou automático) — usado pelo recap de encerramento. Calculado aqui (e não
-// só na hora de exibir o recap) pra ficar estável mesmo que o cliente
-// reconecte ou recarregue a página depois do leilão já ter fechado.
+// Guarda a duração no momento de fechar (não só na hora de exibir o
+// recap), pra ficar estável mesmo com reconexão/reload depois.
 function captureAuctionDuration(store) {
   const openedAt = Number(store.getState("leilaoOpenedAt", 0));
   if (openedAt > 0) {
@@ -212,26 +189,19 @@ function captureAuctionDuration(store) {
   }
 }
 
-// Chamada nos dois pontos onde o leilão fecha (toggle manual e auto-close
-// por inatividade) — pedido do cliente: encerrar já deve contar no
-// histórico/ranking, sem precisar zerar depois. Ver openRound em
-// src/db.js#archiveAuction pra como isso evita contar o mesmo dinheiro
-// duas vezes se reabrir e fechar de novo sem zerar.
+// Chamada nos dois pontos onde o leilão fecha (toggle manual e auto-close):
+// encerrar já conta no histórico/ranking, sem precisar zerar depois. Ver
+// openRound em src/db.js#archiveAuction pra evitar contar 2x se reabrir.
 function archiveOpenRoundSnapshot(store) {
   const recap = buildRecap(store);
   if (recap.totalGames > 0) store.archiveAuction(recap, { openRound: true });
 }
 
-// Espelha o padrão antigo do pix.gg (um flag síncrono guardado no state
-// JSON do leilão, ver webhookSignatureBroken removido) -- mas agora
-// atualizado por CONTA (twitch_user_id, via registry.listLeiloesByOwner),
-// já que a conexão com o Mercado Pago é uma coisa só por streamer, não por
-// leilão. Guardar isso no JSON (e não consultar streamersStore/Postgres
-// direto dentro de serializeLeaderboard) mantém serializeLeaderboard
-// síncrona, que é chamada em todo broadcastUpdate. Chamado com true quando
-// uma chamada de verdade à API do MP devolve 401 (token caiu, ver
-// streamersStore.markDisconnected), e com false assim que o streamer
-// reconecta (ver /auth/mercadopago/callback).
+// Flag síncrona no state JSON de cada leilão do streamer (via
+// registry.listLeiloesByOwner), atualizada por CONTA já que a conexão MP
+// é por streamer, não por leilão. Guardar no JSON (em vez de consultar
+// Postgres dentro de serializeLeaderboard) mantém essa função síncrona.
+// Chamado com true num 401 real da API do MP, false ao reconectar.
 function setLeiloesMpDisconnected(twitchUserId, disconnected) {
   for (const { id } of registry.listLeiloesByOwner(twitchUserId)) {
     const store = getStore(id);
@@ -241,18 +211,12 @@ function setLeiloesMpDisconnected(twitchUserId, disconnected) {
 }
 
 // Melhor esforço pra achar a foto de perfil de um doador na Twitch, usando
-// o nome que ele digitou na mensagem do pix.gg como se fosse o login dele —
-// funciona quando bate (a maioria dos apoiadores usa o mesmo nick), e
-// silenciosamente não mostra nada quando não bate (não tem como confirmar
-// identidade a partir só do nome digitado). Cache global (não por leilão,
-// login é global). Nunca bloqueia a resposta: se ainda não tem no cache,
-// devolve null nessa chamada -- mas quem chamou pode passar onResolved, que
-// dispara um broadcast assim que a busca terminar, pra quem já tava vendo o
-// placar receber a foto sem precisar que role outra doação (ou um F5) nesse
-// meio tempo. donorAvatarFetching guarda os onResolved de todo mundo
-// esperando o MESMO username (pode vir de leilões diferentes ao mesmo
-// tempo) -- um Set evita chamar o mesmo callback 2x se dois lotes do mesmo
-// leilão pedirem o mesmo doador na mesma passada de serializeLeaderboard.
+// o nome digitado na doação como login (funciona quando bate, some
+// silenciosamente quando não). Cache global (login é global, não por
+// leilão). Nunca bloqueia a resposta: devolve null se ainda não tem no
+// cache, mas quem chamou pode passar onResolved pra receber um broadcast
+// assim que a busca terminar. donorAvatarFetching usa Set pra não chamar
+// o mesmo callback 2x se dois lotes pedirem o mesmo doador de uma vez.
 const donorAvatarCache = new Map(); // username normalizado -> url|null
 const donorAvatarFetching = new Map(); // username normalizado -> Set de onResolved esperando
 
@@ -278,23 +242,19 @@ function getDonorAvatar(username, onResolved) {
 }
 
 // Se a chave já existe, usa ela direto. Senão, tenta casar com um jogo já
-// existente no catálogo (ruído na mensagem ou erro de digitação — ver
-// resolveExistingKey em db.js). Se ainda assim não achar nada (é a
-// PRIMEIRA menção desse jogo, sem lote de referência local pra comparar),
-// tenta extrair o nome limpo batendo contra a RAWG antes de desistir e
-// aceitar o texto inteiro como nome do lote.
+// existente no catálogo (ver resolveExistingKey em db.js). Sem match (é a
+// primeira menção desse jogo), tenta extrair o nome limpo via RAWG antes
+// de aceitar o texto inteiro como nome do lote.
 async function resolveParsedGame(store, parsed) {
   if (store.hasGame(parsed.key)) return parsed;
 
   const matchedKey = store.resolveExistingKey(parsed.key);
   if (matchedKey) {
-    // O jogo já catalogado bate por substring dentro da mensagem nova (ver
-    // resolveExistingKey em db.js) — mas isso pode ser ruído de chat em volta
-    // do MESMO jogo ("minecraft manda ver!!") ou pode ser um jogo diferente
-    // de verdade com nome parecido ("Elden Ring Nightreign" batendo com
-    // "Elden Ring" já existente). Só aceita o match direto quando o que
-    // sobra parece ruído comum; caso contrário, confere na RAWG se o texto
-    // inteiro identifica um jogo diferente antes de fundir num lote alheio.
+    // Match por substring pode ser ruído de chat em volta do MESMO jogo
+    // ("minecraft manda ver!!") ou um jogo diferente com nome parecido
+    // ("Elden Ring Nightreign" batendo com "Elden Ring" já existente). Só
+    // aceita o match direto se o que sobra parece ruído comum; senão
+    // confere na RAWG se o texto inteiro é um jogo diferente.
     const leftover = leftoverAfterMatch(parsed.key, matchedKey);
     if (!looksLikeNoise(leftover)) {
       const rawgMatch = await identifyGameFromNoisyText(parsed.name);
@@ -318,12 +278,8 @@ async function resolveParsedGame(store, parsed) {
 }
 
 function serializeLeaderboard(store, leilaoId) {
-  // Passado pro getDonorAvatar de cada doador nessa passada -- se a foto
-  // ainda não tava em cache e precisou buscar na Twitch, isso é o que avisa
-  // quem já tava vendo o placar assim que ela chegar (ver comentário de
-  // getDonorAvatar acima). Sem leilaoId (nenhum call site hoje cai nisso,
-  // mas é uma guarda barata) simplesmente não teria como fazer esse
-  // broadcast, então nem tenta.
+  // Passado pro getDonorAvatar de cada doador -- avisa quem já tava vendo
+  // o placar assim que uma foto que não estava em cache chegar.
   const onAvatarResolved = leilaoId ? () => broadcastUpdate(leilaoId, store, null) : undefined;
   const rows = store.getLeaderboard();
   const isOpen = store.getState("open", "true") === "true";
@@ -776,38 +732,13 @@ app.post("/api/leiloes", async (req, res) => {
   }
 });
 
-// Ranking público de streamers por total arrecadado — histórico completo
-// (soma todos os rounds já arquivados via archiveAuction, ver src/db.js).
-// Cross-tenant de propósito: é a única rota que olha todos os leilões de
-// uma vez, pra mostrar no board.
-//
-// Não dá pra só somar archivedTotal + totalRaised ao vivo direto: desde que
-// encerrar passou a arquivar sozinho (openRound: true, ver archiveAuction),
-// o snapshot mais recente já pode refletir boa parte (ou tudo) do total ao
-// vivo atual, e somar os dois contaria esse pedaço 2x. Também não dá pra só
-// ignorar o total ao vivo quando fechado (tentativa anterior, com bug real):
-// leilões fechados de antes dessa feature existir (sem nenhum pastAuctions
-// ainda) sumiam do ranking inteiro, mesmo já tendo arrecadado de verdade.
-//
-// A conta certa: se o snapshot mais recente é um round "aberto" (ainda não
-// finalizado por um zerar), ele já é a MELHOR estimativa do que já foi
-// contado dali — só soma a diferença (getTotalRaised ao vivo menos esse
-// snapshot), que é o que rolou de novo desde então (ex: reabriu e voltou a
-// receber doação sem fechar de novo ainda). Sem esse snapshot (nunca
-// arquivado, ou já finalizado por um zerar — round novo começando do zero),
-// o total ao vivo inteiro ainda não foi contado em lugar nenhum.
-// Agrupa por dono verificado da Twitch (meta.ownerTwitchUserId) -- sem isso,
-// um streamer com vários leilões (ex: um por live) aparecia como várias
-// linhas separadas disputando com ele mesmo, em vez de uma soma só. Leilão
-// sem dono (criado antes do login com a Twitch existir, ownerTwitchUserId
-// ausente) não tem chave confiável pra agrupar com nada -- fica sozinho na
-// própria linha, usando o id como chave única (nunca bate com outro leilão),
-// igual já era o comportamento de antes pra esses.
-// Soma o arquivado (rounds já zerados) com o que sobrou do round aberto que
-// ainda não foi refletido no arquivo -- extraído do que já era o cálculo de
-// /api/ranking porque o novo /api/ranking/:twitchUserId (detalhe de um
-// streamer, ver ranking clicável em app.js) precisa do mesmo número por
-// leilão individual, não só do agregado.
+// Soma o arquivado (rounds já zerados, ver archiveAuction em src/db.js) com
+// o que sobrou do round aberto ainda não refletido no arquivo. Não dá pra
+// só somar archivedTotal + totalRaised ao vivo: como encerrar já arquiva
+// sozinho (openRound: true), o snapshot mais recente pode já refletir boa
+// parte do total ao vivo, e somar os dois contaria 2x. Se o snapshot mais
+// recente é um round "aberto", ele é a melhor estimativa do que já foi
+// contado -- só soma a diferença pro total ao vivo atual.
 function computeLeilaoTotalRaised(store) {
   const pastAuctions = store.getPastAuctions();
   const archivedTotal = pastAuctions.reduce((sum, a) => sum + (a.totalRaised || 0), 0);
@@ -867,11 +798,9 @@ app.get("/api/ranking", (req, res) => {
   res.json({ ranking: rows });
 });
 
-// Ranking dos leilões de UM streamer contra ele mesmo -- não mais
-// cross-streamer (o cliente decidiu não expor/comparar arrecadação entre
-// streamers diferentes, só ranquear os próprios leilões um contra o
-// outro). Usado pelo botão "Ranking" do board (ver GET /api/l/:id/ranking
-// logo abaixo, que resolve o twitchUserId do dono e chama isso).
+// Ranking dos leilões de UM streamer contra ele mesmo, não cross-streamer.
+// Usado pelo botão "Ranking" do board (ver GET /api/l/:id/ranking abaixo,
+// que resolve o twitchUserId do dono e chama isso).
 function computeOwnerRanking(twitchUserId) {
   if (!twitchUserId) return [];
   return registry
@@ -891,32 +820,24 @@ function computeOwnerRanking(twitchUserId) {
     .map((row, index) => ({ ...row, rank: index + 1 }));
 }
 
-// Leilão-scoped pra não precisar expor o twitchUserId (identificador
-// interno) pro cliente -- resolve o dono a partir do :id, igual
-// check-session logo acima. Sem dono verificado (leilão antigo, criado
-// antes do login com Twitch existir), não tem como agrupar nada -- volta
-// ranking vazio em vez de tentar adivinhar.
+// Leilão-scoped pra não precisar expor o twitchUserId pro cliente --
+// resolve o dono a partir do :id. Sem dono verificado, ranking vazio.
 app.get("/api/l/:id/ranking", loadLeilao, (req, res) => {
   const meta = registry.getLeilaoMeta(req.leilaoId);
   res.json({ ranking: computeOwnerRanking(meta && meta.ownerTwitchUserId) });
 });
 
-// Capas populares pro fundo decorativo do board (mosaico estilo tela de
-// login da Steam) -- não é dado de nenhum leilão específico, então sem
-// exigir :id nem auth. fetchPopularCovers já cacheia/degrada sozinho (lista
-// vazia se faltar RAWG_API_KEY); o board cai pro fundo antigo nesse caso.
+// Fundo decorativo do board (mosaico de capas) -- não é dado de leilão
+// específico, sem :id nem auth. fetchPopularCovers cacheia/degrada sozinho.
 app.get("/api/board-bg-covers", async (req, res) => {
   const covers = await fetchPopularCovers();
-  res.set("Cache-Control", "public, max-age=1800"); // 30min: navegador/proxy evitam repetir a mesma lista o tempo todo
+  res.set("Cache-Control", "public, max-age=1800");
   res.json({ covers });
 });
 
-// Apaga um leilão inteiro (registro + arquivo de dados) — moderação/limpeza
-// de leilões de teste, sem precisar saber a senha de apresentador de cada
-// um. Diferente da senha por leilão: exige um segredo do DONO do site
-// (SUPER_ADMIN_SECRET no .env). Sem essa variável configurada, a rota
-// nega sempre — "em branco = pula validação" seria perigoso demais pra uma
-// ação destrutiva e irreversível.
+// Apaga um leilão inteiro (registro + dados) -- moderação/limpeza, exige
+// segredo do DONO do site (SUPER_ADMIN_SECRET), não a senha do leilão.
+// Sem essa variável configurada, nega sempre.
 app.delete("/api/admin/leiloes/:id", (req, res) => {
   const secret = process.env.SUPER_ADMIN_SECRET || "";
   const supplied = req.header("x-super-admin-secret") || "";
@@ -934,12 +855,7 @@ app.delete("/api/admin/leiloes/:id", (req, res) => {
 });
 
 // Igual a rota acima, mas apaga TODOS os leilões registrados de uma vez --
-// faxina geral (ex: leilões de teste de antes do login com Twitch existir,
-// misturados com leilões novos, sem lista de ids em mãos pra apagar um por
-// um). Mesmo segredo, mesma disciplina de negar sempre sem
-// SUPER_ADMIN_SECRET configurado -- ainda mais importante aqui, já que é
-// uma ação destrutiva e irreversível multiplicada por todo mundo de uma
-// vez só.
+// faxina geral, sem precisar de lista de ids em mãos.
 app.delete("/api/admin/leiloes", (req, res) => {
   const secret = process.env.SUPER_ADMIN_SECRET || "";
   const supplied = req.header("x-super-admin-secret") || "";
@@ -956,9 +872,8 @@ app.delete("/api/admin/leiloes", (req, res) => {
 });
 
 // ---------- board e painel por leilão ----------
-// (o painel de admin virou o próprio board em modo apresentador -- ver
-// presenter-toggle/settings.js; a página separada /l/:id/admin foi apagada
-// por não estar mais linkada de lugar nenhum)
+// (painel de admin = o próprio board em modo apresentador, ver
+// presenter-toggle/settings.js)
 
 app.get("/l/:id", (req, res) => {
   if (!registry.leilaoExists(req.params.id)) return res.status(404).send("Leilão não encontrado");
@@ -996,10 +911,8 @@ app.get("/api/l/:id/recap", loadLeilao, (req, res) => {
   res.json(buildRecap(req.store));
 });
 
-// Histórico de rounds já zerados (ver archiveAuction, chamado em
-// POST /admin/reset). Pública como o /recap normal — mesmo tipo de dado
-// que já era visível ao vivo quando o round estava rolando, não expõe
-// nada novo por trás de senha.
+// Histórico de rounds já zerados. Pública como o /recap normal -- mesmo
+// tipo de dado que já era visível ao vivo, não expõe nada novo.
 app.get("/api/l/:id/recap/history", loadLeilao, (req, res) => {
   res.json({ history: req.store.getPastAuctions() });
 });
@@ -1013,13 +926,11 @@ app.get("/api/l/:id/events/recent", loadLeilao, (req, res) => {
   res.json({ events });
 });
 
-// Cria a cobrança Pix pro modal de doação in-app (ver Fase 5, ainda não
-// existe UI chamando isso) -- pública, sem senha de admin, qualquer
-// visitante do board pode doar. O dinheiro é criado como sendo da conta
-// MP do STREAMER (application_fee retém a parte da plataforma), nunca
-// passa pela nossa conta. Não aplica a contribuição no catálogo aqui --
-// isso só acontece quando o webhook confirmar "paid" de verdade (ver
-// Fase 4), mesma disciplina que já existia pro pix.gg.
+// Cria a cobrança Pix pro modal/página de doação -- pública, sem senha de
+// admin, qualquer visitante do board pode doar. O dinheiro é criado como
+// sendo da conta MP do STREAMER (application_fee retém a parte da
+// plataforma), nunca passa pela nossa conta. Não aplica a contribuição no
+// catálogo aqui -- isso só acontece quando o webhook confirmar "paid".
 app.post("/api/l/:id/doacao", loadLeilao, async (req, res) => {
   const { leilaoId, store } = req;
   const { name, amount, action, donorUsername } = req.body || {};
@@ -1040,11 +951,9 @@ app.post("/api/l/:id/doacao", loadLeilao, async (req, res) => {
     const ownerTwitchUserId = meta && meta.ownerTwitchUserId;
     streamer = ownerTwitchUserId ? await streamersStore.findByTwitchUserId(ownerTwitchUserId) : null;
   } catch (err) {
-    // Erro de verdade no Postgres (ex: instância fora do ar) -- sem esse
-    // catch, isso vira uma promise rejeitada sem handler e derruba o
-    // processo Node inteiro (Node 15+ mata o processo em unhandled
-    // rejection), tirando do ar TODOS os leilões de uma vez, não só essa
-    // doação. Achado real testando local sem DATABASE_URL configurado.
+    // Sem esse catch, um erro de Postgres vira promise rejeitada sem
+    // handler e derruba o processo Node inteiro (unhandled rejection),
+    // tirando do ar TODOS os leilões, não só essa doação.
     console.error(`[doação] erro ao buscar streamer (leilaoId="${leilaoId}"):`, err.message);
     return res.status(502).json({ error: "Não foi possível verificar a conexão com o Mercado Pago agora. Tente de novo em instantes." });
   }
@@ -1074,14 +983,11 @@ app.post("/api/l/:id/doacao", loadLeilao, async (req, res) => {
   }
 
   try {
-    // Placeholder de email: o doador não faz cadastro nenhum aqui, só
-    // escolhe um nome de exibição. Confirmado em produção (2026-07-22):
-    // a API do MP valida o FORMATO do e-mail (não a entrega -- nunca
-    // manda nada pra cá) e recusa qualquer domínio ".local" com "payer.email
-    // must be a valid email", porque .local é um TLD reservado (uso só em
-    // rede local, junto com .test/.invalid/.localhost) que validadores de
-    // e-mail tratam como inválido de propósito. .com resolve por ser um
-    // TLD comum de verdade, mesmo esse domínio específico não existindo.
+    // Placeholder de e-mail: o doador não faz cadastro, só escolhe um nome
+    // de exibição. A API do MP valida o FORMATO do e-mail (nunca envia
+    // nada pra cá) e recusa TLDs reservados como .local/.test/.invalid --
+    // .com passa porque é um TLD comum de verdade, mesmo o domínio
+    // específico não existindo.
     const payerEmail = `${normalizeKey(cleanDonorUsername).replace(/\s+/g, ".") || "doador"}@doador.leilao-de-jogos.com`;
     const payment = await mpApi.createPixPayment({
       accessToken: streamer.accessToken,
@@ -1114,8 +1020,7 @@ app.post("/api/l/:id/doacao", loadLeilao, async (req, res) => {
 // na aplicação), porque o MP não sabe de leilão nenhum -- quem correlaciona
 // é a nossa própria tabela payments (por mp_payment_id). Log em cada etapa
 // de propósito: sem isso, uma doação sumida não deixa pista nenhuma pra
-// investigar depois (achado real em produção com o webhook antigo do
-// pix.gg, 2026-07-21).
+// investigar depois.
 app.post("/webhook/mercadopago", async (req, res) => {
   res.sendStatus(200); // confirma recebimento primeiro
 
@@ -1204,9 +1109,8 @@ app.post("/api/l/:id/admin/login", loadLeilao, (req, res) => {
 });
 
 // Deixa o board pular o modal de senha pra quem já é o dono verificado da
-// Twitch (mesmo critério de requireLeilaoAdmin, ver lá) -- chamado na carga
-// da página e ao clicar em "modo apresentador". Não expõe nada sensível
-// (só um booleano), então não precisa passar por requireLeilaoAdmin.
+// Twitch (mesmo critério de requireLeilaoAdmin). Só um booleano, não
+// precisa passar por requireLeilaoAdmin.
 app.get("/api/l/:id/admin/check-session", loadLeilao, (req, res) => {
   const session = getTwitchSession(req);
   const meta = registry.getLeilaoMeta(req.leilaoId);
@@ -1251,12 +1155,8 @@ app.post("/api/l/:id/admin/manual-entry", loadLeilao, requireLeilaoAdmin, async 
     game: { key: game.key, name: game.name, total: centsToNumber(game.total_cents) },
   });
 
-  // touchActivity SEM reopen=true: um lançamento manual (ex: doação recebida
-  // fora do app, ou teste do sistema) não deve reabrir um leilão encerrado
-  // sozinho — mesma regra do webhook real (ver isOpen check acima em
-  // processDonationMessage), documentada no CLAUDE.md ("não reabre sozinho
-  // com uma doação nova"). Antes usava reopen=true e reabria sem avisar,
-  // isso que o cliente percebeu como "o timer tá com um problema".
+  // touchActivity SEM reopen=true: lançamento manual não deve reabrir um
+  // leilão encerrado sozinho, mesma regra do webhook real.
   touchActivity(store);
   maybeFetchGameImage(leilaoId, store, game.key, game.name, needsImage);
   res.json({ ok: true, game });
@@ -1361,11 +1261,8 @@ app.post("/api/l/:id/admin/pause", loadLeilao, requireLeilaoAdmin, (req, res) =>
   res.json({ ok: true, paused: !!paused });
 });
 
-// Soma 5 minutos ao que já falta (ou ao pausado) -- antes usava
-// touchActivity, que reseta lastActivityAt pra AGORA, ou seja, sempre
-// voltava pra duração base (5min) em vez de somar: com 4:30 sobrando, "+5"
-// virava 5:00 (só +30s na prática). Rótulo promete soma, então soma de
-// verdade agora, não importa quanto já tinha passado.
+// Soma 5 minutos ao que já falta (ou ao pausado) -- não usa touchActivity
+// aqui porque isso reseta lastActivityAt pra AGORA em vez de somar.
 app.post("/api/l/:id/admin/reset-timer", loadLeilao, requireLeilaoAdmin, (req, res) => {
   const { store, leilaoId } = req;
   const isOpen = store.getState("open", "true") === "true";

@@ -1,9 +1,8 @@
-/* Modal de configurações do board (public/board.html + js/settings.js) —
-   conteúdo portado de admin.html/admin.css, mas com todo componente
-   escopado sob .settings-modal de propósito: sem esse escopo, seletores
-   soltos tipo "label" ou "input, select" (como em admin.css, que é só
-   carregado na página separada) vazariam pra QUALQUER input/label do board
-   inteiro, já que aqui tudo divide a mesma página. */
+/* Conteúdo portado de admin.html/admin.css, mas escopado sob
+   .settings-modal de propósito: seletores soltos tipo "label" ou
+   "input, select" (como em admin.css, carregado numa página separada)
+   vazariam pra qualquer input/label do board, já que aqui divide a mesma
+   página. */
 
 .settings-overlay { z-index: 60; align-items: flex-start; padding: 40px 20px; }
 
@@ -141,15 +140,10 @@
 .settings-modal .panel-row.wrap { flex-wrap: wrap; justify-content: flex-start; }
 .settings-modal .settings-bg-row { margin-top: 14px; }
 
-/* Botão reaproveita .btn-mini (style.css) -- o mesmo componente já usado no
-   modal de lote, login do apresentador e ranking. Só um ajuste de altura
-   aqui: .btn-mini não tem altura fixa (auto, ~30-33px), e ao lado dos
-   inputs/selects desse modal (~38-40px, .panel-row usa align-items:center)
-   ficava visivelmente mais baixo, flutuando no meio da linha. Mesmo padrão
-   que o modal de lote já usa pra esse mesmo problema (.modal-actions
-   .btn-mini, style.css). Não se aplica aos botões da tabela de jogos (ficam
-   em <td>, não em .panel-row, e já têm ajuste de densidade próprio logo
-   abaixo) nem ao #reset-btn (sozinho, sem input do lado pra alinhar). */
+/* .btn-mini não tem altura fixa (~30-33px) e ficava mais baixo que os
+   inputs/selects do .panel-row (~38-40px, align-items:center). Não se
+   aplica aos botões da tabela de jogos (densidade própria, ver abaixo)
+   nem ao #reset-btn (sozinho, sem input do lado pra alinhar). */
 .settings-modal .panel-row .btn-mini { height: 38px; }
 
 .settings-modal .badge {
@@ -219,12 +213,10 @@
 
 .settings-modal .danger-zone { border-color: rgba(239, 68, 112, 0.35); }
 
-/* Diálogos genéricos (promptDialog/confirmDialog, ver settings.js) --
-   propositalmente SEM o escopo .settings-modal: são irmãos de
-   #settings-overlay no HTML, não descendentes dela, então um seletor
-   escopado nunca bateria. z-index 70 é necessário, não estético: overlay
-   base é 50, .settings-overlay já sobe pra 60 -- um diálogo aberto por
-   cima do settings com z-index 50 ficaria escondido atrás do fundo dela. */
+/* Sem o escopo .settings-modal de propósito: são irmãos de
+   #settings-overlay no HTML, não descendentes. z-index 70 é necessário:
+   overlay base é 50, .settings-overlay sobe pra 60 -- um diálogo com
+   z-index 50 ficaria escondido atrás dela. */
 .dialog-overlay { z-index: 70; }
 .modal-message { margin: 0 0 4px; font-size: 13.5px; line-height: 1.5; color: var(--text); }
 

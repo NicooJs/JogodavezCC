@@ -1,7 +1,7 @@
 // CRUD da tabela streamers -- única camada que chama tokenCrypto, então é
-// a única que já viu texto puro de access_token/refresh_token em algum
-// momento. Nunca loga token bruto (só query() em pg.js loga, e só o texto
-// da query + contagem de linhas, nunca os parâmetros).
+// a única que vê texto puro de access_token/refresh_token. Nunca loga
+// token bruto (query() em pg.js só loga texto da query + contagem de
+// linhas, nunca os parâmetros).
 const { query } = require("./pg");
 const { encryptToken, decryptToken } = require("./tokenCrypto");
 
@@ -20,11 +20,9 @@ function rowToStreamer(row) {
   };
 }
 
-// Cria na primeira conexão, ou atualiza os tokens numa reconexão/renovação
-// -- o refresh_token do MP roda a cada uso, então essa função é chamada de
-// novo toda vez que um token é renovado, não só na conexão inicial.
-// disconnected_at volta pra NULL sempre que isso roda (reconectar limpa o
-// estado de "desconectado").
+// Chamada de novo toda vez que o token é renovado (refresh_token do MP roda
+// a cada uso), não só na conexão inicial. disconnected_at volta pra NULL
+// sempre que isso roda -- reconectar limpa o estado de "desconectado".
 async function upsertStreamer({ twitchUserId, mpUserId, accessToken, refreshToken, publicKey, expiresAt }) {
   const res = await query(
     `INSERT INTO streamers (twitch_user_id, mp_user_id, mp_access_token, mp_refresh_token, mp_public_key, mp_token_expires_at)
@@ -50,12 +48,10 @@ async function findByTwitchUserId(twitchUserId) {
   return rowToStreamer(res.rows[0]);
 }
 
-// Pelo id numérico do Postgres (não o twitch_user_id) -- usado no webhook
-// (ver server.js), que só tem o streamer_id gravado na linha de payments,
-// não o twitch_user_id direto. Diferente de findByTwitchUserId, NÃO
-// filtra disconnected_at: o webhook ainda precisa saber quem é o streamer
-// mesmo que ele tenha sido marcado como desconectado nesse meio tempo
-// (ex: pra decidir se tenta renovar o token em vez de só desistir).
+// Pelo id numérico do Postgres, não o twitch_user_id -- usado no webhook,
+// que só tem streamer_id gravado na linha de payments. Diferente de
+// findByTwitchUserId, NÃO filtra disconnected_at: o webhook precisa achar
+// o streamer mesmo desconectado, pra decidir se tenta renovar o token.
 async function findById(id) {
   const res = await query(`SELECT * FROM streamers WHERE id = $1`, [id]);
   return rowToStreamer(res.rows[0]);

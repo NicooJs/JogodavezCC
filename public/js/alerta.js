@@ -1,7 +1,5 @@
-// Overlay de alerta pra Browser Source do OBS/Streamlabs -- 100% passivo
-// (sem clique, sem formulário): só escuta o socket que já existe e mostra
-// um card por doação de verdade. Fila simples pra não sobrepor dois
-// alertas se duas doações chegarem quase juntas.
+// Overlay de Browser Source pro OBS/Streamlabs: passivo, via socket. Fila
+// evita que duas doações quase simultâneas sobreponham alertas.
 const LEILAO_ID = location.pathname.match(/^\/l\/([a-z0-9_-]+)\/alerta/i)?.[1] || null;
 if (!LEILAO_ID) throw new Error("LEILAO_ID ausente na URL");
 
@@ -24,10 +22,9 @@ function formatBRL(value) {
   return `R$ ${Number(value || 0).toFixed(2).replace(".", ",")}`;
 }
 
-// Osciladores puros via Web Audio -- sem baixar/servir nenhum arquivo de
-// áudio novo. Navegador/OBS pode bloquear autoplay de som até liberar
-// "Control audio via OBS" na fonte -- nesse caso o alerta visual continua
-// funcionando normalmente, só sem o som.
+// Osciladores Web Audio puros, sem arquivo de áudio. Se o autoplay for
+// bloqueado (falta habilitar "Control audio via OBS" na fonte), o alerta
+// visual continua funcionando, só sem som.
 function playChime(isRemove) {
   try {
     const ctx = new (window.AudioContext || window.webkitAudioContext)();

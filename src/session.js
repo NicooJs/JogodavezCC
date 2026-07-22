@@ -1,18 +1,13 @@
-// Cookie assinado à mão (HMAC-SHA256, só com o módulo nativo crypto) — sem
-// express-session (precisaria de um store; nesse app baseado em arquivo JSON
-// isso significaria perder todo login a cada redeploy) nem jsonwebtoken
-// (resolve um problema que não existe aqui — nada verifica token emitido por
-// outro serviço). Mesma filosofia de "sem dependência que exige compilar
-// nativo" que já levou o hash de senha pra scrypt em vez de bcrypt/argon2
-// (ver src/passwords.js).
+// Cookie assinado à mão (HMAC-SHA256, só com o módulo nativo crypto). Não
+// usa express-session: precisaria de um store, e nesse app baseado em
+// arquivo JSON isso perderia todo login a cada redeploy. Não usa
+// jsonwebtoken: nada aqui verifica token emitido por outro serviço.
 //
-// Escrita usa res.cookie()/res.clearCookie() (API pública do próprio
-// Express). Leitura é parser manual do header Cookie -- não dá pra usar
-// req.cookies sem o middleware cookie-parser, e não dá pra importar
-// require("cookie") direto porque isso é dependência TRANSITIVA do Express
-// (só existe em node_modules porque o Express usa por baixo), não uma
-// dependência nossa declarada -- podia sumir numa atualização do Express
-// sem aviso nenhum.
+// Escrita usa res.cookie()/res.clearCookie() (API do Express). Leitura é
+// parser manual do header Cookie: sem o middleware cookie-parser não dá pra
+// usar req.cookies, e require("cookie") é dependência TRANSITIVA do Express
+// (só existe em node_modules por causa dele), não uma dependência nossa —
+// podia sumir numa atualização do Express sem aviso.
 
 const crypto = require("crypto");
 const { timingSafeEqualString } = require("./passwords");
@@ -30,11 +25,10 @@ function signValue(payload, maxAgeSeconds) {
   return `${payloadB64}.${sig}`;
 }
 
-// exp mora DENTRO do payload assinado, não só no Max-Age do cookie -- Max-Age
-// é só uma dica pro navegador se auto-limpar; nada impede alguém de reenviar
-// manualmente (devtools, curl) um valor de cookie antigo depois disso. Checar
-// exp dentro do payload à prova de adulteração é o que garante expiração de
-// verdade, do lado do servidor.
+// exp mora DENTRO do payload assinado, não só no Max-Age do cookie: Max-Age
+// só é uma dica pro navegador se auto-limpar, nada impede reenviar
+// manualmente um cookie antigo. Checar exp no payload à prova de adulteração
+// garante expiração de verdade do lado do servidor.
 function verifyValue(cookieValue) {
   if (!cookieValue || typeof cookieValue !== "string") return null;
   const lastDot = cookieValue.lastIndexOf(".");
@@ -62,10 +56,8 @@ function verifyValue(cookieValue) {
   return payload;
 }
 
-// req.secure (não uma variável tipo NODE_ENV, que não existe em lugar nenhum
-// desse projeto hoje) decide o flag "secure" do cookie -- consistente com o
-// app.set("trust proxy", 1) já corrigido nesta mesma sessão de trabalho (ver
-// commit sobre a URL de webhook em http:// vs https://) pro Railway. Fixar
+// req.secure decide o flag "secure" do cookie — correto atrás do proxy do
+// Railway graças a app.set("trust proxy", 1) em server.js. Fixar
 // secure:true quebraria login local em http://localhost em silêncio.
 const COOKIE_BASE_OPTIONS = { httpOnly: true, path: "/", sameSite: "lax" };
 

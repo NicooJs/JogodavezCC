@@ -13,18 +13,12 @@
   min-height: 100vh;
 }
 
-/* Fundo animado da tela de criação -- simulação de fluido em WebGL
-   reagindo ao cursor (ver public/js/create-fluid.js). z-index 0 +
-   .create-page em z-index 1 (mesmo padrão de .page em style.css, pro
-   board) -- tentamos z-index -1 primeiro, num teste bem anterior a esse
-   fundo, mas nesse motor de renderização isso pintava atrás até do
-   background sólido do body, não só do conteúdo (confirmado testando um
-   elemento de teste gigante/opaco que simplesmente não aparecia); esse
-   padrão de "conteúdo em z-index maior" já é o que o resto do site usa,
-   então é mais garantido. Se o WebGL não iniciar por qualquer motivo
-   (navegador sem suporte, prefers-reduced-motion, etc), o canvas
-   simplesmente não desenha nada e sobra só a cor sólida do tema (--bg,
-   aplicada em html/body no style.css) -- nunca fica quebrado/em branco. */
+/* Fundo animado com simulação de fluido em WebGL (ver create-fluid.js).
+   z-index 0 + .create-page em z-index 1, mesmo padrão de .page em
+   style.css -- z-index -1 chegou a pintar atrás até do background sólido
+   do body nesse motor de renderização, não só do conteúdo. Se o WebGL não
+   iniciar (sem suporte, prefers-reduced-motion, etc), o canvas não desenha
+   nada e sobra a cor sólida do tema (--bg). */
 .create-bg {
   position: fixed;
   inset: 0;
@@ -64,11 +58,9 @@
   padding-top: 10px;
 }
 
-/* Estado inicial de tudo que entra animado na carga da página (ver
-   create-intro.js) -- escondido só até o JS rodar, que sempre revela (com
-   animação, ou na marra dentro de um catch) mesmo se o Motion falhar ao
-   carregar do CDN. Não dá pra depender só do JS pra revelar sem essa
-   garantia -- ficaria invisível pra sempre num bloqueio de rede/ad-blocker. */
+/* Escondido até create-intro.js revelar (com animação, ou na marra num
+   catch) mesmo se o Motion falhar ao carregar do CDN -- sem esse fallback
+   ficaria invisível pra sempre num bloqueio de rede/ad-blocker. */
 .reveal-item { opacity: 0; }
 
 .create-word {
@@ -98,12 +90,9 @@
 
 .create-lede strong { color: var(--accent-text); }
 
-/* Prova social com dado real (GET /api/ranking, o mesmo do board -- quem
-   já pediu pra esconder o total via hideTotalRaised já sai de lá sozinho,
-   então essa reaproveita a mesma fronteira de privacidade sem precisar
-   reimplementar nada). Só aparece se tiver pelo menos 1 streamer de
-   verdade -- "0 streamers usam" no ar por padrão passa a impressão
-   errada num produto novo. */
+/* Prova social com dado real (GET /api/ranking, mesmo endpoint do board,
+   já respeita hideTotalRaised). Só aparece com pelo menos 1 streamer de
+   verdade -- "0 streamers usam" passaria a impressão errada. */
 .create-proof {
   display: flex;
   align-items: center;
@@ -242,11 +231,9 @@
 
 .create-hint { font-size: 12px; color: var(--muted); line-height: 1.4; }
 
-/* Identidade Twitch na criação — substitui o antigo campo de texto livre
-   "seu nome (host)". Nome/foto vêm confirmados pela própria Twitch, não dá
-   pra editar aqui (ver public/js/create.js). Mesmas classes reaproveitadas
-   pro bloco de conexão do Mercado Pago logo abaixo (create-mp-*) -- é o
-   mesmo componente visual "conectado/desconectado", só outra conta. */
+/* Nome/foto vêm confirmados pela própria Twitch, não editáveis aqui (ver
+   create.js). Mesmas classes reaproveitadas pro bloco do Mercado Pago
+   (create-mp-*) -- mesmo componente visual "conectado/desconectado". */
 .create-twitch-logged-out,
 .create-twitch-logged-in,
 .create-mp-disconnected,
@@ -358,9 +345,8 @@
 }
 .create-error[hidden] { display: none; }
 
-/* Lembrete de leilão já criado nesse navegador — mostrado no lugar do
-   formulário pra evitar recriar sem querer (o que revincularia o webhook
-   pra um leilão novo e desligaria o antigo). */
+/* Mostrado no lugar do formulário pra evitar recriar sem querer (o que
+   revincularia o webhook pra um leilão novo e desligaria o antigo). */
 .create-existing {
   display: flex;
   flex-direction: column;
@@ -486,9 +472,8 @@
 }
 .create-result-open:hover { color: var(--accent); }
 
-/* Página /meus-leiloes -- reaproveita as mesmas classes de create.css
-   (create-existing-item, create-twitch-*) em vez de inventar linguagem
-   visual nova. */
+/* Reaproveita classes de create.css (create-existing-item, create-twitch-*)
+   em vez de linguagem visual nova. */
 .my-leiloes-main {
   max-width: 560px;
   margin: 0 auto;

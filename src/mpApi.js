@@ -1,14 +1,10 @@
-// Chamada de saída pra API de Pagamentos do Mercado Pago -- cria a cobrança
-// Pix em nome do STREAMER (usa o access_token dele, não o nosso), com
-// application_fee retendo a parte da plataforma. É isso que faz o dinheiro
-// ir direto pra conta dele: o pagamento é criado como sendo da conta do
-// streamer, a plataforma só participa via application_fee.
+// Cria a cobrança Pix usando o access_token do STREAMER (não o nosso), com
+// application_fee retendo a parte da plataforma — assim o pagamento é da
+// conta do streamer e o dinheiro cai direto nela.
 const PAYMENTS_URL = "https://api.mercadopago.com/v1/payments";
 
-// application_fee é valor absoluto (não percentual) na API do MP -- por
-// isso o split "97% bruto pro streamer" é calculado ANTES de chamar isso
-// (ver Math.round(valorTotalCents * 0.03) em server.js), não configurado
-// aqui como porcentagem.
+// application_fee é valor absoluto (não percentual) na API do MP, então o
+// split já vem calculado em centavos de quem chama (ver server.js).
 async function createPixPayment({ accessToken, transactionAmountCents, applicationFeeCents, description, externalReference, payerEmail, idempotencyKey }) {
   const res = await fetch(PAYMENTS_URL, {
     method: "POST",
@@ -48,10 +44,9 @@ async function createPixPayment({ accessToken, transactionAmountCents, applicati
   };
 }
 
-// Busca o recurso completo do pagamento -- o webhook do MP só avisa "algo
-// mudou", nunca confia no corpo dele pro status/valor real (ver
-// src/mpWebhook.js). Usa o token do STREAMER (mesmo usado pra criar), já
-// que é a conta dona do pagamento.
+// O webhook do MP só avisa "algo mudou" — nunca confia no corpo dele pro
+// status/valor real, sempre rebusca aqui com o token do streamer (dono do
+// pagamento).
 async function getPayment({ accessToken, paymentId }) {
   const res = await fetch(`${PAYMENTS_URL}/${paymentId}`, {
     headers: { Authorization: `Bearer ${accessToken}` },

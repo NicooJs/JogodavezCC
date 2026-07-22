@@ -1,6 +1,6 @@
-// Hash de senha usando scrypt — nativo do módulo crypto do Node, sem
-// dependência nova (bcrypt/argon2 costumam exigir compilação nativa, o
-// que quebraria a instalação no Windows do streamer, ver CLAUDE.md).
+// Hash de senha usando scrypt — nativo do módulo crypto do Node, evita
+// dependências como bcrypt/argon2 que exigem compilação nativa e podem
+// quebrar a instalação em máquinas sem toolchain de build.
 
 const crypto = require("crypto");
 
@@ -21,13 +21,10 @@ function verifyPassword(password, stored) {
   return crypto.timingSafeEqual(candidate, expected);
 }
 
-// Compara dois segredos "de texto puro" (não hash) sem vazar quanto tempo
-// levou — usado onde a gente ainda não tem um hash pra comparar (segredo
-// de super-admin, assinatura do webhook do pix.gg). crypto.timingSafeEqual
-// exige os dois buffers do MESMO tamanho (lança erro se não forem) — por
-// isso o check de comprimento antes; isso em si vaza o TAMANHO do segredo
-// pelo tempo de resposta, mas não o CONTEÚDO, que é o que importa de
-// verdade (o tamanho sozinho não ajuda a adivinhar o valor).
+// Compara segredos em texto puro sem vazar timing. crypto.timingSafeEqual
+// exige buffers do mesmo tamanho (lança erro se não forem), daí o check de
+// comprimento antes — isso vaza o TAMANHO do segredo pelo tempo de
+// resposta, mas não o conteúdo, que é o que importa.
 function timingSafeEqualString(a, b) {
   const bufA = Buffer.from(String(a ?? ""));
   const bufB = Buffer.from(String(b ?? ""));

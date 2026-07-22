@@ -8,11 +8,9 @@
 //   "tirar Hollow Knight" -> mesma coisa, por extenso
 //   "colocar Elden Ring" / "por Elden Ring" -> mesma coisa que "+"
 //
-// Mensagem SEM nenhum desses prefixos não conta como lance — é ignorada
-// (fica só registrada no histórico como "sem indicar um lote"). Isso já foi
-// "sem prefixo também apoia" numa versão antiga, mas causava mensagem de
-// chat qualquer (sem intenção de dar lance) virando lote sozinha — mudado
-// de propósito, exigir o prefixo é o que evita isso.
+// Mensagem sem nenhum desses prefixos não conta como lance — fica só
+// registrada no histórico. Prefixo é obrigatório de propósito: sem ele,
+// qualquer mensagem de chat sem intenção de dar lance viraria um lote sozinha.
 
 function removeAccents(str) {
   return str.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
@@ -75,13 +73,11 @@ function parseMessage(rawMessage) {
 }
 
 // Palavras comuns que aparecem junto do nome do jogo numa doação ("minecraft
-// manda ver!!", "coloca elden ring pfv") sem fazer parte do título de
-// verdade — usado só pra decidir se o que sobra de texto depois de bater com
-// um jogo já catalogado é ruído de chat (mesmo jogo) ou pode ser um título
-// genuinamente diferente com nome parecido (spin-off, DLC, remaster), que
-// merece conferência na RAWG antes de fundir num lote que já existe (ver
-// resolveParsedGame em server.js — o caso que motivou isso foi "Elden Ring
-// Nightreign" batendo por substring com "Elden Ring" já catalogado).
+// manda ver!!") sem fazer parte do título — usado pra decidir se o texto que
+// sobra depois de bater com um jogo catalogado é ruído (mesmo jogo) ou pode
+// ser um título diferente com nome parecido (spin-off, DLC), que merece
+// conferência na RAWG antes de fundir num lote existente (ver
+// resolveParsedGame em server.js).
 const NOISE_WORDS = new Set([
   "manda", "mandar", "vai", "ver", "vamo", "vamos", "bora", "coloca", "colocar",
   "poe", "por", "favor", "pfv", "pfvr", "porfavor", "please", "pls", "plis",

@@ -1,10 +1,9 @@
-// Configurações — antes era a página separada /l/:id/admin (public/admin.html),
-// que ainda existe mas não é mais linkada daqui: abrir uma aba nova pra mexer
-// no leilão no meio da live era o oposto do "modo apresentador" (ver
-// CLAUDE.md). Esse arquivo é carregado depois de app.js e reaproveita as
-// mesmas globais dele (LEILAO_ID, presenterFetch, getPassword,
-// openPresenterLogin, formatBRL, escapeHtml) — scripts sem type="module"
-// compartilham o mesmo escopo global.
+// Modal de configurações substitui a página separada /l/:id/admin
+// (public/admin.html ainda existe mas não é mais linkada -- abrir aba nova
+// no meio da live quebra o modo apresentador). Carregado depois de app.js
+// e reaproveita as globais dele (LEILAO_ID, presenterFetch, getPassword,
+// openPresenterLogin, formatBRL, escapeHtml) -- scripts sem type="module"
+// compartilham o escopo global.
 
 const settingsOverlayEl = document.getElementById("settings-overlay");
 const settingsCloseEl = document.getElementById("settings-close");
@@ -23,9 +22,6 @@ document.querySelectorAll(".settings-panel-group").forEach((el) => { settingsPan
 let settingsGames = [];
 let settingsLeaderboard = null;
 
-// ---- abas do painel (Geral/Aparência/Jogos/Avançado), com pílula
-// deslizante -- ver .settings-tab-pill em settings.css ----
-
 function positionPill(tabButton) {
   settingsTabPillEl.style.width = `${tabButton.offsetWidth}px`;
   settingsTabPillEl.style.transform = `translateX(${tabButton.offsetLeft}px)`;
@@ -33,7 +29,7 @@ function positionPill(tabButton) {
 
 // Reposiciona sem animar -- mesmo truque de bumpValue() em app.js
 // (classList.remove + void offsetWidth + classList.add), adaptado de
-// keyframe animation pra transition.
+// keyframe pra transition.
 function snapPillTo(tabButton) {
   settingsTabPillEl.classList.add("no-transition");
   positionPill(tabButton);
@@ -65,11 +61,9 @@ window.addEventListener("resize", () => {
 
 function openSettingsModal() {
   settingsOverlayEl.hidden = false;
-  // #settings-overlay começa hidden -- elemento numa árvore display:none tem
-  // offsetWidth/offsetLeft = 0 (não gera caixa de layout), então só dá pra
-  // medir a pílula DEPOIS de tirar o hidden, não antes. Reseta sempre pra
-  // "geral" ao abrir (não lembra a última aba usada) -- mesmo espírito de
-  // openLotModal() em app.js, que sempre volta pros campos limpos.
+  // Precisa tirar o hidden antes de medir a pílula: elemento em
+  // display:none tem offsetWidth/offsetLeft = 0. Sempre volta pra "geral"
+  // ao abrir, mesmo espírito de openLotModal() em app.js resetando campos.
   activateSettingsTab("geral", { instant: true });
   if (settingsLeaderboard) renderSettingsFromLeaderboard(settingsLeaderboard);
   loadSettingsHistory();
@@ -79,12 +73,10 @@ function closeSettingsModal() {
   settingsOverlayEl.hidden = true;
 }
 
-// Antes só checava getPassword() (sessionStorage) -- pra quem já é dono
-// verificado da Twitch mas nunca digitou a senha nessa aba (ex: entrou
-// direto no board e clicou logo em "configurações"), isso pedia senha à
-// toa. Mesmo critério do botão "modo apresentador" em app.js: pergunta pro
-// servidor se esse navegador já é o dono verificado antes de cair pro
-// modal de senha.
+// Checa getPassword() (sessionStorage) primeiro, senão pergunta pro
+// servidor se esse navegador é o dono verificado -- evita pedir senha de
+// novo pra quem nunca digitou nessa aba. Mesmo critério do botão "modo
+// apresentador" em app.js.
 async function requireLoginThenOpenSettings() {
   if (getPassword()) {
     openSettingsModal();
@@ -105,10 +97,9 @@ mpWarningLinkEl.addEventListener("click", requireLoginThenOpenSettings);
 settingsCloseEl.addEventListener("click", closeSettingsModal);
 settingsOverlayEl.addEventListener("click", (e) => { if (e.target === settingsOverlayEl) closeSettingsModal(); });
 
-// Link pra página standalone de doação (ver public/doar.html) e pro
-// overlay de alerta (ver public/alerta.html) -- fixos por leilão, não
-// dependem de nada do placar, então só precisam ser montados uma vez
-// (diferente de renderSettingsFromLeaderboard, que roda a cada update).
+// Links são fixos por leilão e não dependem do placar, então monta uma
+// vez só (diferente de renderSettingsFromLeaderboard, que roda a cada
+// update).
 function wireCopyLink(inputId, btnId, path) {
   const inputEl = document.getElementById(inputId);
   inputEl.value = `${location.origin}/l/${LEILAO_ID}${path}`;
@@ -125,9 +116,6 @@ function wireCopyLink(inputId, btnId, path) {
 }
 wireCopyLink("donate-link-input", "donate-link-copy", "/doar");
 wireCopyLink("alert-link-input", "alert-link-copy", "/alerta");
-
-// ---- diálogos genéricos (promptDialog/confirmDialog) no lugar de
-// prompt()/confirm() nativos -- ver uso nos 5 pontos de chamada abaixo ----
 
 let promptDialogResolve = null;
 let confirmDialogResolve = null;
@@ -146,8 +134,8 @@ function settleConfirmDialog(result) {
 }
 
 // Resolve null no cancelar (igual prompt() nativo) ou o valor cru do input
-// no confirmar -- sem trim, nenhum dos pontos de chamada fazia trim antes,
-// não é a hora de mudar esse comportamento.
+// no confirmar -- sem trim, pra manter o comportamento dos pontos de
+// chamada existentes.
 function promptDialog({ title, label, initialValue = "", inputType = "text", confirmLabel = "Salvar" } = {}) {
   return new Promise((resolve) => {
     promptDialogResolve = resolve;
@@ -173,9 +161,8 @@ function confirmDialog({ title, message, confirmLabel = "Confirmar", danger = fa
     confirmBtn.classList.toggle("primary", !danger);
     confirmBtn.classList.toggle("danger", danger);
     confirmDialogOverlayEl.hidden = false;
-    // Foco no botão seguro por padrão em ação destrutiva -- Enter não
-    // confirma sabotagem sem querer (reflexo de já ter apertado Enter no
-    // confirm() nativo que isso substitui).
+    // Foco no botão seguro por padrão em ação destrutiva, pra um Enter
+    // reflexo (hábito do confirm() nativo que isso substitui) não confirmar.
     setTimeout(() => (danger ? cancelBtn : confirmBtn).focus(), 40);
   });
 }
@@ -194,10 +181,9 @@ document.getElementById("confirm-dialog-close").addEventListener("click", () => 
 confirmDialogOverlayEl.addEventListener("click", (e) => { if (e.target === confirmDialogOverlayEl) settleConfirmDialog(false); });
 
 // Handler único de Escape, checando a camada mais alta primeiro -- um
-// diálogo aberto POR CIMA do settings é o primeiro caso desse app com duas
-// overlays simultâneas. Se cada uma tivesse seu próprio listener
-// independente (padrão usado em todo o resto do app, ver app.js), um
-// Escape fecharia as duas de uma vez no mesmo aperto.
+// diálogo por cima do settings é o único caso do app com duas overlays
+// simultâneas. Listeners independentes por overlay (padrão do resto do
+// app) fechariam as duas no mesmo Escape.
 document.addEventListener("keydown", (e) => {
   if (e.key !== "Escape") return;
   if (!promptDialogOverlayEl.hidden) return settlePromptDialog(null);
@@ -205,9 +191,8 @@ document.addEventListener("keydown", (e) => {
   if (!settingsOverlayEl.hidden) closeSettingsModal();
 });
 
-// socket já existe (declarado em app.js) — mais um listener no mesmo evento
-// não atrapalha o listener original, só mantém esse arquivo com os dados
-// mais recentes pra quando o modal abrir.
+// socket já é declarado em app.js; esse listener a mais só mantém o
+// estado local atualizado pra quando o modal abrir.
 socket.on("update", ({ leaderboard }) => {
   settingsLeaderboard = leaderboard;
   settingsGames = leaderboard.items;
@@ -412,8 +397,7 @@ document.getElementById("reset-btn").addEventListener("click", async () => {
   loadSettingsHistory();
 });
 
-// Histórico de rounds já zerados — carregado sob demanda (não vem pelo
-// socket) toda vez que o modal abre, igual o admin.html fazia.
+// Carregado sob demanda (não vem pelo socket) toda vez que o modal abre.
 async function loadSettingsHistory() {
   try {
     const res = await fetch(`/api/l/${LEILAO_ID}/recap/history`);

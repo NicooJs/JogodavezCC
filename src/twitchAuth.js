@@ -1,12 +1,11 @@
 // Login de verdade com a Twitch (Authorization Code Grant) -- diferente de
 // src/twitchClient.js, que só faz Client Credentials (token de APP, sem
-// usuário nenhum por trás, usado pra buscar avatar por nome digitado). Esse
-// arquivo é о que prova QUEM é a pessoa de verdade, por isso fica separado:
-// são categorias de confiança diferentes, não vale misturar num arquivo só.
+// usuário por trás, usado pra buscar avatar por nome digitado). Esse
+// arquivo é o que prova QUEM é a pessoa de verdade, por isso fica
+// separado: são categorias de confiança diferentes.
 //
-// TWITCH_CLIENT_ID/TWITCH_CLIENT_SECRET são os mesmos já usados em
-// twitchClient.js (um app só, pro site inteiro) -- lidos direto do
-// process.env aqui dentro, mesmo padrão do arquivo irmão.
+// TWITCH_CLIENT_ID/TWITCH_CLIENT_SECRET são os mesmos usados em
+// twitchClient.js (um app só, pro site inteiro).
 
 const AUTHORIZE_URL = "https://id.twitch.tv/oauth2/authorize";
 const TOKEN_URL = "https://id.twitch.tv/oauth2/token";
@@ -26,11 +25,9 @@ function buildAuthorizeUrl({ redirectUri, state }) {
   return `${AUTHORIZE_URL}?${params.toString()}`;
 }
 
-// Troca o "code" (de uso único, a própria Twitch invalida depois do primeiro
-// uso) por um token de USUÁRIO -- diferente do token de app em
-// twitchClient.js#getAppToken. Mesmo formato de "parâmetros na query string
-// de um POST sem corpo" que getAppToken já usa, reaproveitado por
-// consistência.
+// "code" é de uso único, a Twitch invalida depois do primeiro uso. Troca
+// por um token de USUÁRIO -- diferente do token de app em
+// twitchClient.js#getAppToken.
 async function exchangeCodeForToken({ code, redirectUri }) {
   const clientId = process.env.TWITCH_CLIENT_ID;
   const clientSecret = process.env.TWITCH_CLIENT_SECRET;
@@ -56,10 +53,10 @@ async function exchangeCodeForToken({ code, redirectUri }) {
   return json.access_token;
 }
 
-// GET /helix/users SEM "login=" devolve o dono do PRÓPRIO token -- é assim
-// que confirmamos "quem está logado", em vez de confiar em qualquer coisa
-// que o cliente diga. id é o identificador estável (login pode mudar,
-// id não), por isso é o que vira a chave de posse do leilão.
+// GET /helix/users sem "login=" devolve o dono do PRÓPRIO token -- confirma
+// "quem está logado" sem confiar em nada que o cliente diga. id é o
+// identificador estável (login pode mudar), por isso vira a chave de posse
+// do leilão.
 async function fetchAuthenticatedUser(accessToken) {
   const clientId = process.env.TWITCH_CLIENT_ID;
   if (!clientId) throw new Error("TWITCH_CLIENT_ID não configurado");

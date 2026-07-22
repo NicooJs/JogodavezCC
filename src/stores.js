@@ -7,9 +7,8 @@ const fs = require("fs");
 const path = require("path");
 const { createStore } = require("./db");
 
-// Mesma regra de DATA_DIR que o resto do projeto usa: em produção (Railway)
-// aponta pro volume persistente; local, uma pasta "data/" na raiz do
-// projeto (separada do antigo leilao-data.json de single-tenant).
+// Em produção (Railway) aponta pro volume persistente; local, "data/" na
+// raiz do projeto.
 const DATA_DIR = process.env.DATA_DIR || path.join(__dirname, "..", "data");
 fs.mkdirSync(DATA_DIR, { recursive: true });
 
@@ -26,13 +25,9 @@ function getStore(leilaoId) {
   return cache.get(leilaoId);
 }
 
-// Apaga o arquivo de dados de um leilão e tira do cache em memória — usado
-// só pela rota de super-admin (ver server.js) pra remover leilão de teste
-// de vez. Sem isso, um getStore(id) chamado logo depois recriaria o
-// arquivo do zero (createStore lê um arquivo inexistente como dados
-// vazios), então a ordem importa: sempre apagar o registro (registry.js)
-// ANTES de chamar isso, pra nenhuma rota rode "getStore" pro id no meio
-// do caminho.
+// Apaga o registro (registry.js) ANTES de chamar isso — createStore lê um
+// arquivo inexistente como dados vazios, então um getStore(id) chamado no
+// meio do caminho recriaria o arquivo do zero.
 function deleteStore(leilaoId) {
   cache.delete(leilaoId);
   try {

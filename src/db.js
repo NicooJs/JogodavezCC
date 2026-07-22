@@ -1,20 +1,16 @@
-// Banco de dados simples baseado em arquivo JSON (sem dependências nativas,
-// então não precisa compilar nada — funciona em qualquer Windows/Mac/Linux
-// só com o Node instalado).
-//
-// createStore(filePath) é uma fábrica: cada leilão tem seu próprio arquivo,
-// então cada chamada devolve uma instância isolada (ver src/stores.js pra
-// como isso é cacheado por leilão).
+// Banco de dados baseado em arquivo JSON: sem dependências nativas, roda em
+// qualquer SO só com o Node instalado. createStore(filePath) devolve uma
+// instância isolada por leilão (cacheadas em src/stores.js).
 
 const fs = require("fs");
 
 function emptyData() {
   return {
-    games: {},          // key -> { key, name, total_cents, updated_at }
-    events: [],         // lista de eventos, mais recente por último
-    processedMessages: {}, // provider_id -> true (evita contar 2x)
-    state: {},           // ex: { open: "true", title: "..." }
-    pastAuctions: [],   // recaps arquivados de rounds anteriores (ver archiveAuction)
+    games: {},
+    events: [],
+    processedMessages: {}, // provider_id -> true, evita contar a mesma doação 2x
+    state: {},
+    pastAuctions: [],
     nextEventId: 1,
   };
 }
@@ -61,10 +57,8 @@ function createStore(filePath) {
     return Object.prototype.hasOwnProperty.call(data.state, key) ? data.state[key] : fallback;
   }
 
-  // null/undefined apaga a chave em vez de virar a string "null" — sem
-  // isso, getState(key, fallback) nunca cai no fallback de novo depois da
-  // primeira vez que alguém "limpa" um campo (achado com backgroundImageUrl:
-  // o botão "Remover" salvava literalmente o texto "null").
+  // null/undefined apaga a chave em vez de virar a string "null" — sem isso,
+  // getState nunca mais cai no fallback depois que o campo é limpo uma vez.
   function setState(key, value) {
     if (value === null || value === undefined) {
       delete data.state[key];
@@ -139,16 +133,15 @@ function createStore(filePath) {
     return data.games[key] ? { ...data.games[key] } : null;
   }
 
-  // Tenta casar uma chave nova com um jogo já existente no catálogo, pra
-  // mensagens com ruído em volta do nome (ex: "minecraft manda ver!!") ou erro
-  // de digitação (ex: "minecrat") não virarem lotes duplicados. Só é chamada
-  // depois de já confirmar que não existe match exato pra candidateKey.
+  // Casa uma chave nova com um jogo já catalogado, pra mensagens com ruído
+  // (ex: "minecraft manda ver!!") ou erro de digitação não virarem lotes
+  // duplicados. Só chamada depois de descartar match exato.
   function resolveExistingKey(candidateKey) {
     const existingKeys = Object.keys(data.games);
     if (existingKeys.length === 0) return null;
 
-    // 1) alguma chave existente aparece inteira (por palavra) dentro da
-    // mensagem -> usa a mais longa (mais específica) entre as que baterem.
+    // 1) chave existente aparece inteira, por palavra, dentro da mensagem ->
+    // usa a mais longa (mais específica) entre as que baterem.
     const substringMatches = existingKeys.filter((k) => {
       const escaped = k.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
       const re = new RegExp(`(^|\\s)${escaped}(\\s|$)`);
@@ -159,7 +152,7 @@ function createStore(filePath) {
     }
 
     // 2) erro de digitação: distância de edição pequena relativa ao tamanho
-    // da menor das duas chaves (pra não confundir jogos curtos diferentes).
+    // da menor das duas chaves, pra não confundir jogos curtos diferentes.
     let best = null;
     let bestDist = Infinity;
     for (const k of existingKeys) {
@@ -195,9 +188,8 @@ function createStore(filePath) {
     return data.events.slice(-limit).reverse();
   }
 
-  // Maior doação ÚNICA do leilão (não soma por doador, é o maior lance
-  // isolado) — usado no recap como "recorde de doação". Só apoio conta
-  // (sabotagem não é "doação pro jogo", ver getTopDonorByGame).
+  // Maior doação ÚNICA (não soma por doador). Só conta "add" — sabotagem
+  // não é doação pro jogo.
   function getBiggestDonation() {
     let best = null;
     for (const ev of data.events) {
@@ -221,9 +213,7 @@ function createStore(filePath) {
       .slice(0, limit);
   }
 
-  // Nomes distintos de quem já doou, do mais recente pro mais antigo. Serve pro
-  // autocomplete de doador (evita o streamer digitar variações do mesmo nome,
-  // tipo "Yeojin" e "yEOJIN", que viram apoiadores diferentes).
+  // Nomes distintos, do mais recente pro mais antigo — autocomplete de doador.
   function getDonorNames() {
     const seen = new Set();
     const names = [];
@@ -236,18 +226,15 @@ function createStore(filePath) {
     return names;
   }
 
-  // Total bruto arrecadado (soma de tudo que foi realmente doado, incluindo
-  // os valores usados pra sabotar — o dinheiro entrou do mesmo jeito).
+  // Inclui valores usados pra sabotar — o dinheiro entrou do mesmo jeito.
   function getTotalRaised() {
     return data.events
       .filter((ev) => ev.action === "add" || ev.action === "remove")
       .reduce((sum, ev) => sum + ev.amount_cents, 0);
   }
 
-  // Quanto cada lote recebeu de apoio vs. de sabotagem, separado — diferente
-  // de total_cents (que é o saldo líquido usado pro ranking), isso é a soma
-  // bruta de cada lado, direto dos events, pra mostrar no card "quanto
-  // entrou de cada jeito" sem perder a informação quando um cancela o outro.
+  // Soma bruta de apoio vs. sabotagem por lote — diferente de total_cents
+  // (saldo líquido), preserva os dois lados mesmo quando um cancela o outro.
   function getFundingBreakdown() {
     const map = {};
     for (const ev of data.events) {
@@ -260,11 +247,8 @@ function createStore(filePath) {
     return map;
   }
 
-  // Quem mais apoiou cada lote (maior soma de "add" por doador, dentro
-  // daquele game_key) — só conta apoio, não sabotagem: "quem mais doou pro
-  // jogo X" não faz sentido incluir quem gastou dinheiro tentando derrubar
-  // X. Usado no card do catálogo, separado do quadro de honra (que é o
-  // ranking geral do leilão inteiro, não por lote).
+  // Maior soma de "add" por doador dentro de cada game_key — só apoio conta,
+  // sabotagem não entra em "quem mais doou pro jogo X".
   function getTopDonorByGame() {
     const perGame = {};
     for (const ev of data.events) {
@@ -281,9 +265,7 @@ function createStore(filePath) {
     return result;
   }
 
-  // Quantas pessoas distintas mexeram em cada lote (apoiando ou sabotando)
-  // — usado no recap de encerramento. Username ausente (doação anônima/sem
-  // nome) não conta pra nenhum lote.
+  // Doação sem username (anônima) não conta pra nenhum lote.
   function getDonorCountByGame() {
     const seenByGame = {};
     for (const ev of data.events) {
@@ -297,8 +279,6 @@ function createStore(filePath) {
     return counts;
   }
 
-  // Quantas pessoas distintas doaram no leilão inteiro (qualquer lote) —
-  // usado no recap de encerramento.
   function getTotalDonorCount() {
     const seen = new Set();
     for (const ev of data.events) {
@@ -363,13 +343,10 @@ function createStore(filePath) {
     return { ...data.games[key] };
   }
 
-  // Zera só os jogos/histórico — preserva o state (senha do apresentador,
-  // título, host, foto, flags de webhook). Antes isso chamava emptyData()
-  // puro, que apagava TUDO, inclusive adminSecretHash: depois de zerar, o
-  // streamer ficava trancado fora do próprio modo apresentador. Achado
-  // revisando um incidente relatado (2026-07-10) — não era esse o problema
-  // relatado (esse foi regenerar o Client Secret no pix.gg, ver
-  // pixggApi.js), mas era um bug de verdade que apareceu na revisão.
+  // Zera só jogos/histórico, preserva o state (senha do apresentador,
+  // título, host, foto, flags de webhook). Não usa emptyData() puro: isso
+  // apagaria adminSecretHash junto e trancaria o streamer fora do próprio
+  // modo apresentador.
   function resetAll() {
     const preservedState = { ...data.state };
     delete preservedState.lastSabotagedKey; // referenciava um lote que não existe mais
@@ -380,19 +357,16 @@ function createStore(filePath) {
     save();
   }
 
-  // Guarda um recap (ver buildRecap em server.js). Chamada tanto ao ENCERRAR
-  // (openRound: true — pedido do cliente: "quando eu encerrar já conta no
-  // histórico, não preciso zerar") quanto ao ZERAR (openRound: false).
+  // Guarda um recap (ver buildRecap em server.js). Chamada tanto ao encerrar
+  // (openRound: true) quanto ao zerar (openRound: false).
   //
-  // Como encerrar não apaga o catálogo (reabrir continua o mesmo leilão, ver
-  // CLAUDE.md), fechar-reabrir-fechar de novo SEM zerar recalcularia o
-  // recap sobre os MESMOS jogos/eventos de antes — arquivar isso como uma
-  // entrada nova a cada vez contaria o mesmo dinheiro repetidas vezes no
-  // histórico (e no ranking global de streamers, que soma tudo). Por isso:
-  // enquanto o topo da lista for um round "aberto" (openRound: true, ainda
-  // não finalizado por um zerar), um novo encerramento SUBSTITUI essa
-  // entrada em vez de empilhar outra — só passa a existir uma entrada nova
-  // de verdade depois que um openRound:false (zerar) fecha esse round.
+  // Encerrar não apaga o catálogo — reabrir continua o mesmo leilão — então
+  // fechar/reabrir/fechar de novo sem zerar recalcularia o recap sobre os
+  // MESMOS eventos. Por isso, enquanto o topo da lista for um round ainda
+  // "aberto" (openRound: true), um novo encerramento SUBSTITUI essa entrada
+  // em vez de empilhar outra; uma entrada nova só nasce depois que um zerar
+  // (openRound: false) fecha o round. Sem essa regra o mesmo dinheiro seria
+  // contado várias vezes no histórico e no ranking global de streamers.
   function archiveAuction(recap, options = {}) {
     const openRound = !!options.openRound;
     const top = data.pastAuctions[0];

@@ -1,11 +1,8 @@
-/* Página standalone de doação (/l/:id/doar) — o mesmo fluxo do modal
-   "Doar" do board (ver #donate-modal em board.html/style.css), só que
-   como página própria em vez de overlay, pra dar um link fixável no chat
-   da live. Reaproveita os tokens de :root e as classes de formulário do
-   modal (.modal-field/.seg/.amount-wrap/.modal-input/.modal-error) —
-   só o que é de LAYOUT DE PÁGINA (hero, card, estados) é definido aqui.
-   Mobile-first de propósito: a maioria de quem abre esse link vem de um
-   toque no chat da Twitch pelo celular. */
+/* Mesmo fluxo do modal "Doar" do board (#donate-modal), como página
+   própria em vez de overlay. Reaproveita tokens de :root e classes de
+   formulário do modal (.modal-field/.seg/.amount-wrap/.modal-input/
+   .modal-error) -- só layout de página (hero, card, estados) fica aqui.
+   Mobile-first: a maioria abre esse link pelo chat da Twitch no celular. */
 
 .doar-body { height: auto; overflow-y: auto; }
 

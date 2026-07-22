@@ -1,14 +1,10 @@
 // OAuth marketplace do Mercado Pago -- conecta a conta MP de um streamer
-// (via twitch_user_id, ver server.js) pra depois cobrar em nome dele com
-// split. Espelha src/twitchAuth.js de propósito: mesmo formato geral de
-// buildAuthorizeUrl/exchangeCodeForToken, mesma disciplina de ler
-// MP_CLIENT_ID/MP_CLIENT_SECRET direto do process.env aqui dentro.
+// (por twitch_user_id) pra cobrar em nome dele com split. Segue o mesmo
+// formato geral de src/twitchAuth.js.
 //
-// PKCE (code_challenge) é opcional no MP, não obrigatório a menos que
-// habilitado nas configurações da aplicação -- não implementado aqui de
-// propósito (mesmo raciocínio de "não adicionar o que não é preciso"); se
-// a aplicação exigir depois, dá pra adicionar sem mudar a forma geral
-// dessas duas funções.
+// PKCE (code_challenge) é opcional no MP, só obrigatório se habilitado nas
+// configurações da aplicação — não implementado aqui; dá pra adicionar sem
+// mudar a forma das duas funções abaixo se isso mudar.
 const AUTHORIZE_URL = "https://auth.mercadopago.com/authorization";
 const TOKEN_URL = "https://api.mercadopago.com/oauth/token";
 
@@ -25,10 +21,9 @@ function buildAuthorizeUrl({ redirectUri, state }) {
   return `${AUTHORIZE_URL}?${params.toString()}`;
 }
 
-// Troca o "code" por access_token/refresh_token/user_id/public_key. O
-// refresh_token do MP RODA a cada uso (não só na conexão inicial) -- quem
-// chama isso (ou refreshToken abaixo) precisa regravar os dois tokens
-// toda vez, nunca só o access_token sozinho.
+// O refresh_token do MP roda a cada uso (não só na conexão inicial) — quem
+// chama isso ou refreshToken abaixo precisa regravar os dois tokens toda
+// vez, nunca só o access_token sozinho.
 async function exchangeCodeForToken({ code, redirectUri }) {
   const clientId = process.env.MP_CLIENT_ID;
   const clientSecret = process.env.MP_CLIENT_SECRET;
@@ -65,10 +60,9 @@ async function exchangeCodeForToken({ code, redirectUri }) {
   };
 }
 
-// Renova o access_token quando expira (~180 dias) OU quando uma chamada
-// real devolve 401 -- mesmo formato de resposta do exchangeCodeForToken
-// (o refresh_token novo TAMBÉM precisa ser regravado, o antigo para de
-// funcionar depois de usado).
+// Chamada quando o access_token expira (~180 dias) ou uma chamada real
+// devolve 401. O refresh_token novo também precisa ser regravado — o
+// antigo para de funcionar depois de usado.
 async function refreshToken({ refreshToken: currentRefreshToken }) {
   const clientId = process.env.MP_CLIENT_ID;
   const clientSecret = process.env.MP_CLIENT_SECRET;
