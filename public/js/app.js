@@ -31,6 +31,9 @@ const donorCountEl = document.getElementById("donor-count");
 const presenterToggleEl = document.getElementById("presenter-toggle");
 const presenterDrawerEl = document.getElementById("presenter-drawer");
 const timerRingFillEl = document.getElementById("timer-ring-fill");
+const donateModalTimerEl = document.getElementById("donate-modal-timer");
+const donateModalTimerLabelEl = document.getElementById("donate-modal-timer-label");
+const donateModalTimerClockEl = document.getElementById("donate-modal-timer-clock");
 const boardEl = document.querySelector(".board");
 const soldOverlayEl = document.getElementById("sold-overlay");
 const soldMarkEl = document.getElementById("sold-mark");
@@ -77,6 +80,7 @@ let timerDurationMs = 5 * 60 * 1000; // placeholder, atualizado no primeiro "upd
 let isOpenState = null; // null = antes do primeiro "update"
 let isPausedState = false;
 let pausedRemainingMs = null;
+let isTimerLockedState = false;
 let mpDisconnectedState = false;
 let historyItems = [];
 let currentLeaderKey = null;
@@ -201,7 +205,17 @@ function setRingFraction(fraction) {
   timerRingFillEl.style.strokeDashoffset = String(offset);
 }
 
-const FINAL_COUNTDOWN_SECONDS = 15;
+const FINAL_COUNTDOWN_SECONDS = 90;
+
+// Espelha o timer principal no timer do modal de doação (útil pra quem tá
+// preenchendo o formulário sem ver o resto do board por trás do overlay).
+function syncDonateModalTimer() {
+  donateModalTimerEl.hidden = !isOpenState;
+  donateModalTimerLabelEl.textContent = timerLabelEl.textContent;
+  donateModalTimerClockEl.textContent = timerClockEl.textContent;
+  donateModalTimerEl.classList.toggle("urgent", timerEl.classList.contains("urgent"));
+  donateModalTimerEl.classList.toggle("closed", timerEl.classList.contains("closed"));
+}
 
 function tickTimer() {
   if (!isOpenState) {
@@ -211,6 +225,7 @@ function tickTimer() {
     timerLabelEl.textContent = "leilão";
     timerClockEl.textContent = "ENCERRADO";
     setRingFraction(0);
+    syncDonateModalTimer();
     return;
   }
 
@@ -224,6 +239,7 @@ function tickTimer() {
     timerLabelEl.textContent = "pausado em";
     timerClockEl.textContent = `${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
     setRingFraction((pausedRemainingMs || 0) / timerDurationMs);
+    syncDonateModalTimer();
     return;
   }
 
@@ -236,6 +252,7 @@ function tickTimer() {
     timerEl.classList.add("closed");
     boardEl.classList.remove("final-countdown");
     setRingFraction(0);
+    syncDonateModalTimer();
     return;
   }
   const totalSeconds = Math.ceil(msLeft / 1000);
@@ -243,9 +260,10 @@ function tickTimer() {
   const s = totalSeconds % 60;
   timerLabelEl.textContent = "encerra em";
   timerClockEl.textContent = `${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
-  timerEl.classList.toggle("urgent", totalSeconds <= 60);
+  timerEl.classList.toggle("urgent", totalSeconds <= FINAL_COUNTDOWN_SECONDS);
   boardEl.classList.toggle("final-countdown", totalSeconds <= FINAL_COUNTDOWN_SECONDS);
   setRingFraction(msLeft / timerDurationMs);
+  syncDonateModalTimer();
 }
 setInterval(tickTimer, 1000);
 
@@ -1131,8 +1149,15 @@ socket.on("update", ({ leaderboard, lastEvent }) => {
   if (!leaderboard.hideTotalRaised) {
     // Só mexe no DOM interno do Odometer enquanto o total está de fato visível.
     const totalValue = leaderboard.totalRaised || 0;
-    if (totalOdometer) totalOdometer.update(Math.round(totalValue));
-    else bumpValue(statTotalEl, String(Math.round(totalValue)));
+    // Só chama .update() quando o valor muda de verdade. Sem essa checagem,
+    // dois "update" seguidos com o MESMO total (ex: um broadcast reagindo à
+    // resolução assíncrona do avatar de um doador, ver onAvatarResolved em
+    // server.js) reiniciava a animação do Odometer no meio da anterior --
+    // os dígitos ficavam com resto das duas transições sobrepostas.
+    if (lastTotalRaised === null || totalValue !== lastTotalRaised) {
+      if (totalOdometer) totalOdometer.update(Math.round(totalValue));
+      else bumpValue(statTotalEl, String(Math.round(totalValue)));
+    }
     // lastTotalRaised !== null exclui o carregamento inicial da página.
     if (lastTotalRaised !== null && totalValue !== lastTotalRaised) flashTotalBeam();
     lastTotalRaised = totalValue;
@@ -1427,18 +1452,18 @@ donateCopyBtnEl.addEventListener("click", async () => {
   }
 });
 
-function getPassword() {
-  return sessionStorage.getItem(`admin:${LEILAO_ID}`) || "";
-}
-
+// Autenticação de apresentador vive num cookie httpOnly (leilao_admin,
+// emitido por POST /admin/login) -- o navegador manda ele sozinho em toda
+// requisição same-origin, não precisa (nem dá, é httpOnly) guardar ou
+// reenviar a senha manualmente daqui.
 async function presenterFetch(path, options = {}) {
   // FormData define seu próprio Content-Type com boundary; fixar "application/json" quebraria o upload multipart.
   const isFormData = options.body instanceof FormData;
   const res = await fetch(`/api/l/${LEILAO_ID}${path}`, {
     ...options,
+    credentials: "same-origin",
     headers: {
       ...(isFormData ? {} : { "Content-Type": "application/json" }),
-      "x-admin-password": getPassword(),
       ...(options.headers || {}),
     },
   });
@@ -1488,15 +1513,17 @@ async function submitPresenterLogin() {
   try {
     const res = await fetch(`/api/l/${LEILAO_ID}/admin/login`, {
       method: "POST",
+      credentials: "same-origin",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ password }),
     });
     if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      presenterLoginError.textContent = data.error || "Senha incorreta";
       presenterLoginError.hidden = false;
       presenterLoginPassword.select();
       return;
     }
-    sessionStorage.setItem(`admin:${LEILAO_ID}`, password);
     closePresenterLogin();
     setPresenterMode(true);
     if (pendingAfterLogin) {
@@ -1509,13 +1536,13 @@ async function submitPresenterLogin() {
   }
 }
 
-// Pula o modal de senha pro dono verificado da Twitch (GET
-// .../admin/check-session) -- getPassword() usa sessionStorage, que não
-// sobrevive entre abas, então sem isso o dono redigitaria a senha toda vez.
-async function isVerifiedOwner() {
+// Pula o modal de senha pra quem já tem sessão de admin válida nesse
+// navegador (cookie leilao_admin) ou é o dono verificado da Twitch --
+// GET .../admin/check-session cobre os dois casos de uma vez.
+async function checkPresenterAccess() {
   try {
-    const { isOwner } = await fetch(`/api/l/${LEILAO_ID}/admin/check-session`).then((r) => r.json());
-    return !!isOwner;
+    const { isPresenter } = await fetch(`/api/l/${LEILAO_ID}/admin/check-session`, { credentials: "same-origin" }).then((r) => r.json());
+    return !!isPresenter;
   } catch (err) {
     return false;
   }
@@ -1524,11 +1551,11 @@ async function isVerifiedOwner() {
 presenterToggleEl.addEventListener("click", async () => {
   const isActive = document.body.classList.contains("presenter-mode");
   if (isActive) {
-    sessionStorage.removeItem(`admin:${LEILAO_ID}`);
+    await fetch(`/api/l/${LEILAO_ID}/admin/logout`, { method: "POST", credentials: "same-origin" }).catch(() => {});
     setPresenterMode(false);
     return;
   }
-  if (await isVerifiedOwner()) {
+  if (await checkPresenterAccess()) {
     setPresenterMode(true);
     return;
   }
@@ -1561,6 +1588,17 @@ document.getElementById("p-pause-toggle").addEventListener("click", async () => 
 document.getElementById("p-timer-reset").addEventListener("click", async () => {
   try {
     await presenterFetch("/admin/reset-timer", { method: "POST" });
+  } catch (err) {
+    alert(err.message);
+  }
+});
+
+document.getElementById("p-timer-lock").addEventListener("click", async () => {
+  try {
+    await presenterFetch("/admin/toggle-timer-lock", {
+      method: "POST",
+      body: JSON.stringify({ locked: !isTimerLockedState }),
+    });
   } catch (err) {
     alert(err.message);
   }
@@ -1697,7 +1735,7 @@ manualNameEl.addEventListener("input", () => {
     if (suggestionsAbortController) suggestionsAbortController.abort();
     suggestionsAbortController = new AbortController();
     fetch(`/api/l/${LEILAO_ID}/admin/game-search?q=${encodeURIComponent(query)}`, {
-      headers: { "x-admin-password": getPassword() },
+      credentials: "same-origin",
       signal: suggestionsAbortController.signal,
     })
       .then((res) => (res.ok ? res.json() : { results: [] }))
@@ -1844,11 +1882,7 @@ donorInputEl.addEventListener("input", showDonorSuggestions);
 donorInputEl.addEventListener("focus", showDonorSuggestions);
 donorInputEl.addEventListener("blur", () => setTimeout(hideDonorSuggestions, 120));
 
-if (getPassword()) {
-  setPresenterMode(true);
-} else {
-  isVerifiedOwner().then((owner) => { if (owner) setPresenterMode(true); });
-}
+checkPresenterAccess().then((active) => { if (active) setPresenterMode(true); });
 
 socket.on("update", ({ leaderboard }) => {
   const openBtn = document.getElementById("p-toggle-open");
@@ -1865,4 +1899,13 @@ socket.on("update", ({ leaderboard }) => {
   pauseBtn.title = leaderboard.open ? pauseLabel : "Reabra o leilão pra poder pausar";
   pauseBtn.setAttribute("aria-label", pauseBtn.title);
   document.getElementById("p-pause-label").textContent = leaderboard.paused ? "Retomar" : "Pausar";
+
+  isTimerLockedState = !!leaderboard.timerLocked;
+  const lockBtn = document.getElementById("p-timer-lock");
+  lockBtn.classList.toggle("is-locked", isTimerLockedState);
+  lockBtn.setAttribute("aria-pressed", String(isTimerLockedState));
+  lockBtn.title = isTimerLockedState
+    ? "Destravar -- doações voltam a somar tempo"
+    : "Impede que novas doações somem mais tempo -- pra dar o ultimato";
+  document.getElementById("p-timer-lock-label").textContent = isTimerLockedState ? "Tempo travado" : "Travar tempo";
 });

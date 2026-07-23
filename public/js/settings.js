@@ -1,7 +1,7 @@
 // Modal de configurações substitui a página separada /l/:id/admin
 // (public/admin.html ainda existe mas não é mais linkada -- abrir aba nova
 // no meio da live quebra o modo apresentador). Carregado depois de app.js
-// e reaproveita as globais dele (LEILAO_ID, presenterFetch, getPassword,
+// e reaproveita as globais dele (LEILAO_ID, presenterFetch, checkPresenterAccess,
 // openPresenterLogin, formatBRL, escapeHtml) -- scripts sem type="module"
 // compartilham o escopo global.
 
@@ -73,16 +73,11 @@ function closeSettingsModal() {
   settingsOverlayEl.hidden = true;
 }
 
-// Checa getPassword() (sessionStorage) primeiro, senão pergunta pro
-// servidor se esse navegador é o dono verificado -- evita pedir senha de
-// novo pra quem nunca digitou nessa aba. Mesmo critério do botão "modo
-// apresentador" em app.js.
+// Pergunta pro servidor se esse navegador já tem sessão de admin válida
+// (cookie leilao_admin) ou é o dono verificado -- mesmo critério do botão
+// "modo apresentador" em app.js.
 async function requireLoginThenOpenSettings() {
-  if (getPassword()) {
-    openSettingsModal();
-    return;
-  }
-  if (await isVerifiedOwner()) {
+  if (await checkPresenterAccess()) {
     setPresenterMode(true);
     openSettingsModal();
     return;

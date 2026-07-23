@@ -208,7 +208,7 @@
 
 /* Cores fixas de propósito (não var()) — pré-visualização das paletas
    definidas em style.css, não podem depender do tema atual do board. */
-.settings-modal .theme-preview-nebulosa { background: linear-gradient(135deg, #14141c 50%, #3ecfe0 50%); }
+.settings-modal .theme-preview-nebulosa { background: linear-gradient(135deg, #14141c 50%, #7089a0 50%); }
 .settings-modal .theme-preview-recife { background: linear-gradient(135deg, #101a1a 50%, #e0a955 50%); }
 .settings-modal .theme-preview-ametista { background: linear-gradient(135deg, #17131f 50%, #b98cf5 50%); }
 .settings-modal .theme-preview-safira { background: linear-gradient(135deg, #0f1420 50%, #4d80f5 50%); }

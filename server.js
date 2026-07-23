@@ -30,6 +30,40 @@ const io = new Server(server);
 
 app.use(express.json());
 
+// Limitador de tentativas em janela deslizante, em memória (sem Redis --
+// escala não pede isso ainda). Serve pra dois casos: limitar volume bruto
+// de requisição (game-search) e travar depois de N tentativas ERRADAS de
+// senha (login/super-admin), que é o que de fato impede força bruta.
+function createRateLimiter(windowMs, maxHits) {
+  const hits = new Map();
+  return {
+    isLimited(key) {
+      const now = Date.now();
+      const arr = (hits.get(key) || []).filter((t) => now - t < windowMs);
+      hits.set(key, arr);
+      return arr.length >= maxHits;
+    },
+    record(key) {
+      const now = Date.now();
+      const arr = (hits.get(key) || []).filter((t) => now - t < windowMs);
+      arr.push(now);
+      hits.set(key, arr);
+    },
+  };
+}
+
+// Senha de apresentador: 10 tentativas erradas por IP a cada 5 minutos --
+// conta tanto quem erra em /admin/login quanto quem tenta adivinhar direto
+// numa rota admin qualquer (requireLeilaoAdmin usa o mesmo limitador, senão
+// dava pra contornar o limite de /admin/login testando a senha em outra rota).
+const loginRateLimiter = createRateLimiter(5 * 60_000, 10);
+
+// Segredo de super-admin (apaga leilões inteiros): mais raro e mais grave
+// que errar senha de leilão, por isso um orçamento mais apertado.
+const superAdminRateLimiter = createRateLimiter(10 * 60_000, 5);
+
+const gameSearchRateLimiter = createRateLimiter(60_000, 20);
+
 // Salvo no mesmo DATA_DIR persistente dos dados dos leilões, não em disco
 // efêmero do container. Nome prefixado com leilaoId + horário pra não
 // colidir entre leilões nem ficar em cache velho do navegador.
@@ -163,6 +197,37 @@ function getTwitchSession(req) {
   return payload && payload.twitchUserId ? payload : null;
 }
 
+// Sessão de apresentador: um cookie só pro navegador inteiro (não por
+// leilão), guardando a LISTA de leiloes que essa senha já provou conhecer --
+// assim dá pra administrar mais de um leilão na mesma aba sem redigitar
+// senha. Substitui o antigo esquema de reenviar a senha em texto puro a
+// cada requisição (ver POST /admin/login).
+const ADMIN_SESSION_MAX_AGE_SECONDS = 24 * 60 * 60;
+
+function getAdminLeiloes(req) {
+  const payload = session.getCookie(req, "leilao_admin");
+  return payload && Array.isArray(payload.leiloes) ? payload.leiloes : [];
+}
+
+function hasAdminSession(req, leilaoId) {
+  return getAdminLeiloes(req).includes(leilaoId);
+}
+
+function grantAdminSession(req, res, leilaoId) {
+  const leiloes = getAdminLeiloes(req).filter((id) => id !== leilaoId);
+  leiloes.push(leilaoId);
+  session.setCookie(req, res, "leilao_admin", { leiloes }, ADMIN_SESSION_MAX_AGE_SECONDS);
+}
+
+function revokeAdminSession(req, res, leilaoId) {
+  const leiloes = getAdminLeiloes(req).filter((id) => id !== leilaoId);
+  if (leiloes.length === 0) {
+    session.clearCookie(req, res, "leilao_admin");
+  } else {
+    session.setCookie(req, res, "leilao_admin", { leiloes }, ADMIN_SESSION_MAX_AGE_SECONDS);
+  }
+}
+
 // ---------- helpers ----------
 
 function centsToNumber(cents) {
@@ -171,8 +236,12 @@ function centsToNumber(cents) {
 
 // Marca "agora" como o último lance recebido (reinicia a contagem de 5 min).
 // reopen=true também garante que o leilão volte a ficar aberto, e marca
-// "agora" como início dessa sessão aberta.
+// "agora" como início dessa sessão aberta -- reopen ignora o timerLocked de
+// propósito (reabrir já é uma decisão explícita do apresentador, diferente
+// da extensão automática por doação que o lock existe pra bloquear).
 function touchActivity(store, reopen = false) {
+  const locked = store.getState("timerLocked", "false") === "true";
+  if (locked && !reopen) return;
   store.setState("lastActivityAt", String(Date.now()));
   if (reopen) {
     store.setState("open", "true");
@@ -334,6 +403,7 @@ function serializeLeaderboard(store, leilaoId) {
     timerEndsAt: isOpen && !isPaused ? lastActivityAt + autoCloseMs : null,
     timerRemainingMs: isPaused ? Number(store.getState("pausedRemainingMs", autoCloseMs)) : null,
     timerDurationMs: autoCloseMs,
+    timerLocked: store.getState("timerLocked", "false") === "true",
     mpDisconnected: store.getState("mpDisconnected", "false") === "true",
   };
 }
@@ -423,22 +493,21 @@ function loadLeilao(req, res, next) {
   next();
 }
 
-// Aditivo, não substitui a senha: o dono verificado da Twitch (sessão
-// logada nesse navegador, comparada ao ownerTwitchUserId do registro)
-// também libera acesso, sem precisar digitar senha. Continua funcionando
-// por senha pra quem administra de outro dispositivo/navegador sem sessão.
+// Aditivo: o dono verificado da Twitch (sessão logada nesse navegador,
+// comparada ao ownerTwitchUserId do registro) também libera acesso, sem
+// precisar da sessão de admin. A senha em si só é conferida em
+// POST /admin/login (que emite o cookie leilao_admin) -- aqui só valida a
+// assinatura do cookie, rápido e sem chamar scrypt a cada requisição.
 function requireLeilaoAdmin(req, res, next) {
-  const supplied = req.header("x-admin-password") || "";
-  const hash = req.store.getState("adminSecretHash");
-  if (verifyPassword(supplied, hash)) return next();
+  if (hasAdminSession(req, req.leilaoId)) return next();
 
-  const session = getTwitchSession(req);
+  const twitchSession = getTwitchSession(req);
   const meta = registry.getLeilaoMeta(req.leilaoId);
-  if (session && meta && meta.ownerTwitchUserId && session.twitchUserId === meta.ownerTwitchUserId) {
+  if (twitchSession && meta && meta.ownerTwitchUserId && twitchSession.twitchUserId === meta.ownerTwitchUserId) {
     return next();
   }
 
-  return res.status(401).json({ error: "Senha de admin inválida" });
+  return res.status(401).json({ error: "Sessão de admin inválida ou expirada" });
 }
 
 async function processDonationMessage(leilaoId, store, { id, fallbackUsername, fallbackMessage, fallbackAmount, fallbackNote }) {
@@ -491,6 +560,11 @@ async function processDonationMessage(leilaoId, store, { id, fallbackUsername, f
   });
   if (parsed.action === "remove") store.setState("lastSabotagedKey", game.key);
 
+  // touchActivity ANTES do broadcast: senão o snapshot enviado ainda carrega
+  // o timerEndsAt de antes da doação, e quem tá vendo o board só via o
+  // timer esticar no PRÓXIMO update (de outro evento qualquer), não nesse.
+  touchActivity(store);
+
   broadcastUpdate(leilaoId, store, {
     type: parsed.action,
     username,
@@ -506,7 +580,6 @@ async function processDonationMessage(leilaoId, store, { id, fallbackUsername, f
     paymentId: id,
   });
 
-  touchActivity(store);
   maybeFetchGameImage(leilaoId, store, game.key, game.name, needsImage);
 }
 
@@ -841,9 +914,13 @@ app.get("/api/board-bg-covers", async (req, res) => {
 // segredo do DONO do site (SUPER_ADMIN_SECRET), não a senha do leilão.
 // Sem essa variável configurada, nega sempre.
 app.delete("/api/admin/leiloes/:id", (req, res) => {
+  if (superAdminRateLimiter.isLimited(req.ip)) {
+    return res.status(429).json({ error: "Muitas tentativas. Aguarde alguns minutos e tente de novo." });
+  }
   const secret = process.env.SUPER_ADMIN_SECRET || "";
   const supplied = req.header("x-super-admin-secret") || "";
   if (!secret || !timingSafeEqualString(supplied, secret)) {
+    superAdminRateLimiter.record(req.ip);
     return res.status(401).json({ error: "Segredo de super-admin inválido ou não configurado" });
   }
   const { id } = req.params;
@@ -859,9 +936,13 @@ app.delete("/api/admin/leiloes/:id", (req, res) => {
 // Igual a rota acima, mas apaga TODOS os leilões registrados de uma vez --
 // faxina geral, sem precisar de lista de ids em mãos.
 app.delete("/api/admin/leiloes", (req, res) => {
+  if (superAdminRateLimiter.isLimited(req.ip)) {
+    return res.status(429).json({ error: "Muitas tentativas. Aguarde alguns minutos e tente de novo." });
+  }
   const secret = process.env.SUPER_ADMIN_SECRET || "";
   const supplied = req.header("x-super-admin-secret") || "";
   if (!secret || !timingSafeEqualString(supplied, secret)) {
+    superAdminRateLimiter.record(req.ip);
     return res.status(401).json({ error: "Segredo de super-admin inválido ou não configurado" });
   }
   const ids = registry.listLeilaoIds();
@@ -1027,22 +1108,6 @@ app.post("/api/l/:id/doacao", loadLeilao, async (req, res) => {
   }
 });
 
-const gameSearchHits = new Map();
-const GAME_SEARCH_WINDOW_MS = 60_000;
-const GAME_SEARCH_MAX_PER_WINDOW = 20;
-
-function isGameSearchRateLimited(ip) {
-  const now = Date.now();
-  const hits = (gameSearchHits.get(ip) || []).filter((t) => now - t < GAME_SEARCH_WINDOW_MS);
-  if (hits.length >= GAME_SEARCH_MAX_PER_WINDOW) {
-    gameSearchHits.set(ip, hits);
-    return true;
-  }
-  hits.push(now);
-  gameSearchHits.set(ip, hits);
-  return false;
-}
-
 // Público (sem senha de admin) -- o doador busca um jogo que ainda não está
 // no catálogo desse leilão. Os que já estão catalogados vêm do leaderboard
 // que a página já recebe via socket, sem precisar de rota nenhuma; essa aqui
@@ -1050,7 +1115,8 @@ function isGameSearchRateLimited(ip) {
 app.get("/api/l/:id/game-search", loadLeilao, async (req, res) => {
   const q = String(req.query.q || "").trim();
   if (!q) return res.json({ results: [] });
-  if (isGameSearchRateLimited(req.ip)) return res.status(429).json({ results: [] });
+  if (gameSearchRateLimiter.isLimited(req.ip)) return res.status(429).json({ results: [] });
+  gameSearchRateLimiter.record(req.ip);
 
   const { store } = req;
   const results = await searchGames(q);
@@ -1141,23 +1207,37 @@ app.post("/webhook/mercadopago", async (req, res) => {
 
 // ---------- rotas de admin (id-scoped) ----------
 
-app.post("/api/l/:id/admin/login", loadLeilao, (req, res) => {
+// Único lugar que confere a senha de verdade (scrypt). Sucesso emite o
+// cookie leilao_admin (ver grantAdminSession) -- dali em diante,
+// requireLeilaoAdmin só valida a assinatura do cookie, sem tocar a senha.
+app.post("/api/l/:id/admin/login", loadLeilao, async (req, res) => {
+  if (loginRateLimiter.isLimited(req.ip)) {
+    return res.status(429).json({ error: "Muitas tentativas. Aguarde alguns minutos e tente de novo." });
+  }
   const { password } = req.body || {};
   const hash = req.store.getState("adminSecretHash");
-  if (!verifyPassword(password, hash)) {
+  if (!(await verifyPassword(password, hash))) {
+    loginRateLimiter.record(req.ip);
     return res.status(401).json({ error: "Senha incorreta" });
   }
+  grantAdminSession(req, res, req.leilaoId);
+  res.json({ ok: true });
+});
+
+app.post("/api/l/:id/admin/logout", loadLeilao, (req, res) => {
+  revokeAdminSession(req, res, req.leilaoId);
   res.json({ ok: true });
 });
 
 // Deixa o board pular o modal de senha pra quem já é o dono verificado da
-// Twitch (mesmo critério de requireLeilaoAdmin). Só um booleano, não
-// precisa passar por requireLeilaoAdmin.
+// Twitch OU já tem uma sessão de admin válida nesse navegador (ver
+// requireLeilaoAdmin -- mesmo critério, sem precisar passar por ele).
 app.get("/api/l/:id/admin/check-session", loadLeilao, (req, res) => {
-  const session = getTwitchSession(req);
+  const twitchSession = getTwitchSession(req);
   const meta = registry.getLeilaoMeta(req.leilaoId);
-  const isOwner = !!(session && meta && meta.ownerTwitchUserId && session.twitchUserId === meta.ownerTwitchUserId);
-  res.json({ isOwner });
+  const isOwner = !!(twitchSession && meta && meta.ownerTwitchUserId && twitchSession.twitchUserId === meta.ownerTwitchUserId);
+  const isPresenter = isOwner || hasAdminSession(req, req.leilaoId);
+  res.json({ isOwner, isPresenter });
 });
 
 app.get("/api/l/:id/admin/game-search", loadLeilao, requireLeilaoAdmin, async (req, res) => {
@@ -1190,16 +1270,17 @@ app.post("/api/l/:id/admin/manual-entry", loadLeilao, requireLeilaoAdmin, async 
   });
   if (parsed.action === "remove") store.setState("lastSabotagedKey", game.key);
 
+  // touchActivity ANTES do broadcast (senão o timer esticado só aparece no
+  // PRÓXIMO evento) e SEM reopen=true: lançamento manual não deve reabrir
+  // um leilão encerrado sozinho, mesma regra do webhook real.
+  touchActivity(store);
+
   broadcastUpdate(leilaoId, store, {
     type: parsed.action,
     username: username || "admin",
     amount: Number(amount),
     game: { key: game.key, name: game.name, total: centsToNumber(game.total_cents) },
   });
-
-  // touchActivity SEM reopen=true: lançamento manual não deve reabrir um
-  // leilão encerrado sozinho, mesma regra do webhook real.
-  touchActivity(store);
   maybeFetchGameImage(leilaoId, store, game.key, game.name, needsImage);
   res.json({ ok: true, game });
 });
@@ -1294,6 +1375,17 @@ app.post("/api/l/:id/admin/toggle-open", loadLeilao, requireLeilaoAdmin, (req, r
   }
   broadcastUpdate(leilaoId, store, { type: "toggle-open", open: !!open });
   res.json({ ok: true, open: !!open });
+});
+
+// Trava a extensão automática do timer a cada doação (ver touchActivity) --
+// pro apresentador conseguir dar um "ultimato" de verdade, deixando o
+// tempo correr até zero mesmo que continuem chegando doações.
+app.post("/api/l/:id/admin/toggle-timer-lock", loadLeilao, requireLeilaoAdmin, (req, res) => {
+  const { locked } = req.body || {};
+  const { store, leilaoId } = req;
+  store.setState("timerLocked", locked ? "true" : "false");
+  broadcastUpdate(leilaoId, store, { type: "toggle-timer-lock", locked: !!locked });
+  res.json({ ok: true, locked: !!locked });
 });
 
 // Pausa/retoma só o timer de inatividade (o leilão continua aberto e

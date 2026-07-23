@@ -45,9 +45,55 @@ const copyBtnEl = document.getElementById("doar-copy-btn");
 const backBtn = document.getElementById("doar-back-btn");
 const againBtn = document.getElementById("doar-again-btn");
 
+const timerEl = document.getElementById("doar-timer");
+const timerLabelEl = document.getElementById("doar-timer-label");
+const timerClockEl = document.getElementById("doar-timer-clock");
+
 let receivedFirstUpdate = false;
 let currentStep = "loading"; // loading | closed | form | pix | success
 let pendingPaymentId = null;
+
+let isOpenState = false;
+let isPausedState = false;
+let timerEndsAt = null;
+let pausedRemainingMs = null;
+
+function tickDoarTimer() {
+  if (!isOpenState) {
+    timerEl.hidden = true;
+    return;
+  }
+  timerEl.hidden = false;
+
+  if (isPausedState) {
+    const totalSeconds = Math.ceil((pausedRemainingMs || 0) / 1000);
+    const m = Math.floor(totalSeconds / 60);
+    const s = totalSeconds % 60;
+    timerEl.classList.remove("urgent", "closed");
+    timerLabelEl.textContent = "pausado em";
+    timerClockEl.textContent = `${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
+    return;
+  }
+
+  if (!timerEndsAt) return;
+  const msLeft = timerEndsAt - Date.now();
+  if (msLeft <= 0) {
+    timerEl.classList.add("closed");
+    timerEl.classList.remove("urgent");
+    timerLabelEl.textContent = "leilão";
+    timerClockEl.textContent = "ENCERRADO";
+    return;
+  }
+  const totalSeconds = Math.ceil(msLeft / 1000);
+  const m = Math.floor(totalSeconds / 60);
+  const s = totalSeconds % 60;
+  timerEl.classList.remove("closed");
+  timerEl.classList.toggle("urgent", totalSeconds <= 90);
+  timerLabelEl.textContent = "encerra em";
+  timerClockEl.textContent = `${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
+}
+
+setInterval(tickDoarTimer, 1000);
 
 function showStep(step) {
   currentStep = step;
@@ -295,6 +341,12 @@ copyBtnEl.addEventListener("click", async () => {
 socket.on("update", ({ leaderboard, lastEvent }) => {
   document.documentElement.dataset.theme = leaderboard.theme || "ametista";
   leaderboardItems = leaderboard.items || [];
+
+  isOpenState = !!leaderboard.open;
+  isPausedState = !!leaderboard.paused;
+  timerEndsAt = leaderboard.timerEndsAt;
+  pausedRemainingMs = leaderboard.timerRemainingMs;
+  tickDoarTimer();
 
   if (!receivedFirstUpdate) {
     receivedFirstUpdate = true;

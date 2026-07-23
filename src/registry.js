@@ -36,7 +36,7 @@ function generateId() {
   return crypto.randomBytes(6).toString("hex"); // 12 caracteres, só [0-9a-f]
 }
 
-const MIN_PASSWORD_LENGTH = 6;
+const MIN_PASSWORD_LENGTH = 8;
 
 // host/hostAvatar/hostTwitchUserId/hostTwitchLogin vêm da sessão Twitch já
 // verificada no servidor — nunca de texto digitado. hostTwitchUserId é
@@ -70,7 +70,7 @@ async function createLeilao({ title, host, hostAvatar, hostTwitchUserId, hostTwi
   save();
 
   const store = getStore(id);
-  store.setState("adminSecretHash", hashPassword(password));
+  store.setState("adminSecretHash", await hashPassword(password));
   store.setState("title", meta.title);
   store.setState("host", meta.host);
   store.setState("hostAvatar", hostAvatar || null);
