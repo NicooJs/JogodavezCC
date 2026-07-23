@@ -2225,6 +2225,9 @@ body.board-body.has-bg-image .board-cover-bg { display: none; }
 .lot-card.rank-3 .lot-total { color: var(--accent-text); font-weight: 600; }
 
 .badge-hit { font-size: 10.5px; padding: 2px 6px; border-radius: 3px; background: var(--danger-bg); color: var(--danger); }
+.arena-grid .lot-card:nth-of-type(3n+1) .badge-hit { border-radius: 4px 2px 4px 3px; }
+.arena-grid .lot-card:nth-of-type(3n+2) .badge-hit { border-radius: 2px 3px 2px 4px; }
+.arena-grid .lot-card:nth-of-type(3n+3) .badge-hit { border-radius: 3px 4px 2px 3px; }
 
 /* Fica no lote depois que o flash "sabotado agora" some — marca o último
    sabotado até o próximo acontecer em outro lugar. */
