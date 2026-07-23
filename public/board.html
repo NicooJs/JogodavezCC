@@ -350,8 +350,13 @@
 
         <div class="modal-field">
           <label class="modal-label" for="donate-modal-game">jogo</label>
-          <input type="text" id="donate-modal-game" class="modal-input" placeholder="nome do jogo" autocomplete="off" />
+          <div class="game-input-wrap">
+            <span class="game-input-icon" id="donate-modal-game-icon" hidden></span>
+            <input type="text" id="donate-modal-game" class="modal-input" placeholder="nome do jogo" autocomplete="off" />
+            <button type="button" class="game-add-btn" id="donate-modal-game-add-btn" title="Adicionar um jogo que não está na lista">+</button>
+          </div>
           <div class="game-shelf" id="donate-modal-game-shelf" hidden></div>
+          <p class="game-confirm-hint" id="donate-modal-game-hint" hidden>Escolha um jogo da lista ou toque em + pra adicionar um novo.</p>
         </div>
 
         <div class="modal-field">
@@ -365,6 +370,11 @@
         <div class="modal-field">
           <label class="modal-label" for="donate-modal-name">seu nome <span class="modal-opt">(opcional)</span></label>
           <input type="text" id="donate-modal-name" class="modal-input" placeholder="anônimo" autocomplete="off" />
+        </div>
+
+        <div class="modal-field">
+          <label class="modal-label" for="donate-modal-note">mensagem <span class="modal-opt">(opcional, aparece na live)</span></label>
+          <textarea id="donate-modal-note" class="modal-input modal-textarea" placeholder="deixe um recado pro streamer" maxlength="140" rows="2"></textarea>
         </div>
 
         <p class="modal-error" id="donate-modal-error" hidden></p>

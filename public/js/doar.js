@@ -28,10 +28,14 @@ const footnoteHostEl = document.getElementById("doar-footnote-host");
 
 const actionSeg = document.getElementById("doar-action");
 const gameEl = document.getElementById("doar-game");
+const gameIconEl = document.getElementById("doar-game-icon");
+const gameAddBtnEl = document.getElementById("doar-game-add-btn");
 const gameShelfEl = document.getElementById("doar-game-shelf");
+const gameHintEl = document.getElementById("doar-game-hint");
 const amountEl = document.getElementById("doar-amount");
 const quickAmountsEl = document.getElementById("doar-quick-amounts");
 const nameEl = document.getElementById("doar-name");
+const noteEl = document.getElementById("doar-note");
 const errorEl = document.getElementById("doar-error");
 const submitBtn = document.getElementById("doar-submit");
 
@@ -68,10 +72,12 @@ function resetForm() {
   gameEl.value = "";
   amountEl.value = "";
   nameEl.value = "";
+  noteEl.value = "";
   errorEl.hidden = true;
   quickAmountsEl.querySelectorAll("button").forEach((b) => b.classList.remove("active"));
   submitBtn.disabled = false;
   submitBtn.textContent = "Gerar Pix →";
+  unconfirmGame();
   closeGameShelf();
 }
 
@@ -86,12 +92,34 @@ function normalizeSearch(str) {
 
 let gameShelfDebounce = null;
 let gameShelfAbortController = null;
+let gameConfirmed = false;
 
 function closeGameShelf() {
   clearTimeout(gameShelfDebounce);
   if (gameShelfAbortController) gameShelfAbortController.abort();
   gameShelfEl.hidden = true;
   gameShelfEl.innerHTML = "";
+  gameHintEl.hidden = true;
+}
+
+// Chamado ao escolher um card ou confirmar manual com o botão + -- fica
+// marcado (borda, ícone, botão Gerar Pix liberado) até a pessoa digitar de
+// novo no campo (ver unconfirmGame).
+function confirmGame(name, image) {
+  gameEl.value = name;
+  gameConfirmed = true;
+  gameHintEl.hidden = true;
+  gameIconEl.innerHTML = image
+    ? `<img src="${escapeHtml(image)}" alt="" loading="lazy" />`
+    : `<div class="game-input-icon-placeholder">${escapeHtml((name[0] || "?").toUpperCase())}</div>`;
+  gameIconEl.hidden = false;
+}
+
+function unconfirmGame() {
+  gameConfirmed = false;
+  gameIconEl.hidden = true;
+  gameIconEl.innerHTML = "";
+  gameAddBtnEl.classList.remove("confirmed");
 }
 
 function gameShelfCardHtml(item, isNew) {
@@ -99,7 +127,7 @@ function gameShelfCardHtml(item, isNew) {
     ? `<img class="game-shelf-cover" src="${escapeHtml(item.image)}" alt="" loading="lazy" />`
     : `<div class="game-shelf-cover game-shelf-cover-placeholder">${escapeHtml((item.name[0] || "?").toUpperCase())}</div>`;
   return `
-    <div class="game-shelf-card" data-name="${escapeHtml(item.name)}">
+    <div class="game-shelf-card" data-name="${escapeHtml(item.name)}" data-image="${escapeHtml(item.image || "")}">
       ${isNew ? '<span class="game-shelf-new-tag">novo</span>' : ""}
       ${thumb}
       <span class="game-shelf-name">${escapeHtml(item.name)}</span>
@@ -110,21 +138,23 @@ function gameShelfCardHtml(item, isNew) {
 // Não fecha a prateleira ao escolher -- só marca o card ativo -- pra dar
 // pra rever/trocar de escolha sem apagar o campo e refazer a busca.
 function pickGameShelfCard(cardEl) {
-  gameEl.value = cardEl.dataset.name;
+  confirmGame(cardEl.dataset.name, cardEl.dataset.image);
   gameShelfEl.querySelectorAll(".game-shelf-card.selected").forEach((el) => el.classList.remove("selected"));
   cardEl.classList.add("selected");
+  gameAddBtnEl.classList.remove("confirmed");
   amountEl.focus();
 }
 
 function renderGameShelf(catalogMatches, newMatches) {
   if (catalogMatches.length === 0 && newMatches.length === 0) {
-    gameShelfEl.innerHTML = '<p class="game-shelf-empty">nenhum jogo encontrado — vira um lote novo</p>';
+    gameShelfEl.innerHTML = '<p class="game-shelf-empty">nenhum jogo encontrado — toque em + pra adicionar mesmo assim</p>';
   } else {
     gameShelfEl.innerHTML =
       catalogMatches.map((g) => gameShelfCardHtml(g, false)).join("") +
       newMatches.map((g) => gameShelfCardHtml(g, true)).join("");
   }
   gameShelfEl.hidden = false;
+  gameHintEl.hidden = gameConfirmed;
   gameShelfEl.querySelectorAll(".game-shelf-card").forEach((el) => {
     el.addEventListener("click", () => pickGameShelfCard(el));
   });
@@ -165,13 +195,18 @@ function updateGameShelf() {
 }
 
 gameEl.addEventListener("focus", updateGameShelf);
-gameEl.addEventListener("input", updateGameShelf);
-gameEl.addEventListener("keydown", (e) => {
-  if (e.key === "Escape") closeGameShelf();
+gameEl.addEventListener("input", () => {
+  unconfirmGame();
+  updateGameShelf();
 });
 
-document.addEventListener("click", (e) => {
-  if (!gameShelfEl.hidden && !e.target.closest("#doar-game, #doar-game-shelf")) closeGameShelf();
+gameAddBtnEl.addEventListener("click", () => {
+  const name = gameEl.value.trim();
+  if (!name) return gameEl.focus();
+  confirmGame(name, null);
+  gameShelfEl.querySelectorAll(".game-shelf-card.selected").forEach((el) => el.classList.remove("selected"));
+  gameAddBtnEl.classList.add("confirmed");
+  amountEl.focus();
 });
 
 actionSeg.querySelectorAll("button").forEach((b) => {
@@ -194,8 +229,8 @@ async function submitDonation(e) {
   const amount = amountEl.value;
   errorEl.hidden = true;
 
-  if (!game) {
-    errorEl.textContent = "Informe o nome do jogo";
+  if (!game || !gameConfirmed) {
+    errorEl.textContent = "Escolha um jogo da lista ou toque em + pra adicionar um novo";
     errorEl.hidden = false;
     return gameEl.focus();
   }
@@ -216,6 +251,7 @@ async function submitDonation(e) {
         amount,
         action: getAction(),
         donorUsername: nameEl.value.trim(),
+        donorNote: noteEl.value.trim(),
       }),
     });
     const data = await res.json().catch(() => ({}));

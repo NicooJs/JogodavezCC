@@ -53,8 +53,13 @@
 
           <div class="modal-field">
             <label class="modal-label" for="doar-game">jogo</label>
-            <input type="text" id="doar-game" class="modal-input" placeholder="nome do jogo" autocomplete="off" />
+            <div class="game-input-wrap">
+              <span class="game-input-icon" id="doar-game-icon" hidden></span>
+              <input type="text" id="doar-game" class="modal-input" placeholder="nome do jogo" autocomplete="off" />
+              <button type="button" class="game-add-btn" id="doar-game-add-btn" title="Adicionar um jogo que não está na lista">+</button>
+            </div>
             <div class="game-shelf" id="doar-game-shelf" hidden></div>
+            <p class="game-confirm-hint" id="doar-game-hint" hidden>Escolha um jogo da lista ou toque em + pra adicionar um novo.</p>
           </div>
 
           <div class="modal-field">
@@ -74,6 +79,11 @@
           <div class="modal-field">
             <label class="modal-label" for="doar-name">seu nome <span class="modal-opt">(opcional)</span></label>
             <input type="text" id="doar-name" class="modal-input" placeholder="anônimo" autocomplete="off" />
+          </div>
+
+          <div class="modal-field">
+            <label class="modal-label" for="doar-note">mensagem <span class="modal-opt">(opcional)</span></label>
+            <textarea id="doar-note" class="modal-input modal-textarea" placeholder="deixe um recado pro streamer" maxlength="140" rows="2"></textarea>
           </div>
 
           <p class="modal-error" id="doar-error" hidden></p>
@@ -98,12 +108,12 @@
 
         <div class="doar-step donate-step-success" id="doar-step-success" hidden>
           <div class="donate-success-icon" aria-hidden="true">✓</div>
-          <p class="donate-success-text">Pagamento confirmado — valeu!</p>
+          <p class="donate-success-text">Pagamento confirmado — Obrigado !</p>
           <button class="doar-again" id="doar-again-btn" type="button">Doar de novo</button>
         </div>
       </div>
 
-      <p class="doar-footnote">Pagamento processado pelo Mercado Pago — o valor cai direto na conta de <strong id="doar-footnote-host">streamer</strong>, menos a taxa da plataforma.</p>
+      <p class="doar-footnote">Pagamento processado pelo Mercado Pago — o valor cai direto na conta de <strong id="doar-footnote-host">streamer</strong>.</p>
     </main>
   </div>
 

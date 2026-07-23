@@ -103,3 +103,16 @@ body::before { display: none; }
   font-weight: 600;
   color: var(--text);
 }
+
+.alerta-note {
+  margin: 8px 0 0;
+  padding-top: 8px;
+  max-width: 320px;
+  border-top: 1px dashed var(--border-soft);
+  font-family: var(--font-body);
+  font-size: 13.5px;
+  font-style: italic;
+  line-height: 1.4;
+  color: var(--muted);
+}
+.alerta-note[hidden] { display: none; }

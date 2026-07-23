@@ -11,6 +11,7 @@ const donorEl = document.getElementById("alerta-donor");
 const actionEl = document.getElementById("alerta-action");
 const gameEl = document.getElementById("alerta-game");
 const amountEl = document.getElementById("alerta-amount");
+const noteEl = document.getElementById("alerta-note");
 
 const SHOW_MS = 4500;
 const OUT_MS = 350;
@@ -60,6 +61,12 @@ function showNext() {
   actionEl.textContent = isRemove ? "sabotou" : "apoiou";
   gameEl.textContent = item.game.name;
   amountEl.textContent = formatBRL(item.amount);
+  if (item.note) {
+    noteEl.textContent = `"${item.note}"`;
+    noteEl.hidden = false;
+  } else {
+    noteEl.hidden = true;
+  }
 
   cardEl.hidden = false;
   cardEl.classList.remove("is-out");

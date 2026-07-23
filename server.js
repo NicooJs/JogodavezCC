@@ -441,7 +441,7 @@ function requireLeilaoAdmin(req, res, next) {
   return res.status(401).json({ error: "Senha de admin inválida" });
 }
 
-async function processDonationMessage(leilaoId, store, { id, fallbackUsername, fallbackMessage, fallbackAmount }) {
+async function processDonationMessage(leilaoId, store, { id, fallbackUsername, fallbackMessage, fallbackAmount, fallbackNote }) {
   if (store.isAlreadyProcessed(id)) return;
   // Reserva o id JÁ aqui, antes de qualquer await. O fluxo abaixo espera a
   // busca de capa na RAWG (resolveParsedGame) pra jogo novo — sem marcar
@@ -456,6 +456,7 @@ async function processDonationMessage(leilaoId, store, { id, fallbackUsername, f
   const username = fallbackUsername;
   const message = fallbackMessage;
   const amountCents = fallbackAmount;
+  const note = fallbackNote || null;
 
   const isOpen = store.getState("open", "true") === "true";
   if (!isOpen) {
@@ -495,6 +496,7 @@ async function processDonationMessage(leilaoId, store, { id, fallbackUsername, f
     username,
     amount: centsToNumber(amountCents),
     message,
+    note,
     game: { key: game.key, name: game.name, total: centsToNumber(game.total_cents) },
     // id (não só nesse type "add"/"remove", mas em qualquer processDonationMessage
     // que aplique de verdade) -- é isso que deixa o modal de doação (Fase 5)
@@ -933,7 +935,7 @@ app.get("/api/l/:id/events/recent", loadLeilao, (req, res) => {
 // catálogo aqui -- isso só acontece quando o webhook confirmar "paid".
 app.post("/api/l/:id/doacao", loadLeilao, async (req, res) => {
   const { leilaoId, store } = req;
-  const { name, amount, action, donorUsername } = req.body || {};
+  const { name, amount, action, donorUsername, donorNote } = req.body || {};
 
   if (!name || !amount || Number.isNaN(Number(amount)) || Number(amount) <= 0) {
     return res.status(400).json({ error: "Informe o jogo e um valor válido" });
@@ -965,6 +967,7 @@ app.post("/api/l/:id/doacao", loadLeilao, async (req, res) => {
   const applicationFeeCents = Math.round(valorTotalCents * 0.03);
   const externalReference = paymentsStore.buildExternalReference(leilaoId);
   const cleanDonorUsername = (donorUsername || "").trim().slice(0, 60) || "Anônimo";
+  const cleanDonorNote = (donorNote || "").trim().slice(0, 140);
   const rawMessage = `${action === "remove" ? "-" : "+"}${name}`;
 
   try {
@@ -972,6 +975,7 @@ app.post("/api/l/:id/doacao", loadLeilao, async (req, res) => {
       leilaoId,
       streamerId: streamer.id,
       externalReference,
+      donorNote: cleanDonorNote,
       valorTotalCents,
       applicationFeeCents,
       donorUsername: cleanDonorUsername,
@@ -1128,6 +1132,7 @@ app.post("/webhook/mercadopago", async (req, res) => {
       fallbackUsername: payment.donorUsername,
       fallbackMessage: payment.donorMessage,
       fallbackAmount: payment.valorTotalCents,
+      fallbackNote: payment.donorNote,
     });
   } catch (err) {
     console.error(`[webhook mercadopago] erro ao processar dataId="${dataId}":`, err.message);
@@ -1210,6 +1215,7 @@ app.post("/api/l/:id/admin/test-alert", loadLeilao, requireLeilaoAdmin, (req, re
     type: "add",
     username: "Doador de Teste",
     amount: 10,
+    note: "Boa sorte no leilão!",
     game: { name: "Jogo de Teste" },
   });
   res.json({ ok: true });

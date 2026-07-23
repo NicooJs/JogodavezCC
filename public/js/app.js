@@ -1174,9 +1174,13 @@ const donateStepPixEl = document.getElementById("donate-step-pix");
 const donateStepSuccessEl = document.getElementById("donate-step-success");
 const donateModalActionSeg = document.getElementById("donate-modal-action");
 const donateModalGameEl = document.getElementById("donate-modal-game");
+const donateModalGameIconEl = document.getElementById("donate-modal-game-icon");
+const donateModalGameAddBtnEl = document.getElementById("donate-modal-game-add-btn");
 const donateModalGameShelfEl = document.getElementById("donate-modal-game-shelf");
+const donateModalGameHintEl = document.getElementById("donate-modal-game-hint");
 const donateModalAmountEl = document.getElementById("donate-modal-amount");
 const donateModalNameEl = document.getElementById("donate-modal-name");
+const donateModalNoteEl = document.getElementById("donate-modal-note");
 const donateModalErrorEl = document.getElementById("donate-modal-error");
 const donateModalSubmitEl = document.getElementById("donate-modal-submit");
 const donateQrImgEl = document.getElementById("donate-qr-img");
@@ -1208,11 +1212,13 @@ function openDonateModal() {
   donateModalGameEl.value = "";
   donateModalAmountEl.value = "";
   donateModalNameEl.value = "";
+  donateModalNoteEl.value = "";
   donateModalErrorEl.hidden = true;
   donateModalSubmitEl.disabled = false;
   donateModalSubmitEl.textContent = "Gerar Pix →";
   pendingDonationPaymentId = null;
   donateModalEl.hidden = false;
+  unconfirmDonateGame();
   closeDonateGameShelf();
   setTimeout(() => donateModalGameEl.focus(), 40);
 }
@@ -1232,12 +1238,34 @@ function normalizeSearch(str) {
 
 let donateGameShelfDebounce = null;
 let donateGameShelfAbortController = null;
+let donateGameConfirmed = false;
 
 function closeDonateGameShelf() {
   clearTimeout(donateGameShelfDebounce);
   if (donateGameShelfAbortController) donateGameShelfAbortController.abort();
   donateModalGameShelfEl.hidden = true;
   donateModalGameShelfEl.innerHTML = "";
+  donateModalGameHintEl.hidden = true;
+}
+
+// Chamado ao escolher um card ou confirmar manual com o botão + -- fica
+// marcado (borda, ícone, envio liberado) até a pessoa digitar de novo no
+// campo (ver unconfirmDonateGame).
+function confirmDonateGame(name, image) {
+  donateModalGameEl.value = name;
+  donateGameConfirmed = true;
+  donateModalGameHintEl.hidden = true;
+  donateModalGameIconEl.innerHTML = image
+    ? `<img src="${escapeHtml(image)}" alt="" loading="lazy" />`
+    : `<div class="game-input-icon-placeholder">${escapeHtml((name[0] || "?").toUpperCase())}</div>`;
+  donateModalGameIconEl.hidden = false;
+}
+
+function unconfirmDonateGame() {
+  donateGameConfirmed = false;
+  donateModalGameIconEl.hidden = true;
+  donateModalGameIconEl.innerHTML = "";
+  donateModalGameAddBtnEl.classList.remove("confirmed");
 }
 
 function donateGameShelfCardHtml(item, isNew) {
@@ -1245,7 +1273,7 @@ function donateGameShelfCardHtml(item, isNew) {
     ? `<img class="game-shelf-cover" src="${escapeHtml(item.image)}" alt="" loading="lazy" />`
     : `<div class="game-shelf-cover game-shelf-cover-placeholder">${escapeHtml((item.name[0] || "?").toUpperCase())}</div>`;
   return `
-    <div class="game-shelf-card" data-name="${escapeHtml(item.name)}">
+    <div class="game-shelf-card" data-name="${escapeHtml(item.name)}" data-image="${escapeHtml(item.image || "")}">
       ${isNew ? '<span class="game-shelf-new-tag">novo</span>' : ""}
       ${thumb}
       <span class="game-shelf-name">${escapeHtml(item.name)}</span>
@@ -1256,21 +1284,23 @@ function donateGameShelfCardHtml(item, isNew) {
 // Não fecha a prateleira ao escolher -- só marca o card ativo -- pra dar
 // pra rever/trocar de escolha sem apagar o campo e refazer a busca.
 function pickDonateGameShelfCard(cardEl) {
-  donateModalGameEl.value = cardEl.dataset.name;
+  confirmDonateGame(cardEl.dataset.name, cardEl.dataset.image);
   donateModalGameShelfEl.querySelectorAll(".game-shelf-card.selected").forEach((el) => el.classList.remove("selected"));
   cardEl.classList.add("selected");
+  donateModalGameAddBtnEl.classList.remove("confirmed");
   donateModalAmountEl.focus();
 }
 
 function renderDonateGameShelf(catalogMatches, newMatches) {
   if (catalogMatches.length === 0 && newMatches.length === 0) {
-    donateModalGameShelfEl.innerHTML = '<p class="game-shelf-empty">nenhum jogo encontrado — vira um lote novo</p>';
+    donateModalGameShelfEl.innerHTML = '<p class="game-shelf-empty">nenhum jogo encontrado — toque em + pra adicionar mesmo assim</p>';
   } else {
     donateModalGameShelfEl.innerHTML =
       catalogMatches.map((g) => donateGameShelfCardHtml(g, false)).join("") +
       newMatches.map((g) => donateGameShelfCardHtml(g, true)).join("");
   }
   donateModalGameShelfEl.hidden = false;
+  donateModalGameHintEl.hidden = donateGameConfirmed;
   donateModalGameShelfEl.querySelectorAll(".game-shelf-card").forEach((el) => {
     el.addEventListener("click", () => pickDonateGameShelfCard(el));
   });
@@ -1311,21 +1341,26 @@ function updateDonateGameShelf() {
 }
 
 donateModalGameEl.addEventListener("focus", updateDonateGameShelf);
-donateModalGameEl.addEventListener("input", updateDonateGameShelf);
-donateModalGameEl.addEventListener("keydown", (e) => {
-  if (e.key === "Escape") { e.stopPropagation(); closeDonateGameShelf(); }
+donateModalGameEl.addEventListener("input", () => {
+  unconfirmDonateGame();
+  updateDonateGameShelf();
 });
 
-document.addEventListener("click", (e) => {
-  if (!donateModalGameShelfEl.hidden && !e.target.closest("#donate-modal-game, #donate-modal-game-shelf")) closeDonateGameShelf();
+donateModalGameAddBtnEl.addEventListener("click", () => {
+  const name = donateModalGameEl.value.trim();
+  if (!name) return donateModalGameEl.focus();
+  confirmDonateGame(name, null);
+  donateModalGameShelfEl.querySelectorAll(".game-shelf-card.selected").forEach((el) => el.classList.remove("selected"));
+  donateModalGameAddBtnEl.classList.add("confirmed");
+  donateModalAmountEl.focus();
 });
 
 async function submitDonateModal() {
   const game = donateModalGameEl.value.trim();
   const amount = donateModalAmountEl.value;
   donateModalErrorEl.hidden = true;
-  if (!game) {
-    donateModalErrorEl.textContent = "Informe o nome do jogo";
+  if (!game || !donateGameConfirmed) {
+    donateModalErrorEl.textContent = "Escolha um jogo da lista ou toque em + pra adicionar um novo";
     donateModalErrorEl.hidden = false;
     return donateModalGameEl.focus();
   }
@@ -1346,6 +1381,7 @@ async function submitDonateModal() {
         amount,
         action: getDonateAction(),
         donorUsername: donateModalNameEl.value.trim(),
+        donorNote: donateModalNoteEl.value.trim(),
       }),
     });
     const data = await res.json().catch(() => ({}));
