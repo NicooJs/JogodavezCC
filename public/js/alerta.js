@@ -87,3 +87,10 @@ socket.on("update", ({ leaderboard, lastEvent }) => {
   queue.push(lastEvent);
   showNext();
 });
+
+// Evento separado do "update" normal -- ver POST /admin/test-alert. Só
+// quem escuta isso (o overlay) reage; o board nunca recebe esse evento.
+socket.on("test-alert", (lastEvent) => {
+  queue.push(lastEvent);
+  showNext();
+});

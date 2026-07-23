@@ -1164,14 +1164,16 @@ app.post("/api/l/:id/admin/manual-entry", loadLeilao, requireLeilaoAdmin, async 
 
 // Dispara um alerta de mentira no overlay do OBS (ver public/js/alerta.js)
 // pra o streamer testar posicionamento/som sem precisar de uma doação de
-// verdade. Só broadcast via socket -- não toca no catálogo nem no total
-// arrecadado, por isso não usa applyContribution/processDonationMessage.
+// verdade. Evento próprio ("test-alert", não "update") -- se reaproveitasse
+// broadcastUpdate, o board (que está na mesma room) também receberia o
+// evento e mostraria a doação de mentira no Histórico pra quem estiver
+// vendo o placar. Só quem escuta "test-alert" (o overlay) reage a isso.
 app.post("/api/l/:id/admin/test-alert", loadLeilao, requireLeilaoAdmin, (req, res) => {
-  broadcastUpdate(req.leilaoId, req.store, {
+  io.to(req.leilaoId).emit("test-alert", {
     type: "add",
     username: "Doador de Teste",
     amount: 10,
-    game: { key: "teste-alerta", name: "Jogo de Teste", total: 10 },
+    game: { name: "Jogo de Teste" },
   });
   res.json({ ok: true });
 });
