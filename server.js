@@ -1012,7 +1012,14 @@ app.post("/api/l/:id/doacao", loadLeilao, async (req, res) => {
       setLeiloesMpDisconnected(ownerTwitchUserId, true);
     }
     console.error(`[doação] erro ao criar cobrança Pix (leilaoId="${leilaoId}"):`, err.message);
-    res.status(502).json({ error: "Não foi possível gerar o Pix agora. Tente de novo em instantes." });
+    // Conta MP conectada sem nenhuma chave Pix cadastrada -- pré-requisito
+    // de conta do lado do streamer, não algo que dá pra contornar aqui.
+    const noPixKey = /without key enabled/i.test(err.message);
+    res.status(502).json({
+      error: noPixKey
+        ? "O streamer ainda não cadastrou uma chave Pix na conta do Mercado Pago -- avise ele pra cadastrar uma em mercadopago.com.br antes de tentar de novo."
+        : "Não foi possível gerar o Pix agora. Tente de novo em instantes.",
+    });
   }
 });
 
