@@ -1174,6 +1174,7 @@ const donateStepPixEl = document.getElementById("donate-step-pix");
 const donateStepSuccessEl = document.getElementById("donate-step-success");
 const donateModalActionSeg = document.getElementById("donate-modal-action");
 const donateModalGameEl = document.getElementById("donate-modal-game");
+const donateModalGameShelfEl = document.getElementById("donate-modal-game-shelf");
 const donateModalAmountEl = document.getElementById("donate-modal-amount");
 const donateModalNameEl = document.getElementById("donate-modal-name");
 const donateModalErrorEl = document.getElementById("donate-modal-error");
@@ -1212,13 +1213,116 @@ function openDonateModal() {
   donateModalSubmitEl.textContent = "Gerar Pix →";
   pendingDonationPaymentId = null;
   donateModalEl.hidden = false;
+  closeDonateGameShelf();
   setTimeout(() => donateModalGameEl.focus(), 40);
 }
 
 function closeDonateModal() {
   donateModalEl.hidden = true;
   pendingDonationPaymentId = null;
+  closeDonateGameShelf();
 }
+
+// ---- prateleira de jogos do modal de doação: mesma lógica de doar.js,
+// reaproveitando currentItems (já mantido pro board) em vez de buscar de
+// novo. Jogo novo cai pra sugestão via RAWG. ----
+function normalizeSearch(str) {
+  return str.normalize("NFD").replace(/\p{Diacritic}/gu, "").toLowerCase().trim();
+}
+
+let donateGameShelfDebounce = null;
+let donateGameShelfAbortController = null;
+let donateGameShelfPickTimeout = null;
+
+function closeDonateGameShelf() {
+  clearTimeout(donateGameShelfDebounce);
+  clearTimeout(donateGameShelfPickTimeout);
+  if (donateGameShelfAbortController) donateGameShelfAbortController.abort();
+  donateModalGameShelfEl.hidden = true;
+  donateModalGameShelfEl.innerHTML = "";
+}
+
+function donateGameShelfCardHtml(item, isNew) {
+  const thumb = item.image
+    ? `<img class="game-shelf-cover" src="${escapeHtml(item.image)}" alt="" loading="lazy" />`
+    : `<div class="game-shelf-cover game-shelf-cover-placeholder">${escapeHtml((item.name[0] || "?").toUpperCase())}</div>`;
+  return `
+    <div class="game-shelf-card" data-name="${escapeHtml(item.name)}">
+      ${isNew ? '<span class="game-shelf-new-tag">novo</span>' : ""}
+      ${thumb}
+      <span class="game-shelf-name">${escapeHtml(item.name)}</span>
+    </div>
+  `;
+}
+
+function pickDonateGameShelfCard(cardEl) {
+  const name = cardEl.dataset.name;
+  cardEl.classList.add("picked");
+  clearTimeout(donateGameShelfPickTimeout);
+  donateGameShelfPickTimeout = setTimeout(() => {
+    donateModalGameEl.value = name;
+    closeDonateGameShelf();
+    donateModalAmountEl.focus();
+  }, 160);
+}
+
+function renderDonateGameShelf(catalogMatches, newMatches) {
+  if (catalogMatches.length === 0 && newMatches.length === 0) {
+    donateModalGameShelfEl.innerHTML = '<p class="game-shelf-empty">nenhum jogo encontrado — vira um lote novo</p>';
+  } else {
+    donateModalGameShelfEl.innerHTML =
+      catalogMatches.map((g) => donateGameShelfCardHtml(g, false)).join("") +
+      newMatches.map((g) => donateGameShelfCardHtml(g, true)).join("");
+  }
+  donateModalGameShelfEl.hidden = false;
+  donateModalGameShelfEl.querySelectorAll(".game-shelf-card").forEach((el) => {
+    el.addEventListener("click", () => pickDonateGameShelfCard(el));
+  });
+}
+
+function updateDonateGameShelf() {
+  const query = donateModalGameEl.value.trim();
+  const normalizedQuery = normalizeSearch(query);
+  clearTimeout(donateGameShelfDebounce);
+  if (donateGameShelfAbortController) donateGameShelfAbortController.abort();
+
+  if (!query && currentItems.length === 0) {
+    closeDonateGameShelf();
+    return;
+  }
+
+  const catalogMatches = normalizedQuery
+    ? currentItems.filter((item) => normalizeSearch(item.name).includes(normalizedQuery))
+    : currentItems.slice(0, 20);
+
+  renderDonateGameShelf(catalogMatches, []);
+
+  const hasExactMatch = catalogMatches.some((item) => normalizeSearch(item.name) === normalizedQuery);
+  if (query.length < 2 || hasExactMatch) return;
+
+  donateGameShelfDebounce = setTimeout(() => {
+    donateGameShelfAbortController = new AbortController();
+    fetch(`/api/l/${LEILAO_ID}/game-search?q=${encodeURIComponent(query)}`, { signal: donateGameShelfAbortController.signal })
+      .then((res) => (res.ok ? res.json() : { results: [] }))
+      .then((data) => {
+        if (donateModalGameEl.value.trim() !== query) return;
+        renderDonateGameShelf(catalogMatches, data.results || []);
+      })
+      .catch((err) => {
+        if (err.name !== "AbortError") console.error("Erro ao buscar sugestões de jogo:", err.message);
+      });
+  }, 200);
+}
+
+donateModalGameEl.addEventListener("focus", updateDonateGameShelf);
+donateModalGameEl.addEventListener("input", updateDonateGameShelf);
+donateModalGameEl.addEventListener("keydown", (e) => {
+  if (e.key === "Escape") { e.stopPropagation(); closeDonateGameShelf(); }
+});
+
+document.addEventListener("click", (e) => {
+  if (!donateModalGameShelfEl.hidden && !e.target.closest("#donate-modal-game, #donate-modal-game-shelf")) closeDonateGameShelf();
+});
 
 async function submitDonateModal() {
   const game = donateModalGameEl.value.trim();

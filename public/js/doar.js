@@ -9,6 +9,10 @@ if (!LEILAO_ID) {
 
 const socket = io({ query: { leilaoId: LEILAO_ID } });
 
+function escapeHtml(str) {
+  return String(str).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+}
+
 const loadingEl = document.getElementById("doar-loading");
 const closedEl = document.getElementById("doar-closed");
 const stepFormEl = document.getElementById("doar-step-form");
@@ -24,6 +28,7 @@ const footnoteHostEl = document.getElementById("doar-footnote-host");
 
 const actionSeg = document.getElementById("doar-action");
 const gameEl = document.getElementById("doar-game");
+const gameShelfEl = document.getElementById("doar-game-shelf");
 const amountEl = document.getElementById("doar-amount");
 const quickAmountsEl = document.getElementById("doar-quick-amounts");
 const nameEl = document.getElementById("doar-name");
@@ -67,7 +72,111 @@ function resetForm() {
   quickAmountsEl.querySelectorAll("button").forEach((b) => b.classList.remove("active"));
   submitBtn.disabled = false;
   submitBtn.textContent = "Gerar Pix →";
+  closeGameShelf();
 }
+
+// ---- prateleira de jogos: alternativa ao autocomplete de texto no campo
+// "jogo". Jogos já cadastrados nesse leilão vêm do próprio leaderboard do
+// socket (sem round-trip); jogo novo cai pra sugestão via RAWG. ----
+let leaderboardItems = [];
+
+function normalizeSearch(str) {
+  return str.normalize("NFD").replace(/\p{Diacritic}/gu, "").toLowerCase().trim();
+}
+
+let gameShelfDebounce = null;
+let gameShelfAbortController = null;
+let gameShelfPickTimeout = null;
+
+function closeGameShelf() {
+  clearTimeout(gameShelfDebounce);
+  clearTimeout(gameShelfPickTimeout);
+  if (gameShelfAbortController) gameShelfAbortController.abort();
+  gameShelfEl.hidden = true;
+  gameShelfEl.innerHTML = "";
+}
+
+function gameShelfCardHtml(item, isNew) {
+  const thumb = item.image
+    ? `<img class="game-shelf-cover" src="${escapeHtml(item.image)}" alt="" loading="lazy" />`
+    : `<div class="game-shelf-cover game-shelf-cover-placeholder">${escapeHtml((item.name[0] || "?").toUpperCase())}</div>`;
+  return `
+    <div class="game-shelf-card" data-name="${escapeHtml(item.name)}">
+      ${isNew ? '<span class="game-shelf-new-tag">novo</span>' : ""}
+      ${thumb}
+      <span class="game-shelf-name">${escapeHtml(item.name)}</span>
+    </div>
+  `;
+}
+
+function pickGameShelfCard(cardEl) {
+  const name = cardEl.dataset.name;
+  cardEl.classList.add("picked");
+  clearTimeout(gameShelfPickTimeout);
+  gameShelfPickTimeout = setTimeout(() => {
+    gameEl.value = name;
+    closeGameShelf();
+    amountEl.focus();
+  }, 160);
+}
+
+function renderGameShelf(catalogMatches, newMatches) {
+  if (catalogMatches.length === 0 && newMatches.length === 0) {
+    gameShelfEl.innerHTML = '<p class="game-shelf-empty">nenhum jogo encontrado — vira um lote novo</p>';
+  } else {
+    gameShelfEl.innerHTML =
+      catalogMatches.map((g) => gameShelfCardHtml(g, false)).join("") +
+      newMatches.map((g) => gameShelfCardHtml(g, true)).join("");
+  }
+  gameShelfEl.hidden = false;
+  gameShelfEl.querySelectorAll(".game-shelf-card").forEach((el) => {
+    el.addEventListener("click", () => pickGameShelfCard(el));
+  });
+}
+
+function updateGameShelf() {
+  const query = gameEl.value.trim();
+  const normalizedQuery = normalizeSearch(query);
+  clearTimeout(gameShelfDebounce);
+  if (gameShelfAbortController) gameShelfAbortController.abort();
+
+  if (!query && leaderboardItems.length === 0) {
+    closeGameShelf();
+    return;
+  }
+
+  const catalogMatches = normalizedQuery
+    ? leaderboardItems.filter((item) => normalizeSearch(item.name).includes(normalizedQuery))
+    : leaderboardItems.slice(0, 20);
+
+  renderGameShelf(catalogMatches, []);
+
+  const hasExactMatch = catalogMatches.some((item) => normalizeSearch(item.name) === normalizedQuery);
+  if (query.length < 2 || hasExactMatch) return;
+
+  gameShelfDebounce = setTimeout(() => {
+    gameShelfAbortController = new AbortController();
+    fetch(`/api/l/${LEILAO_ID}/game-search?q=${encodeURIComponent(query)}`, { signal: gameShelfAbortController.signal })
+      .then((res) => (res.ok ? res.json() : { results: [] }))
+      .then((data) => {
+        if (gameEl.value.trim() !== query) return;
+        renderGameShelf(catalogMatches, data.results || []);
+      })
+      .catch((err) => {
+        if (err.name !== "AbortError") console.error("Erro ao buscar sugestões de jogo:", err.message);
+      });
+  }, 200);
+}
+
+gameEl.addEventListener("focus", updateGameShelf);
+gameEl.addEventListener("input", updateGameShelf);
+gameEl.addEventListener("keydown", (e) => {
+  if (e.key === "Escape") closeGameShelf();
+});
+
+document.addEventListener("click", (e) => {
+  if (!gameShelfEl.hidden && !e.target.closest("#doar-game, #doar-game-shelf")) closeGameShelf();
+});
 
 actionSeg.querySelectorAll("button").forEach((b) => {
   b.addEventListener("click", () => setAction(b.dataset.action));
@@ -153,6 +262,7 @@ copyBtnEl.addEventListener("click", async () => {
 
 socket.on("update", ({ leaderboard, lastEvent }) => {
   document.documentElement.dataset.theme = leaderboard.theme || "ametista";
+  leaderboardItems = leaderboard.items || [];
 
   if (!receivedFirstUpdate) {
     receivedFirstUpdate = true;

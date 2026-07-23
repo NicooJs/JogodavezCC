@@ -1023,6 +1023,36 @@ app.post("/api/l/:id/doacao", loadLeilao, async (req, res) => {
   }
 });
 
+const gameSearchHits = new Map();
+const GAME_SEARCH_WINDOW_MS = 60_000;
+const GAME_SEARCH_MAX_PER_WINDOW = 20;
+
+function isGameSearchRateLimited(ip) {
+  const now = Date.now();
+  const hits = (gameSearchHits.get(ip) || []).filter((t) => now - t < GAME_SEARCH_WINDOW_MS);
+  if (hits.length >= GAME_SEARCH_MAX_PER_WINDOW) {
+    gameSearchHits.set(ip, hits);
+    return true;
+  }
+  hits.push(now);
+  gameSearchHits.set(ip, hits);
+  return false;
+}
+
+// Público (sem senha de admin) -- o doador busca um jogo que ainda não está
+// no catálogo desse leilão. Os que já estão catalogados vêm do leaderboard
+// que a página já recebe via socket, sem precisar de rota nenhuma; essa aqui
+// só cobre sugestão de jogo novo via RAWG.
+app.get("/api/l/:id/game-search", loadLeilao, async (req, res) => {
+  const q = String(req.query.q || "").trim();
+  if (!q) return res.json({ results: [] });
+  if (isGameSearchRateLimited(req.ip)) return res.status(429).json({ results: [] });
+
+  const { store } = req;
+  const results = await searchGames(q);
+  res.json({ results: results.filter((g) => !store.hasGame(normalizeKey(g.name))) });
+});
+
 // Webhook do Mercado Pago -- UMA URL só pro app inteiro (registrada uma vez
 // na aplicação), porque o MP não sabe de leilão nenhum -- quem correlaciona
 // é a nossa própria tabela payments (por mp_payment_id). Log em cada etapa
