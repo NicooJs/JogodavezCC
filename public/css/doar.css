@@ -126,7 +126,9 @@
 
 .doar-card {
   width: 100%;
-  background: var(--surface);
+  background-color: var(--surface);
+  background-image: var(--grain);
+  background-blend-mode: overlay;
   border: 1px solid var(--border);
   border-radius: 16px;
   padding: 24px;

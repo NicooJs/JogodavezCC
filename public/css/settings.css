@@ -13,7 +13,9 @@
   max-height: 88vh;
   display: flex;
   flex-direction: column;
-  background: var(--surface);
+  background-color: var(--surface);
+  background-image: var(--grain);
+  background-blend-mode: overlay;
   border: 1px solid var(--border);
   border-radius: 12px;
   box-shadow: 0 24px 60px -18px rgba(0, 0, 0, 0.75);
@@ -29,7 +31,7 @@
   gap: 12px;
   flex-wrap: wrap;
   padding: 24px 56px 18px 26px;
-  border-bottom: 1px solid var(--border);
+  border-bottom: 1px solid var(--border-soft);
 }
 
 .settings-tabs {
@@ -134,7 +136,7 @@
   justify-content: space-between;
   gap: 12px;
   padding: 12px 0;
-  border-top: 1px dashed var(--border);
+  border-top: 1px dashed var(--border-soft);
 }
 .settings-modal .panel-row:first-child { border-top: none; padding-top: 0; }
 .settings-modal .panel-row.wrap { flex-wrap: wrap; justify-content: flex-start; }
@@ -169,9 +171,9 @@
   color: var(--muted);
   font-weight: 600;
   padding: 8px;
-  border-bottom: 1px solid var(--border);
+  border-bottom: 1px solid var(--border-soft);
 }
-.settings-modal .table td { padding: 10px 8px; border-bottom: 1px solid var(--border); color: var(--text); }
+.settings-modal .table td { padding: 10px 8px; border-bottom: 1px solid var(--border-soft); color: var(--text); }
 .settings-modal .table tr:hover td { background: var(--surface); }
 .settings-modal .table .row-actions { display: flex; gap: 6px; flex-wrap: wrap; }
 .settings-modal .table .row-actions button { font-size: 11px; padding: 4px 8px; height: auto; }

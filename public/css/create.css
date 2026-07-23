@@ -174,7 +174,9 @@
   display: flex;
   flex-direction: column;
   gap: 16px;
-  background: var(--surface);
+  background-color: var(--surface);
+  background-image: var(--grain);
+  background-blend-mode: overlay;
   border: 1px solid var(--border);
   border-radius: 14px;
   padding: 24px;
@@ -187,7 +189,7 @@
   flex-direction: column;
   gap: 12px;
   padding-bottom: 14px;
-  border-bottom: 1px dashed var(--border);
+  border-bottom: 1px dashed var(--border-soft);
 }
 .create-section:last-of-type { border-bottom: none; padding-bottom: 0; }
 
@@ -351,7 +353,9 @@
   display: flex;
   flex-direction: column;
   gap: 14px;
-  background: var(--surface);
+  background-color: var(--surface);
+  background-image: var(--grain);
+  background-blend-mode: overlay;
   border: 1px solid var(--border);
   border-radius: 14px;
   padding: 26px;
@@ -409,7 +413,9 @@
 .create-existing-new:hover { color: var(--text); }
 
 .create-result {
-  background: var(--surface);
+  background-color: var(--surface);
+  background-image: var(--grain);
+  background-blend-mode: overlay;
   border: 1px solid var(--accent-soft);
   border-radius: 14px;
   padding: 30px;
@@ -487,7 +493,9 @@
   display: flex;
   flex-direction: column;
   gap: 14px;
-  background: var(--surface);
+  background-color: var(--surface);
+  background-image: var(--grain);
+  background-blend-mode: overlay;
   border: 1px solid var(--border);
   border-radius: 14px;
   padding: 26px;
