@@ -1202,6 +1202,10 @@ body.board-body.has-bg-image .board-cover-bg { display: none; }
 .recap-podium-card.rank-2 .recap-podium-rank { color: var(--silver); }
 .recap-podium-card.rank-3 .recap-podium-rank { color: var(--bronze); }
 
+.recap-podium-card.rank-1 .medal-icon { transform: rotate(-5deg); }
+.recap-podium-card.rank-2 .medal-icon { transform: rotate(4deg); }
+.recap-podium-card.rank-3 .medal-icon { transform: rotate(-3deg); }
+
 .recap-podium-thumb {
   width: 64px;
   height: 64px;
@@ -1805,6 +1809,10 @@ body.board-body.has-bg-image .board-cover-bg { display: none; }
 .donor-row.rank-2 .donor-rank { color: var(--silver); }
 .donor-row.rank-3 .donor-rank { color: var(--bronze); }
 
+.donor-row.rank-1 .medal-icon { transform: rotate(-5deg); }
+.donor-row.rank-2 .medal-icon { transform: rotate(4deg); }
+.donor-row.rank-3 .medal-icon { transform: rotate(-3deg); }
+
 /* Foto da Twitch quando o nome digitado bate com um login real (melhor
    esforço, getDonorAvatar em server.js); senão cai no placeholder. */
 .donor-avatar {
@@ -2081,6 +2089,10 @@ body.board-body.has-bg-image .board-cover-bg { display: none; }
 .lot-card.rank-1 .lot-rank { color: var(--accent-text); }
 .lot-card.rank-2 .lot-rank { color: var(--silver); }
 .lot-card.rank-3 .lot-rank { color: var(--bronze); }
+
+.lot-card.rank-1 .lot-rank .medal-icon { transform: rotate(-5deg); }
+.lot-card.rank-2 .lot-rank .medal-icon { transform: rotate(4deg); }
+.lot-card.rank-3 .lot-rank .medal-icon { transform: rotate(-3deg); }
 
 .lot-thumb {
   width: 92px;
