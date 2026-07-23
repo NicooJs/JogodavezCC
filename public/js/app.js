@@ -90,10 +90,6 @@ let currentItems = [];
 let donorNames = [];
 let modalGame = null;
 
-const totalOdometer = window.Odometer
-  ? new Odometer({ el: statTotalEl, value: 0, format: "(.ddd)", theme: "minimal" })
-  : null;
-
 function formatBRL(value) {
   return value.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 }
@@ -1147,17 +1143,8 @@ socket.on("update", ({ leaderboard, lastEvent }) => {
   totalHideToggleEl.classList.toggle("active", !!leaderboard.hideTotalRaised);
   totalHideToggleEl.title = leaderboard.hideTotalRaised ? "Mostrar valor arrecadado pro público" : "Ocultar valor arrecadado do público";
   if (!leaderboard.hideTotalRaised) {
-    // Só mexe no DOM interno do Odometer enquanto o total está de fato visível.
     const totalValue = leaderboard.totalRaised || 0;
-    // Só chama .update() quando o valor muda de verdade. Sem essa checagem,
-    // dois "update" seguidos com o MESMO total (ex: um broadcast reagindo à
-    // resolução assíncrona do avatar de um doador, ver onAvatarResolved em
-    // server.js) reiniciava a animação do Odometer no meio da anterior --
-    // os dígitos ficavam com resto das duas transições sobrepostas.
-    if (lastTotalRaised === null || totalValue !== lastTotalRaised) {
-      if (totalOdometer) totalOdometer.update(Math.round(totalValue));
-      else bumpValue(statTotalEl, String(Math.round(totalValue)));
-    }
+    bumpValue(statTotalEl, Math.round(totalValue).toLocaleString("pt-BR"));
     // lastTotalRaised !== null exclui o carregamento inicial da página.
     if (lastTotalRaised !== null && totalValue !== lastTotalRaised) flashTotalBeam();
     lastTotalRaised = totalValue;

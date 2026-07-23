@@ -466,17 +466,7 @@ body.board-body.has-bg-image .board-cover-bg { display: none; }
 
 .tick { animation: tick 0.4s ease; }
 
-/* O tema do odometer.js vem com vertical-align: middle, que não bate com o
-   baseline do texto ao lado ("R$ " + número). baseline reduz o desalinho
-   mas não zera (markup interno do odometer tem padding/line-height
-   próprios); top:-2.8px fecha o resto. */
-.odometer.odometer-theme-minimal {
-  font-family: var(--font-mono);
-  color: var(--accent-text);
-  position: relative;
-  top: -2.8px;
-  vertical-align: baseline;
-}
+#stat-total { font-family: var(--font-mono); }
 
 @keyframes tick {
   0% { transform: translateY(0); }
