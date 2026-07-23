@@ -1232,11 +1232,9 @@ function normalizeSearch(str) {
 
 let donateGameShelfDebounce = null;
 let donateGameShelfAbortController = null;
-let donateGameShelfPickTimeout = null;
 
 function closeDonateGameShelf() {
   clearTimeout(donateGameShelfDebounce);
-  clearTimeout(donateGameShelfPickTimeout);
   if (donateGameShelfAbortController) donateGameShelfAbortController.abort();
   donateModalGameShelfEl.hidden = true;
   donateModalGameShelfEl.innerHTML = "";
@@ -1255,15 +1253,13 @@ function donateGameShelfCardHtml(item, isNew) {
   `;
 }
 
+// Não fecha a prateleira ao escolher -- só marca o card ativo -- pra dar
+// pra rever/trocar de escolha sem apagar o campo e refazer a busca.
 function pickDonateGameShelfCard(cardEl) {
-  const name = cardEl.dataset.name;
-  cardEl.classList.add("picked");
-  clearTimeout(donateGameShelfPickTimeout);
-  donateGameShelfPickTimeout = setTimeout(() => {
-    donateModalGameEl.value = name;
-    closeDonateGameShelf();
-    donateModalAmountEl.focus();
-  }, 160);
+  donateModalGameEl.value = cardEl.dataset.name;
+  donateModalGameShelfEl.querySelectorAll(".game-shelf-card.selected").forEach((el) => el.classList.remove("selected"));
+  cardEl.classList.add("selected");
+  donateModalAmountEl.focus();
 }
 
 function renderDonateGameShelf(catalogMatches, newMatches) {

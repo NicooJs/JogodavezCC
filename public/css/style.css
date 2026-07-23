@@ -2744,11 +2744,14 @@ body.board-body.has-bg-image .board-cover-bg { display: none; }
 .game-shelf-card:nth-of-type(3n+3) { border-radius: 7px 6px 9px 5px; }
 
 .game-shelf-card:hover { border-color: var(--accent-soft); }
-.game-shelf-card:active,
-.game-shelf-card.picked {
+.game-shelf-card:active { transform: scale(0.94); }
+
+/* Fica marcado enquanto for a escolha atual -- não some com a prateleira,
+   pra dar pra rever/trocar sem apagar o campo e refazer a busca. */
+.game-shelf-card.selected {
   border-color: var(--accent);
+  background-color: var(--accent-bg);
   box-shadow: 0 0 0 3px var(--accent-bg);
-  transform: scale(0.94);
 }
 
 .game-shelf-cover {
@@ -2780,7 +2783,7 @@ body.board-body.has-bg-image .board-cover-bg { display: none; }
   text-overflow: ellipsis;
 }
 .game-shelf-card:hover .game-shelf-name,
-.game-shelf-card.picked .game-shelf-name { color: var(--text); }
+.game-shelf-card.selected .game-shelf-name { color: var(--text); }
 
 .game-shelf-new-tag {
   position: absolute;
