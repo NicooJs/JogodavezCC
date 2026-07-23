@@ -117,6 +117,21 @@ function wireCopyLink(inputId, btnId, path) {
 wireCopyLink("donate-link-input", "donate-link-copy", "/doar");
 wireCopyLink("alert-link-input", "alert-link-copy", "/alerta");
 
+// Dispara um alerta de mentira no overlay (ver POST /admin/test-alert) --
+// não mexe no catálogo nem no total arrecadado, só o socket recebe o evento.
+document.getElementById("alert-link-test").addEventListener("click", async () => {
+  const btn = document.getElementById("alert-link-test");
+  btn.disabled = true;
+  try {
+    await presenterFetch("/admin/test-alert", { method: "POST" });
+    btn.textContent = "Enviado!";
+  } catch (err) {
+    alert(err.message);
+  } finally {
+    setTimeout(() => { btn.textContent = "Testar"; btn.disabled = false; }, 1500);
+  }
+});
+
 let promptDialogResolve = null;
 let confirmDialogResolve = null;
 

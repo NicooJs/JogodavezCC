@@ -1162,6 +1162,20 @@ app.post("/api/l/:id/admin/manual-entry", loadLeilao, requireLeilaoAdmin, async 
   res.json({ ok: true, game });
 });
 
+// Dispara um alerta de mentira no overlay do OBS (ver public/js/alerta.js)
+// pra o streamer testar posicionamento/som sem precisar de uma doação de
+// verdade. Só broadcast via socket -- não toca no catálogo nem no total
+// arrecadado, por isso não usa applyContribution/processDonationMessage.
+app.post("/api/l/:id/admin/test-alert", loadLeilao, requireLeilaoAdmin, (req, res) => {
+  broadcastUpdate(req.leilaoId, req.store, {
+    type: "add",
+    username: "Doador de Teste",
+    amount: 10,
+    game: { key: "teste-alerta", name: "Jogo de Teste", total: 10 },
+  });
+  res.json({ ok: true });
+});
+
 app.post("/api/l/:id/admin/adjust", loadLeilao, requireLeilaoAdmin, (req, res) => {
   const { key, deltaAmount } = req.body || {};
   const game = req.store.adjustGame(key, Math.round(Number(deltaAmount) * 100));

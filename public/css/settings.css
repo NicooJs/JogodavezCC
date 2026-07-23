@@ -139,6 +139,7 @@
 .settings-modal .panel-row:first-child { border-top: none; padding-top: 0; }
 .settings-modal .panel-row.wrap { flex-wrap: wrap; justify-content: flex-start; }
 .settings-modal .settings-bg-row { margin-top: 14px; }
+.settings-modal .panel-row-btns { display: flex; gap: 8px; flex-shrink: 0; }
 
 /* .btn-mini não tem altura fixa (~30-33px) e ficava mais baixo que os
    inputs/selects do .panel-row (~38-40px, align-items:center). Não se
