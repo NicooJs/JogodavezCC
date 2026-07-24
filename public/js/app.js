@@ -707,114 +707,425 @@ function formatDuration(ms) {
 }
 
 // Recap desenhado manualmente num <canvas> (sem lib de DOM-pra-imagem no
-// projeto), 1200x630, tamanho padrão de card de link social.
+// projeto), 1200x630 (tamanho padrão de card de link social). Usa o MESMO
+// vocabulário visual do modal .recap-modal -- cores do tema ativo via CSS
+// vars, fontes, ícone de medalha, capas reais dos jogos -- só reorganizado
+// em duas colunas pra caber no formato paisagem (o modal é vertical/
+// estreito, não dá pra clonar pixel a pixel e continuar legível).
 let currentRecapForDownload = null;
+let currentShareText = "";
 
-async function downloadRecapImage() {
+function roundRectPath(ctx, x, y, w, h, r) {
+  const rad = Math.max(0, Math.min(r, w / 2, h / 2));
+  ctx.beginPath();
+  ctx.moveTo(x + rad, y);
+  ctx.arcTo(x + w, y, x + w, y + h, rad);
+  ctx.arcTo(x + w, y + h, x, y + h, rad);
+  ctx.arcTo(x, y + h, x, y, rad);
+  ctx.arcTo(x, y, x + w, y, rad);
+  ctx.closePath();
+}
+
+// Cantos com raio levemente diferente por posição -- mesma ideia de
+// .arena-grid .lot-card:nth-of-type(3n+1/2/3) em style.css, que quebra a
+// simetria perfeita de propósito pra não parecer um card de template.
+function roundRectPathAsym(ctx, x, y, w, h, r) {
+  ctx.beginPath();
+  ctx.moveTo(x + r.tl, y);
+  ctx.lineTo(x + w - r.tr, y);
+  ctx.arcTo(x + w, y, x + w, y + r.tr, r.tr);
+  ctx.lineTo(x + w, y + h - r.br);
+  ctx.arcTo(x + w, y + h, x + w - r.br, y + h, r.br);
+  ctx.lineTo(x + r.bl, y + h);
+  ctx.arcTo(x, y + h, x, y + h - r.bl, r.bl);
+  ctx.lineTo(x, y + r.tl);
+  ctx.arcTo(x, y, x + r.tl, y, r.tl);
+  ctx.closePath();
+}
+const CARD_CORNER_RADII = [
+  { tl: 12, tr: 8, br: 13, bl: 9 },
+  { tl: 9, tr: 12, br: 8, bl: 13 },
+  { tl: 11, tr: 9, br: 14, bl: 8 },
+];
+
+function loadImageSafe(url) {
+  return new Promise((resolve) => {
+    if (!url) return resolve(null);
+    const img = new Image();
+    img.crossOrigin = "anonymous"; // sem isso, a imagem até desenha mas "suja" o canvas e barra o toDataURL depois
+    const timer = setTimeout(() => resolve(null), 4000);
+    img.onload = () => { clearTimeout(timer); resolve(img); };
+    img.onerror = () => { clearTimeout(timer); resolve(null); };
+    img.src = url;
+  });
+}
+
+function medalImageDataUri(color) {
+  return `data:image/svg+xml;base64,${btoa(MEDAL_ICON_SVG.replace(/currentColor/g, color))}`;
+}
+
+// Aproximação barata do --grain do resto do site (feTurbulence via SVG não
+// dá pra desenhar direto num canvas 2D): pixels aleatórios de baixa
+// opacidade por cima do fundo, antes de desenhar qualquer texto/painel.
+function drawGrain(ctx, w, h) {
+  const imageData = ctx.getImageData(0, 0, w, h);
+  const data = imageData.data;
+  for (let i = 0; i < data.length; i += 4) {
+    if (data[i + 3] === 0) continue; // não mexe fora do card (cantos arredondados, alpha 0)
+    if (Math.random() > 0.94) {
+      const delta = (Math.random() - 0.5) * 14;
+      data[i] = Math.min(255, Math.max(0, data[i] + delta));
+      data[i + 1] = Math.min(255, Math.max(0, data[i + 1] + delta));
+      data[i + 2] = Math.min(255, Math.max(0, data[i + 2] + delta));
+    }
+  }
+  ctx.putImageData(imageData, 0, 0);
+}
+
+function truncateToWidth(ctx, text, maxWidth) {
+  if (ctx.measureText(text).width <= maxWidth) return text;
+  let lo = 0;
+  let hi = text.length;
+  while (lo < hi) {
+    const mid = Math.ceil((lo + hi) / 2);
+    if (ctx.measureText(`${text.slice(0, mid)}…`).width <= maxWidth) lo = mid;
+    else hi = mid - 1;
+  }
+  return `${text.slice(0, lo)}…`;
+}
+
+// Gera o <canvas> do recap (usado tanto pelo botão de baixar quanto pelo de
+// compartilhar no X) -- devolve null se não tem recap carregado ainda.
+async function buildRecapCanvas() {
   const recap = currentRecapForDownload;
-  if (!recap) return;
+  if (!recap) return null;
   await document.fonts.ready; // evita desenhar com fonte de fallback antes de carregar
 
   const W = 1200;
   const H = 630;
-  const canvas = document.createElement("canvas");
-  canvas.width = W;
-  canvas.height = H;
-  const ctx = canvas.getContext("2d");
 
   const rootStyle = getComputedStyle(document.documentElement);
   const cVar = (name, fallback) => rootStyle.getPropertyValue(name).trim() || fallback;
-  const bg = cVar("--bg", "#17131f");
   const surface = cVar("--surface", "#1e1829");
+  const surface2 = cVar("--surface-2", "#251d33");
   const border = cVar("--border", "#3a2f4d");
+  const borderSoft = cVar("--border-soft", "#2a2338");
   const textColor = cVar("--text", "#f2eff7");
   const muted = cVar("--muted", "#9891a8");
-  const accent = cVar("--accent", "#b98cf5");
-  const accentText = cVar("--accent-text", "#d1b3fa");
-
-  ctx.fillStyle = bg;
-  ctx.fillRect(0, 0, W, H);
-  ctx.strokeStyle = border;
-  ctx.lineWidth = 2;
-  ctx.strokeRect(1, 1, W - 2, H - 2);
-
-  ctx.save();
-  ctx.translate(58, 54);
-  ctx.rotate(Math.PI / 4);
-  ctx.fillStyle = accent;
-  ctx.fillRect(-6, -6, 12, 12);
-  ctx.restore();
-  ctx.fillStyle = textColor;
-  ctx.font = "600 22px 'IBM Plex Sans', sans-serif";
-  ctx.textBaseline = "middle";
-  ctx.fillText("Leilão de Jogos", 78, 54);
-  ctx.textBaseline = "alphabetic";
-
-  ctx.fillStyle = accentText;
-  ctx.font = "600 14px 'IBM Plex Mono', monospace";
-  ctx.fillText("LEILÃO ENCERRADO", 56, 118);
-
-  ctx.fillStyle = textColor;
-  ctx.font = "italic 700 40px 'Nunito', sans-serif";
-  const title = recap.title || "Leilão de Jogos";
-  ctx.fillText(title.length > 34 ? `${title.slice(0, 33)}…` : title, 56, 160);
-
-  ctx.fillStyle = accentText;
-  ctx.font = "700 84px 'IBM Plex Mono', monospace";
-  const totalText = recap.totalRaised === null ? "oculto" : formatBRL(recap.totalRaised || 0);
-  ctx.fillText(totalText, 56, 270);
-  ctx.fillStyle = muted;
-  ctx.font = "600 15px 'IBM Plex Mono', monospace";
-  ctx.fillText("ARRECADADO", 58, 292);
-
-  const stats = [
-    [formatDuration(recap.durationMs), "DURAÇÃO"],
-    [String(recap.totalDonors || 0), "APOIADORES"],
-    [String(recap.totalGames || 0), "LOTES"],
-  ];
-  let sx = 56;
-  stats.forEach(([value, label]) => {
-    ctx.fillStyle = textColor;
-    ctx.font = "600 26px 'IBM Plex Mono', monospace";
-    ctx.fillText(value, sx, 340);
-    ctx.fillStyle = muted;
-    ctx.font = "600 12px 'IBM Plex Mono', monospace";
-    ctx.fillText(label, sx, 360);
-    sx += 170;
-  });
+  const accent = cVar("--accent", "#a683d1");
+  const accentBg = cVar("--accent-bg", "rgba(166,131,209,0.12)");
+  const accentText = cVar("--accent-text", "#c3a8dd");
+  const accentSoft = cVar("--accent-soft", "#7c5aa8");
+  const silver = cVar("--silver", "#d6d0e0");
+  const bronze = cVar("--bronze", "#c99a6c");
 
   const top3 = (recap.topGames || []).slice(0, 3);
-  const medalColors = [accentText, "#d6d0e0", "#c99a6c"];
-  ctx.fillStyle = muted;
-  ctx.font = "600 12px 'IBM Plex Mono', monospace";
-  ctx.fillText("TOP 3", 56, 400);
-  let ty = 434;
-  top3.forEach((game, i) => {
+  const topDonors = (recap.topDonors || []).slice(0, 5);
+
+  // Tudo que depende de rede carrega ANTES de desenhar (capas dos 3
+  // primeiros lotes + as 3 medalhas, uma cor por posição).
+  const [coverImgs, medalGold, medalSilver, medalBronze] = await Promise.all([
+    Promise.all(top3.map((g) => loadImageSafe(g.image))),
+    loadImageSafe(medalImageDataUri(accentText)),
+    loadImageSafe(medalImageDataUri(silver)),
+    loadImageSafe(medalImageDataUri(bronze)),
+  ]);
+  const medalByRank = [medalGold, medalSilver, medalBronze];
+
+  function renderCanvas(includeCovers) {
+    const canvas = document.createElement("canvas");
+    canvas.width = W;
+    canvas.height = H;
+    const ctx = canvas.getContext("2d");
+
+    roundRectPath(ctx, 0, 0, W, H, 18);
     ctx.fillStyle = surface;
-    ctx.fillRect(56, ty - 22, W - 112, 46);
-    ctx.fillStyle = medalColors[i] || muted;
-    ctx.font = "700 16px 'IBM Plex Mono', monospace";
-    ctx.fillText(`${i + 1}º`, 72, ty + 5);
+    ctx.fill();
+    drawGrain(ctx, W, H);
+    roundRectPath(ctx, 1, 1, W - 2, H - 2, 18);
+    ctx.strokeStyle = border;
+    ctx.lineWidth = 2;
+    ctx.stroke();
+
+    const marginX = 56;
+    const colDivider = 672;
+    const rightX = colDivider + 34;
+    const rightW = W - marginX - rightX;
+
+    // ---- marca d'água ----
+    ctx.save();
+    ctx.translate(marginX + 6, 54);
+    ctx.rotate(Math.PI / 4);
+    ctx.fillStyle = accent;
+    ctx.fillRect(-5, -5, 10, 10);
+    ctx.restore();
     ctx.fillStyle = textColor;
-    ctx.font = "600 18px 'IBM Plex Sans', sans-serif";
-    ctx.fillText(game.name, 116, ty + 6);
+    ctx.font = "600 16px 'IBM Plex Sans', sans-serif";
+    ctx.textBaseline = "middle";
+    ctx.fillText("Leilão de Jogos", marginX + 22, 54);
+    ctx.textBaseline = "alphabetic";
+
     ctx.fillStyle = accentText;
-    ctx.font = "700 18px 'IBM Plex Mono', monospace";
-    const amountText = formatBRL(game.total);
-    ctx.fillText(amountText, W - 72 - ctx.measureText(amountText).width, ty + 6);
-    ty += 58;
-  });
+    ctx.font = "600 12px 'IBM Plex Mono', monospace";
+    ctx.textAlign = "right";
+    ctx.fillText("LEILÃO ENCERRADO", W - marginX, 58);
+    ctx.textAlign = "left";
 
-  ctx.fillStyle = muted;
-  ctx.font = "500 13px 'IBM Plex Mono', monospace";
-  ctx.fillText(`${location.origin}/l/${LEILAO_ID}`, 56, H - 30);
+    // ---- título ----
+    ctx.fillStyle = textColor;
+    ctx.font = "italic 700 38px 'Nunito', sans-serif";
+    const title = recap.title || "Leilão de Jogos";
+    ctx.fillText(truncateToWidth(ctx, title, colDivider - marginX), marginX, 118);
 
+    // ---- total arrecadado (R$ menor/mais claro na frente, valor grande
+    // carrega o peso -- a mesma hierarquia de qualquer app financeiro bem
+    // feito, em vez de imprimir tudo do mesmo tamanho). ----
+    const totalText = recap.totalRaised === null ? "oculto" : formatBRL(recap.totalRaised || 0);
+    const prefixMatch = totalText.match(/^(R\$\s?)(.+)$/);
+    ctx.font = "700 78px 'IBM Plex Mono', monospace";
+    if (prefixMatch) {
+      ctx.font = "600 30px 'IBM Plex Mono', monospace";
+      ctx.fillStyle = accentSoft;
+      ctx.fillText(prefixMatch[1].trim(), marginX, 226);
+      const prefixW = ctx.measureText(`${prefixMatch[1].trim()} `).width;
+      ctx.font = "700 78px 'IBM Plex Mono', monospace";
+      ctx.fillStyle = accentText;
+      ctx.fillText(prefixMatch[2], marginX + prefixW, 226);
+    } else {
+      ctx.fillStyle = accentText;
+      ctx.fillText(totalText, marginX, 226);
+    }
+    ctx.fillStyle = muted;
+    ctx.font = "600 13px 'IBM Plex Mono', monospace";
+    ctx.fillText("ARRECADADO", marginX + 2, 248);
+
+    // ---- duração / apoiadores / lotes: régua fina em vez de caixa cheia,
+    // menos "widget de dashboard", mais editorial ----
+    const statsRuleY = 270;
+    ctx.strokeStyle = borderSoft;
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(marginX, statsRuleY);
+    ctx.lineTo(colDivider, statsRuleY);
+    ctx.stroke();
+
+    const stats = [
+      [formatDuration(recap.durationMs), "DURAÇÃO"],
+      [String(recap.totalDonors || 0), "APOIADORES"],
+      [String(recap.totalGames || 0), "LOTES"],
+    ];
+    const statColW = (colDivider - marginX) / stats.length;
+    stats.forEach(([value, label], i) => {
+      const cx = marginX + statColW * i + statColW / 2;
+      ctx.textAlign = "center";
+      ctx.fillStyle = textColor;
+      ctx.font = "600 24px 'IBM Plex Mono', monospace";
+      ctx.fillText(value, cx, statsRuleY + 40);
+      ctx.fillStyle = muted;
+      ctx.font = "600 10px 'IBM Plex Mono', monospace";
+      ctx.fillText(label, cx, statsRuleY + 60);
+      ctx.textAlign = "left";
+    });
+
+    // ---- campeão / recorde de doação: barra de destaque lateral (estilo
+    // citação editorial), não mais uma caixa cheia -- evita empilhar caixa
+    // sobre caixa sobre caixa. ----
+    const champion = top3[0];
+    const highlightLines = [];
+    if (champion) highlightLines.push([`${champion.name} foi o campeão`, formatBRL(champion.total)]);
+    if (recap.biggestDonation) {
+      highlightLines.push([
+        `recorde: ${recap.biggestDonation.username || "Anônimo"} em ${recap.biggestDonation.gameName || ""}`,
+        formatBRL(recap.biggestDonation.amount),
+      ]);
+    }
+    if (highlightLines.length > 0) {
+      const hy = statsRuleY + 82;
+      const boxH = 30 * highlightLines.length + 8;
+      ctx.fillStyle = accent;
+      ctx.fillRect(marginX, hy, 3, boxH);
+      let ly = hy + 20;
+      highlightLines.forEach(([label, value]) => {
+        ctx.fillStyle = textColor;
+        ctx.font = "500 14px 'IBM Plex Sans', sans-serif";
+        ctx.fillText(truncateToWidth(ctx, label, colDivider - marginX - 150 - 16), marginX + 16, ly);
+        ctx.fillStyle = accentText;
+        ctx.font = "700 15px 'IBM Plex Mono', monospace";
+        ctx.textAlign = "right";
+        ctx.fillText(value, colDivider, ly);
+        ctx.textAlign = "left";
+        ly += 30;
+      });
+    }
+
+    // ---- rodapé ----
+    ctx.fillStyle = muted;
+    ctx.font = "500 13px 'IBM Plex Mono', monospace";
+    ctx.fillText(`${location.origin}/l/${LEILAO_ID}`, marginX, H - 30);
+
+    // ---- coluna direita: TOP 3 ----
+    ctx.fillStyle = muted;
+    ctx.font = "600 12px 'IBM Plex Mono', monospace";
+    ctx.fillText("TOP 3", rightX, 62);
+
+    // Rotação por posição igual a .recap-podium-card.rank-N .medal-icon em
+    // style.css -- pequenos detalhes assim são o que faz o card parecer
+    // desenhado à mão em vez de gerado por um template genérico.
+    const MEDAL_ROTATION_DEG = [-5, 4, -3];
+
+    let py = 82;
+    top3.forEach((game, i) => {
+      const isChampion = i === 0;
+      // 1º lugar ganha um pouco mais de presença (capa e texto maiores),
+      // igual ao .recap-podium-card.rank-1 no modal ser o único elevado.
+      const cardH = isChampion ? 72 : 60;
+      const thumbSize = isChampion ? 54 : 46;
+      roundRectPathAsym(ctx, rightX, py, rightW, cardH, CARD_CORNER_RADII[i]);
+      if (isChampion) {
+        const grad = ctx.createLinearGradient(0, py, 0, py + cardH);
+        grad.addColorStop(0, accentBg);
+        grad.addColorStop(1, surface2);
+        ctx.fillStyle = grad;
+      } else {
+        ctx.fillStyle = surface2;
+      }
+      ctx.fill();
+      ctx.strokeStyle = isChampion ? accent : border;
+      ctx.lineWidth = 1;
+      ctx.stroke();
+
+      const thumbX = rightX + 10;
+      const thumbY = py + (cardH - thumbSize) / 2;
+      const cover = includeCovers ? coverImgs[i] : null;
+      roundRectPath(ctx, thumbX, thumbY, thumbSize, thumbSize, 8);
+      if (cover) {
+        ctx.save();
+        ctx.clip();
+        const scale = Math.max(thumbSize / cover.width, thumbSize / cover.height);
+        const dw = cover.width * scale;
+        const dh = cover.height * scale;
+        ctx.drawImage(cover, thumbX + (thumbSize - dw) / 2, thumbY + (thumbSize - dh) / 2, dw, dh);
+        ctx.restore();
+      } else {
+        ctx.fillStyle = surface;
+        ctx.fill();
+        ctx.fillStyle = muted;
+        ctx.font = `italic 700 ${isChampion ? 22 : 20}px 'Nunito', sans-serif`;
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        ctx.fillText((game.name[0] || "?").toUpperCase(), thumbX + thumbSize / 2, thumbY + thumbSize / 2 + 1);
+        ctx.textAlign = "left";
+        ctx.textBaseline = "alphabetic";
+      }
+
+      const medalImg = medalByRank[i];
+      if (medalImg) {
+        const medalSize = 22;
+        ctx.save();
+        ctx.translate(thumbX - 8 + medalSize / 2, thumbY - 6 + medalSize / 2);
+        ctx.rotate((MEDAL_ROTATION_DEG[i] * Math.PI) / 180);
+        ctx.drawImage(medalImg, -medalSize / 2, -medalSize / 2, medalSize, medalSize);
+        ctx.restore();
+      }
+
+      const textX = thumbX + thumbSize + 14;
+      const nameMaxW = rightW - (textX - rightX) - 16;
+      ctx.fillStyle = textColor;
+      ctx.font = `600 ${isChampion ? 17 : 15}px 'IBM Plex Sans', sans-serif`;
+      ctx.fillText(truncateToWidth(ctx, game.name, nameMaxW), textX, py + (isChampion ? 30 : 26));
+      ctx.fillStyle = accentText;
+      ctx.font = `700 ${isChampion ? 16 : 14}px 'IBM Plex Mono', monospace`;
+      ctx.fillText(formatBRL(game.total), textX, py + (isChampion ? 52 : 46));
+
+      py += cardH + 8;
+    });
+
+    // ---- coluna direita: quadro de honra ----
+    if (topDonors.length > 0) {
+      py += 14;
+      ctx.fillStyle = muted;
+      ctx.font = "600 12px 'IBM Plex Mono', monospace";
+      ctx.fillText("QUADRO DE HONRA", rightX, py + 10);
+      py += 28;
+
+      topDonors.forEach((donor, i) => {
+        if (i < 3 && medalByRank[i]) {
+          ctx.drawImage(medalByRank[i], rightX, py + 2, 16, 16);
+        } else {
+          ctx.fillStyle = muted;
+          ctx.font = "700 12px 'IBM Plex Mono', monospace";
+          ctx.fillText(String(i + 1).padStart(2, "0"), rightX, py + 14);
+        }
+        ctx.fillStyle = textColor;
+        ctx.font = "500 14px 'IBM Plex Sans', sans-serif";
+        ctx.fillText(truncateToWidth(ctx, donor.username || "Anônimo", rightW - 150), rightX + 28, py + 14);
+        ctx.fillStyle = muted;
+        ctx.font = "600 13px 'IBM Plex Mono', monospace";
+        ctx.textAlign = "right";
+        ctx.fillText(formatBRL(donor.total), rightX + rightW, py + 14);
+        ctx.textAlign = "left";
+        py += 27;
+      });
+    }
+
+    return canvas;
+  }
+
+  let canvas = renderCanvas(true);
+  let dataUrl;
+  try {
+    dataUrl = canvas.toDataURL("image/png");
+  } catch (err) {
+    // Canvas "sujo" por causa de uma capa sem CORS liberado no CDN --
+    // refaz só com iniciais no lugar da capa, isso nunca falha (nenhuma
+    // imagem externa desenhada).
+    canvas = renderCanvas(false);
+  }
+
+  return canvas;
+}
+
+function downloadCanvasAsPng(canvas) {
   const link = document.createElement("a");
   link.download = `recap-${LEILAO_ID}.png`;
   link.href = canvas.toDataURL("image/png");
   link.click();
 }
+
+async function downloadRecapImage() {
+  const canvas = await buildRecapCanvas();
+  if (canvas) downloadCanvasAsPng(canvas);
+}
 recapDownloadBtnEl.addEventListener("click", downloadRecapImage);
+
+// O X não tem como anexar imagem via link/intent -- isso só é possível
+// colando no compositor mesmo. Então: abre a aba (síncrono, senão o
+// navegador bloqueia o pop-up depois do await), baixa o PNG E tenta copiar
+// pro clipboard (pra quem usa Chrome/Edge/Firefox recentes já consegue só
+// colar com Ctrl+V no tweet), e manda pro compositor SEM url= -- só texto,
+// pra não postar um card de link genérico competindo com a imagem.
+recapShareXEl.addEventListener("click", async (e) => {
+  e.preventDefault();
+  const twitterWindow = window.open("", "_blank");
+  const canvas = await buildRecapCanvas();
+  if (!canvas) {
+    if (twitterWindow) twitterWindow.close();
+    return;
+  }
+  downloadCanvasAsPng(canvas);
+  try {
+    const blob = await new Promise((resolve) => canvas.toBlob(resolve, "image/png"));
+    if (blob && navigator.clipboard && window.ClipboardItem) {
+      await navigator.clipboard.write([new ClipboardItem({ "image/png": blob })]);
+    }
+  } catch (err) {
+    // Sem suporte a clipboard de imagem -- sem problema, a pessoa anexa
+    // manualmente o arquivo que acabou de baixar.
+  }
+  const intentUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent(currentShareText)}`;
+  if (twitterWindow) twitterWindow.location.href = intentUrl;
+  else window.open(intentUrl, "_blank");
+});
 
 function recapPodiumCardHtml(game) {
   const thumb = game.image
@@ -861,12 +1172,13 @@ function renderRecap(recap, eyebrowText) {
   recapDonorsEl.textContent = String(recap.totalDonors || 0);
   recapGamesEl.textContent = String(recap.totalGames || 0);
 
-  const shareUrl = `${location.origin}/l/${LEILAO_ID}`;
-  // Omite o valor quando totalRaised tá oculto, mesma regra de privacidade do resto do recap.
-  const shareText = recap.totalRaised === null
+  // Sem link no tweet de propósito -- o X não deixa anexar imagem por URL
+  // (só via o compositor mesmo, manual), então o clique baixa a imagem e
+  // abre o tweet só com texto; a pessoa anexa a imagem já baixada. Um link
+  // no texto brigaria com a foto pelo card de preview.
+  currentShareText = recap.totalRaised === null
     ? "Acabei de fazer um leilão de jogos com a galera! Dá uma olhada:"
     : `Acabei de arrecadar ${formatBRL(recap.totalRaised || 0)} num leilão de jogos com a galera! Dá uma olhada:`;
-  recapShareXEl.href = `https://twitter.com/intent/tweet?text=${encodeURIComponent(shareText)}&url=${encodeURIComponent(shareUrl)}`;
   currentRecapForDownload = recap;
 
   const champion = (recap.topGames || [])[0];
