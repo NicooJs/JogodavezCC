@@ -20,6 +20,8 @@ const mpApi = require("./src/mpApi");
 const mpWebhook = require("./src/mpWebhook");
 const streamersStore = require("./src/streamersStore");
 const paymentsStore = require("./src/paymentsStore");
+const googleTts = require("./src/googleTts");
+const ttsCache = require("./src/ttsCache");
 
 const app = express();
 // Railway termina TLS na borda; sem confiar no proxy (X-Forwarded-Proto),
@@ -510,7 +512,7 @@ function requireLeilaoAdmin(req, res, next) {
   return res.status(401).json({ error: "Sessão de admin inválida ou expirada" });
 }
 
-async function processDonationMessage(leilaoId, store, { id, fallbackUsername, fallbackMessage, fallbackAmount, fallbackNote }) {
+async function processDonationMessage(leilaoId, store, { id, fallbackUsername, fallbackMessage, fallbackAmount, fallbackNote, fallbackVoiceId }) {
   if (store.isAlreadyProcessed(id)) return;
   // Reserva o id JÁ aqui, antes de qualquer await. O fluxo abaixo espera a
   // busca de capa na RAWG (resolveParsedGame) pra jogo novo — sem marcar
@@ -565,12 +567,29 @@ async function processDonationMessage(leilaoId, store, { id, fallbackUsername, f
   // timer esticar no PRÓXIMO update (de outro evento qualquer), não nesse.
   touchActivity(store);
 
+  // Síntese de voz é best-effort: se a chave não tá configurada, a voz é
+  // inválida, ou a API do Google falha, o alerta segue só visual (nunca
+  // atrasa/derruba a doação em si).
+  let audioUrl = null;
+  if (note && fallbackVoiceId) {
+    try {
+      const audioBuffer = await googleTts.synthesize(note, fallbackVoiceId);
+      if (audioBuffer) {
+        ttsCache.put(id, audioBuffer);
+        audioUrl = `/api/l/${leilaoId}/tts/${encodeURIComponent(id)}`;
+      }
+    } catch (err) {
+      console.error(`[tts] falha ao sintetizar áudio pra doação id="${id}":`, err.message);
+    }
+  }
+
   broadcastUpdate(leilaoId, store, {
     type: parsed.action,
     username,
     amount: centsToNumber(amountCents),
     message,
     note,
+    audioUrl,
     game: { key: game.key, name: game.name, total: centsToNumber(game.total_cents) },
     // id (não só nesse type "add"/"remove", mas em qualquer processDonationMessage
     // que aplique de verdade) -- é isso que deixa o modal de doação (Fase 5)
@@ -1009,6 +1028,18 @@ app.get("/api/l/:id/events/recent", loadLeilao, (req, res) => {
   res.json({ events });
 });
 
+// Áudio gerado pelo Google TTS pra essa doação (ver processDonationMessage)
+// -- pública como o resto do overlay, sem senha nenhuma. Fica em memória só
+// por alguns minutos (src/ttsCache.js), então um link antigo simplesmente
+// para de responder depois que o alerta já passou.
+app.get("/api/l/:id/tts/:paymentId", loadLeilao, (req, res) => {
+  const audioBuffer = ttsCache.get(req.params.paymentId);
+  if (!audioBuffer) return res.status(404).end();
+  res.set("Content-Type", "audio/mpeg");
+  res.set("Cache-Control", "private, max-age=300");
+  res.send(audioBuffer);
+});
+
 // Cria a cobrança Pix pro modal/página de doação -- pública, sem senha de
 // admin, qualquer visitante do board pode doar. O dinheiro é criado como
 // sendo da conta MP do STREAMER (application_fee retém a parte da
@@ -1016,7 +1047,7 @@ app.get("/api/l/:id/events/recent", loadLeilao, (req, res) => {
 // catálogo aqui -- isso só acontece quando o webhook confirmar "paid".
 app.post("/api/l/:id/doacao", loadLeilao, async (req, res) => {
   const { leilaoId, store } = req;
-  const { name, amount, action, donorUsername, donorNote } = req.body || {};
+  const { name, amount, action, donorUsername, donorNote, donorVoiceId } = req.body || {};
 
   if (!name || !amount || Number.isNaN(Number(amount)) || Number(amount) <= 0) {
     return res.status(400).json({ error: "Informe o jogo e um valor válido" });
@@ -1049,6 +1080,7 @@ app.post("/api/l/:id/doacao", loadLeilao, async (req, res) => {
   const externalReference = paymentsStore.buildExternalReference(leilaoId);
   const cleanDonorUsername = (donorUsername || "").trim().slice(0, 60) || "Anônimo";
   const cleanDonorNote = (donorNote || "").trim().slice(0, 140);
+  const cleanDonorVoiceId = cleanDonorNote && googleTts.VOICE_IDS.has(donorVoiceId) ? donorVoiceId : null;
   const rawMessage = `${action === "remove" ? "-" : "+"}${name}`;
 
   try {
@@ -1057,6 +1089,7 @@ app.post("/api/l/:id/doacao", loadLeilao, async (req, res) => {
       streamerId: streamer.id,
       externalReference,
       donorNote: cleanDonorNote,
+      donorVoiceId: cleanDonorVoiceId,
       valorTotalCents,
       applicationFeeCents,
       donorUsername: cleanDonorUsername,
@@ -1199,6 +1232,7 @@ app.post("/webhook/mercadopago", async (req, res) => {
       fallbackMessage: payment.donorMessage,
       fallbackAmount: payment.valorTotalCents,
       fallbackNote: payment.donorNote,
+      fallbackVoiceId: payment.donorVoiceId,
     });
   } catch (err) {
     console.error(`[webhook mercadopago] erro ao processar dataId="${dataId}":`, err.message);

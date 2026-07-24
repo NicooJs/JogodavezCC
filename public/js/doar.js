@@ -120,6 +120,8 @@ function resetForm() {
   noteEl.value = "";
   errorEl.hidden = true;
   quickAmountsEl.querySelectorAll("button").forEach((b) => b.classList.remove("active"));
+  selectedVoiceId = "";
+  voiceSegEl.querySelectorAll("button").forEach((b) => b.classList.toggle("active", b.dataset.voice === ""));
   submitBtn.disabled = false;
   submitBtn.textContent = "Gerar Pix →";
   unconfirmGame();
@@ -276,6 +278,15 @@ moreToggleEl.addEventListener("click", () => {
   nameEl.focus();
 });
 
+const voiceSegEl = document.getElementById("doar-voice");
+let selectedVoiceId = "";
+voiceSegEl.querySelectorAll("button").forEach((b) => {
+  b.addEventListener("click", () => {
+    selectedVoiceId = b.dataset.voice;
+    voiceSegEl.querySelectorAll("button").forEach((x) => x.classList.toggle("active", x === b));
+  });
+});
+
 async function submitDonation(e) {
   e.preventDefault();
   const game = gameEl.value.trim();
@@ -305,6 +316,7 @@ async function submitDonation(e) {
         action: getAction(),
         donorUsername: nameEl.value.trim(),
         donorNote: noteEl.value.trim(),
+        donorVoiceId: selectedVoiceId,
       }),
     });
     const data = await res.json().catch(() => ({}));

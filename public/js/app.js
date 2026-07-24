@@ -1211,6 +1211,7 @@ const donateModalGameHintEl = document.getElementById("donate-modal-game-hint");
 const donateModalAmountEl = document.getElementById("donate-modal-amount");
 const donateModalNameEl = document.getElementById("donate-modal-name");
 const donateModalNoteEl = document.getElementById("donate-modal-note");
+const donateModalVoiceEl = document.getElementById("donate-modal-voice");
 const donateModalErrorEl = document.getElementById("donate-modal-error");
 const donateModalSubmitEl = document.getElementById("donate-modal-submit");
 const donateQrImgEl = document.getElementById("donate-qr-img");
@@ -1218,6 +1219,14 @@ const donateCopyInputEl = document.getElementById("donate-copy-input");
 const donateCopyBtnEl = document.getElementById("donate-copy-btn");
 
 let pendingDonationPaymentId = null; // String(mpPaymentId) do Pix aberto nesse navegador, ou null
+let selectedDonateVoiceId = "";
+
+donateModalVoiceEl.querySelectorAll("button").forEach((b) => {
+  b.addEventListener("click", () => {
+    selectedDonateVoiceId = b.dataset.voice;
+    donateModalVoiceEl.querySelectorAll("button").forEach((x) => x.classList.toggle("active", x === b));
+  });
+});
 
 function setDonateAction(action) {
   donateModalActionSeg.querySelectorAll("button").forEach((b) => {
@@ -1243,6 +1252,8 @@ function openDonateModal() {
   donateModalAmountEl.value = "";
   donateModalNameEl.value = "";
   donateModalNoteEl.value = "";
+  selectedDonateVoiceId = "";
+  donateModalVoiceEl.querySelectorAll("button").forEach((b) => b.classList.toggle("active", b.dataset.voice === ""));
   donateModalErrorEl.hidden = true;
   donateModalSubmitEl.disabled = false;
   donateModalSubmitEl.textContent = "Gerar Pix →";
@@ -1412,6 +1423,7 @@ async function submitDonateModal() {
         action: getDonateAction(),
         donorUsername: donateModalNameEl.value.trim(),
         donorNote: donateModalNoteEl.value.trim(),
+        donorVoiceId: selectedDonateVoiceId,
       }),
     });
     const data = await res.json().catch(() => ({}));

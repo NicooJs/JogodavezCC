@@ -19,6 +19,7 @@ function rowToPayment(row) {
     donorUsername: row.donor_username,
     donorMessage: row.donor_message,
     donorNote: row.donor_note,
+    donorVoiceId: row.donor_voice_id,
     createdAt: row.created_at,
     paidAt: row.paid_at,
   };
@@ -28,13 +29,13 @@ function buildExternalReference(leilaoId) {
   return `${leilaoId}:${crypto.randomBytes(8).toString("hex")}`;
 }
 
-async function createPending({ leilaoId, streamerId, externalReference, valorTotalCents, applicationFeeCents, donorUsername, donorMessage, donorNote }) {
+async function createPending({ leilaoId, streamerId, externalReference, valorTotalCents, applicationFeeCents, donorUsername, donorMessage, donorNote, donorVoiceId }) {
   const streamerShareCents = valorTotalCents - applicationFeeCents;
   const res = await query(
-    `INSERT INTO payments (leilao_id, streamer_id, external_reference, valor_total_cents, application_fee_cents, streamer_share_cents, donor_username, donor_message, donor_note)
-     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+    `INSERT INTO payments (leilao_id, streamer_id, external_reference, valor_total_cents, application_fee_cents, streamer_share_cents, donor_username, donor_message, donor_note, donor_voice_id)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
      RETURNING *`,
-    [leilaoId, streamerId, externalReference, valorTotalCents, applicationFeeCents, streamerShareCents, donorUsername || null, donorMessage || null, donorNote || null]
+    [leilaoId, streamerId, externalReference, valorTotalCents, applicationFeeCents, streamerShareCents, donorUsername || null, donorMessage || null, donorNote || null, donorVoiceId || null]
   );
   return rowToPayment(res.rows[0]);
 }

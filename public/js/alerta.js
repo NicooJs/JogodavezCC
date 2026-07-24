@@ -73,6 +73,10 @@ function showNext() {
   cardEl.classList.add("is-in");
   playChime(isRemove);
 
+  scheduleHide(item);
+}
+
+function startHideTimer(delayMs) {
   setTimeout(() => {
     cardEl.classList.remove("is-in");
     cardEl.classList.add("is-out");
@@ -82,7 +86,32 @@ function showNext() {
       showing = false;
       showNext();
     }, OUT_MS);
-  }, SHOW_MS);
+  }, delayMs);
+}
+
+// Sem voz escolhida (ou sem chave do Google TTS configurada no servidor),
+// item.audioUrl nunca chega e o card some no tempo fixo de sempre. Com
+// áudio, espera a fala terminar de verdade ("ended") em vez de estimar
+// duração -- com timeouts de segurança pro autoplay bloqueado ou o áudio
+// nunca carregar, pra nunca travar a fila de alertas.
+function scheduleHide(item) {
+  if (!item.audioUrl) {
+    startHideTimer(SHOW_MS);
+    return;
+  }
+  let settled = false;
+  const finish = (delayMs) => {
+    if (settled) return;
+    settled = true;
+    startHideTimer(delayMs);
+  };
+  const audio = new Audio(item.audioUrl);
+  audio.addEventListener("ended", () => finish(700));
+  audio.addEventListener("error", () => finish(SHOW_MS));
+  setTimeout(() => finish(SHOW_MS), 12000);
+  setTimeout(() => {
+    audio.play().catch(() => finish(SHOW_MS));
+  }, 450);
 }
 
 socket.on("update", ({ leaderboard, lastEvent }) => {
