@@ -173,36 +173,68 @@
 .create-form {
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 26px;
   background-color: var(--surface);
   background-image: var(--grain);
   background-blend-mode: overlay;
   border: 1px solid var(--border);
   border-radius: 14px;
-  padding: 24px;
+  padding: 28px;
   box-shadow: 0 30px 70px -32px rgba(0, 0, 0, 0.55);
 }
 .create-form[hidden] { display: none; }
 
-.create-section {
+/* Os passos do form ecoam os mesmos números da promessa em .create-steps
+   (coluna da esquerda) -- o form vira a execução do que o texto prometeu,
+   em vez de um formulário burocrático separado com "seções". Linha fina
+   conectando os números dá a sensação de progresso, não de página de
+   cadastro genérica. */
+.create-form-step {
+  display: flex;
+  gap: 16px;
+  align-items: flex-start;
+  position: relative;
+}
+.create-form-step:not(:last-child)::before {
+  content: "";
+  position: absolute;
+  left: 14px;
+  top: 34px;
+  bottom: -26px;
+  width: 1px;
+  background: var(--border-soft);
+}
+
+.create-form-step .create-step-num { position: relative; z-index: 1; background: var(--surface); }
+
+.create-form-step-body {
+  flex: 1;
+  min-width: 0;
   display: flex;
   flex-direction: column;
-  gap: 12px;
-  padding-bottom: 14px;
-  border-bottom: 1px dashed var(--border-soft);
+  gap: 10px;
 }
-.create-section:last-of-type { border-bottom: none; padding-bottom: 0; }
+.create-form-step-body .create-step-title { margin: 0; font-size: 15px; }
+.create-form-step-body .create-step-hint { margin: -6px 0 2px; font-size: 12.5px; max-width: none; }
 
-.create-section-title {
-  margin: 0;
-  font-family: var(--font-mono);
-  font-size: 10.5px;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  color: var(--accent-text);
+.create-warning {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin: 2px 0 0;
+  padding: 10px 12px;
+  background: rgba(201, 154, 108, 0.12);
+  border: 1px solid rgba(201, 154, 108, 0.35);
+  border-radius: var(--radius);
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--muted);
 }
+.create-warning .icon { width: 15px; height: 15px; flex-shrink: 0; margin-top: 1px; color: var(--bronze); }
+.create-warning strong { color: var(--text); font-weight: 600; }
 
 .create-field { display: flex; flex-direction: column; gap: 7px; }
+.create-form-step-body > .create-field + .create-field { margin-top: 2px; }
 
 .create-field span:first-child {
   font-family: var(--font-mono);
@@ -505,6 +537,27 @@
   color: var(--accent-text);
 }
 .create-result-open:hover { color: var(--accent); }
+
+.create-footer {
+  position: relative;
+  z-index: 1;
+  margin-top: 56px;
+  padding-top: 20px;
+  border-top: 1px solid var(--border-soft);
+  display: flex;
+  justify-content: center;
+}
+
+.create-footer-github {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--muted);
+}
+.create-footer-github .icon { width: 15px; height: 15px; }
+.create-footer-github:hover { color: var(--text); }
 
 /* Reaproveita classes de create.css (create-existing-item, create-twitch-*)
    em vez de linguagem visual nova. */

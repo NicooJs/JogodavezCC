@@ -71,16 +71,11 @@
         </div>
 
         <form class="create-form" id="create-form">
-          <div class="create-section">
-            <p class="create-section-title">seu leilão</p>
-
-            <label class="create-field">
-              <span>Nome do leilão</span>
-              <input type="text" id="f-title" placeholder="Leilão de Jogos" autocomplete="off" />
-            </label>
-
-            <div class="create-field create-twitch-block">
-              <span>Sua identidade (Twitch)</span>
+          <div class="create-form-step">
+            <span class="create-step-num">1</span>
+            <div class="create-form-step-body create-field create-twitch-block">
+              <p class="create-step-title">Conecte sua Twitch</p>
+              <p class="create-step-hint">Confirma quem é o streamer — evita alguém se passar por você.</p>
 
               <div class="create-twitch-logged-out" id="create-twitch-logged-out">
                 <a class="create-twitch-login" id="create-twitch-login" href="/auth/twitch/start?returnTo=/">
@@ -98,11 +93,11 @@
             </div>
           </div>
 
-          <div class="create-section">
-            <p class="create-section-title">recebimento</p>
-
-            <div class="create-field create-twitch-block">
-              <span>Mercado Pago</span>
+          <div class="create-form-step">
+            <span class="create-step-num">2</span>
+            <div class="create-form-step-body create-field create-twitch-block">
+              <p class="create-step-title">Conecte o Mercado Pago</p>
+              <p class="create-step-hint">É pra onde o Pix de cada doação cai, direto na sua conta.</p>
 
               <div class="create-mp-disconnected" id="create-mp-disconnected">
                 <a class="create-mp-login is-disabled" id="create-mp-connect" href="/auth/mercadopago/start?returnTo=/">
@@ -120,16 +115,29 @@
               </div>
 
               <span class="create-hint" id="create-mp-hint">Faça login com a Twitch primeiro pra liberar a conexão.</span>
+
+              <p class="create-warning">
+                <svg class="icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 3.5l7.5 13h-15l7.5-13z"/><path d="M10 8.5v3.2"/><circle cx="10" cy="14.2" r="0.9" fill="currentColor" stroke="none"/></svg>
+                Confira se sua conta do Mercado Pago já tem uma <strong>chave Pix cadastrada</strong> — sem isso, as doações não conseguem cair na sua conta.
+              </p>
             </div>
           </div>
 
-          <div class="create-section">
-            <p class="create-section-title">segurança</p>
+          <div class="create-form-step">
+            <span class="create-step-num">3</span>
+            <div class="create-form-step-body">
+              <p class="create-step-title">Finalize</p>
 
-            <label class="create-field">
-              <span>Senha do modo apresentador</span>
-              <input type="password" id="f-password" placeholder="mínimo 8 caracteres, sem recuperação depois" autocomplete="new-password" required minlength="8" />
-            </label>
+              <label class="create-field">
+                <span>Nome do leilão</span>
+                <input type="text" id="f-title" placeholder="Leilão de Jogos" autocomplete="off" />
+              </label>
+
+              <label class="create-field">
+                <span>Senha do modo apresentador</span>
+                <input type="password" id="f-password" placeholder="mínimo 8 caracteres, sem recuperação depois" autocomplete="new-password" required minlength="8" />
+              </label>
+            </div>
           </div>
 
           <button class="create-submit" id="create-submit" type="submit" disabled>Criar leilão →</button>
@@ -151,6 +159,13 @@
         </div>
       </div>
     </main>
+
+    <footer class="create-footer">
+      <a class="create-footer-github" href="https://github.com/NicooJs" target="_blank" rel="noopener">
+        <svg class="icon" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
+        github.com/NicooJs
+      </a>
+    </footer>
   </div>
 
   <script type="module" src="/js/create-fluid.js"></script>
