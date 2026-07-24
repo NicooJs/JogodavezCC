@@ -12,14 +12,6 @@
 </head>
 <body class="doar-body">
   <div class="page doar-page">
-    <header class="doar-topbar">
-      <a class="doar-brand" href="/">
-        <span class="doar-brand-dot" aria-hidden="true"></span>
-        Leilão de Jogos
-      </a>
-      <a class="doar-board-link" id="doar-board-link" href="#">Ver placar ao vivo →</a>
-    </header>
-
     <main class="doar-main">
       <div class="doar-hero">
         <div class="doar-avatar-wrap">
@@ -81,14 +73,18 @@
             </div>
           </div>
 
-          <div class="modal-field">
-            <label class="modal-label" for="doar-name">seu nome <span class="modal-opt">(opcional)</span></label>
-            <input type="text" id="doar-name" class="modal-input" placeholder="anônimo" autocomplete="off" />
-          </div>
+          <button type="button" class="doar-more-toggle" id="doar-more-toggle" aria-expanded="false">+ nome e mensagem <span class="modal-opt">(opcional)</span></button>
 
-          <div class="modal-field">
-            <label class="modal-label" for="doar-note">mensagem <span class="modal-opt">(opcional)</span></label>
-            <textarea id="doar-note" class="modal-input modal-textarea" placeholder="deixe um recado pro streamer" maxlength="140" rows="2"></textarea>
+          <div class="doar-more-fields" id="doar-more-fields" hidden>
+            <div class="modal-field">
+              <label class="modal-label" for="doar-name">seu nome</label>
+              <input type="text" id="doar-name" class="modal-input" placeholder="anônimo" autocomplete="off" />
+            </div>
+
+            <div class="modal-field">
+              <label class="modal-label" for="doar-note">mensagem</label>
+              <textarea id="doar-note" class="modal-input modal-textarea" placeholder="deixe um recado pro streamer" maxlength="140" rows="2"></textarea>
+            </div>
           </div>
 
           <p class="modal-error" id="doar-error" hidden></p>

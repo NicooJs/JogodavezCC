@@ -23,7 +23,6 @@ const avatarEl = document.getElementById("doar-avatar");
 const avatarFallbackEl = document.getElementById("doar-avatar-fallback");
 const hostNameEl = document.getElementById("doar-host-name");
 const leilaoTitleEl = document.getElementById("doar-leilao-title");
-const boardLinkEl = document.getElementById("doar-board-link");
 const footnoteHostEl = document.getElementById("doar-footnote-host");
 
 const actionSeg = document.getElementById("doar-action");
@@ -269,6 +268,14 @@ amountEl.addEventListener("input", () => {
   quickAmountsEl.querySelectorAll("button").forEach((b) => b.classList.toggle("active", b.dataset.amount === amountEl.value));
 });
 
+const moreToggleEl = document.getElementById("doar-more-toggle");
+const moreFieldsEl = document.getElementById("doar-more-fields");
+moreToggleEl.addEventListener("click", () => {
+  moreFieldsEl.hidden = false;
+  moreToggleEl.hidden = true;
+  nameEl.focus();
+});
+
 async function submitDonation(e) {
   e.preventDefault();
   const game = gameEl.value.trim();
@@ -356,9 +363,6 @@ socket.on("update", ({ leaderboard, lastEvent }) => {
       leilaoTitleEl.textContent = leaderboard.title;
       leilaoTitleEl.hidden = false;
     }
-    boardLinkEl.href = `/l/${LEILAO_ID}`;
-    boardLinkEl.hidden = false;
-
     if (leaderboard.hostAvatar) {
       avatarEl.src = leaderboard.hostAvatar;
       avatarEl.hidden = false;

@@ -172,6 +172,20 @@ function bumpValue(el, text) {
   el.classList.add("tick");
 }
 
+let totalCountUpFrame = null;
+function animateCountUp(el, from, to, duration = 700) {
+  if (totalCountUpFrame) cancelAnimationFrame(totalCountUpFrame);
+  const start = performance.now();
+  const diff = to - from;
+  function step(now) {
+    const t = Math.min((now - start) / duration, 1);
+    const eased = 1 - Math.pow(1 - t, 3);
+    el.textContent = Math.round(from + diff * eased).toLocaleString("pt-BR");
+    totalCountUpFrame = t < 1 ? requestAnimationFrame(step) : null;
+  }
+  totalCountUpFrame = requestAnimationFrame(step);
+}
+
 // remove/reflow/readiciona pra reiniciar a animação CSS mesmo se ainda rodando
 function flashTotalBeam() {
   topbarTotalEl.classList.remove("beam");
@@ -1144,9 +1158,13 @@ socket.on("update", ({ leaderboard, lastEvent }) => {
   totalHideToggleEl.title = leaderboard.hideTotalRaised ? "Mostrar valor arrecadado pro público" : "Ocultar valor arrecadado do público";
   if (!leaderboard.hideTotalRaised) {
     const totalValue = leaderboard.totalRaised || 0;
-    bumpValue(statTotalEl, Math.round(totalValue).toLocaleString("pt-BR"));
     // lastTotalRaised !== null exclui o carregamento inicial da página.
-    if (lastTotalRaised !== null && totalValue !== lastTotalRaised) flashTotalBeam();
+    if (lastTotalRaised !== null && totalValue !== lastTotalRaised) {
+      animateCountUp(statTotalEl, lastTotalRaised, totalValue);
+      flashTotalBeam();
+    } else if (lastTotalRaised === null) {
+      statTotalEl.textContent = Math.round(totalValue).toLocaleString("pt-BR");
+    }
     lastTotalRaised = totalValue;
   }
 

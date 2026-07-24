@@ -83,7 +83,10 @@
               <span>Sua identidade (Twitch)</span>
 
               <div class="create-twitch-logged-out" id="create-twitch-logged-out">
-                <a class="create-twitch-login" id="create-twitch-login" href="/auth/twitch/start?returnTo=/">Continuar com a Twitch</a>
+                <a class="create-twitch-login" id="create-twitch-login" href="/auth/twitch/start?returnTo=/">
+                  <svg class="icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7.5 2.5h-3a1 1 0 00-1 1v13a1 1 0 001 1h3"/><path d="M11 6.5l4 3.5-4 3.5"/><path d="M15 10H6.5"/></svg>
+                  Continuar com a Twitch
+                </a>
               </div>
 
               <div class="create-twitch-logged-in" id="create-twitch-logged-in" hidden>
@@ -102,11 +105,16 @@
               <span>Mercado Pago</span>
 
               <div class="create-mp-disconnected" id="create-mp-disconnected">
-                <a class="create-mp-login is-disabled" id="create-mp-connect" href="/auth/mercadopago/start?returnTo=/">Conectar Mercado Pago</a>
+                <a class="create-mp-login is-disabled" id="create-mp-connect" href="/auth/mercadopago/start?returnTo=/">
+                  <svg class="icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7.5 2.5h-3a1 1 0 00-1 1v13a1 1 0 001 1h3"/><path d="M11 6.5l4 3.5-4 3.5"/><path d="M15 10H6.5"/></svg>
+                  Conectar Mercado Pago
+                </a>
               </div>
 
               <div class="create-mp-connected" id="create-mp-connected" hidden>
-                <span class="create-mp-status-icon" aria-hidden="true">✓</span>
+                <span class="create-mp-status-icon" aria-hidden="true">
+                  <svg class="icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 10.5l4 4 8-9"/></svg>
+                </span>
                 <span class="create-mp-status-text">Mercado Pago conectado</span>
                 <a class="create-mp-reconnect" id="create-mp-reconnect" href="/auth/mercadopago/start?returnTo=/">reconectar</a>
               </div>
