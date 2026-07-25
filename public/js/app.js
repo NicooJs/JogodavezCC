@@ -58,6 +58,8 @@ const historyGridEl = document.getElementById("history-grid");
 const historyModalEmptyEl = document.getElementById("history-modal-empty");
 const historyOpenBtnEl = document.getElementById("history-open-btn");
 const webhookWarningEl = document.getElementById("mp-warning");
+const pixWarningEl = document.getElementById("pix-warning");
+const pixWarningCloseEl = document.getElementById("pix-warning-close");
 
 const lotModalEl = document.getElementById("lot-modal");
 const lotModalThumb = document.getElementById("lot-modal-thumb");
@@ -196,6 +198,19 @@ function updateWebhookWarning() {
   const active = document.body.classList.contains("presenter-mode");
   webhookWarningEl.hidden = !(active && mpDisconnectedState);
 }
+
+const PIX_WARNING_DISMISSED_KEY = `pix-warning-dismissed-${LEILAO_ID}`;
+
+function updatePixWarning() {
+  const active = document.body.classList.contains("presenter-mode");
+  const dismissed = localStorage.getItem(PIX_WARNING_DISMISSED_KEY) === "true";
+  pixWarningEl.hidden = !(active && !dismissed);
+}
+
+pixWarningCloseEl.addEventListener("click", () => {
+  localStorage.setItem(PIX_WARNING_DISMISSED_KEY, "true");
+  updatePixWarning();
+});
 
 socket.on("connect", () => {
   setStatus(true);
@@ -1782,6 +1797,7 @@ function setPresenterMode(active) {
   presenterToggleEl.title = active ? "Sair do modo apresentador" : "Entrar no modo apresentador";
   presenterDrawerEl.hidden = !active;
   updateWebhookWarning();
+  updatePixWarning();
 }
 
 const presenterLoginModal = document.getElementById("presenter-login-modal");

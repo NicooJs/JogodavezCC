@@ -692,6 +692,21 @@ body.board-body.has-bg-image .board-cover-bg { display: none; }
 }
 .webhook-warning button:hover { color: var(--text); }
 
+/* lembrete de rotina, não um erro ativo -- âmbar em vez do vermelho do aviso de conexão caída */
+.pix-warning {
+  background: rgba(201, 154, 108, 0.14);
+  border-color: rgba(201, 154, 108, 0.4);
+}
+.pix-warning .icon { color: var(--bronze); }
+.pix-warning span { flex: 1; min-width: 0; }
+.pix-warning button {
+  color: var(--bronze);
+  font-size: 15px;
+  line-height: 1;
+  padding: 2px 4px;
+}
+.pix-warning button:hover { color: var(--text); }
+
 .field-wrap { position: relative; }
 .field-wrap input { width: 100%; }
 .presenter-search { flex: 1; min-width: 180px; }
