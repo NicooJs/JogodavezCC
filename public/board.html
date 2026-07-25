@@ -99,7 +99,7 @@
           <div class="host-card">
             <div class="host-row">
               <div class="host-avatar-wrap">
-                <img class="host-avatar" id="host-avatar" alt="" hidden />
+                <img class="host-avatar" id="host-avatar" alt="" crossorigin="anonymous" hidden />
                 <a class="host-twitch-badge" id="host-twitch-badge" href="#" target="_blank" rel="noopener" aria-label="Ver no Twitch" title="Ver no Twitch" hidden>
                   <svg class="icon" viewBox="0 0 2400 2800" fill="currentColor" aria-hidden="true"><path d="M500 0 0 500v1800h600v500l500-500h400l900-900V0H500zm1600 1300-400 400h-400l-350 350v-350H500V200h1600v1100z"/><path d="M1700 550h200v600h-200zM1150 550h200v600h-200z"/></svg>
                 </a>
@@ -228,6 +228,7 @@
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12m0 0l-4-4m4 4l4-4M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2"/></svg>
         </button>
       </div>
+      <img class="recap-host-avatar" id="recap-host-avatar" alt="" crossorigin="anonymous" hidden />
       <p class="recap-eyebrow" id="recap-eyebrow">leilão encerrado</p>
       <h2 class="recap-title" id="recap-title">Leilão de Jogos</h2>
 
@@ -295,7 +296,7 @@
     <div class="modal" role="dialog" aria-modal="true" aria-labelledby="lot-modal-title">
       <button class="modal-close" id="lot-modal-close" type="button" aria-label="Fechar">✕</button>
       <div class="modal-head">
-        <img class="modal-thumb" id="lot-modal-thumb" alt="" hidden />
+        <img class="modal-thumb" id="lot-modal-thumb" alt="" crossorigin="anonymous" hidden />
         <div class="modal-head-text">
           <p class="modal-eyebrow" id="lot-modal-eyebrow">novo lote</p>
           <h2 class="modal-title" id="lot-modal-title">Jogo</h2>
@@ -392,9 +393,9 @@
           <span class="modal-label">voz de IA pra ler no alerta <span class="modal-opt">(opcional)</span></span>
           <div class="seg" id="donate-modal-voice">
             <button type="button" data-voice="" class="active">Sem voz</button>
-            <button type="button" data-voice="pt-BR-Neural2-A">Voz 1</button>
-            <button type="button" data-voice="pt-BR-Neural2-B">Voz 2</button>
-            <button type="button" data-voice="pt-BR-Neural2-C">Voz 3</button>
+            <button type="button" data-voice="1">Voz 1</button>
+            <button type="button" data-voice="2">Voz 2</button>
+            <button type="button" data-voice="3">Voz 3</button>
           </div>
         </div>
 
@@ -629,10 +630,6 @@
     </div>
   </div>
 
-  <!-- Diálogos genéricos no lugar de prompt()/confirm() nativos -- irmãos
-       de #settings-overlay (não aninhados dentro de .settings-modal, que
-       tem overflow:hidden e poderia cortar o diálogo). Ver promptDialog()/
-       confirmDialog() em settings.js. -->
   <div class="modal-overlay dialog-overlay" id="prompt-dialog-overlay" hidden>
     <div class="modal" role="dialog" aria-modal="true" aria-labelledby="prompt-dialog-title">
       <button class="modal-close" id="prompt-dialog-close" type="button" aria-label="Fechar">✕</button>

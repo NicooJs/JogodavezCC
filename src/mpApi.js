@@ -1,10 +1,6 @@
-// Cria a cobrança Pix usando o access_token do STREAMER (não o nosso), com
-// application_fee retendo a parte da plataforma — assim o pagamento é da
-// conta do streamer e o dinheiro cai direto nela.
 const PAYMENTS_URL = "https://api.mercadopago.com/v1/payments";
 
-// application_fee é valor absoluto (não percentual) na API do MP, então o
-// split já vem calculado em centavos de quem chama (ver server.js).
+// application_fee é valor absoluto em reais na API do MP, não percentual
 async function createPixPayment({ accessToken, transactionAmountCents, applicationFeeCents, description, externalReference, payerEmail, idempotencyKey }) {
   const res = await fetch(PAYMENTS_URL, {
     method: "POST",
@@ -27,7 +23,7 @@ async function createPixPayment({ accessToken, transactionAmountCents, applicati
   if (!res.ok) {
     const detail = json.message || JSON.stringify(json);
     const err = new Error(`Mercado Pago recusou a criação do Pix (status ${res.status}). ${detail}`.trim());
-    err.status = res.status; // quem chama usa isso pra distinguir 401 (token inválido/expirado, ver markDisconnected em server.js) de outras falhas
+    err.status = res.status;
     throw err;
   }
 
@@ -39,14 +35,11 @@ async function createPixPayment({ accessToken, transactionAmountCents, applicati
   return {
     mpPaymentId: json.id,
     status: json.status,
-    qrCode: txData.qr_code, // "copia e cola"
-    qrCodeBase64: txData.qr_code_base64, // imagem PNG em base64
+    qrCode: txData.qr_code,
+    qrCodeBase64: txData.qr_code_base64,
   };
 }
 
-// O webhook do MP só avisa "algo mudou" — nunca confia no corpo dele pro
-// status/valor real, sempre rebusca aqui com o token do streamer (dono do
-// pagamento).
 async function getPayment({ accessToken, paymentId }) {
   const res = await fetch(`${PAYMENTS_URL}/${paymentId}`, {
     headers: { Authorization: `Bearer ${accessToken}` },
@@ -54,7 +47,7 @@ async function getPayment({ accessToken, paymentId }) {
   if (!res.ok) {
     const detail = await res.text().catch(() => "");
     const err = new Error(`Falha ao buscar pagamento ${paymentId} no Mercado Pago (status ${res.status}). ${detail}`.trim());
-    err.status = res.status; // mesmo motivo do createPixPayment -- quem chama usa isso pra distinguir 401
+    err.status = res.status;
     throw err;
   }
   return res.json();

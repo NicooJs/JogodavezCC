@@ -1,15 +1,9 @@
-// Mosaico de capas de jogos atrás do board. Camada aditiva sobre os
-// losangos do board-bg.js: só troca (.has-covers no <body>) depois que
-// pelo menos uma capa carrega de verdade. Sem RAWG_API_KEY, lista vazia ou
-// falha de rede, não faz nada e o fundo de losango continua.
 
 const TILE_TARGET_PX = 190;
 const MAX_TILES = 140;
 
 async function init() {
-  // Não checa .has-bg-image aqui: app.js aplica essa classe de forma
-  // assíncrona, então checar só na largada teria corrida. A regra CSS já
-  // resolve isso de forma reativa (display:none quando a classe aparecer).
+  // sem checar .has-bg-image aqui: a classe é aplicada async por app.js, o CSS resolve a corrida
 
   let covers = [];
   try {
@@ -34,8 +28,7 @@ async function init() {
   wrap.append(grid, veil);
   document.body.prepend(wrap);
 
-  // Área do grid é 130% x 150% do viewport (ver CSS); estima quantas tiles
-  // cabem nisso sem sobrar vazio nem desperdiçar tiles fora de tela.
+  // 1.3x/1.5x do viewport pra bater com a área do grid definida no CSS
   const cols = Math.ceil((window.innerWidth * 1.3) / TILE_TARGET_PX);
   const rows = Math.ceil((window.innerHeight * 1.5) / ((TILE_TARGET_PX * 4) / 3));
   const tileCount = Math.min(cols * rows, MAX_TILES);

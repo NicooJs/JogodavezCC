@@ -1,8 +1,4 @@
 
-/* Sistema de temas: aplicado via document.documentElement.dataset.theme
-   (app.js). "ametista" no :root é o default; outros temas entram via
-   [data-theme="..."]. --danger/--positive/--bronze ficam fixos entre temas:
-   são sinais semânticos (sabotagem/apoio/bronze), não identidade visual. */
 :root {
   --bg: #17131f;
   --surface: #1e1829;
@@ -31,7 +27,6 @@
   --grain: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
 }
 
-/* Nebulosa — azul acinzentado sobre grafite escuro. */
 :root[data-theme="nebulosa"] {
   --bg: #14141c;
   --surface: #1b1b26;
@@ -49,7 +44,6 @@
   --silver: #cfd3dc;
 }
 
-/* "Safira" — azul profundo com destaque num azul mais claro/vívido. */
 :root[data-theme="safira"] {
   --bg: #0f1420;
   --surface: #161d2e;
@@ -67,7 +61,6 @@
   --silver: #c9d2e3;
 }
 
-/* Grafite — cinza-chumbo neutro, destaque em platina/prata, sem cor saturada. */
 :root[data-theme="grafite"] {
   --bg: #16171a;
   --surface: #1d1e22;
@@ -85,7 +78,6 @@
   --silver: #d4d7dc;
 }
 
-/* "Recife" — petróleo/teal com latão. */
 :root[data-theme="recife"] {
   --bg: #101a1a;
   --surface: #16211f;
@@ -152,9 +144,6 @@ body::before {
 ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 999px; }
 ::-webkit-scrollbar-thumb:hover { background: var(--accent-soft); }
 
-/* Scrollbar invisível até o hover nas listas dos painéis laterais.
-   Firefox não suporta hover em scrollbar-color (só thumb/track estáticos),
-   então fica só fino lá, sem o fade — degradação aceitável. */
 .history-list, .donor-list {
   scrollbar-width: thin;
   scrollbar-color: transparent transparent;
@@ -173,10 +162,6 @@ body::before {
   background: var(--accent-soft);
 }
 
-/* Centraliza .page nos dois eixos: em monitores mais altos que o design,
-   os painéis flex:1 esticariam até preencher a tela com espaço vazio.
-   Capar a altura do .page e centralizar o resto resolve isso sem afetar
-   telas normais (min() sempre escolhe o menor). */
 body.board-body {
   display: flex;
   align-items: center;
@@ -184,8 +169,6 @@ body.board-body {
   min-height: 100vh;
 }
 
-/* Véu escuro sobre a imagem de fundo custom garante contraste com o
-   texto/painéis translúcidos. */
 body.board-body.has-bg-image {
   background-image: linear-gradient(rgba(8, 8, 14, 0.72), rgba(8, 8, 14, 0.72)), var(--bg-image);
   background-size: cover;
@@ -193,10 +176,6 @@ body.board-body.has-bg-image {
   background-attachment: fixed;
 }
 
-/* Mesmo padrão visual de .create-bg/.bg-shard (create.css), com classes
-   próprias porque index.html carrega os dois arquivos e nomes iguais
-   colidiriam. Some quando o streamer define uma imagem de fundo própria
-   (.has-bg-image). */
 .board-bg {
   position: fixed;
   inset: 0;
@@ -221,15 +200,9 @@ body.board-body.has-bg-image .board-bg { display: none; }
 .board-bg-shard-5 { top: 45%; left: 1.5%; width: 16px; height: 16px; opacity: 0.14; }
 
 @media (max-width: 720px) {
-  /* Em telas estreitas o .page perde o padding, então os losangos da
-     direita ficariam perto demais do conteúdo. */
   .board-bg-shard-3, .board-bg-shard-4 { display: none; }
 }
 
-/* Mosaico de capas (board-cover-bg.js), camada por cima do .board-bg: os
-   losangos são o fallback garantido (não dependem de rede/RAWG_API_KEY);
-   o mosaico só aparece via .has-covers depois que a 1ª capa carrega. Board
-   nunca fica sem fundo. */
 .board-cover-bg {
   position: fixed;
   inset: 0;
@@ -279,16 +252,12 @@ body.board-body.has-bg-image .board-cover-bg { display: none; }
   flex-direction: column;
   height: min(100vh, 1000px);
   width: 100%;
-  /* Em telas largas o espaço extra vira uma 2ª coluna de lotes (ver
-     .arena-grid) em vez de só esticar cards/margens. */
   max-width: 1850px;
   padding: 18px 24px 14px;
 }
 
 .topbar {
   display: flex;
-  /* center, não baseline: a fonte de destaque do título (.brand-word) tem
-     métricas de linha de base bem diferentes da fonte dos botões. */
   align-items: center;
   justify-content: space-between;
   gap: 16px;
@@ -313,12 +282,6 @@ body.board-body.has-bg-image .board-cover-bg { display: none; }
   flex-shrink: 0;
 }
 
-/* Fredoka (arredondada, bold) só no board: combina com os ícones que
-   substituem letras no título (ver title-swap-* / renderBrandTitle em
-   app.js) — uma serifada como Abril Fatface (usada na home) competiria
-   visualmente com o desenho geométrico dos ícones. font-weight explícito
-   porque Abril Fatface só tem um peso (setar 700 nela não faz nada), mas
-   Fredoka precisa do peso alto pra equilibrar ícone e letra lado a lado. */
 .board-body .brand-word { --font-title: "Fredoka", sans-serif; font-weight: 700; }
 
 .brand-word {
@@ -339,9 +302,6 @@ body.board-body.has-bg-image .board-cover-bg { display: none; }
   color: var(--accent-text);
 }
 
-/* Letra->ícone no título (ver renderBrandTitle em app.js). .title-swap-char
-   é o único conteúdo em fluxo (o ícone é absolute), então dimensiona a
-   caixa sozinho -- o ícone só centraliza em cima por cima dele. */
 .title-swap { position: relative; display: inline-block; }
 .title-swap-char { display: inline-block; }
 .title-swap-icon {
@@ -359,8 +319,6 @@ body.board-body.has-bg-image .board-cover-bg { display: none; }
 .title-swap-icon.icon-trophy { color: var(--silver); }
 .title-swap-icon.icon-star { color: var(--accent-text); }
 
-/* center, não baseline: os itens aqui misturam fonte mono e normal com
-   métricas diferentes — baseline desalinhava as pills visivelmente. */
 .topbar-right {
   display: flex;
   align-items: center;
@@ -369,9 +327,6 @@ body.board-body.has-bg-image .board-cover-bg { display: none; }
   font-size: 12.5px;
 }
 
-/* Branco fixo (não token de tema) de propósito: é um efeito de luz ambiente
-   atrás do vidro, não uma cor de marca — mesmo raciocínio do zebra striping
-   em .history-list li:nth-child(even). */
 .topbar-total {
   display: inline-flex;
   align-items: center;
@@ -385,8 +340,6 @@ body.board-body.has-bg-image .board-cover-bg { display: none; }
   padding: 5px 14px 5px 12px;
 }
 
-/* padding:1px + mask furando o miolo desenha só o anel, sem cobrir o
-   conteúdo — a borda sólida da regra acima cuida do contorno em repouso. */
 .topbar-total::before {
   content: "";
   position: absolute;
@@ -431,9 +384,7 @@ body.board-body.has-bg-image .board-cover-bg { display: none; }
   transition: transform 0.15s ease;
 }
 
-/* Escopado com o pai (0-2-0) em vez de "strong.topbar-total-hidden-label"
-   (0-1-1): essa especificidade empataria com ".topbar-total strong" acima
-   e perderia no empate por ordem de cascata. */
+/* Precisa de mais especificidade que ".topbar-total strong" acima, senão perde o empate na cascata. */
 .topbar-total .topbar-total-hidden-label {
   display: none;
   font-size: 14px;
@@ -486,7 +437,6 @@ body.board-body.has-bg-image .board-cover-bg { display: none; }
 .dot { position: relative; width: 6px; height: 6px; border-radius: 50%; background: var(--muted); }
 .status.online .dot { background: var(--accent); }
 
-/* Anel "de radar" que se expande e some, só quando ao vivo. */
 .status.online .dot::after {
   content: "";
   position: absolute;
@@ -520,9 +470,6 @@ body.board-body.has-bg-image .board-cover-bg { display: none; }
 
 .presenter-toggle:hover { color: var(--text); border-color: var(--accent-soft); }
 
-/* Botão de destaque, visível pra qualquer um vendo o board — diferente do
-   resto dos controles (cinza/discretos). Nasce discreto (borda fina, brilho
-   pulsando devagar) e só fecha pra sólido em --accent no hover. */
 .ranking-open-btn {
   display: inline-flex;
   align-items: center;
@@ -556,8 +503,6 @@ body.board-body.has-bg-image .board-cover-bg { display: none; }
   50% { box-shadow: 0 0 14px 1px var(--accent-glow); }
 }
 
-/* Fundo sólido (não outline como .ranking-open-btn) para destacar como CTA
-   principal do topbar. Visível pra qualquer visitante, não só apresentador. */
 .donate-open-btn {
   display: inline-flex;
   align-items: center;
@@ -652,8 +597,6 @@ body.board-body.has-bg-image .board-cover-bg { display: none; }
 .presenter-bar-icon-link .icon { width: 17px; height: 17px; }
 .presenter-bar-link:hover { color: var(--accent-text); }
 
-/* Cores fixas de propósito (não var()): são a pré-visualização de cada
-   paleta, não podem depender do tema atual do documento. */
 .theme-dots { display: flex; align-items: center; gap: 7px; margin-left: auto; }
 
 .theme-dot {
@@ -675,8 +618,6 @@ body.board-body.has-bg-image .board-cover-bg { display: none; }
 .theme-dot-safira { background: linear-gradient(135deg, #0f1420 50%, #4d80f5 50%); }
 .theme-dot-grafite { background: linear-gradient(135deg, #16171a 50%, #9fb0c2 50%); }
 
-/* Sistema único com três pesos visuais (primário sólido / perigo
-   contornado / fantasma), mesma altura/raio/ritmo de ícone entre eles. */
 .pbar-btn {
   height: 38px;
   padding: 0 16px;
@@ -724,9 +665,6 @@ body.board-body.has-bg-image .board-cover-bg { display: none; }
 }
 .pbar-btn-ghost:hover { color: var(--accent-text); background: var(--surface-2); }
 
-/* Aviso de Mercado Pago desconectado (ver mpDisconnected em server.js).
-   Visibilidade controlada 100% via JS (attribute hidden), não por classe
-   combinada com .presenter-mode. */
 .webhook-warning {
   display: flex;
   align-items: center;
@@ -809,7 +747,6 @@ body.board-body.has-bg-image .board-cover-bg { display: none; }
 .amount-wrap input:focus { outline: none; }
 .amount-wrap input::placeholder { color: var(--muted); }
 
-/* Cor do valor indica a ação: verde pra apoiar, vermelho pra sabotar. */
 .amount-wrap.act-add input,
 .amount-wrap.act-add .amount-prefix { color: var(--positive); }
 .amount-wrap.act-remove input,
@@ -946,9 +883,6 @@ body.board-body.has-bg-image .board-cover-bg { display: none; }
 
 .sold-overlay[hidden] { display: none; }
 
-/* Padrão de anéis pontilhados girando atrás do "Vencedor!" (drawSwirlFrame
-   em app.js), em Canvas2D em vez de shader WebGL: pra um flash de ~2.2s não
-   compensa o custo/risco de outro pipeline WebGL. */
 .sold-swirl-canvas {
   position: absolute;
   inset: 0;
@@ -963,10 +897,6 @@ body.board-body.has-bg-image .board-cover-bg { display: none; }
   100% { background: rgba(10, 10, 12, 0); }
 }
 
-/* color != --accent-text de propósito: o fundo giratório (drawSwirlFrame em
-   app.js) usa --accent-text como cor "acesa" do dither -- com a mesma cor
-   no texto, ele sumia bem no meio da animação. --text (neutro, sempre
-   contrasta com --bg) + contorno escuro garante leitura em qualquer tema. */
 .sold-mark {
   font-family: var(--font-display);
   font-style: italic;
@@ -994,8 +924,6 @@ body.board-body.has-bg-image .board-cover-bg { display: none; }
   100% { transform: scale(1) rotate(-4deg); opacity: 0; }
 }
 
-/* Vem logo depois do "Vencedor!" (.sold-overlay, z-index 60), por isso
-   fica acima dele. */
 .recap-overlay {
   position: fixed;
   inset: 0;
@@ -1041,6 +969,17 @@ body.board-body.has-bg-image .board-cover-bg { display: none; }
   border-radius: var(--radius);
 }
 .recap-close:hover { color: var(--text); background: var(--surface-2); }
+
+.recap-host-avatar {
+  display: block;
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 2px solid var(--accent);
+  margin: 0 auto 10px;
+}
+.recap-host-avatar[hidden] { display: none; }
 
 .recap-eyebrow {
   margin: 0 0 4px;
@@ -1096,8 +1035,6 @@ body.board-body.has-bg-image .board-cover-bg { display: none; }
   color: var(--muted);
 }
 
-/* Cor de marca só no ícone do X (logo de terceiro) — o de baixar segue o
-   tema normal, como o resto da UI. */
 .recap-share-corner {
   position: absolute;
   top: 16px;
@@ -1252,7 +1189,6 @@ body.board-body.has-bg-image .board-cover-bg { display: none; }
   color: var(--muted);
 }
 
-/* ---- ranking dos próprios leilões do streamer (botão de destaque no topbar) ---- */
 
 .ranking-modal {
   position: relative;
@@ -1281,9 +1217,6 @@ body.board-body.has-bg-image .board-cover-bg { display: none; }
 
 .ranking-modal-body { overflow-y: auto; padding: 22px 26px 26px; }
 
-/* 4º classificado em diante (renderRecap em app.js): qualifyCount pode
-   passar de 3, mas .recap-podium só faz sentido visual pra exatamente 3 —
-   o resto entra aqui como lista compacta. */
 .recap-extra { margin-bottom: 22px; }
 .recap-extra-list { display: flex; flex-direction: column; gap: 6px; }
 
@@ -1410,6 +1343,24 @@ body.board-body.has-bg-image .board-cover-bg { display: none; }
 .recap-donor-row.rank-2 .recap-donor-rank { color: var(--silver); }
 .recap-donor-row.rank-3 .recap-donor-rank { color: var(--bronze); }
 
+.recap-donor-avatar {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  object-fit: cover;
+  background: var(--surface-2);
+  flex-shrink: 0;
+}
+.recap-donor-avatar-placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-display);
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--muted);
+}
+
 .recap-donor-name {
   flex: 1;
   min-width: 0;
@@ -1512,8 +1463,6 @@ body.board-body.has-bg-image .board-cover-bg { display: none; }
   color: var(--muted);
 }
 
-/* Round arquivado ao encerrar (openRound: true, archiveAuction em
-   src/db.js) mas não finalizado — números ainda podem mudar se reabrir. */
 .history-card-inprogress {
   background: var(--accent-bg);
   color: var(--accent-text);
@@ -1610,9 +1559,6 @@ body.board-body.has-bg-image .board-cover-bg { display: none; }
   font-size: 10.5px;
 }
 
-/* Ciclo recentes -> maior valor -> menor valor -> recentes (cycleHistorySort
-   em app.js) — texto ao lado do ícone porque só a seta não deixa claro
-   qual das 3 ordens tá ativa. */
 .history-sort-btn {
   margin-left: auto;
   display: inline-flex;
@@ -1645,9 +1591,7 @@ body.board-body.has-bg-image .board-cover-bg { display: none; }
 
 .panel-hint strong { color: var(--text); }
 
-/* position:relative faz o ::before (absolute) ancorar no painel, não no
-   .board (também relative). z-index 0, não -1: negativo já causou
-   problemas de empilhamento em contexto parecido (fundo da criação). */
+/* z-index 0, não -1: negativo já causou bug de empilhamento aqui. */
 .host-panel, .timer-panel { position: relative; }
 .host-panel::before, .timer-panel::before {
   content: "";
@@ -1666,8 +1610,6 @@ body.board-body.has-bg-image .board-cover-bg { display: none; }
 
 .host-panel { flex-shrink: 0; padding: 20px 10px; }
 
-/* padding aqui substitui (não soma) o do .panel pai, senão sobra pouco
-   espaço pro nome numa coluna estreita. */
 .host-card {
   position: relative;
   background: var(--surface-2);
@@ -1723,8 +1665,6 @@ body.board-body.has-bg-image .board-cover-bg { display: none; }
 .host-twitch-link:hover { color: var(--accent); text-decoration: underline; }
 .host-twitch-link[hidden] { display: none; }
 
-/* Cor da marca Twitch só aqui, num elemento pequeno e reconhecível — não
-   vira paleta do site. */
 .host-twitch-badge {
   position: absolute;
   bottom: -2px;
@@ -1774,7 +1714,6 @@ body.board-body.has-bg-image .board-cover-bg { display: none; }
 
 .donor-row:hover { background: var(--surface-2); }
 
-/* Ecoa a mesma linguagem visual de .lot-card-fill na arena. */
 .donor-row-fill {
   position: absolute;
   inset: 0;
@@ -1783,9 +1722,7 @@ body.board-body.has-bg-image .board-cover-bg { display: none; }
   z-index: 0;
   transition: width 0.5s var(--ease);
 }
-/* Sibling combinator (~), não ">*": ">*" empataria em especificidade com
-   .donor-row-fill e, vindo depois, cancelaria seu position:absolute — a
-   barra viraria item de flex e engoliria o espaço do nome. */
+/* Tem que ser ~ (sibling), não ">*": ">*" empata em especificidade e quebra o position:absolute da barra. */
 .donor-row-fill ~ * { position: relative; z-index: 1; }
 
 
@@ -1812,8 +1749,6 @@ body.board-body.has-bg-image .board-cover-bg { display: none; }
 .donor-row.rank-2 .medal-icon { transform: rotate(4deg); }
 .donor-row.rank-3 .medal-icon { transform: rotate(-3deg); }
 
-/* Foto da Twitch quando o nome digitado bate com um login real (melhor
-   esforço, getDonorAvatar em server.js); senão cai no placeholder. */
 .donor-avatar {
   width: 24px;
   height: 24px;
@@ -1856,8 +1791,6 @@ body.board-body.has-bg-image .board-cover-bg { display: none; }
 
 .arena-panel { flex: 1; min-height: 0; }
 
-/* auto-fill colapsa pra 1 coluna sozinho quando não cabem 2 de
-   minmax(430px, 1fr) — sem precisar de media query própria. */
 .arena-grid {
   overflow-y: auto;
   min-height: 0;
@@ -1870,8 +1803,6 @@ body.board-body.has-bg-image .board-cover-bg { display: none; }
   padding: 2px 4px 4px;
 }
 
-/* Só o 1º lugar ocupa a linha inteira (destaque do líder) -- os demais
-   sempre em grid de 2 colunas, mesmo que o último sobre sozinho na linha. */
 .arena-grid > .lot-card:first-child {
   grid-column: 1 / -1;
 }
@@ -1889,7 +1820,6 @@ body.board-body.has-bg-image .board-cover-bg { display: none; }
 
 .arena-empty-title { font-family: var(--font-display); font-style: italic; font-size: 19px; color: var(--text); }
 
-/* grid-column 1/-1 pra atravessar as duas colunas da grade. */
 .qualify-divider {
   display: flex;
   align-items: center;
@@ -1924,14 +1854,7 @@ body.board-body.has-bg-image .board-cover-bg { display: none; }
   border: 1px solid var(--border);
   border-radius: var(--radius);
   overflow: hidden;
-  /* Cantos levemente assimétricos, variando por posição -- uma grade de
-     caixas idênticas lê como gerada por máquina; uma variação sutil (bem
-     menor que o raio base) já basta pra parecer feito à mão sem ficar
-     torto. */
-  /* overflow != visible faz o navegador tratar a altura mínima automática
-     do item como 0 no cálculo de linha do Grid (regra de espec de
-     overflow) — sem min-height explícito, a linha colapsava menor que o
-     conteúdo real e cortava nome/valores/badge. */
+  /* overflow != visible zera a altura mínima automática do item no Grid; sem isso o conteúdo cortava. */
   min-height: 122px;
   transition: border-color 0.2s ease, box-shadow 0.3s ease;
   animation: card-in 0.25s var(--ease);
@@ -1945,10 +1868,6 @@ body.board-body.has-bg-image .board-cover-bg { display: none; }
   to { opacity: 1; transform: translateY(0); }
 }
 
-/* Halo via box-shadow, não pseudo-elemento: .lot-card precisa de
-   overflow:hidden pra clipar .lot-card-bg (que vaza via inset negativo), o
-   que cortaria um pseudo-elemento tentando vazar do mesmo jeito.
-   box-shadow no próprio elemento não é afetado pelo seu overflow. */
 .lot-card:hover {
   border-color: var(--accent);
   box-shadow: 0 0 0 1px var(--accent-soft), 0 0 26px 4px var(--accent-glow), 0 0 48px 12px var(--accent-glow);
@@ -2006,17 +1925,12 @@ body.board-body.has-bg-image .board-cover-bg { display: none; }
   to { background-position: 160% 0; }
 }
 
-/* O tremor de sabotagem vai no conteúdo (não no .lot-card), pra não brigar
-   com o translateY do reposicionamento ao vivo do card. */
 @keyframes fill-pulse-add {
   0% { box-shadow: inset 0 0 0 0 rgba(70, 177, 127, 0.55); }
   45% { box-shadow: inset 0 0 32px 6px rgba(70, 177, 127, 0.4); }
   100% { box-shadow: inset 0 0 0 0 rgba(70, 177, 127, 0); }
 }
 
-/* position:fixed (não filho do card) de propósito: o card tem
-   overflow:hidden pra cortar a imagem de fundo, o que também cortaria o
-   confete quase inteiro. */
 .confetti-burst { position: fixed; pointer-events: none; z-index: 80; overflow: visible; }
 
 .confetti-piece {
@@ -2143,9 +2057,6 @@ body.board-body.has-bg-image .board-cover-bg { display: none; }
 
 .lot-funding-add,
 .lot-funding-remove {
-  /* Teto de largura por valor, não na linha toda: um overflow:hidden na
-     linha inteira escondia o valor de sabotagem por completo quando os
-     dois apareciam juntos. Assim ele quebra pra 2ª linha em vez de sumir. */
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -2155,8 +2066,6 @@ body.board-body.has-bg-image .board-cover-bg { display: none; }
 .lot-funding-add { color: var(--positive); }
 .lot-funding-remove { color: var(--danger); }
 
-/* topDonor por game_key (getTopDonorByGame em src/db.js) — diferente do
-   quadro de honra, que é o ranking geral do leilão, não por jogo. */
 .lot-top-donor {
   display: flex;
   align-items: center;
@@ -2200,9 +2109,6 @@ body.board-body.has-bg-image .board-cover-bg { display: none; }
   row-gap: 4px;
   gap: 10px;
   flex-shrink: 0;
-  /* Sem max-width, o badge "último sabotado" (texto comprido) pedia mais
-     largura do que sobrava na coluna, e como flex-shrink:0 nunca cedia,
-     sobrava 0px pro .lot-info vizinho. Assim ele quebra pra 2ª linha. */
   max-width: 150px;
 }
 
@@ -2224,8 +2130,6 @@ body.board-body.has-bg-image .board-cover-bg { display: none; }
 .arena-grid .lot-card:nth-of-type(3n+2) .badge-hit { border-radius: 2px 3px 2px 4px; }
 .arena-grid .lot-card:nth-of-type(3n+3) .badge-hit { border-radius: 3px 4px 2px 3px; }
 
-/* Fica no lote depois que o flash "sabotado agora" some — marca o último
-   sabotado até o próximo acontecer em outro lugar. */
 .badge-hit-last {
   background: transparent;
   border: 1px solid rgba(239, 68, 112, 0.4);
@@ -2444,8 +2348,6 @@ body.board-body.has-bg-image .board-cover-bg { display: none; }
   transition: background 0.15s ease;
 }
 
-/* rgba branco fixo, não token de tema: é só uma clareada de ~2.5%, um
-   token de superfície nessa opacidade ficaria forte/errado demais. */
 .history-list li:nth-child(even) { background: rgba(255, 255, 255, 0.025); }
 
 .history-list li:hover { background: var(--surface-2); }
@@ -2480,8 +2382,6 @@ body.board-body.has-bg-image .board-cover-bg { display: none; }
   gap: 3px;
 }
 
-/* Quebra em até 2 linhas em vez de truncar: a coluna é estreita e cortar
-   com "..." escondia o nome do jogo, a parte que mais importa aqui. */
 .history-text {
   overflow: hidden;
   display: -webkit-box;
@@ -2531,8 +2431,6 @@ body.board-body.has-bg-image .board-cover-bg { display: none; }
   .panel { min-height: 0; border-right: none; }
   .donors-panel, .history-panel { max-height: 260px; }
   .arena-panel { min-height: 0; }
-  /* 1fr fixo, não o minmax(430px, 1fr) da regra base: 430px de mínimo é
-     mais largo que muitas telas de celular e causaria overflow horizontal. */
   .arena-grid { max-height: none; overflow: visible; grid-template-columns: 1fr; }
   .presenter-toggle span { display: inline; }
 
@@ -2547,7 +2445,6 @@ body.board-body.has-bg-image .board-cover-bg { display: none; }
   .lot-edit button .icon { width: 11px; height: 11px; }
 }
 
-/* ---- modal de lote ---- */
 
 .modal-overlay {
   position: fixed;
@@ -2699,9 +2596,6 @@ body.board-body.has-bg-image .board-cover-bg { display: none; }
 
 .modal-textarea { height: auto; padding: 8px 12px; resize: none; font-family: var(--font-body); line-height: 1.4; }
 
-/* Campo "jogo": input dentro de um wrapper com a capa do jogo escolhido à
-   esquerda (quando confirmado) e um botão "+" à direita pra entrada manual
-   -- ver .game-shelf logo abaixo pro resto da busca. */
 .game-input-wrap {
   display: flex;
   align-items: center;
@@ -2772,8 +2666,6 @@ body.board-body.has-bg-image .board-cover-bg { display: none; }
 }
 .game-confirm-hint[hidden] { display: none; }
 
-/* Contagem regressiva na tela de doação -- mesma fonte/números tabulares do
-   .timer-clock do board, só sem o anel (espaço mais apertado aqui). */
 .doar-timer {
   display: flex;
   align-items: center;
@@ -2811,10 +2703,6 @@ body.board-body.has-bg-image .board-cover-bg { display: none; }
 .modal-actions { display: flex; gap: 8px; margin-top: 20px; }
 .modal-actions .btn-mini { flex: 1; height: 38px; }
 
-/* Prateleira de capas do campo "jogo" no formulário de doação -- alternativa
-   ao dropdown de autocomplete padrão. Aparece no foco do #doar-game/
-   #donate-modal-game, filtra pelos jogos do próprio leilão (já em memória
-   via socket) e cai pra sugestão via RAWG quando nada bate. */
 .game-shelf {
   display: flex;
   gap: 8px;
@@ -2860,8 +2748,6 @@ body.board-body.has-bg-image .board-cover-bg { display: none; }
 .game-shelf-card:hover { border-color: var(--accent-soft); }
 .game-shelf-card:active { transform: scale(0.94); }
 
-/* Fica marcado enquanto for a escolha atual -- não some com a prateleira,
-   pra dar pra rever/trocar sem apagar o campo e refazer a busca. */
 .game-shelf-card.selected {
   border-color: var(--accent);
   background-color: var(--accent-bg);
@@ -2914,9 +2800,6 @@ body.board-body.has-bg-image .board-cover-bg { display: none; }
   border-radius: 3px;
 }
 
-/* Modal de doação Pix in-app: reaproveita .modal/.modal-overlay/.seg/
-   .amount-wrap/.modal-input inteiros, só define o específico dos 3 passos
-   (formulário -> QR aguardando -> confirmado, ver .donate-step). */
 .donate-modal { max-width: 400px; }
 
 .donate-step-success { text-align: center; padding: 12px 0 4px; }

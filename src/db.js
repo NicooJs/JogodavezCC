@@ -1,14 +1,10 @@
-// Banco de dados baseado em arquivo JSON: sem dependências nativas, roda em
-// qualquer SO só com o Node instalado. createStore(filePath) devolve uma
-// instância isolada por leilão (cacheadas em src/stores.js).
-
 const fs = require("fs");
 
 function emptyData() {
   return {
     games: {},
     events: [],
-    processedMessages: {}, // provider_id -> true, evita contar a mesma doação 2x
+    processedMessages: {},
     state: {},
     pastAuctions: [],
     nextEventId: 1,
@@ -51,14 +47,11 @@ function createStore(filePath) {
     fs.writeFileSync(filePath, JSON.stringify(data, null, 2), "utf-8");
   }
 
-  // ---------------- state ----------------
-
   function getState(key, fallback = null) {
     return Object.prototype.hasOwnProperty.call(data.state, key) ? data.state[key] : fallback;
   }
 
-  // null/undefined apaga a chave em vez de virar a string "null" — sem isso,
-  // getState nunca mais cai no fallback depois que o campo é limpo uma vez.
+  // null/undefined apaga a chave em vez de virar a string "null"
   function setState(key, value) {
     if (value === null || value === undefined) {
       delete data.state[key];
@@ -67,8 +60,6 @@ function createStore(filePath) {
     }
     save();
   }
-
-  // ---------------- idempotência ----------------
 
   function isAlreadyProcessed(providerId) {
     if (!providerId) return false;
@@ -79,8 +70,6 @@ function createStore(filePath) {
     if (!providerId) return;
     data.processedMessages[providerId] = true;
   }
-
-  // ---------------- jogos / contribuições ----------------
 
   function applyContribution({ key, name, action, amountCents, username, rawMessage, providerId }) {
     const signedAmount = action === "remove" ? -Math.abs(amountCents) : Math.abs(amountCents);
@@ -133,15 +122,10 @@ function createStore(filePath) {
     return data.games[key] ? { ...data.games[key] } : null;
   }
 
-  // Casa uma chave nova com um jogo já catalogado, pra mensagens com ruído
-  // (ex: "minecraft manda ver!!") ou erro de digitação não virarem lotes
-  // duplicados. Só chamada depois de descartar match exato.
   function resolveExistingKey(candidateKey) {
     const existingKeys = Object.keys(data.games);
     if (existingKeys.length === 0) return null;
 
-    // 1) chave existente aparece inteira, por palavra, dentro da mensagem ->
-    // usa a mais longa (mais específica) entre as que baterem.
     const substringMatches = existingKeys.filter((k) => {
       const escaped = k.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
       const re = new RegExp(`(^|\\s)${escaped}(\\s|$)`);
@@ -151,8 +135,6 @@ function createStore(filePath) {
       return substringMatches.sort((a, b) => b.length - a.length)[0];
     }
 
-    // 2) erro de digitação: distância de edição pequena relativa ao tamanho
-    // da menor das duas chaves, pra não confundir jogos curtos diferentes.
     let best = null;
     let bestDist = Infinity;
     for (const k of existingKeys) {
@@ -188,8 +170,6 @@ function createStore(filePath) {
     return data.events.slice(-limit).reverse();
   }
 
-  // Maior doação ÚNICA (não soma por doador). Só conta "add" — sabotagem
-  // não é doação pro jogo.
   function getBiggestDonation() {
     let best = null;
     for (const ev of data.events) {
@@ -213,7 +193,6 @@ function createStore(filePath) {
       .slice(0, limit);
   }
 
-  // Nomes distintos, do mais recente pro mais antigo — autocomplete de doador.
   function getDonorNames() {
     const seen = new Set();
     const names = [];
@@ -226,15 +205,12 @@ function createStore(filePath) {
     return names;
   }
 
-  // Inclui valores usados pra sabotar — o dinheiro entrou do mesmo jeito.
   function getTotalRaised() {
     return data.events
       .filter((ev) => ev.action === "add" || ev.action === "remove")
       .reduce((sum, ev) => sum + ev.amount_cents, 0);
   }
 
-  // Soma bruta de apoio vs. sabotagem por lote — diferente de total_cents
-  // (saldo líquido), preserva os dois lados mesmo quando um cancela o outro.
   function getFundingBreakdown() {
     const map = {};
     for (const ev of data.events) {
@@ -247,8 +223,6 @@ function createStore(filePath) {
     return map;
   }
 
-  // Maior soma de "add" por doador dentro de cada game_key — só apoio conta,
-  // sabotagem não entra em "quem mais doou pro jogo X".
   function getTopDonorByGame() {
     const perGame = {};
     for (const ev of data.events) {
@@ -265,7 +239,6 @@ function createStore(filePath) {
     return result;
   }
 
-  // Doação sem username (anônima) não conta pra nenhum lote.
   function getDonorCountByGame() {
     const seenByGame = {};
     for (const ev of data.events) {
@@ -343,13 +316,9 @@ function createStore(filePath) {
     return { ...data.games[key] };
   }
 
-  // Zera só jogos/histórico, preserva o state (senha do apresentador,
-  // título, host, foto, flags de webhook). Não usa emptyData() puro: isso
-  // apagaria adminSecretHash junto e trancaria o streamer fora do próprio
-  // modo apresentador.
   function resetAll() {
     const preservedState = { ...data.state };
-    delete preservedState.lastSabotagedKey; // referenciava um lote que não existe mais
+    delete preservedState.lastSabotagedKey;
     const preservedPastAuctions = data.pastAuctions || [];
     data = emptyData();
     data.state = preservedState;
@@ -357,16 +326,8 @@ function createStore(filePath) {
     save();
   }
 
-  // Guarda um recap (ver buildRecap em server.js). Chamada tanto ao encerrar
-  // (openRound: true) quanto ao zerar (openRound: false).
-  //
-  // Encerrar não apaga o catálogo — reabrir continua o mesmo leilão — então
-  // fechar/reabrir/fechar de novo sem zerar recalcularia o recap sobre os
-  // MESMOS eventos. Por isso, enquanto o topo da lista for um round ainda
-  // "aberto" (openRound: true), um novo encerramento SUBSTITUI essa entrada
-  // em vez de empilhar outra; uma entrada nova só nasce depois que um zerar
-  // (openRound: false) fecha o round. Sem essa regra o mesmo dinheiro seria
-  // contado várias vezes no histórico e no ranking global de streamers.
+  // se o topo da lista ainda for um round aberto, substitui em vez de
+  // empilhar — evita contar o mesmo dinheiro 2x no histórico
   function archiveAuction(recap, options = {}) {
     const openRound = !!options.openRound;
     const top = data.pastAuctions[0];

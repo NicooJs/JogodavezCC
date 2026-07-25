@@ -1,10 +1,3 @@
-// Registro separado dos dados de cada leilão: só o necessário pra gerar um
-// id novo e guardar metadados leves (título, host). Pagamento é vinculado
-// por CONTA (twitch_user_id) em src/streamersStore.js, não por leilão --
-// esse arquivo não guarda nenhuma credencial. A senha do apresentador
-// também não fica aqui — fica com hash no state do próprio leilão
-// (stores.js).
-
 const fs = require("fs");
 const path = require("path");
 const crypto = require("crypto");
@@ -33,17 +26,11 @@ function save() {
 }
 
 function generateId() {
-  return crypto.randomBytes(6).toString("hex"); // 12 caracteres, só [0-9a-f]
+  return crypto.randomBytes(6).toString("hex");
 }
 
 const MIN_PASSWORD_LENGTH = 8;
 
-// host/hostAvatar/hostTwitchUserId/hostTwitchLogin vêm da sessão Twitch já
-// verificada no servidor — nunca de texto digitado. hostTwitchUserId é
-// checado aqui de novo (não só do lado de fora) pra essa função continuar
-// segura mesmo se um refactor futuro de server.js esquecer de validar a
-// sessão antes de chamar. Conexão com o Mercado Pago é requisito de CONTA
-// (streamersStore.js), não de leilão, e é checada em server.js.
 async function createLeilao({ title, host, hostAvatar, hostTwitchUserId, hostTwitchLogin, password }) {
   if (!hostTwitchUserId) {
     throw new Error("É necessário fazer login com a Twitch antes de criar o leilão");
@@ -60,9 +47,6 @@ async function createLeilao({ title, host, hostAvatar, hostTwitchUserId, hostTwi
   const meta = {
     title: title || "Leilão de Jogos",
     host: host || "",
-    // Dono do leilão pra /meus-leiloes e pra liberar modo apresentador sem
-    // senha (requireLeilaoAdmin em server.js). Separado de hostVerified
-    // (guardado no store): esse é posse, aquele é exibição.
     ownerTwitchUserId: hostTwitchUserId,
     createdAt: new Date().toISOString(),
   };
@@ -92,18 +76,10 @@ function getLeilaoMeta(id) {
   return registry.leiloes[id] ? { ...registry.leiloes[id] } : null;
 }
 
-// Usado pelo timer de auto-close, que precisa passar por todos os leilões.
 function listLeilaoIds() {
   return Object.keys(registry.leiloes);
 }
 
-// Varredura em memória em vez de um índice separado (twitchUserId -> [ids]):
-// registry.leiloes já mora inteiro em memória, então isso é O(n) sem I/O, e
-// na escala desse app (dezenas/centenas de leilões) nunca vai ser o gargalo.
-// Um índice separado precisaria ser mantido manualmente em todo lugar que
-// cria ou apaga leilão — mais uma estrutura pra dessincronizar. Como
-// ownerTwitchUserId mora dentro do mesmo objeto que deleteLeilao já apaga,
-// essa varredura nunca fica desatualizada em relação a um leilão apagado.
 function listLeiloesByOwner(twitchUserId) {
   if (!twitchUserId) return [];
   return Object.entries(registry.leiloes)
@@ -111,9 +87,6 @@ function listLeiloesByOwner(twitchUserId) {
     .map(([id, meta]) => ({ id, ...meta }));
 }
 
-// Não apaga o arquivo de dados nem o cache em memória — isso é
-// responsabilidade de quem chama (deleteStore em stores.js), pra esse
-// módulo não precisar saber de filesystem além do próprio _registry.json.
 function deleteLeilao(id) {
   delete registry.leiloes[id];
   save();

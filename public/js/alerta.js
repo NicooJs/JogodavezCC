@@ -1,5 +1,3 @@
-// Overlay de Browser Source pro OBS/Streamlabs: passivo, via socket. Fila
-// evita que duas doações quase simultâneas sobreponham alertas.
 const LEILAO_ID = location.pathname.match(/^\/l\/([a-z0-9_-]+)\/alerta/i)?.[1] || null;
 if (!LEILAO_ID) throw new Error("LEILAO_ID ausente na URL");
 
@@ -23,9 +21,6 @@ function formatBRL(value) {
   return `R$ ${Number(value || 0).toFixed(2).replace(".", ",")}`;
 }
 
-// Osciladores Web Audio puros, sem arquivo de áudio. Se o autoplay for
-// bloqueado (falta habilitar "Control audio via OBS" na fonte), o alerta
-// visual continua funcionando, só sem som.
 function playChime(isRemove) {
   try {
     const ctx = new (window.AudioContext || window.webkitAudioContext)();
@@ -45,7 +40,6 @@ function playChime(isRemove) {
       osc.stop(t + 0.4);
     });
   } catch (err) {
-    // sem suporte a Web Audio -- segue só com o alerta visual
   }
 }
 
@@ -89,13 +83,24 @@ function startHideTimer(delayMs) {
   }, delayMs);
 }
 
-// Sem voz escolhida (ou sem chave do Google TTS configurada no servidor),
-// item.audioUrl nunca chega e o card some no tempo fixo de sempre. Com
-// áudio, espera a fala terminar de verdade ("ended") em vez de estimar
-// duração -- com timeouts de segurança pro autoplay bloqueado ou o áudio
-// nunca carregar, pra nunca travar a fila de alertas.
+let ptVoices = [];
+function refreshPtVoices() {
+  ptVoices = window.speechSynthesis.getVoices().filter((v) => v.lang && v.lang.toLowerCase().startsWith("pt"));
+}
+if (window.speechSynthesis) {
+  refreshPtVoices();
+  window.speechSynthesis.addEventListener("voiceschanged", refreshPtVoices);
+}
+
+function pickVoice(voiceId) {
+  if (!ptVoices.length) return null;
+  const index = (Number(voiceId) - 1) % ptVoices.length;
+  return ptVoices[Math.max(0, index)];
+}
+
+// Timeouts de segurança: voz bloqueada/travada não pode segurar a fila de alertas.
 function scheduleHide(item) {
-  if (!item.audioUrl) {
+  if (!item.note || !item.voiceId || !window.speechSynthesis) {
     startHideTimer(SHOW_MS);
     return;
   }
@@ -105,13 +110,14 @@ function scheduleHide(item) {
     settled = true;
     startHideTimer(delayMs);
   };
-  const audio = new Audio(item.audioUrl);
-  audio.addEventListener("ended", () => finish(700));
-  audio.addEventListener("error", () => finish(SHOW_MS));
+  const utterance = new SpeechSynthesisUtterance(item.note);
+  const voice = pickVoice(item.voiceId);
+  if (voice) utterance.voice = voice;
+  utterance.lang = "pt-BR";
+  utterance.addEventListener("end", () => finish(700));
+  utterance.addEventListener("error", () => finish(SHOW_MS));
   setTimeout(() => finish(SHOW_MS), 12000);
-  setTimeout(() => {
-    audio.play().catch(() => finish(SHOW_MS));
-  }, 450);
+  setTimeout(() => window.speechSynthesis.speak(utterance), 450);
 }
 
 socket.on("update", ({ leaderboard, lastEvent }) => {
@@ -124,8 +130,6 @@ socket.on("update", ({ leaderboard, lastEvent }) => {
   showNext();
 });
 
-// Evento separado do "update" normal -- ver POST /admin/test-alert. Só
-// quem escuta isso (o overlay) reage; o board nunca recebe esse evento.
 socket.on("test-alert", (lastEvent) => {
   queue.push(lastEvent);
   showNext();

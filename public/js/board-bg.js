@@ -1,5 +1,3 @@
-// Versão fixada (não @latest): uma atualização deles não pode quebrar o
-// board em produção sem a gente escolher isso.
 import { animate } from "https://cdn.jsdelivr.net/npm/motion@12.42.2/+esm";
 
 const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;

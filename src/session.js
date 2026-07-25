@@ -1,14 +1,3 @@
-// Cookie assinado à mão (HMAC-SHA256, só com o módulo nativo crypto). Não
-// usa express-session: precisaria de um store, e nesse app baseado em
-// arquivo JSON isso perderia todo login a cada redeploy. Não usa
-// jsonwebtoken: nada aqui verifica token emitido por outro serviço.
-//
-// Escrita usa res.cookie()/res.clearCookie() (API do Express). Leitura é
-// parser manual do header Cookie: sem o middleware cookie-parser não dá pra
-// usar req.cookies, e require("cookie") é dependência TRANSITIVA do Express
-// (só existe em node_modules por causa dele), não uma dependência nossa —
-// podia sumir numa atualização do Express sem aviso.
-
 const crypto = require("crypto");
 const { timingSafeEqualString } = require("./passwords");
 
@@ -25,10 +14,8 @@ function signValue(payload, maxAgeSeconds) {
   return `${payloadB64}.${sig}`;
 }
 
-// exp mora DENTRO do payload assinado, não só no Max-Age do cookie: Max-Age
-// só é uma dica pro navegador se auto-limpar, nada impede reenviar
-// manualmente um cookie antigo. Checar exp no payload à prova de adulteração
-// garante expiração de verdade do lado do servidor.
+// exp fica dentro do payload assinado -- Max-Age do cookie é só uma dica pro
+// navegador, não impede reenviar um cookie antigo manualmente
 function verifyValue(cookieValue) {
   if (!cookieValue || typeof cookieValue !== "string") return null;
   const lastDot = cookieValue.lastIndexOf(".");
@@ -56,16 +43,13 @@ function verifyValue(cookieValue) {
   return payload;
 }
 
-// req.secure decide o flag "secure" do cookie — correto atrás do proxy do
-// Railway graças a app.set("trust proxy", 1) em server.js. Fixar
-// secure:true quebraria login local em http://localhost em silêncio.
 const COOKIE_BASE_OPTIONS = { httpOnly: true, path: "/", sameSite: "lax" };
 
 function setCookie(req, res, name, payload, maxAgeSeconds) {
   res.cookie(name, signValue(payload, maxAgeSeconds), {
     ...COOKIE_BASE_OPTIONS,
     secure: req.secure,
-    maxAge: maxAgeSeconds * 1000, // Express usa milissegundos; nossa assinatura usa segundos
+    maxAge: maxAgeSeconds * 1000,
   });
 }
 

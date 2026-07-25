@@ -1,7 +1,3 @@
-/* Fundo precisa ficar transparente (não o --bg sólido do resto do site)
-   pra sobrepor jogo/webcam sem caixa preta atrás. Textura de ruído
-   (body::before em style.css) desligada pelo mesmo motivo -- fica feia
-   sobre qualquer imagem de verdade. */
 html, body {
   background: transparent !important;
   overflow: hidden;

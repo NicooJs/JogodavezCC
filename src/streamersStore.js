@@ -1,7 +1,3 @@
-// CRUD da tabela streamers -- única camada que chama tokenCrypto, então é
-// a única que vê texto puro de access_token/refresh_token. Nunca loga
-// token bruto (query() em pg.js só loga texto da query + contagem de
-// linhas, nunca os parâmetros).
 const { query } = require("./pg");
 const { encryptToken, decryptToken } = require("./tokenCrypto");
 
@@ -20,9 +16,6 @@ function rowToStreamer(row) {
   };
 }
 
-// Chamada de novo toda vez que o token é renovado (refresh_token do MP roda
-// a cada uso), não só na conexão inicial. disconnected_at volta pra NULL
-// sempre que isso roda -- reconectar limpa o estado de "desconectado".
 async function upsertStreamer({ twitchUserId, mpUserId, accessToken, refreshToken, publicKey, expiresAt }) {
   const res = await query(
     `INSERT INTO streamers (twitch_user_id, mp_user_id, mp_access_token, mp_refresh_token, mp_public_key, mp_token_expires_at)
@@ -41,17 +34,13 @@ async function upsertStreamer({ twitchUserId, mpUserId, accessToken, refreshToke
   return rowToStreamer(res.rows[0]);
 }
 
-// null quando nunca conectou OU quando está marcado como desconectado --
-// os dois casos tratam igual pra quem chama (sem MP disponível pra cobrar).
 async function findByTwitchUserId(twitchUserId) {
   const res = await query(`SELECT * FROM streamers WHERE twitch_user_id = $1 AND disconnected_at IS NULL`, [twitchUserId]);
   return rowToStreamer(res.rows[0]);
 }
 
-// Pelo id numérico do Postgres, não o twitch_user_id -- usado no webhook,
-// que só tem streamer_id gravado na linha de payments. Diferente de
-// findByTwitchUserId, NÃO filtra disconnected_at: o webhook precisa achar
-// o streamer mesmo desconectado, pra decidir se tenta renovar o token.
+// não filtra disconnected_at -- o webhook precisa achar o streamer mesmo
+// desconectado, pra decidir se tenta renovar o token
 async function findById(id) {
   const res = await query(`SELECT * FROM streamers WHERE id = $1`, [id]);
   return rowToStreamer(res.rows[0]);

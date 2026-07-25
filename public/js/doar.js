@@ -1,6 +1,3 @@
-// Página standalone de doação, mesmo fluxo do modal "Doar" do board, só
-// que como página própria pra dar link fixável no chat. 100% público, sem
-// sessão de admin/apresentador aqui.
 const LEILAO_ID = location.pathname.match(/^\/l\/([a-z0-9_-]+)\/doar/i)?.[1] || null;
 if (!LEILAO_ID) {
   document.body.innerHTML = '<p style="padding:40px;font-family:sans-serif;color:#ccc;background:#1c1c1f;">Link inválido.</p>';
@@ -49,7 +46,7 @@ const timerLabelEl = document.getElementById("doar-timer-label");
 const timerClockEl = document.getElementById("doar-timer-clock");
 
 let receivedFirstUpdate = false;
-let currentStep = "loading"; // loading | closed | form | pix | success
+let currentStep = "loading";
 let pendingPaymentId = null;
 
 let isOpenState = false;
@@ -128,9 +125,6 @@ function resetForm() {
   closeGameShelf();
 }
 
-// ---- prateleira de jogos: alternativa ao autocomplete de texto no campo
-// "jogo". Jogos já cadastrados nesse leilão vêm do próprio leaderboard do
-// socket (sem round-trip); jogo novo cai pra sugestão via RAWG. ----
 let leaderboardItems = [];
 
 function normalizeSearch(str) {
@@ -149,9 +143,6 @@ function closeGameShelf() {
   gameHintEl.hidden = true;
 }
 
-// Chamado ao escolher um card ou confirmar manual com o botão + -- fica
-// marcado (borda, ícone, botão Gerar Pix liberado) até a pessoa digitar de
-// novo no campo (ver unconfirmGame).
 function confirmGame(name, image) {
   gameEl.value = name;
   gameConfirmed = true;
@@ -182,8 +173,6 @@ function gameShelfCardHtml(item, isNew) {
   `;
 }
 
-// Não fecha a prateleira ao escolher -- só marca o card ativo -- pra dar
-// pra rever/trocar de escolha sem apagar o campo e refazer a busca.
 function pickGameShelfCard(cardEl) {
   confirmGame(cardEl.dataset.name, cardEl.dataset.image);
   gameShelfEl.querySelectorAll(".game-shelf-card.selected").forEach((el) => el.classList.remove("selected"));
@@ -387,8 +376,7 @@ socket.on("update", ({ leaderboard, lastEvent }) => {
     resetForm();
     showStep(leaderboard.open ? "form" : "closed");
   } else if (currentStep === "form" || currentStep === "closed") {
-    // Só reage a abrir/fechar em tempo real antes de gerar um Pix -- não
-    // puxa o tapete de quem já está no meio do pagamento ou já confirmou.
+    // não troca de tela se a pessoa já gerou ou confirmou o Pix
     showStep(leaderboard.open ? "form" : "closed");
   }
 

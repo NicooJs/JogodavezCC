@@ -1,15 +1,9 @@
-// Busca a imagem de capa de um jogo na RAWG (banco de dados aberto de jogos).
-// Crie uma chave grátis em https://rawg.io/apidocs e coloque em RAWG_API_KEY no .env.
-// Sem a chave configurada, os jogos simplesmente aparecem sem imagem (não quebra nada).
-
 const { normalizeKey } = require("./parser");
 
-const cache = new Map(); // nome normalizado -> URL da imagem (ou null se não achou)
+const cache = new Map();
 
-// Mesma lista pra qualquer leilão/visitante — cacheada com TTL pra não bater
-// na RAWG a cada carregamento de board (rate limit com muitos espectadores).
 let popularCoversCache = { covers: null, fetchedAt: 0 };
-const POPULAR_COVERS_TTL_MS = 6 * 60 * 60 * 1000; // 6 horas
+const POPULAR_COVERS_TTL_MS = 6 * 60 * 60 * 1000;
 
 async function fetchPopularCovers(count = 30) {
   const apiKey = process.env.RAWG_API_KEY;
@@ -20,7 +14,6 @@ async function fetchPopularCovers(count = 30) {
   }
 
   try {
-    // ordering=-added: mais adicionados na RAWG, proxy de "jogo conhecido".
     const url = `https://api.rawg.io/api/games?ordering=-added&page_size=${count}&key=${apiKey}`;
     const res = await fetch(url, {
       headers: { "User-Agent": "leilao-de-jogos (uso pessoal)" },
@@ -28,7 +21,7 @@ async function fetchPopularCovers(count = 30) {
 
     if (!res.ok) {
       console.error("RAWG respondeu", res.status, "ao buscar capas populares");
-      return popularCoversCache.covers || []; // erro passageiro: mantém a lista antiga se tiver uma
+      return popularCoversCache.covers || [];
     }
 
     const json = await res.json();
@@ -58,8 +51,6 @@ async function fetchGameImage(name) {
     });
 
     if (!res.ok) {
-      // não guarda no cache: pode ser um erro passageiro (rate limit, chave
-      // recém-configurada) e vale tentar de novo na próxima contribuição.
       console.error("RAWG respondeu", res.status, "ao buscar", name);
       return null;
     }
@@ -98,14 +89,6 @@ async function searchGames(query) {
   }
 }
 
-// Extrai o nome "limpo" de um jogo de uma mensagem barulhenta (ex:
-// "minecraft coloca ele ai!!" -> "Minecraft"). Só pra PRIMEIRA menção de um
-// jogo — pra jogo já catalogado quem resolve é resolveExistingKey em db.js,
-// mais barato por não bater na RAWG.
-//
-// Só confia no resultado se o nome aparecer, por palavra inteira, no texto
-// original — evita a busca fuzzy da RAWG "inventar" um jogo pra texto
-// barulhento demais (ex: só um emoji).
 async function identifyGameFromNoisyText(text) {
   const apiKey = process.env.RAWG_API_KEY;
   if (!apiKey || !text || !text.trim()) return null;

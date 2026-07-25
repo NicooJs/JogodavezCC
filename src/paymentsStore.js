@@ -1,6 +1,3 @@
-// CRUD da tabela payments -- registro/auditoria de cada tentativa de
-// doação via Mercado Pago, correlacionado por external_reference (gerado
-// na criação, lido de volta no webhook).
 const { query } = require("./pg");
 const crypto = require("crypto");
 
@@ -40,8 +37,6 @@ async function createPending({ leilaoId, streamerId, externalReference, valorTot
   return rowToPayment(res.rows[0]);
 }
 
-// Liga o id do MP ao registro já criado como PENDING em createPending, pra
-// o webhook conseguir achar a linha por mp_payment_id também.
 async function markCreated(externalReference, mpPaymentId) {
   const res = await query(
     `UPDATE payments SET mp_payment_id = $2, updated_at = now() WHERE external_reference = $1 RETURNING *`,
@@ -55,7 +50,7 @@ async function markPaid(mpPaymentId) {
     `UPDATE payments SET status = 'PAID', paid_at = now(), updated_at = now() WHERE mp_payment_id = $1 AND status != 'PAID' RETURNING *`,
     [mpPaymentId]
   );
-  return rowToPayment(res.rows[0]); // undefined se já tava PAID (idempotência) ou não achou
+  return rowToPayment(res.rows[0]);
 }
 
 async function findByExternalReference(externalReference) {

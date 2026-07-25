@@ -1,6 +1,3 @@
-/* Tela de criação de leilão — reaproveita os tokens de :root do style.css
-   (cor, fonte). Não duplicar valores de cor aqui; se precisar mudar tema,
-   mexe só em style.css. */
 
 .create-body { height: auto; overflow-y: auto; }
 
@@ -13,12 +10,7 @@
   min-height: 100vh;
 }
 
-/* Fundo animado com simulação de fluido em WebGL (ver create-fluid.js).
-   z-index 0 + .create-page em z-index 1, mesmo padrão de .page em
-   style.css -- z-index -1 chegou a pintar atrás até do background sólido
-   do body nesse motor de renderização, não só do conteúdo. Se o WebGL não
-   iniciar (sem suporte, prefers-reduced-motion, etc), o canvas não desenha
-   nada e sobra a cor sólida do tema (--bg). */
+/* z-index 0, não -1: negativo pintava atrás do fundo sólido do body nesse renderer WebGL. */
 .create-bg {
   position: fixed;
   inset: 0;
@@ -58,9 +50,6 @@
   padding-top: 10px;
 }
 
-/* Escondido até create-intro.js revelar (com animação, ou na marra num
-   catch) mesmo se o Motion falhar ao carregar do CDN -- sem esse fallback
-   ficaria invisível pra sempre num bloqueio de rede/ad-blocker. */
 .reveal-item { opacity: 0; }
 
 .create-word {
@@ -90,9 +79,6 @@
 
 .create-lede strong { color: var(--accent-text); }
 
-/* Prova social com dado real (GET /api/ranking, mesmo endpoint do board,
-   já respeita hideTotalRaised). Só aparece com pelo menos 1 streamer de
-   verdade -- "0 streamers usam" passaria a impressão errada. */
 .create-proof {
   display: flex;
   align-items: center;
@@ -122,8 +108,6 @@
 }
 .create-proof-text strong { color: var(--accent-text); font-weight: 600; }
 
-/* Os 3 passos são mesmo uma sequência (nessa ordem, com dependência entre
-   eles) — os números não são decoração, é informação de verdade. */
 .create-steps {
   list-style: none;
   margin: 4px 0 0;
@@ -184,11 +168,6 @@
 }
 .create-form[hidden] { display: none; }
 
-/* Os passos do form ecoam os mesmos números da promessa em .create-steps
-   (coluna da esquerda) -- o form vira a execução do que o texto prometeu,
-   em vez de um formulário burocrático separado com "seções". Linha fina
-   conectando os números dá a sensação de progresso, não de página de
-   cadastro genérica. */
 .create-form-step {
   display: flex;
   gap: 16px;
@@ -231,6 +210,7 @@
   color: var(--muted);
 }
 .create-warning .icon { width: 15px; height: 15px; flex-shrink: 0; margin-top: 1px; color: var(--bronze); }
+.create-warning span { flex: 1; min-width: 0; }
 .create-warning strong { color: var(--text); font-weight: 600; }
 
 .create-field { display: flex; flex-direction: column; gap: 7px; }
@@ -265,11 +245,6 @@
 
 .create-hint { font-size: 12px; color: var(--muted); line-height: 1.4; }
 
-/* Nome/foto vêm confirmados pela própria Twitch, não editáveis aqui (ver
-   create.js). Mesmas classes reaproveitadas pro bloco do Mercado Pago
-   (create-mp-*) -- mesmo componente visual "conectado/desconectado", os
-   dois estados usam a MESMA altura/padding pra não pular o layout ao
-   trocar de um pro outro. */
 .create-twitch-logged-out,
 .create-twitch-logged-in,
 .create-mp-disconnected,
@@ -407,8 +382,6 @@
 }
 .create-error[hidden] { display: none; }
 
-/* Mostrado no lugar do formulário pra evitar recriar sem querer (o que
-   revincularia o webhook pra um leilão novo e desligaria o antigo). */
 .create-existing {
   display: flex;
   flex-direction: column;
@@ -445,11 +418,21 @@
 }
 
 .create-existing-item span {
+  display: inline-flex;
+  align-items: center;
   font-size: 13.5px;
   color: var(--text);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.ranking-verified-mark {
+  width: 13px;
+  height: 13px;
+  margin-left: 5px;
+  color: var(--accent-text);
+  flex-shrink: 0;
 }
 
 .create-existing-item a {
@@ -559,8 +542,6 @@
 .create-footer-github .icon { width: 15px; height: 15px; }
 .create-footer-github:hover { color: var(--text); }
 
-/* Reaproveita classes de create.css (create-existing-item, create-twitch-*)
-   em vez de linguagem visual nova. */
 .my-leiloes-main {
   max-width: 560px;
   margin: 0 auto;

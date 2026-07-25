@@ -1,13 +1,3 @@
-// Fundo animado da tela de criação: simulação "stable fluids" (Navier-Stokes)
-// rodando em shaders WebGL, reagindo ao cursor. Sem dependência nova: só JS
-// + strings GLSL, WebGL é API nativa do navegador.
-//
-// Pipeline por frame: splat (injeta cor+velocidade no cursor) -> curl
-// (vorticidade) -> vorticity confinement (realimenta a rotação, gera o
-// redemoinho) -> divergence -> pressure (Jacobi, ~20 iterações) -> gradient
-// subtraction (remove a divergência da velocidade) -> advection (arrasta
-// velocidade e cor pelo campo). Cada campo (velocidade, cor, pressão) vive
-// num par de texturas ping-pong (framebuffer A/B, trocados a cada passo).
 
 const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 const canvas = document.getElementById("create-fx-canvas");
@@ -16,15 +6,11 @@ if (canvas && !reduceMotion) {
   try {
     startFluid(canvas);
   } catch (err) {
-    // Degrade seguro: o --bg sólido do tema sempre fica por baixo do canvas.
     console.error("Fundo de fluido não iniciou, seguindo com fundo sólido:", err.message);
   }
 }
 
 function startFluid(canvas) {
-  // Ajustado abaixo dos valores padrão de demo: CURL/FORCE/RADIUS menores
-  // contêm o redemoinho, DISSIPATION maior some mais rápido sem acumular
-  // atrás do formulário.
   const config = {
     SIM_RESOLUTION: 128,
     DYE_RESOLUTION: 512,
@@ -224,8 +210,6 @@ function startFluid(canvas) {
     }
   `);
 
-  // uBrightness + tone mapping (c/(1+c)) limitam o brilho pra a cor
-  // acumulada nunca chegar perto do branco e apagar o contraste do texto.
   const displayShader = compileShader(gl, gl.FRAGMENT_SHADER, `
     precision highp float;
     precision highp sampler2D;
@@ -282,8 +266,6 @@ function startFluid(canvas) {
     return { width: min, height: max };
   }
 
-  // Cor sempre vem do tema (var(--accent) etc), lida uma vez só já que a
-  // tela de criação não troca de tema ao vivo como o board.
   function hexToRgb(hex) {
     const clean = hex.trim().replace("#", "");
     const full = clean.length === 3 ? clean.split("").map((c) => c + c).join("") : clean;
@@ -305,8 +287,6 @@ function startFluid(canvas) {
     return [base[0] * k, base[1] * k, base[2] * k];
   }
 
-  // Listener na window, não no canvas, assim .create-bg continua
-  // pointer-events:none e nunca rouba clique do formulário.
   const pointer = { x: 0.5, y: 0.5, prevX: 0.5, prevY: 0.5, moved: false };
   let lastMoveAt = performance.now();
 
@@ -314,8 +294,7 @@ function startFluid(canvas) {
     pointer.prevX = pointer.x;
     pointer.prevY = pointer.y;
     pointer.x = e.clientX / window.innerWidth;
-    // UV do WebGL cresce de baixo pra cima, Y do mouse cresce de cima pra
-    // baixo -- sem inverter, o rastro sai de cabeça pra baixo.
+    // Y do WebGL cresce de baixo pra cima -- sem inverter, o rastro sai de cabeça pra baixo.
     pointer.y = 1 - e.clientY / window.innerHeight;
     pointer.moved = true;
     lastMoveAt = performance.now();
@@ -452,7 +431,7 @@ function startFluid(canvas) {
   function update() {
     const now = performance.now();
     let dt = (now - lastUpdateAt) / 1000;
-    dt = Math.min(dt, 0.0334); // capa em ~2 frames a 60fps -- voltar de aba em segundo plano dá um dt gigante e a simulação explode
+    dt = Math.min(dt, 0.0334); // aba em 2º plano gera dt gigante e explode a simulação
     lastUpdateAt = now;
 
     resizeCanvasIfNeeded();
@@ -475,7 +454,6 @@ function startFluid(canvas) {
 
   requestAnimationFrame(update);
 
-  // --- helpers WebGL ---
 
   function getWebGLContext(canvas) {
     const params = { alpha: true, depth: false, stencil: false, antialias: false, preserveDrawingBuffer: false };

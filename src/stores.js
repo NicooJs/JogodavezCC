@@ -1,18 +1,11 @@
-// Cache de stores por leilão: cada leilão tem seu próprio arquivo JSON em
-// DATA_DIR/<leilaoId>.json (ver src/db.js pro que cada store sabe fazer).
-// Isolamento de propósito — um problema de escrita num leilão não pode
-// afetar o arquivo de outro.
-
 const fs = require("fs");
 const path = require("path");
 const { createStore } = require("./db");
 
-// Em produção (Railway) aponta pro volume persistente; local, "data/" na
-// raiz do projeto.
 const DATA_DIR = process.env.DATA_DIR || path.join(__dirname, "..", "data");
 fs.mkdirSync(DATA_DIR, { recursive: true });
 
-const cache = new Map(); // leilaoId -> store
+const cache = new Map();
 
 function storePath(leilaoId) {
   return path.join(DATA_DIR, `${leilaoId}.json`);
@@ -25,9 +18,8 @@ function getStore(leilaoId) {
   return cache.get(leilaoId);
 }
 
-// Apaga o registro (registry.js) ANTES de chamar isso — createStore lê um
-// arquivo inexistente como dados vazios, então um getStore(id) chamado no
-// meio do caminho recriaria o arquivo do zero.
+// apagar o registro (registry.js) ANTES de chamar isso -- senão um
+// getStore(id) no meio do caminho recria o arquivo do zero
 function deleteStore(leilaoId) {
   cache.delete(leilaoId);
   try {

@@ -1,4 +1,3 @@
-// /l/<id> — id filtra todo fetch/socket abaixo pra esse leilão.
 const LEILAO_ID = location.pathname.match(/^\/l\/([a-z0-9_-]+)/i)?.[1] || null;
 if (!LEILAO_ID) {
   document.body.innerHTML = '<p style="padding:40px;font-family:sans-serif;color:#ccc;background:#1c1c1f;">Link de leilão inválido. Volte pra <a href="/" style="color:#ff7a45;">criar ou achar o seu</a>.</p>';
@@ -52,6 +51,7 @@ const recapDownloadBtnEl = document.getElementById("recap-download-btn");
 const recapDonorsLabelEl = document.getElementById("recap-donors-label");
 const recapCloseEl = document.getElementById("recap-close");
 const recapEyebrowEl = document.getElementById("recap-eyebrow");
+const recapHostAvatarEl = document.getElementById("recap-host-avatar");
 const historyOverlayEl = document.getElementById("history-overlay");
 const historyCloseEl = document.getElementById("history-close");
 const historyGridEl = document.getElementById("history-grid");
@@ -76,8 +76,8 @@ const donorSuggestionsEl = document.getElementById("donor-suggestions");
 const TIMER_RING_CIRCUMFERENCE = 2 * Math.PI * 28;
 
 let timerEndsAt = null;
-let timerDurationMs = 5 * 60 * 1000; // placeholder, atualizado no primeiro "update"
-let isOpenState = null; // null = antes do primeiro "update"
+let timerDurationMs = 5 * 60 * 1000;
+let isOpenState = null;
 let isPausedState = false;
 let pausedRemainingMs = null;
 let isTimerLockedState = false;
@@ -100,9 +100,6 @@ function escapeHtml(str) {
   }[c]));
 }
 
-// Título é texto livre (definido pelo streamer), não uma palavra fixa, então
-// os ícones miram 5 letras comuns em português (só a 1ª ocorrência de cada)
-// em vez de uma posição fixa. Sem match ou sem Motion, fica só o texto normal.
 const TITLE_SWAP_ICONS = {
   o: {
     className: "icon-coin",
@@ -136,7 +133,7 @@ function buildBrandTitleHtml(text) {
   }).join("");
 }
 
-let animateTitleSwapIcon = null; // import do Motion, cacheado
+let animateTitleSwapIcon = null;
 async function animateBrandTitleSwaps() {
   const swaps = [...titleEl.querySelectorAll(".title-swap")];
   if (!swaps.length || window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
@@ -154,8 +151,6 @@ async function animateBrandTitleSwaps() {
   }
 }
 
-// "update" chega a cada doação/timer; sem essa guarda a animação dos
-// ícones reiniciaria antes de completar um ciclo.
 let lastRenderedTitle = null;
 function renderBrandTitle(text) {
   if (text === lastRenderedTitle) return;
@@ -186,7 +181,6 @@ function animateCountUp(el, from, to, duration = 700) {
   totalCountUpFrame = requestAnimationFrame(step);
 }
 
-// remove/reflow/readiciona pra reiniciar a animação CSS mesmo se ainda rodando
 function flashTotalBeam() {
   topbarTotalEl.classList.remove("beam");
   void topbarTotalEl.offsetWidth;
@@ -198,7 +192,6 @@ function setStatus(online) {
   statusTextEl.textContent = online ? "ao vivo" : "reconectando…";
 }
 
-// Aviso só no modo apresentador; confundiria o espectador no board público.
 function updateWebhookWarning() {
   const active = document.body.classList.contains("presenter-mode");
   webhookWarningEl.hidden = !(active && mpDisconnectedState);
@@ -217,8 +210,6 @@ function setRingFraction(fraction) {
 
 const FINAL_COUNTDOWN_SECONDS = 90;
 
-// Espelha o timer principal no timer do modal de doação (útil pra quem tá
-// preenchendo o formulário sem ver o resto do board por trás do overlay).
 function syncDonateModalTimer() {
   donateModalTimerEl.hidden = !isOpenState;
   donateModalTimerLabelEl.textContent = timerLabelEl.textContent;
@@ -279,11 +270,10 @@ setInterval(tickTimer, 1000);
 
 function thumbHtml(item, className) {
   return item.image
-    ? `<img class="${className}" src="${escapeHtml(item.image)}" alt="" loading="lazy" onerror="this.replaceWith(Object.assign(document.createElement('div'),{className:'${className} ${className}-placeholder',textContent:'${escapeHtml((item.name[0] || "?").toUpperCase())}'}))" />`
+    ? `<img class="${className}" src="${escapeHtml(item.image)}" alt="" loading="lazy" crossorigin="anonymous" onerror="this.replaceWith(Object.assign(document.createElement('div'),{className:'${className} ${className}-placeholder',textContent:'${escapeHtml((item.name[0] || "?").toUpperCase())}'}))" />`
     : `<div class="${className} ${className}-placeholder">${escapeHtml((item.name[0] || "?").toUpperCase())}</div>`;
 }
 
-// Mesmo desenho pro top-3, cor vem de .lot-card.rank-N via currentColor.
 const MEDAL_ICON_SVG = `<svg class="medal-icon" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
   <path d="M7.5 11L4.5 17.5L7.3 16.6L9 19L10.8 14.8" fill="currentColor" opacity="0.85"/>
   <path d="M12.5 11L15.5 17.5L12.7 16.6L11 19L9.2 14.8" fill="currentColor" opacity="0.85"/>
@@ -310,7 +300,7 @@ function lotFundingHtml(item) {
 function lotTopDonorHtml(item) {
   if (!item.topDonor || !item.topDonor.username) return "";
   const avatar = item.topDonor.avatar
-    ? `<img class="lot-top-donor-avatar" src="${escapeHtml(item.topDonor.avatar)}" alt="" loading="lazy" />`
+    ? `<img class="lot-top-donor-avatar" src="${escapeHtml(item.topDonor.avatar)}" alt="" loading="lazy" crossorigin="anonymous" />`
     : `<span class="lot-top-donor-avatar lot-top-donor-avatar-placeholder">${escapeHtml(item.topDonor.username[0].toUpperCase())}</span>`;
   return `
     <div class="lot-top-donor" title="Quem mais apoiou este jogo">
@@ -349,8 +339,6 @@ function lotCardInnerHtml(item, barPct, hitBadge, changed) {
   `;
 }
 
-// burst é position:fixed ancorado no rect do card, não filho dele -- o
-// overflow:hidden do card (pra imagem de fundo) cortaria o efeito.
 function triggerBigWinCelebration(key, type) {
   const card = lotListEl.querySelector(`.lot-card[data-key="${CSS.escape(key)}"]`);
   if (!card) return;
@@ -385,8 +373,6 @@ function triggerBigWinCelebration(key, type) {
   setTimeout(() => burst.remove(), 2900);
 }
 
-// Reaproveita os cards existentes por data-key e reordena via appendChild
-// (técnica FLIP abaixo) em vez de recriar o DOM a cada update.
 function renderLots(items, flashKey, flashType, lastSabotagedKey, qualifyCount) {
   lotCountEl.textContent = String(items.length);
 
@@ -434,7 +420,6 @@ function renderLots(items, flashKey, flashType, lastSabotagedKey, qualifyCount) 
     card.innerHTML = lotCardInnerHtml(item, barPct, hitBadge, changed);
     lotListEl.appendChild(card);
 
-    // qualifyCount é config por leilão (ver getQualifyCount em server.js), não fixo em 3.
     if (item.rank === qualifyCount && items.length > qualifyCount) {
       let divider = lotListEl.querySelector(".qualify-divider");
       if (!divider) {
@@ -463,8 +448,6 @@ function renderLots(items, flashKey, flashType, lastSabotagedKey, qualifyCount) 
     });
   });
 
-  // FLIP: conta deltaX também, não só deltaY — na grade de 2 colunas um
-  // lote pode trocar de coluna ao mudar de posição, não só de linha.
   requestAnimationFrame(() => {
     lotListEl.querySelectorAll(".lot-card").forEach((el) => {
       const first = firstRects.get(el.dataset.key);
@@ -487,8 +470,6 @@ function renderLots(items, flashKey, flashType, lastSabotagedKey, qualifyCount) 
     if (flashedCard) {
       setTimeout(() => {
         flashedCard.classList.remove("flash-add", "flash-remove");
-        // Vira badge persistente em vez de sumir -- sem isso ficava um
-        // buraco até o próximo re-render qualquer.
         const badge = flashedCard.querySelector(".badge-hit:not(.badge-hit-last)");
         if (badge) {
           badge.textContent = "último sabotado";
@@ -516,7 +497,7 @@ function renderDonors(donors) {
   const rows = donors.map((d) => {
     const pct = d.total > 0 ? Math.max(4, Math.round((d.total / maxTotal) * 100)) : 0;
     const avatar = d.avatar
-      ? `<img class="donor-avatar" src="${escapeHtml(d.avatar)}" alt="" loading="lazy" />`
+      ? `<img class="donor-avatar" src="${escapeHtml(d.avatar)}" alt="" loading="lazy" crossorigin="anonymous" />`
       : `<span class="donor-avatar donor-avatar-placeholder">${escapeHtml((d.username || "?")[0].toUpperCase())}</span>`;
     return `
     <div class="donor-row rank-${d.rank}" style="--pct:${pct}%">
@@ -558,12 +539,12 @@ function historyIconHtml(dotClass) {
   return `<span class="history-icon icon-neutral"></span>`;
 }
 
-let historySortMode = "recent"; // "recent" | "high" | "low"
+let historySortMode = "recent";
 
 function sortedHistoryItems() {
   if (historySortMode === "high") return [...historyItems].sort((a, b) => (b.amount || 0) - (a.amount || 0));
   if (historySortMode === "low") return [...historyItems].sort((a, b) => (a.amount || 0) - (b.amount || 0));
-  return historyItems; // já vem mais recente primeiro (unshift em pushHistory)
+  return historyItems;
 }
 
 function renderHistory() {
@@ -627,8 +608,6 @@ async function loadInitialHistory() {
   }
 }
 
-// Anéis pontilhados girando atrás do "Vencedor!", em Canvas2D em vez de
-// shader WebGL -- não compensa montar um pipeline WebGL pra um flash de ~2.2s.
 const soldSwirlCanvasEl = document.getElementById("sold-swirl-canvas");
 const soldSwirlCtx = soldSwirlCanvasEl.getContext("2d");
 let soldSwirlRaf = null;
@@ -689,7 +668,7 @@ function triggerSoldMoment(leaderName) {
   soldOverlayEl.hidden = false;
   soldOverlayEl.style.animation = "none";
   soldMarkEl.style.animation = "none";
-  void soldOverlayEl.offsetWidth; // força reflow pra reiniciar a animação
+  void soldOverlayEl.offsetWidth;
   soldOverlayEl.style.animation = "";
   soldMarkEl.style.animation = "";
   startSwirl();
@@ -706,12 +685,6 @@ function formatDuration(ms) {
   return `${h}h${String(m).padStart(2, "0")}`;
 }
 
-// Recap desenhado manualmente num <canvas> (sem lib de DOM-pra-imagem no
-// projeto), 1200x630 (tamanho padrão de card de link social). Usa o MESMO
-// vocabulário visual do modal .recap-modal -- cores do tema ativo via CSS
-// vars, fontes, ícone de medalha, capas reais dos jogos -- só reorganizado
-// em duas colunas pra caber no formato paisagem (o modal é vertical/
-// estreito, não dá pra clonar pixel a pixel e continuar legível).
 let currentRecapForDownload = null;
 let currentShareText = "";
 
@@ -726,9 +699,6 @@ function roundRectPath(ctx, x, y, w, h, r) {
   ctx.closePath();
 }
 
-// Cantos com raio levemente diferente por posição -- mesma ideia de
-// .arena-grid .lot-card:nth-of-type(3n+1/2/3) em style.css, que quebra a
-// simetria perfeita de propósito pra não parecer um card de template.
 function roundRectPathAsym(ctx, x, y, w, h, r) {
   ctx.beginPath();
   ctx.moveTo(x + r.tl, y);
@@ -752,7 +722,7 @@ function loadImageSafe(url) {
   return new Promise((resolve) => {
     if (!url) return resolve(null);
     const img = new Image();
-    img.crossOrigin = "anonymous"; // sem isso, a imagem até desenha mas "suja" o canvas e barra o toDataURL depois
+    img.crossOrigin = "anonymous"; // sem isso, "suja" o canvas e quebra o toDataURL depois
     const timer = setTimeout(() => resolve(null), 4000);
     img.onload = () => { clearTimeout(timer); resolve(img); };
     img.onerror = () => { clearTimeout(timer); resolve(null); };
@@ -764,14 +734,24 @@ function medalImageDataUri(color) {
   return `data:image/svg+xml;base64,${btoa(MEDAL_ICON_SVG.replace(/currentColor/g, color))}`;
 }
 
-// Aproximação barata do --grain do resto do site (feTurbulence via SVG não
-// dá pra desenhar direto num canvas 2D): pixels aleatórios de baixa
-// opacidade por cima do fundo, antes de desenhar qualquer texto/painel.
+function drawCircleImage(ctx, img, cx, cy, size) {
+  ctx.save();
+  ctx.beginPath();
+  ctx.arc(cx, cy, size / 2, 0, Math.PI * 2);
+  ctx.closePath();
+  ctx.clip();
+  const scale = Math.max(size / img.width, size / img.height);
+  const dw = img.width * scale;
+  const dh = img.height * scale;
+  ctx.drawImage(img, cx - dw / 2, cy - dh / 2, dw, dh);
+  ctx.restore();
+}
+
 function drawGrain(ctx, w, h) {
   const imageData = ctx.getImageData(0, 0, w, h);
   const data = imageData.data;
   for (let i = 0; i < data.length; i += 4) {
-    if (data[i + 3] === 0) continue; // não mexe fora do card (cantos arredondados, alpha 0)
+    if (data[i + 3] === 0) continue;
     if (Math.random() > 0.94) {
       const delta = (Math.random() - 0.5) * 14;
       data[i] = Math.min(255, Math.max(0, data[i] + delta));
@@ -794,12 +774,10 @@ function truncateToWidth(ctx, text, maxWidth) {
   return `${text.slice(0, lo)}…`;
 }
 
-// Gera o <canvas> do recap (usado tanto pelo botão de baixar quanto pelo de
-// compartilhar no X) -- devolve null se não tem recap carregado ainda.
 async function buildRecapCanvas() {
   const recap = currentRecapForDownload;
   if (!recap) return null;
-  await document.fonts.ready; // evita desenhar com fonte de fallback antes de carregar
+  await document.fonts.ready;
 
   const W = 1200;
   const H = 630;
@@ -822,10 +800,10 @@ async function buildRecapCanvas() {
   const top3 = (recap.topGames || []).slice(0, 3);
   const topDonors = (recap.topDonors || []).slice(0, 5);
 
-  // Tudo que depende de rede carrega ANTES de desenhar (capas dos 3
-  // primeiros lotes + as 3 medalhas, uma cor por posição).
-  const [coverImgs, medalGold, medalSilver, medalBronze] = await Promise.all([
+  const [coverImgs, donorAvatarImgs, hostAvatarImg, medalGold, medalSilver, medalBronze] = await Promise.all([
     Promise.all(top3.map((g) => loadImageSafe(g.image))),
+    Promise.all(topDonors.map((d) => loadImageSafe(d.avatar))),
+    loadImageSafe(recap.hostAvatar),
     loadImageSafe(medalImageDataUri(accentText)),
     loadImageSafe(medalImageDataUri(silver)),
     loadImageSafe(medalImageDataUri(bronze)),
@@ -852,7 +830,6 @@ async function buildRecapCanvas() {
     const rightX = colDivider + 34;
     const rightW = W - marginX - rightX;
 
-    // ---- marca d'água ----
     ctx.save();
     ctx.translate(marginX + 6, 54);
     ctx.rotate(Math.PI / 4);
@@ -871,15 +848,24 @@ async function buildRecapCanvas() {
     ctx.fillText("LEILÃO ENCERRADO", W - marginX, 58);
     ctx.textAlign = "left";
 
-    // ---- título ----
+    const hostAvatar = includeCovers ? hostAvatarImg : null;
+    let titleX = marginX;
+    if (hostAvatar) {
+      const avatarSize = 44;
+      const avatarCy = 104;
+      drawCircleImage(ctx, hostAvatar, marginX + avatarSize / 2, avatarCy, avatarSize);
+      ctx.strokeStyle = accent;
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.arc(marginX + avatarSize / 2, avatarCy, avatarSize / 2, 0, Math.PI * 2);
+      ctx.stroke();
+      titleX = marginX + avatarSize + 14;
+    }
     ctx.fillStyle = textColor;
     ctx.font = "italic 700 38px 'Nunito', sans-serif";
     const title = recap.title || "Leilão de Jogos";
-    ctx.fillText(truncateToWidth(ctx, title, colDivider - marginX), marginX, 118);
+    ctx.fillText(truncateToWidth(ctx, title, colDivider - titleX), titleX, 118);
 
-    // ---- total arrecadado (R$ menor/mais claro na frente, valor grande
-    // carrega o peso -- a mesma hierarquia de qualquer app financeiro bem
-    // feito, em vez de imprimir tudo do mesmo tamanho). ----
     const totalText = recap.totalRaised === null ? "oculto" : formatBRL(recap.totalRaised || 0);
     const prefixMatch = totalText.match(/^(R\$\s?)(.+)$/);
     ctx.font = "700 78px 'IBM Plex Mono', monospace";
@@ -899,8 +885,6 @@ async function buildRecapCanvas() {
     ctx.font = "600 13px 'IBM Plex Mono', monospace";
     ctx.fillText("ARRECADADO", marginX + 2, 248);
 
-    // ---- duração / apoiadores / lotes: régua fina em vez de caixa cheia,
-    // menos "widget de dashboard", mais editorial ----
     const statsRuleY = 270;
     ctx.strokeStyle = borderSoft;
     ctx.lineWidth = 1;
@@ -927,9 +911,6 @@ async function buildRecapCanvas() {
       ctx.textAlign = "left";
     });
 
-    // ---- campeão / recorde de doação: barra de destaque lateral (estilo
-    // citação editorial), não mais uma caixa cheia -- evita empilhar caixa
-    // sobre caixa sobre caixa. ----
     const champion = top3[0];
     const highlightLines = [];
     if (champion) highlightLines.push([`${champion.name} foi o campeão`, formatBRL(champion.total)]);
@@ -958,26 +939,19 @@ async function buildRecapCanvas() {
       });
     }
 
-    // ---- rodapé ----
     ctx.fillStyle = muted;
     ctx.font = "500 13px 'IBM Plex Mono', monospace";
     ctx.fillText(`${location.origin}/l/${LEILAO_ID}`, marginX, H - 30);
 
-    // ---- coluna direita: TOP 3 ----
     ctx.fillStyle = muted;
     ctx.font = "600 12px 'IBM Plex Mono', monospace";
     ctx.fillText("TOP 3", rightX, 62);
 
-    // Rotação por posição igual a .recap-podium-card.rank-N .medal-icon em
-    // style.css -- pequenos detalhes assim são o que faz o card parecer
-    // desenhado à mão em vez de gerado por um template genérico.
     const MEDAL_ROTATION_DEG = [-5, 4, -3];
 
     let py = 82;
     top3.forEach((game, i) => {
       const isChampion = i === 0;
-      // 1º lugar ganha um pouco mais de presença (capa e texto maiores),
-      // igual ao .recap-podium-card.rank-1 no modal ser o único elevado.
       const cardH = isChampion ? 72 : 60;
       const thumbSize = isChampion ? 54 : 46;
       roundRectPathAsym(ctx, rightX, py, rightW, cardH, CARD_CORNER_RADII[i]);
@@ -1040,7 +1014,6 @@ async function buildRecapCanvas() {
       py += cardH + 8;
     });
 
-    // ---- coluna direita: quadro de honra ----
     if (topDonors.length > 0) {
       py += 14;
       ctx.fillStyle = muted;
@@ -1048,6 +1021,7 @@ async function buildRecapCanvas() {
       ctx.fillText("QUADRO DE HONRA", rightX, py + 10);
       py += 28;
 
+      const donorAvatarSize = 18;
       topDonors.forEach((donor, i) => {
         if (i < 3 && medalByRank[i]) {
           ctx.drawImage(medalByRank[i], rightX, py + 2, 16, 16);
@@ -1056,9 +1030,30 @@ async function buildRecapCanvas() {
           ctx.font = "700 12px 'IBM Plex Mono', monospace";
           ctx.fillText(String(i + 1).padStart(2, "0"), rightX, py + 14);
         }
+
+        const donorAvatarImg = includeCovers ? donorAvatarImgs[i] : null;
+        const avX = rightX + 24;
+        const avCy = py + 5;
+        if (donorAvatarImg) {
+          drawCircleImage(ctx, donorAvatarImg, avX + donorAvatarSize / 2, avCy, donorAvatarSize);
+        } else {
+          ctx.beginPath();
+          ctx.arc(avX + donorAvatarSize / 2, avCy, donorAvatarSize / 2, 0, Math.PI * 2);
+          ctx.fillStyle = surface2;
+          ctx.fill();
+          ctx.fillStyle = muted;
+          ctx.font = "600 9px 'IBM Plex Sans', sans-serif";
+          ctx.textAlign = "center";
+          ctx.textBaseline = "middle";
+          ctx.fillText(((donor.username || "?")[0] || "?").toUpperCase(), avX + donorAvatarSize / 2, avCy + 1);
+          ctx.textAlign = "left";
+          ctx.textBaseline = "alphabetic";
+        }
+
+        const nameX = avX + donorAvatarSize + 8;
         ctx.fillStyle = textColor;
         ctx.font = "500 14px 'IBM Plex Sans', sans-serif";
-        ctx.fillText(truncateToWidth(ctx, donor.username || "Anônimo", rightW - 150), rightX + 28, py + 14);
+        ctx.fillText(truncateToWidth(ctx, donor.username || "Anônimo", rightX + rightW - nameX - 90), nameX, py + 14);
         ctx.fillStyle = muted;
         ctx.font = "600 13px 'IBM Plex Mono', monospace";
         ctx.textAlign = "right";
@@ -1076,9 +1071,6 @@ async function buildRecapCanvas() {
   try {
     dataUrl = canvas.toDataURL("image/png");
   } catch (err) {
-    // Canvas "sujo" por causa de uma capa sem CORS liberado no CDN --
-    // refaz só com iniciais no lugar da capa, isso nunca falha (nenhuma
-    // imagem externa desenhada).
     canvas = renderCanvas(false);
   }
 
@@ -1098,12 +1090,6 @@ async function downloadRecapImage() {
 }
 recapDownloadBtnEl.addEventListener("click", downloadRecapImage);
 
-// O X não tem como anexar imagem via link/intent -- isso só é possível
-// colando no compositor mesmo. Então: abre a aba (síncrono, senão o
-// navegador bloqueia o pop-up depois do await), baixa o PNG E tenta copiar
-// pro clipboard (pra quem usa Chrome/Edge/Firefox recentes já consegue só
-// colar com Ctrl+V no tweet), e manda pro compositor SEM url= -- só texto,
-// pra não postar um card de link genérico competindo com a imagem.
 recapShareXEl.addEventListener("click", async (e) => {
   e.preventDefault();
   const twitterWindow = window.open("", "_blank");
@@ -1119,8 +1105,6 @@ recapShareXEl.addEventListener("click", async (e) => {
       await navigator.clipboard.write([new ClipboardItem({ "image/png": blob })]);
     }
   } catch (err) {
-    // Sem suporte a clipboard de imagem -- sem problema, a pessoa anexa
-    // manualmente o arquivo que acabou de baixar.
   }
   const intentUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent(currentShareText)}`;
   if (twitterWindow) twitterWindow.location.href = intentUrl;
@@ -1129,7 +1113,7 @@ recapShareXEl.addEventListener("click", async (e) => {
 
 function recapPodiumCardHtml(game) {
   const thumb = game.image
-    ? `<img class="recap-podium-thumb" src="${escapeHtml(game.image)}" alt="" />`
+    ? `<img class="recap-podium-thumb" src="${escapeHtml(game.image)}" alt="" crossorigin="anonymous" />`
     : `<div class="recap-podium-thumb recap-podium-thumb-placeholder">${escapeHtml((game.name[0] || "?").toUpperCase())}</div>`;
   const topDonorHtml = game.topDonor
     ? `<p class="recap-podium-top-donor">apoiador: ${escapeHtml(game.topDonor.username)}</p>`
@@ -1146,11 +1130,9 @@ function recapPodiumCardHtml(game) {
   `;
 }
 
-// O pódio só tem 3 posições; do 4º em diante (qualifyCount > 3) usa essa
-// lista compacta.
 function recapExtraRowHtml(game) {
   const thumb = game.image
-    ? `<img class="recap-extra-thumb" src="${escapeHtml(game.image)}" alt="" loading="lazy" />`
+    ? `<img class="recap-extra-thumb" src="${escapeHtml(game.image)}" alt="" loading="lazy" crossorigin="anonymous" />`
     : `<span class="recap-extra-thumb recap-extra-thumb-placeholder">${escapeHtml((game.name[0] || "?").toUpperCase())}</span>`;
   return `
     <div class="recap-extra-row">
@@ -1162,20 +1144,20 @@ function recapExtraRowHtml(game) {
   `;
 }
 
-// Compartilhado entre o recap ao vivo e os arquivados (showHistoricalRecap)
-// -- mesma forma de dado (buildRecap em server.js), só muda o eyebrow.
 function renderRecap(recap, eyebrowText) {
   recapEyebrowEl.textContent = eyebrowText;
+  if (recap.hostAvatar) {
+    recapHostAvatarEl.src = recap.hostAvatar;
+    recapHostAvatarEl.hidden = false;
+  } else {
+    recapHostAvatarEl.hidden = true;
+  }
   recapTitleEl.textContent = recap.title || "Leilão de Jogos";
   recapTotalEl.textContent = recap.totalRaised === null ? "oculto" : formatBRL(recap.totalRaised || 0);
   recapDurationEl.textContent = formatDuration(recap.durationMs);
   recapDonorsEl.textContent = String(recap.totalDonors || 0);
   recapGamesEl.textContent = String(recap.totalGames || 0);
 
-  // Sem link no tweet de propósito -- o X não deixa anexar imagem por URL
-  // (só via o compositor mesmo, manual), então o clique baixa a imagem e
-  // abre o tweet só com texto; a pessoa anexa a imagem já baixada. Um link
-  // no texto brigaria com a foto pelo card de preview.
   currentShareText = recap.totalRaised === null
     ? "Acabei de fazer um leilão de jogos com a galera! Dá uma olhada:"
     : `Acabei de arrecadar ${formatBRL(recap.totalRaised || 0)} num leilão de jogos com a galera! Dá uma olhada:`;
@@ -1185,7 +1167,6 @@ function renderRecap(recap, eyebrowText) {
   const championLineEl = document.getElementById("recap-champion-line");
   const recordLineEl = document.getElementById("recap-record-line");
   const highlightEl = document.getElementById("recap-highlight");
-  // Troféu reaproveita o SVG do title-swap (TITLE_SWAP_ICONS.i).
   championLineEl.innerHTML = champion
     ? `<span class="recap-highlight-icon">${TITLE_SWAP_ICONS.i.svg}</span><strong>${escapeHtml(champion.name)}</strong> foi o campeão, arrecadando ${formatBRL(champion.total)}`
     : "";
@@ -1202,13 +1183,19 @@ function renderRecap(recap, eyebrowText) {
 
   const topDonors = recap.topDonors || [];
   recapDonorsLabelEl.hidden = topDonors.length === 0;
-  recapDonorListEl.innerHTML = topDonors.map((d) => `
+  recapDonorListEl.innerHTML = topDonors.map((d) => {
+    const avatar = d.avatar
+      ? `<img class="recap-donor-avatar" src="${escapeHtml(d.avatar)}" alt="" loading="lazy" crossorigin="anonymous" />`
+      : `<span class="recap-donor-avatar recap-donor-avatar-placeholder">${escapeHtml((d.username || "?")[0].toUpperCase())}</span>`;
+    return `
     <div class="recap-donor-row rank-${d.rank}">
       <span class="recap-donor-rank">${rankBadgeHtml(d.rank)}</span>
+      ${avatar}
       <span class="recap-donor-name">${escapeHtml(d.username || "Anônimo")}</span>
       <span class="recap-donor-total">${formatBRL(d.total)}</span>
     </div>
-  `).join("");
+  `;
+  }).join("");
 
   recapOverlayEl.hidden = false;
 }
@@ -1222,7 +1209,6 @@ async function showRecap() {
   }
 }
 
-// /l/:id?recap=<index> — index na lista de /recap/history, mais recente primeiro.
 async function showHistoricalRecap(index) {
   try {
     const data = await fetch(`/api/l/${LEILAO_ID}/recap/history`).then((r) => r.json());
@@ -1254,7 +1240,7 @@ function historyCardHtml(h, index) {
   const when = h.archivedAt ? new Date(h.archivedAt).toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" }) : "—";
   const champion = h.topGames && h.topGames[0] ? h.topGames[0] : null;
   const thumb = champion && champion.image
-    ? `<img class="history-card-thumb" src="${escapeHtml(champion.image)}" alt="" />`
+    ? `<img class="history-card-thumb" src="${escapeHtml(champion.image)}" alt="" crossorigin="anonymous" />`
     : `<div class="history-card-thumb history-card-thumb-placeholder">${escapeHtml(((champion && champion.name[0]) || "?").toUpperCase())}</div>`;
   const inProgressTag = h.openRound ? `<span class="history-card-inprogress">em andamento</span>` : "";
   return `
@@ -1315,8 +1301,6 @@ historyCloseEl.addEventListener("click", closeHistoryOverlay);
 historyOverlayEl.addEventListener("click", (e) => { if (e.target === historyOverlayEl) closeHistoryOverlay(); });
 document.addEventListener("keydown", (e) => { if (e.key === "Escape" && !historyOverlayEl.hidden) closeHistoryOverlay(); });
 
-// Ranqueia os próprios leilões passados desse streamer entre si, nunca
-// contra outros streamers (GET /api/l/:id/ranking, server.js).
 const rankingOpenBtnEl = document.getElementById("ranking-open-btn");
 const rankingOverlayEl = document.getElementById("ranking-overlay");
 const rankingCloseEl = document.getElementById("ranking-close");
@@ -1369,8 +1353,6 @@ function closeRankingOverlay() {
   rankingOverlayEl.hidden = true;
 }
 
-// Carregado sob demanda e cacheado no 1º clique; se o import do Motion
-// falhar, o botão continua abrindo o ranking, só sem o bounce.
 let animateRankingIcon = null;
 async function bounceRankingIcon() {
   const icon = rankingOpenBtnEl.querySelector(".icon");
@@ -1433,9 +1415,7 @@ socket.on("update", ({ leaderboard, lastEvent }) => {
     hostAvatarEl.hidden = true;
     hostAvatarEl.removeAttribute("src");
   }
-  // Só mostra o link com hostVerified (login real da Twitch), e usa
-  // hostTwitchLogin, nunca o nome de exibição livre -- senão daria pra
-  // digitar o nome de outra pessoa e ganhar link pro canal real dela.
+  // Usa hostTwitchLogin (login real), nunca o nome de exibição -- evita falsificar o link do canal.
   if (leaderboard.hostVerified && leaderboard.hostTwitchLogin) {
     const twitchUrl = `https://twitch.tv/${encodeURIComponent(leaderboard.hostTwitchLogin)}`;
     hostTwitchBadgeEl.href = twitchUrl;
@@ -1453,7 +1433,7 @@ socket.on("update", ({ leaderboard, lastEvent }) => {
   if (wasOpen === true && isOpenState === false) {
     const leader = (leaderboard.items || [])[0];
     triggerSoldMoment(leader ? leader.name : null);
-    setTimeout(showRecap, 2400); // espera o "Vencedor!" (2.3s) terminar antes de abrir o recap
+    setTimeout(showRecap, 2400);
   }
 
   timerEndsAt = leaderboard.timerEndsAt;
@@ -1486,7 +1466,6 @@ socket.on("update", ({ leaderboard, lastEvent }) => {
   renderLots(leaderboard.items, flashKey, lastEvent ? lastEvent.type : null, leaderboard.lastSabotagedKey, leaderboard.qualifyCount || 3);
   renderDonors(leaderboard.donors || []);
   if (lastEvent && lastEvent.type === "reset") {
-    // pushHistory() sozinho não limparia isso: "reset" não bate em nenhum case de historyLabel().
     historyItems = [];
     renderHistory();
   } else {
@@ -1502,11 +1481,6 @@ socket.on("update", ({ leaderboard, lastEvent }) => {
   }
 });
 
-// ---------- modal de doação (Pix in-app, POST /api/l/:id/doacao) ----------
-// Modal público (diferente do #lot-modal, só apresentador). 3 passos num
-// mesmo overlay: formulário -> QR aguardando -> confirmado. Confirmação
-// chega pelo mesmo socket "update" do placar (ver checagem de
-// lastEvent.paymentId acima) -- nenhum canal novo.
 const donateOpenBtnEl = document.getElementById("donate-open-btn");
 const donateModalEl = document.getElementById("donate-modal");
 const donateModalCloseEl = document.getElementById("donate-modal-close");
@@ -1530,7 +1504,7 @@ const donateQrImgEl = document.getElementById("donate-qr-img");
 const donateCopyInputEl = document.getElementById("donate-copy-input");
 const donateCopyBtnEl = document.getElementById("donate-copy-btn");
 
-let pendingDonationPaymentId = null; // String(mpPaymentId) do Pix aberto nesse navegador, ou null
+let pendingDonationPaymentId = null;
 let selectedDonateVoiceId = "";
 
 donateModalVoiceEl.querySelectorAll("button").forEach((b) => {
@@ -1582,9 +1556,6 @@ function closeDonateModal() {
   closeDonateGameShelf();
 }
 
-// ---- prateleira de jogos do modal de doação: mesma lógica de doar.js,
-// reaproveitando currentItems (já mantido pro board) em vez de buscar de
-// novo. Jogo novo cai pra sugestão via RAWG. ----
 function normalizeSearch(str) {
   return str.normalize("NFD").replace(/\p{Diacritic}/gu, "").toLowerCase().trim();
 }
@@ -1601,9 +1572,6 @@ function closeDonateGameShelf() {
   donateModalGameHintEl.hidden = true;
 }
 
-// Chamado ao escolher um card ou confirmar manual com o botão + -- fica
-// marcado (borda, ícone, envio liberado) até a pessoa digitar de novo no
-// campo (ver unconfirmDonateGame).
 function confirmDonateGame(name, image) {
   donateModalGameEl.value = name;
   donateGameConfirmed = true;
@@ -1634,8 +1602,6 @@ function donateGameShelfCardHtml(item, isNew) {
   `;
 }
 
-// Não fecha a prateleira ao escolher -- só marca o card ativo -- pra dar
-// pra rever/trocar de escolha sem apagar o campo e refazer a busca.
 function pickDonateGameShelfCard(cardEl) {
   confirmDonateGame(cardEl.dataset.name, cardEl.dataset.image);
   donateModalGameShelfEl.querySelectorAll(".game-shelf-card.selected").forEach((el) => el.classList.remove("selected"));
@@ -1781,12 +1747,8 @@ donateCopyBtnEl.addEventListener("click", async () => {
   }
 });
 
-// Autenticação de apresentador vive num cookie httpOnly (leilao_admin,
-// emitido por POST /admin/login) -- o navegador manda ele sozinho em toda
-// requisição same-origin, não precisa (nem dá, é httpOnly) guardar ou
-// reenviar a senha manualmente daqui.
 async function presenterFetch(path, options = {}) {
-  // FormData define seu próprio Content-Type com boundary; fixar "application/json" quebraria o upload multipart.
+  // FormData define seu próprio Content-Type (boundary) -- não fixar aqui.
   const isFormData = options.body instanceof FormData;
   const res = await fetch(`/api/l/${LEILAO_ID}${path}`, {
     ...options,
@@ -1811,8 +1773,6 @@ function setPresenterMode(active) {
   updateWebhookWarning();
 }
 
-// Modal próprio em vez de prompt() nativo — prompt() não mascara o texto
-// digitado, e a tela do streamer é capturada ao vivo no OBS.
 const presenterLoginModal = document.getElementById("presenter-login-modal");
 const presenterLoginForm = document.getElementById("presenter-login-form");
 const presenterLoginPassword = document.getElementById("presenter-login-password");
@@ -1821,7 +1781,6 @@ const presenterLoginSubmit = document.getElementById("presenter-login-submit");
 const presenterLoginCancel = document.getElementById("presenter-login-cancel");
 const presenterLoginClose = document.getElementById("presenter-login-close");
 
-// Callback pós-login pra quem chamou openPresenterLogin() (ver settings.js), sem duplicar o fluxo de login.
 let pendingAfterLogin = null;
 
 function openPresenterLogin() {
@@ -1865,9 +1824,6 @@ async function submitPresenterLogin() {
   }
 }
 
-// Pula o modal de senha pra quem já tem sessão de admin válida nesse
-// navegador (cookie leilao_admin) ou é o dono verificado da Twitch --
-// GET .../admin/check-session cobre os dois casos de uma vez.
 async function checkPresenterAccess() {
   try {
     const { isPresenter } = await fetch(`/api/l/${LEILAO_ID}/admin/check-session`, { credentials: "same-origin" }).then((r) => r.json());
@@ -1891,9 +1847,7 @@ presenterToggleEl.addEventListener("click", async () => {
   openPresenterLogin();
 });
 
-// Precisa ser um <form> de verdade -- sem ele, o Chrome associava o campo de
-// senha ao texto mais recente digitado em qualquer lugar da página (ex: uma
-// busca de jogo) e oferecia salvar isso como login.
+// Precisa ser um <form> real -- senão o Chrome tenta associar esse campo de senha a outro texto da página.
 presenterLoginForm.addEventListener("submit", (e) => {
   e.preventDefault();
   submitPresenterLogin();
@@ -1953,7 +1907,6 @@ timerMinutesInput.addEventListener("keydown", (e) => {
 });
 
 document.getElementById("p-toggle-open").addEventListener("click", async () => {
-  // Confirma só pra encerrar (definitivo); reabrir é seguro e não precisa.
   if (isOpenState) {
     const ok = await confirmDialog({
       title: "Encerrar leilão",
@@ -1973,7 +1926,6 @@ document.getElementById("p-toggle-open").addEventListener("click", async () => {
   }
 });
 
-// Zerar direto do board evita abrir o painel avançado no meio da live; continua destrutivo, daí a confirmação.
 document.getElementById("p-reset-btn").addEventListener("click", async () => {
   const ok = await confirmDialog({
     title: "Zerar leilão",
@@ -1994,8 +1946,6 @@ function findGameByName(name) {
   return currentItems.find((i) => i.name.trim().toLowerCase() === norm) || null;
 }
 
-// Abre o modal com o texto digitado ao pé da letra, sem escolher resultado
-// da RAWG -- útil quando o jogo não aparece na busca.
 function submitManualSearch() {
   const name = manualNameEl.value.trim();
   if (!name) return manualNameEl.focus();
@@ -2087,7 +2037,6 @@ manualNameEl.addEventListener("keydown", (e) => {
   else if (e.key === "Enter") submitManualSearch();
 });
 
-// ---- modal de lançar/editar lote ----
 
 function setModalAction(action) {
   lotModalActionSeg.querySelectorAll("button").forEach((b) => {
@@ -2103,7 +2052,6 @@ function getModalAction() {
   return active ? active.dataset.action : "add";
 }
 
-// game: { name, key?, total?, image? }. Com key+total = editar; sem = novo lote.
 function openLotModal(game) {
   modalGame = game;
   const existing = game.key != null && game.total != null;
@@ -2141,10 +2089,6 @@ function closeLotModal() {
   modalGame = null;
 }
 
-// Guarda contra double-submit: o botão já ignora clique quando disabled,
-// mas o Enter no campo de valor é outro listener em outro elemento e não é
-// bloqueado automaticamente por isso -- sem essa checagem aqui, Enter
-// repetido antes da resposta voltar lançava o valor mais de uma vez.
 async function submitLotModal() {
   if (!modalGame || lotModalSubmit.disabled) return;
   const amount = lotModalAmount.value;
@@ -2178,8 +2122,6 @@ lotModalEl.addEventListener("click", (e) => { if (e.target === lotModalEl) close
 lotModalAmount.addEventListener("keydown", (e) => { if (e.key === "Enter") submitLotModal(); });
 document.addEventListener("keydown", (e) => { if (e.key === "Escape" && !lotModalEl.hidden) closeLotModal(); });
 
-// Autocomplete do doador: sugere nomes de quem já doou, pra evitar variações
-// do mesmo nome (ex.: "Yeojin" vs "yEOJIN") que viram apoiadores diferentes.
 function hideDonorSuggestions() {
   donorSuggestionsEl.hidden = true;
   donorSuggestionsEl.innerHTML = "";

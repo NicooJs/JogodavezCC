@@ -1,15 +1,5 @@
-// Hash de senha usando scrypt — nativo do módulo crypto do Node, evita
-// dependências como bcrypt/argon2 que exigem compilação nativa e podem
-// quebrar a instalação em máquinas sem toolchain de build.
-//
-// Versão ASYNC de propósito (crypto.scrypt, não scryptSync): scryptSync
-// trava a thread principal do Node inteira enquanto calcula -- como o
-// processo é único pra todos os leilões, um IP mandando várias tentativas
-// de senha em sequência conseguia travar o site inteiro por alguns
-// segundos, não só a verificação daquele leilão. A versão async roda o
-// cálculo na threadpool do libuv, então o resto do servidor (outros
-// leilões, socket.io) continua respondendo normalmente nesse meio tempo.
-
+// scrypt async, não scryptSync -- scryptSync bloqueia a thread principal
+// inteira, travando o servidor pra todos os leilões durante o cálculo
 const crypto = require("crypto");
 const { promisify } = require("util");
 const scrypt = promisify(crypto.scrypt);
@@ -35,10 +25,6 @@ async function verifyPassword(password, stored) {
   }
 }
 
-// Compara segredos em texto puro sem vazar timing. crypto.timingSafeEqual
-// exige buffers do mesmo tamanho (lança erro se não forem), daí o check de
-// comprimento antes — isso vaza o TAMANHO do segredo pelo tempo de
-// resposta, mas não o conteúdo, que é o que importa.
 function timingSafeEqualString(a, b) {
   const bufA = Buffer.from(String(a ?? ""));
   const bufB = Buffer.from(String(b ?? ""));

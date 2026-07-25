@@ -1,9 +1,4 @@
-// Busca a foto de perfil do streamer na Twitch, a partir do nick que ele
-// digitar no "nome do host". Crie um app em https://dev.twitch.tv/console
-// e coloque TWITCH_CLIENT_ID/TWITCH_CLIENT_SECRET no .env.
-// Sem essas chaves, o host aparece normalmente, só sem a foto.
-
-const cache = new Map(); // nick normalizado -> URL da foto (ou null se não achou)
+const cache = new Map();
 
 let appToken = null;
 let appTokenExpiresAt = 0;
@@ -21,7 +16,7 @@ async function getAppToken() {
 
   const json = await res.json();
   appToken = json.access_token;
-  appTokenExpiresAt = Date.now() + (json.expires_in - 60) * 1000; // renova 1min antes de expirar
+  appTokenExpiresAt = Date.now() + (json.expires_in - 60) * 1000;
   return appToken;
 }
 
@@ -42,7 +37,7 @@ async function fetchTwitchAvatar(login) {
 
     if (!res.ok) {
       console.error("Twitch respondeu", res.status, "ao buscar", login);
-      return null; // não guarda no cache: pode ser passageiro
+      return null;
     }
 
     const json = await res.json();

@@ -45,8 +45,6 @@ function saveLeilao(entry) {
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(list));
   } catch (err) {
-    // localStorage indisponível (modo privado, etc) — sem problema, só não
-    // lembra da próxima vez.
   }
 }
 
@@ -55,10 +53,6 @@ function extractLeilaoId(url) {
   return match ? match[1] : null;
 }
 
-// Confere se o leilão ainda existe no servidor, pra um leilão apagado não
-// ficar pra sempre como link morto na lista salva desse navegador. Em erro
-// de rede, assume que existe -- melhor um link velho do que perder a
-// referência por uma falha passageira.
 async function leilaoStillExists(id) {
   if (!id) return false;
   try {
@@ -81,7 +75,6 @@ async function renderExisting() {
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(stillValid));
     } catch (err) {
-      // localStorage indisponível — sem problema, só não persiste a limpeza.
     }
   }
 
@@ -102,8 +95,6 @@ existingNewBtn.addEventListener("click", () => {
   form.hidden = false;
 });
 
-// Cookie de sessão é httpOnly (XSS não lê), então pergunta pro servidor
-// quem está logado em vez de ler cookie direto.
 async function loadSession() {
   try {
     currentSession = await fetch("/api/session/me").then((r) => r.json());
@@ -113,9 +104,6 @@ async function loadSession() {
   renderTwitchBlock();
 }
 
-// Exige login Twitch (identidade) E Mercado Pago conectado, senão o leilão
-// nasceria sem jeito de receber doação; checagem espelhada em
-// POST /api/leiloes no servidor.
 function renderTwitchBlock() {
   const loggedIn = !!(currentSession && currentSession.loggedIn);
   const mpConnected = !!(currentSession && currentSession.mpConnected);
@@ -139,7 +127,6 @@ twitchLogoutBtn.addEventListener("click", async () => {
   try {
     await fetch("/api/session/logout", { method: "POST" });
   } catch (err) {
-    // segue o baile -- pior caso, a sessão local no servidor expira sozinha
   }
   await loadSession();
 });

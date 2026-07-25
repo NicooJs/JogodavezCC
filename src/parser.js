@@ -1,16 +1,5 @@
-// Interpreta a mensagem escrita pelo doador e decide:
-//  - qual jogo ela se refere
-//  - se é pra ADICIONAR valor no jogo (apoiar) ou REMOVER (sabotar um jogo rival)
-//
-// Convenção pros espectadores (explique isso na tela do site):
-//   "+Elden Ring"        -> apoia Elden Ring
-//   "-Hollow Knight"     -> tira valor de Hollow Knight
-//   "tirar Hollow Knight" -> mesma coisa, por extenso
-//   "colocar Elden Ring" / "por Elden Ring" -> mesma coisa que "+"
-//
-// Mensagem sem nenhum desses prefixos não conta como lance — fica só
-// registrada no histórico. Prefixo é obrigatório de propósito: sem ele,
-// qualquer mensagem de chat sem intenção de dar lance viraria um lote sozinha.
+// Convenção pro chat: "+Elden Ring" apoia, "-Hollow Knight" (ou "tirar
+// Hollow Knight") sabota. Sem prefixo não conta como lance.
 
 function removeAccents(str) {
   return str.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
@@ -54,17 +43,13 @@ function parseMessage(rawMessage) {
     }
   }
 
-  // Sem "+"/"-" (ou palavra equivalente) no começo, não é lance nenhum —
-  // só bate-papo normal que veio junto da doação. Ignora.
   if (!action) return null;
 
   text = text.trim();
-  // tira pontuação solta nas pontas, tipo "Elden Ring!!" ou "-- Elden Ring"
   text = text.replace(/^[\s\-–—:.,!]+/, "").replace(/[\s!.,]+$/, "").trim();
 
   if (!text) return null;
 
-  // limita tamanho pra evitar mensagens gigantes/spam virando "nome de jogo"
   const name = text.length > 60 ? text.slice(0, 60).trim() : text;
   const key = normalizeKey(name);
   if (!key) return null;
@@ -72,12 +57,6 @@ function parseMessage(rawMessage) {
   return { action, name, key };
 }
 
-// Palavras comuns que aparecem junto do nome do jogo numa doação ("minecraft
-// manda ver!!") sem fazer parte do título — usado pra decidir se o texto que
-// sobra depois de bater com um jogo catalogado é ruído (mesmo jogo) ou pode
-// ser um título diferente com nome parecido (spin-off, DLC), que merece
-// conferência na RAWG antes de fundir num lote existente (ver
-// resolveParsedGame em server.js).
 const NOISE_WORDS = new Set([
   "manda", "mandar", "vai", "ver", "vamo", "vamos", "bora", "coloca", "colocar",
   "poe", "por", "favor", "pfv", "pfvr", "porfavor", "please", "pls", "plis",
@@ -86,8 +65,6 @@ const NOISE_WORDS = new Set([
   "um", "uma", "no", "na", "pro", "pra", "com", "e",
 ]);
 
-// Tira a primeira ocorrência de matchedKey (como frase inteira) de dentro de
-// candidateKey e devolve o que sobrou, já sem espaços nas pontas.
 function leftoverAfterMatch(candidateKey, matchedKey) {
   const escaped = matchedKey.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
   const re = new RegExp(`(^|\\s)${escaped}(\\s|$)`);

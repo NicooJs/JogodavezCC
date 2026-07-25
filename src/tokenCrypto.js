@@ -1,12 +1,7 @@
-// Criptografia dos tokens OAuth do Mercado Pago guardados no Postgres --
-// são credenciais reais que deixam o app agir em nome da conta MP do
-// streamer, então nunca ficam em texto puro em disco. AES-256-GCM via
-// crypto nativo do Node (mesma disciplina de src/passwords.js/session.js:
-// sem dependência nova só pra isso).
 const crypto = require("crypto");
 
 const ALGO = "aes-256-gcm";
-const IV_LENGTH = 12; // 96 bits, tamanho recomendado de IV pro modo GCM
+const IV_LENGTH = 12;
 
 function getKey() {
   const hex = process.env.TOKEN_ENCRYPTION_KEY;
@@ -18,9 +13,7 @@ function getKey() {
   return key;
 }
 
-// Formato guardado: "iv:tag:dados", tudo hex -- o tag de autenticação do
-// GCM (getAuthTag) precisa ser guardado junto, sem ele não dá pra decifrar
-// nem detectar se o texto cifrado foi adulterado.
+// formato: "iv:tag:dados" em hex -- sem o auth tag do GCM não dá pra decifrar
 function encryptToken(plaintext) {
   const iv = crypto.randomBytes(IV_LENGTH);
   const cipher = crypto.createCipheriv(ALGO, getKey(), iv);

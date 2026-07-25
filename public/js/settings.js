@@ -1,9 +1,3 @@
-// Modal de configurações substitui a página separada /l/:id/admin
-// (public/admin.html ainda existe mas não é mais linkada -- abrir aba nova
-// no meio da live quebra o modo apresentador). Carregado depois de app.js
-// e reaproveita as globais dele (LEILAO_ID, presenterFetch, checkPresenterAccess,
-// openPresenterLogin, formatBRL, escapeHtml) -- scripts sem type="module"
-// compartilham o escopo global.
 
 const settingsOverlayEl = document.getElementById("settings-overlay");
 const settingsCloseEl = document.getElementById("settings-close");
@@ -27,9 +21,6 @@ function positionPill(tabButton) {
   settingsTabPillEl.style.transform = `translateX(${tabButton.offsetLeft}px)`;
 }
 
-// Reposiciona sem animar -- mesmo truque de bumpValue() em app.js
-// (classList.remove + void offsetWidth + classList.add), adaptado de
-// keyframe pra transition.
 function snapPillTo(tabButton) {
   settingsTabPillEl.classList.add("no-transition");
   positionPill(tabButton);
@@ -44,7 +35,7 @@ function activateSettingsTab(tabName, { instant = false } = {}) {
     btn.setAttribute("aria-selected", String(isActive));
   });
   Object.entries(settingsPanelGroups).forEach(([name, el]) => { el.hidden = name !== tabName; });
-  settingsBodyEl.scrollTop = 0; // sem isso, trocar de aba rolado pode mostrar a aba nova numa posição que nem existe nela
+  settingsBodyEl.scrollTop = 0;
   const activeBtn = settingsTabButtons.find((b) => b.dataset.tab === tabName);
   if (activeBtn) instant ? snapPillTo(activeBtn) : positionPill(activeBtn);
 }
@@ -56,14 +47,11 @@ settingsTabButtons.forEach((btn) => {
 window.addEventListener("resize", () => {
   if (settingsOverlayEl.hidden) return;
   const activeBtn = settingsTabButtons.find((b) => b.classList.contains("active"));
-  if (activeBtn) snapPillTo(activeBtn); // só reposiciona, não é troca de aba
+  if (activeBtn) snapPillTo(activeBtn);
 });
 
 function openSettingsModal() {
   settingsOverlayEl.hidden = false;
-  // Precisa tirar o hidden antes de medir a pílula: elemento em
-  // display:none tem offsetWidth/offsetLeft = 0. Sempre volta pra "geral"
-  // ao abrir, mesmo espírito de openLotModal() em app.js resetando campos.
   activateSettingsTab("geral", { instant: true });
   if (settingsLeaderboard) renderSettingsFromLeaderboard(settingsLeaderboard);
   loadSettingsHistory();
@@ -73,9 +61,6 @@ function closeSettingsModal() {
   settingsOverlayEl.hidden = true;
 }
 
-// Pergunta pro servidor se esse navegador já tem sessão de admin válida
-// (cookie leilao_admin) ou é o dono verificado -- mesmo critério do botão
-// "modo apresentador" em app.js.
 async function requireLoginThenOpenSettings() {
   if (await checkPresenterAccess()) {
     setPresenterMode(true);
@@ -92,9 +77,6 @@ mpWarningLinkEl.addEventListener("click", requireLoginThenOpenSettings);
 settingsCloseEl.addEventListener("click", closeSettingsModal);
 settingsOverlayEl.addEventListener("click", (e) => { if (e.target === settingsOverlayEl) closeSettingsModal(); });
 
-// Links são fixos por leilão e não dependem do placar, então monta uma
-// vez só (diferente de renderSettingsFromLeaderboard, que roda a cada
-// update).
 function wireCopyLink(inputId, btnId, path) {
   const inputEl = document.getElementById(inputId);
   inputEl.value = `${location.origin}/l/${LEILAO_ID}${path}`;
@@ -112,8 +94,6 @@ function wireCopyLink(inputId, btnId, path) {
 wireCopyLink("donate-link-input", "donate-link-copy", "/doar");
 wireCopyLink("alert-link-input", "alert-link-copy", "/alerta");
 
-// Dispara um alerta de mentira no overlay (ver POST /admin/test-alert) --
-// não mexe no catálogo nem no total arrecadado, só o socket recebe o evento.
 document.getElementById("alert-link-test").addEventListener("click", async () => {
   const btn = document.getElementById("alert-link-test");
   btn.disabled = true;
@@ -143,9 +123,6 @@ function settleConfirmDialog(result) {
   if (resolve) resolve(result);
 }
 
-// Resolve null no cancelar (igual prompt() nativo) ou o valor cru do input
-// no confirmar -- sem trim, pra manter o comportamento dos pontos de
-// chamada existentes.
 function promptDialog({ title, label, initialValue = "", inputType = "text", confirmLabel = "Salvar" } = {}) {
   return new Promise((resolve) => {
     promptDialogResolve = resolve;
@@ -156,7 +133,7 @@ function promptDialog({ title, label, initialValue = "", inputType = "text", con
     input.value = initialValue;
     document.getElementById("prompt-dialog-confirm").textContent = confirmLabel;
     promptDialogOverlayEl.hidden = false;
-    setTimeout(() => { input.focus(); input.select(); }, 40); // mesmo delay de openLotModal em app.js
+    setTimeout(() => { input.focus(); input.select(); }, 40);
   });
 }
 
@@ -171,8 +148,7 @@ function confirmDialog({ title, message, confirmLabel = "Confirmar", danger = fa
     confirmBtn.classList.toggle("primary", !danger);
     confirmBtn.classList.toggle("danger", danger);
     confirmDialogOverlayEl.hidden = false;
-    // Foco no botão seguro por padrão em ação destrutiva, pra um Enter
-    // reflexo (hábito do confirm() nativo que isso substitui) não confirmar.
+    // foco no botão seguro por padrão em ação perigosa, pra um Enter reflexo não confirmar
     setTimeout(() => (danger ? cancelBtn : confirmBtn).focus(), 40);
   });
 }
@@ -190,10 +166,6 @@ document.getElementById("confirm-dialog-cancel").addEventListener("click", () =>
 document.getElementById("confirm-dialog-close").addEventListener("click", () => settleConfirmDialog(false));
 confirmDialogOverlayEl.addEventListener("click", (e) => { if (e.target === confirmDialogOverlayEl) settleConfirmDialog(false); });
 
-// Handler único de Escape, checando a camada mais alta primeiro -- um
-// diálogo por cima do settings é o único caso do app com duas overlays
-// simultâneas. Listeners independentes por overlay (padrão do resto do
-// app) fechariam as duas no mesmo Escape.
 document.addEventListener("keydown", (e) => {
   if (e.key !== "Escape") return;
   if (!promptDialogOverlayEl.hidden) return settlePromptDialog(null);
@@ -201,8 +173,6 @@ document.addEventListener("keydown", (e) => {
   if (!settingsOverlayEl.hidden) closeSettingsModal();
 });
 
-// socket já é declarado em app.js; esse listener a mais só mantém o
-// estado local atualizado pra quando o modal abrir.
 socket.on("update", ({ leaderboard }) => {
   settingsLeaderboard = leaderboard;
   settingsGames = leaderboard.items;
@@ -407,7 +377,6 @@ document.getElementById("reset-btn").addEventListener("click", async () => {
   loadSettingsHistory();
 });
 
-// Carregado sob demanda (não vem pelo socket) toda vez que o modal abre.
 async function loadSettingsHistory() {
   try {
     const res = await fetch(`/api/l/${LEILAO_ID}/recap/history`);

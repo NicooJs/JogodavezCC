@@ -1,12 +1,3 @@
-// Login de verdade com a Twitch (Authorization Code Grant) -- diferente de
-// src/twitchClient.js, que só faz Client Credentials (token de APP, sem
-// usuário por trás, usado pra buscar avatar por nome digitado). Esse
-// arquivo é o que prova QUEM é a pessoa de verdade, por isso fica
-// separado: são categorias de confiança diferentes.
-//
-// TWITCH_CLIENT_ID/TWITCH_CLIENT_SECRET são os mesmos usados em
-// twitchClient.js (um app só, pro site inteiro).
-
 const AUTHORIZE_URL = "https://id.twitch.tv/oauth2/authorize";
 const TOKEN_URL = "https://id.twitch.tv/oauth2/token";
 const USERS_URL = "https://api.twitch.tv/helix/users";
@@ -19,15 +10,12 @@ function buildAuthorizeUrl({ redirectUri, state }) {
     client_id: clientId,
     redirect_uri: redirectUri,
     response_type: "code",
-    scope: "", // só precisamos de id/login/display_name/profile_image_url, que /helix/users devolve pro dono do próprio token sem escopo extra nenhum
+    scope: "",
     state,
   });
   return `${AUTHORIZE_URL}?${params.toString()}`;
 }
 
-// "code" é de uso único, a Twitch invalida depois do primeiro uso. Troca
-// por um token de USUÁRIO -- diferente do token de app em
-// twitchClient.js#getAppToken.
 async function exchangeCodeForToken({ code, redirectUri }) {
   const clientId = process.env.TWITCH_CLIENT_ID;
   const clientSecret = process.env.TWITCH_CLIENT_SECRET;
@@ -53,10 +41,6 @@ async function exchangeCodeForToken({ code, redirectUri }) {
   return json.access_token;
 }
 
-// GET /helix/users sem "login=" devolve o dono do PRÓPRIO token -- confirma
-// "quem está logado" sem confiar em nada que o cliente diga. id é o
-// identificador estável (login pode mudar), por isso vira a chave de posse
-// do leilão.
 async function fetchAuthenticatedUser(accessToken) {
   const clientId = process.env.TWITCH_CLIENT_ID;
   if (!clientId) throw new Error("TWITCH_CLIENT_ID não configurado");

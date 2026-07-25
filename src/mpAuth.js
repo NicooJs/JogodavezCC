@@ -1,10 +1,3 @@
-// OAuth marketplace do Mercado Pago -- conecta a conta MP de um streamer
-// (por twitch_user_id) pra cobrar em nome dele com split. Segue o mesmo
-// formato geral de src/twitchAuth.js.
-//
-// PKCE (code_challenge) é opcional no MP, só obrigatório se habilitado nas
-// configurações da aplicação — não implementado aqui; dá pra adicionar sem
-// mudar a forma das duas funções abaixo se isso mudar.
 const AUTHORIZE_URL = "https://auth.mercadopago.com/authorization";
 const TOKEN_URL = "https://api.mercadopago.com/oauth/token";
 
@@ -21,9 +14,6 @@ function buildAuthorizeUrl({ redirectUri, state }) {
   return `${AUTHORIZE_URL}?${params.toString()}`;
 }
 
-// O refresh_token do MP roda a cada uso (não só na conexão inicial) — quem
-// chama isso ou refreshToken abaixo precisa regravar os dois tokens toda
-// vez, nunca só o access_token sozinho.
 async function exchangeCodeForToken({ code, redirectUri }) {
   const clientId = process.env.MP_CLIENT_ID;
   const clientSecret = process.env.MP_CLIENT_SECRET;
@@ -60,9 +50,8 @@ async function exchangeCodeForToken({ code, redirectUri }) {
   };
 }
 
-// Chamada quando o access_token expira (~180 dias) ou uma chamada real
-// devolve 401. O refresh_token novo também precisa ser regravado — o
-// antigo para de funcionar depois de usado.
+// o refresh_token do MP roda a cada uso — o antigo para de funcionar, então
+// o novo sempre precisa ser regravado
 async function refreshToken({ refreshToken: currentRefreshToken }) {
   const clientId = process.env.MP_CLIENT_ID;
   const clientSecret = process.env.MP_CLIENT_SECRET;

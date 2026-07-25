@@ -52,7 +52,6 @@ logoutBtn.addEventListener("click", async () => {
   try {
     await fetch("/api/session/logout", { method: "POST" });
   } catch (err) {
-    // segue o baile -- pior caso, a sessão local no servidor expira sozinha
   }
   loadSession();
 });
