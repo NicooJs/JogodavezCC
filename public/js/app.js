@@ -270,7 +270,7 @@ setInterval(tickTimer, 1000);
 
 function thumbHtml(item, className) {
   return item.image
-    ? `<img class="${className}" src="${escapeHtml(item.image)}" alt="" loading="lazy" crossorigin="anonymous" onerror="this.replaceWith(Object.assign(document.createElement('div'),{className:'${className} ${className}-placeholder',textContent:'${escapeHtml((item.name[0] || "?").toUpperCase())}'}))" />`
+    ? `<img class="${className}" src="${escapeHtml(item.image)}" alt="" loading="lazy" onerror="this.replaceWith(Object.assign(document.createElement('div'),{className:'${className} ${className}-placeholder',textContent:'${escapeHtml((item.name[0] || "?").toUpperCase())}'}))" />`
     : `<div class="${className} ${className}-placeholder">${escapeHtml((item.name[0] || "?").toUpperCase())}</div>`;
 }
 
@@ -300,7 +300,7 @@ function lotFundingHtml(item) {
 function lotTopDonorHtml(item) {
   if (!item.topDonor || !item.topDonor.username) return "";
   const avatar = item.topDonor.avatar
-    ? `<img class="lot-top-donor-avatar" src="${escapeHtml(item.topDonor.avatar)}" alt="" loading="lazy" crossorigin="anonymous" />`
+    ? `<img class="lot-top-donor-avatar" src="${escapeHtml(item.topDonor.avatar)}" alt="" loading="lazy" />`
     : `<span class="lot-top-donor-avatar lot-top-donor-avatar-placeholder">${escapeHtml(item.topDonor.username[0].toUpperCase())}</span>`;
   return `
     <div class="lot-top-donor" title="Quem mais apoiou este jogo">
@@ -497,7 +497,7 @@ function renderDonors(donors) {
   const rows = donors.map((d) => {
     const pct = d.total > 0 ? Math.max(4, Math.round((d.total / maxTotal) * 100)) : 0;
     const avatar = d.avatar
-      ? `<img class="donor-avatar" src="${escapeHtml(d.avatar)}" alt="" loading="lazy" crossorigin="anonymous" />`
+      ? `<img class="donor-avatar" src="${escapeHtml(d.avatar)}" alt="" loading="lazy" />`
       : `<span class="donor-avatar donor-avatar-placeholder">${escapeHtml((d.username || "?")[0].toUpperCase())}</span>`;
     return `
     <div class="donor-row rank-${d.rank}" style="--pct:${pct}%">
@@ -1113,7 +1113,7 @@ recapShareXEl.addEventListener("click", async (e) => {
 
 function recapPodiumCardHtml(game) {
   const thumb = game.image
-    ? `<img class="recap-podium-thumb" src="${escapeHtml(game.image)}" alt="" crossorigin="anonymous" />`
+    ? `<img class="recap-podium-thumb" src="${escapeHtml(game.image)}" alt="" />`
     : `<div class="recap-podium-thumb recap-podium-thumb-placeholder">${escapeHtml((game.name[0] || "?").toUpperCase())}</div>`;
   const topDonorHtml = game.topDonor
     ? `<p class="recap-podium-top-donor">apoiador: ${escapeHtml(game.topDonor.username)}</p>`
@@ -1132,7 +1132,7 @@ function recapPodiumCardHtml(game) {
 
 function recapExtraRowHtml(game) {
   const thumb = game.image
-    ? `<img class="recap-extra-thumb" src="${escapeHtml(game.image)}" alt="" loading="lazy" crossorigin="anonymous" />`
+    ? `<img class="recap-extra-thumb" src="${escapeHtml(game.image)}" alt="" loading="lazy" />`
     : `<span class="recap-extra-thumb recap-extra-thumb-placeholder">${escapeHtml((game.name[0] || "?").toUpperCase())}</span>`;
   return `
     <div class="recap-extra-row">
@@ -1185,7 +1185,7 @@ function renderRecap(recap, eyebrowText) {
   recapDonorsLabelEl.hidden = topDonors.length === 0;
   recapDonorListEl.innerHTML = topDonors.map((d) => {
     const avatar = d.avatar
-      ? `<img class="recap-donor-avatar" src="${escapeHtml(d.avatar)}" alt="" loading="lazy" crossorigin="anonymous" />`
+      ? `<img class="recap-donor-avatar" src="${escapeHtml(d.avatar)}" alt="" loading="lazy" />`
       : `<span class="recap-donor-avatar recap-donor-avatar-placeholder">${escapeHtml((d.username || "?")[0].toUpperCase())}</span>`;
     return `
     <div class="recap-donor-row rank-${d.rank}">
@@ -1240,7 +1240,7 @@ function historyCardHtml(h, index) {
   const when = h.archivedAt ? new Date(h.archivedAt).toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" }) : "—";
   const champion = h.topGames && h.topGames[0] ? h.topGames[0] : null;
   const thumb = champion && champion.image
-    ? `<img class="history-card-thumb" src="${escapeHtml(champion.image)}" alt="" crossorigin="anonymous" />`
+    ? `<img class="history-card-thumb" src="${escapeHtml(champion.image)}" alt="" />`
     : `<div class="history-card-thumb history-card-thumb-placeholder">${escapeHtml(((champion && champion.name[0]) || "?").toUpperCase())}</div>`;
   const inProgressTag = h.openRound ? `<span class="history-card-inprogress">em andamento</span>` : "";
   return `
@@ -1577,7 +1577,7 @@ function confirmDonateGame(name, image) {
   donateGameConfirmed = true;
   donateModalGameHintEl.hidden = true;
   donateModalGameIconEl.innerHTML = image
-    ? `<img src="${escapeHtml(image)}" alt="" loading="lazy" crossorigin="anonymous" />`
+    ? `<img src="${escapeHtml(image)}" alt="" loading="lazy" />`
     : `<div class="game-input-icon-placeholder">${escapeHtml((name[0] || "?").toUpperCase())}</div>`;
   donateModalGameIconEl.hidden = false;
 }
@@ -1591,7 +1591,7 @@ function unconfirmDonateGame() {
 
 function donateGameShelfCardHtml(item, isNew) {
   const thumb = item.image
-    ? `<img class="game-shelf-cover" src="${escapeHtml(item.image)}" alt="" loading="lazy" crossorigin="anonymous" />`
+    ? `<img class="game-shelf-cover" src="${escapeHtml(item.image)}" alt="" loading="lazy" />`
     : `<div class="game-shelf-cover game-shelf-cover-placeholder">${escapeHtml((item.name[0] || "?").toUpperCase())}</div>`;
   return `
     <div class="game-shelf-card" data-name="${escapeHtml(item.name)}" data-image="${escapeHtml(item.image || "")}">
@@ -1968,7 +1968,7 @@ function hideSuggestions() {
 function renderSuggestions(query, results) {
   const items = results.map((g) => {
     const thumb = g.image
-      ? `<img class="suggestion-thumb" src="${g.image}" alt="" loading="lazy" crossorigin="anonymous" />`
+      ? `<img class="suggestion-thumb" src="${g.image}" alt="" loading="lazy" />`
       : `<div class="suggestion-thumb suggestion-thumb-placeholder">${escapeHtml((g.name[0] || "?").toUpperCase())}</div>`;
     return `
       <div class="suggestion-item" data-name="${escapeHtml(g.name)}" data-image="${escapeHtml(g.image || "")}">
