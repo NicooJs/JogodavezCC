@@ -51,6 +51,9 @@ async function init() {
       tile.style.backgroundImage = `url("${url}")`;
       revealIfReady();
     };
+    img.onerror = () => {
+      console.warn("[board-cover-bg] falha ao carregar capa:", url);
+    };
     img.src = url;
   }
 }

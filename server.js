@@ -1132,6 +1132,7 @@ app.post("/api/l/:id/admin/test-alert", loadLeilao, requireLeilaoAdmin, (req, re
     username: "Doador de Teste",
     amount: 10,
     note: "Boa sorte no leilão!",
+    voiceId: "1",
     game: { name: "Jogo de Teste" },
   });
   res.json({ ok: true });
