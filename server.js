@@ -12,6 +12,7 @@ const { getStore, deleteStore, DATA_DIR } = require("./src/stores");
 const { hashPassword, verifyPassword, timingSafeEqualString } = require("./src/passwords");
 const { parseMessage, normalizeKey, leftoverAfterMatch, looksLikeNoise } = require("./src/parser");
 const { fetchGameImage, searchGames, identifyGameFromNoisyText, fetchPopularCovers } = require("./src/gameImages");
+const { fetchTwitchAvatar } = require("./src/twitchClient");
 const twitchAuth = require("./src/twitchAuth");
 const session = require("./src/session");
 const mpAuth = require("./src/mpAuth");
@@ -222,6 +223,30 @@ function setLeiloesMpDisconnected(twitchUserId, disconnected) {
   }
 }
 
+const donorAvatarCache = new Map();
+const donorAvatarFetching = new Map();
+
+function getDonorAvatar(username, onResolved) {
+  if (!username) return null;
+  const key = username.trim().toLowerCase();
+  if (donorAvatarCache.has(key)) return donorAvatarCache.get(key);
+
+  let waiters = donorAvatarFetching.get(key);
+  if (!waiters) {
+    waiters = new Set();
+    donorAvatarFetching.set(key, waiters);
+    fetchTwitchAvatar(key)
+      .then((url) => {
+        donorAvatarCache.set(key, url);
+        if (url) waiters.forEach((cb) => cb());
+      })
+      .catch(() => {})
+      .finally(() => donorAvatarFetching.delete(key));
+  }
+  if (onResolved) waiters.add(onResolved);
+  return null;
+}
+
 async function resolveParsedGame(store, parsed) {
   if (store.hasGame(parsed.key)) return parsed;
 
@@ -250,6 +275,7 @@ async function resolveParsedGame(store, parsed) {
 }
 
 function serializeLeaderboard(store, leilaoId) {
+  const onAvatarResolved = leilaoId ? () => broadcastUpdate(leilaoId, store, null) : undefined;
   const rows = store.getLeaderboard();
   const isOpen = store.getState("open", "true") === "true";
   const isPaused = isOpen && store.getState("paused", "false") === "true";
@@ -271,7 +297,7 @@ function serializeLeaderboard(store, leilaoId) {
       winning: index < qualifyCount,
       image: row.image_url || null,
       topDonor: topDonor
-        ? { username: topDonor.username, total: centsToNumber(topDonor.total_cents), avatar: null }
+        ? { username: topDonor.username, total: centsToNumber(topDonor.total_cents), avatar: getDonorAvatar(topDonor.username, onAvatarResolved) }
         : null,
     };
   });
@@ -280,7 +306,7 @@ function serializeLeaderboard(store, leilaoId) {
     username: d.username,
     total: centsToNumber(d.total_cents),
     rank: index + 1,
-    avatar: null,
+    avatar: getDonorAvatar(d.username, onAvatarResolved),
   }));
 
   return {
@@ -322,7 +348,7 @@ function buildRecap(store) {
       image: row.image_url || null,
       donorCount: donorCounts[row.key] || 0,
       topDonor: topDonor
-        ? { username: topDonor.username, total: centsToNumber(topDonor.total_cents), avatar: null }
+        ? { username: topDonor.username, total: centsToNumber(topDonor.total_cents), avatar: getDonorAvatar(topDonor.username) }
         : null,
     };
   });
@@ -331,7 +357,7 @@ function buildRecap(store) {
     rank: index + 1,
     username: d.username,
     total: centsToNumber(d.total_cents),
-    avatar: null,
+    avatar: getDonorAvatar(d.username),
   }));
 
   const biggest = store.getBiggestDonation();

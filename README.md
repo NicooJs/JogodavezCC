@@ -94,7 +94,7 @@ src/db.js                   armazenamento em JSON por leilão (catálogo, evento
 src/stores.js                cache em memória dos leilões ativos + eviction
 src/registry.js              catálogo de leilões (id -> dono, título)
 src/session.js               cookie de sessão assinado (login Twitch)
-src/twitchAuth.js            OAuth da Twitch
+src/twitchAuth.js/twitchClient.js   OAuth da Twitch + busca de avatar
 src/mpAuth.js/mpApi.js/mpWebhook.js  OAuth do Mercado Pago + criação/confirmação de Pix
 src/streamersStore.js/paymentsStore.js  Postgres: credencial OAuth e histórico de pagamento
 src/tokenCrypto.js           cifra os tokens do Mercado Pago em repouso
