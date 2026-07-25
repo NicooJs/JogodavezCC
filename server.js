@@ -52,6 +52,7 @@ function createRateLimiter(windowMs, maxHits) {
 const loginRateLimiter = createRateLimiter(5 * 60_000, 10);
 const superAdminRateLimiter = createRateLimiter(10 * 60_000, 5);
 const gameSearchRateLimiter = createRateLimiter(60_000, 20);
+const donationRateLimiter = createRateLimiter(60_000, 5);
 
 const UPLOADS_DIR = path.join(DATA_DIR, "uploads");
 fs.mkdirSync(UPLOADS_DIR, { recursive: true });
@@ -871,6 +872,11 @@ app.get("/api/l/:id/events/recent", loadLeilao, (req, res) => {
 
 // não aplica a contribuição aqui -- só quando o webhook confirmar o pagamento
 app.post("/api/l/:id/doacao", loadLeilao, async (req, res) => {
+  if (donationRateLimiter.isLimited(req.ip)) {
+    return res.status(429).json({ error: "Muitas tentativas. Aguarde um minuto e tente de novo." });
+  }
+  donationRateLimiter.record(req.ip);
+
   const { leilaoId, store } = req;
   const { name, amount, action, donorUsername, donorNote, donorVoiceId } = req.body || {};
 
