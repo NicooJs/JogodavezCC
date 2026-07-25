@@ -11,6 +11,10 @@ function getPool() {
     // certificado do Railway não valida pela cadeia padrão do Node
     ssl: connectionString.includes("railway.internal") ? false : { rejectUnauthorized: false },
   });
+  // sem isso, erro de conexão num cliente ocioso vira exceção não tratada e derruba o processo inteiro
+  pool.on("error", (err) => {
+    console.error("[pg] erro em cliente ocioso do pool:", err.message);
+  });
   return pool;
 }
 

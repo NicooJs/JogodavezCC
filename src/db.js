@@ -344,6 +344,12 @@ function createStore(filePath) {
     return data.pastAuctions.slice();
   }
 
+  // só pra rede de segurança no Postgres (ver src/stateBackup.js) -- não usar
+  // pra mais nada, é a referência viva de `data`, não uma cópia
+  function getRawSnapshot() {
+    return data;
+  }
+
   return {
     getState,
     setState,
@@ -375,6 +381,7 @@ function createStore(filePath) {
     resetAll,
     archiveAuction,
     getPastAuctions,
+    getRawSnapshot,
   };
 }
 

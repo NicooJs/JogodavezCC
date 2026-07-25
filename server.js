@@ -1371,6 +1371,8 @@ setInterval(() => {
   }
 }, 5000);
 
+require("./src/stateBackup").start();
+
 // ---------- start ----------
 
 const PORT = process.env.PORT || 3000;
