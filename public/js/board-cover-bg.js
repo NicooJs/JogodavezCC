@@ -47,6 +47,7 @@ async function init() {
     grid.appendChild(tile);
 
     const img = new Image();
+    img.crossOrigin = "anonymous";
     img.onload = () => {
       tile.style.backgroundImage = `url("${url}")`;
       revealIfReady();

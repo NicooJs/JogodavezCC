@@ -148,7 +148,7 @@ function confirmGame(name, image) {
   gameConfirmed = true;
   gameHintEl.hidden = true;
   gameIconEl.innerHTML = image
-    ? `<img src="${escapeHtml(image)}" alt="" loading="lazy" />`
+    ? `<img src="${escapeHtml(image)}" alt="" loading="lazy" crossorigin="anonymous" />`
     : `<div class="game-input-icon-placeholder">${escapeHtml((name[0] || "?").toUpperCase())}</div>`;
   gameIconEl.hidden = false;
 }
@@ -162,7 +162,7 @@ function unconfirmGame() {
 
 function gameShelfCardHtml(item, isNew) {
   const thumb = item.image
-    ? `<img class="game-shelf-cover" src="${escapeHtml(item.image)}" alt="" loading="lazy" />`
+    ? `<img class="game-shelf-cover" src="${escapeHtml(item.image)}" alt="" loading="lazy" crossorigin="anonymous" />`
     : `<div class="game-shelf-cover game-shelf-cover-placeholder">${escapeHtml((item.name[0] || "?").toUpperCase())}</div>`;
   return `
     <div class="game-shelf-card" data-name="${escapeHtml(item.name)}" data-image="${escapeHtml(item.image || "")}">

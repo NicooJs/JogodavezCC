@@ -1577,7 +1577,7 @@ function confirmDonateGame(name, image) {
   donateGameConfirmed = true;
   donateModalGameHintEl.hidden = true;
   donateModalGameIconEl.innerHTML = image
-    ? `<img src="${escapeHtml(image)}" alt="" loading="lazy" />`
+    ? `<img src="${escapeHtml(image)}" alt="" loading="lazy" crossorigin="anonymous" />`
     : `<div class="game-input-icon-placeholder">${escapeHtml((name[0] || "?").toUpperCase())}</div>`;
   donateModalGameIconEl.hidden = false;
 }
@@ -1591,7 +1591,7 @@ function unconfirmDonateGame() {
 
 function donateGameShelfCardHtml(item, isNew) {
   const thumb = item.image
-    ? `<img class="game-shelf-cover" src="${escapeHtml(item.image)}" alt="" loading="lazy" />`
+    ? `<img class="game-shelf-cover" src="${escapeHtml(item.image)}" alt="" loading="lazy" crossorigin="anonymous" />`
     : `<div class="game-shelf-cover game-shelf-cover-placeholder">${escapeHtml((item.name[0] || "?").toUpperCase())}</div>`;
   return `
     <div class="game-shelf-card" data-name="${escapeHtml(item.name)}" data-image="${escapeHtml(item.image || "")}">
@@ -1968,7 +1968,7 @@ function hideSuggestions() {
 function renderSuggestions(query, results) {
   const items = results.map((g) => {
     const thumb = g.image
-      ? `<img class="suggestion-thumb" src="${g.image}" alt="" loading="lazy" />`
+      ? `<img class="suggestion-thumb" src="${g.image}" alt="" loading="lazy" crossorigin="anonymous" />`
       : `<div class="suggestion-thumb suggestion-thumb-placeholder">${escapeHtml((g.name[0] || "?").toUpperCase())}</div>`;
     return `
       <div class="suggestion-item" data-name="${escapeHtml(g.name)}" data-image="${escapeHtml(g.image || "")}">
