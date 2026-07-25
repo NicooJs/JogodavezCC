@@ -1093,16 +1093,26 @@ recapDownloadBtnEl.addEventListener("click", downloadRecapImage);
 
 recapShareXEl.addEventListener("click", async (e) => {
   e.preventDefault();
-  const twitterWindow = window.open("", "_blank");
   const canvas = await buildRecapCanvas();
-  if (!canvas) {
-    if (twitterWindow) twitterWindow.close();
-    return;
+  if (!canvas) return;
+  const blob = await new Promise((resolve) => canvas.toBlob(resolve, "image/png"));
+  if (!blob) return;
+
+  const file = new File([blob], `recap-${LEILAO_ID}.png`, { type: "image/png" });
+  if (navigator.canShare && navigator.canShare({ files: [file] })) {
+    try {
+      await navigator.share({ files: [file], text: currentShareText });
+      return;
+    } catch (err) {
+      if (err && err.name === "AbortError") return; // usuário cancelou o compartilhamento
+    }
   }
-  downloadCanvasAsPng(canvas);
+
+  // sem suporte a Web Share com arquivo (a maioria dos navegadores desktop): a imagem
+  // gerada vai pro clipboard e a pessoa cola (Ctrl+V) direto no tweet que abrir
+  const twitterWindow = window.open("", "_blank");
   try {
-    const blob = await new Promise((resolve) => canvas.toBlob(resolve, "image/png"));
-    if (blob && navigator.clipboard && window.ClipboardItem) {
+    if (navigator.clipboard && window.ClipboardItem) {
       await navigator.clipboard.write([new ClipboardItem({ "image/png": blob })]);
     }
   } catch (err) {
