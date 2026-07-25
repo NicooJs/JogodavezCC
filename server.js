@@ -9,10 +9,9 @@ const multer = require("multer");
 
 const registry = require("./src/registry");
 const { getStore, deleteStore, DATA_DIR } = require("./src/stores");
-const { verifyPassword, timingSafeEqualString } = require("./src/passwords");
+const { hashPassword, verifyPassword, timingSafeEqualString } = require("./src/passwords");
 const { parseMessage, normalizeKey, leftoverAfterMatch, looksLikeNoise } = require("./src/parser");
 const { fetchGameImage, searchGames, identifyGameFromNoisyText, fetchPopularCovers } = require("./src/gameImages");
-const { fetchTwitchAvatar } = require("./src/twitchClient");
 const twitchAuth = require("./src/twitchAuth");
 const session = require("./src/session");
 const mpAuth = require("./src/mpAuth");
@@ -223,30 +222,6 @@ function setLeiloesMpDisconnected(twitchUserId, disconnected) {
   }
 }
 
-const donorAvatarCache = new Map();
-const donorAvatarFetching = new Map();
-
-function getDonorAvatar(username, onResolved) {
-  if (!username) return null;
-  const key = username.trim().toLowerCase();
-  if (donorAvatarCache.has(key)) return donorAvatarCache.get(key);
-
-  let waiters = donorAvatarFetching.get(key);
-  if (!waiters) {
-    waiters = new Set();
-    donorAvatarFetching.set(key, waiters);
-    fetchTwitchAvatar(key)
-      .then((url) => {
-        donorAvatarCache.set(key, url);
-        if (url) waiters.forEach((cb) => cb());
-      })
-      .catch(() => {})
-      .finally(() => donorAvatarFetching.delete(key));
-  }
-  if (onResolved) waiters.add(onResolved);
-  return null;
-}
-
 async function resolveParsedGame(store, parsed) {
   if (store.hasGame(parsed.key)) return parsed;
 
@@ -275,7 +250,6 @@ async function resolveParsedGame(store, parsed) {
 }
 
 function serializeLeaderboard(store, leilaoId) {
-  const onAvatarResolved = leilaoId ? () => broadcastUpdate(leilaoId, store, null) : undefined;
   const rows = store.getLeaderboard();
   const isOpen = store.getState("open", "true") === "true";
   const isPaused = isOpen && store.getState("paused", "false") === "true";
@@ -297,7 +271,7 @@ function serializeLeaderboard(store, leilaoId) {
       winning: index < qualifyCount,
       image: row.image_url || null,
       topDonor: topDonor
-        ? { username: topDonor.username, total: centsToNumber(topDonor.total_cents), avatar: getDonorAvatar(topDonor.username, onAvatarResolved) }
+        ? { username: topDonor.username, total: centsToNumber(topDonor.total_cents), avatar: null }
         : null,
     };
   });
@@ -306,7 +280,7 @@ function serializeLeaderboard(store, leilaoId) {
     username: d.username,
     total: centsToNumber(d.total_cents),
     rank: index + 1,
-    avatar: getDonorAvatar(d.username, onAvatarResolved),
+    avatar: null,
   }));
 
   return {
@@ -348,7 +322,7 @@ function buildRecap(store) {
       image: row.image_url || null,
       donorCount: donorCounts[row.key] || 0,
       topDonor: topDonor
-        ? { username: topDonor.username, total: centsToNumber(topDonor.total_cents), avatar: getDonorAvatar(topDonor.username) }
+        ? { username: topDonor.username, total: centsToNumber(topDonor.total_cents), avatar: null }
         : null,
     };
   });
@@ -357,7 +331,7 @@ function buildRecap(store) {
     rank: index + 1,
     username: d.username,
     total: centsToNumber(d.total_cents),
-    avatar: getDonorAvatar(d.username),
+    avatar: null,
   }));
 
   const biggest = store.getBiggestDonation();
@@ -656,14 +630,13 @@ app.post("/api/leiloes", async (req, res) => {
       return res.status(409).json({ error: "Conecte sua conta do Mercado Pago antes de criar o leilão" });
     }
 
-    const { title, password } = req.body || {};
+    const { title } = req.body || {};
     const { id } = await registry.createLeilao({
       title,
       host: twitchSession.displayName,
       hostAvatar: twitchSession.avatarUrl,
       hostTwitchUserId: twitchSession.twitchUserId,
       hostTwitchLogin: twitchSession.twitchLogin,
-      password,
     });
     res.json({ ok: true, id, url: `/l/${id}` });
   } catch (err) {
@@ -1064,10 +1037,37 @@ app.post("/api/l/:id/admin/login", loadLeilao, async (req, res) => {
   const hash = req.store.getState("adminSecretHash");
   if (!(await verifyPassword(password, hash))) {
     loginRateLimiter.record(req.ip);
-    return res.status(401).json({ error: "Senha incorreta" });
+    return res.status(401).json({ error: "Código incorreto ou expirado" });
   }
+  // uso único -- some assim que alguém entra com ele, dono precisa gerar outro pra delegar de novo
+  req.store.setState("adminSecretHash", null);
   grantAdminSession(req, res, req.leilaoId);
   res.json({ ok: true });
+});
+
+const MOD_CODE_ALPHABET = "23456789ABCDEFGHJKMNPQRSTUVWXYZ"; // sem 0/O/1/I/L, mais fácil de ler/digitar
+const MOD_CODE_LENGTH = 8;
+
+function generateModCode() {
+  let code = "";
+  for (let i = 0; i < MOD_CODE_LENGTH; i++) {
+    code += MOD_CODE_ALPHABET[crypto.randomInt(MOD_CODE_ALPHABET.length)];
+  }
+  return code;
+}
+
+// só o dono (via Twitch) pode gerar -- quem já tem acesso de apresentador
+// por outro caminho não precisa de um código novo pra si mesmo
+app.post("/api/l/:id/admin/generate-code", loadLeilao, async (req, res) => {
+  const twitchSession = getTwitchSession(req);
+  const meta = registry.getLeilaoMeta(req.leilaoId);
+  const isOwner = !!(twitchSession && meta && meta.ownerTwitchUserId && twitchSession.twitchUserId === meta.ownerTwitchUserId);
+  if (!isOwner) {
+    return res.status(401).json({ error: "Só o dono do leilão pode gerar um código" });
+  }
+  const code = generateModCode();
+  req.store.setState("adminSecretHash", await hashPassword(code));
+  res.json({ ok: true, code });
 });
 
 app.post("/api/l/:id/admin/logout", loadLeilao, (req, res) => {

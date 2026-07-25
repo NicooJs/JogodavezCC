@@ -2,7 +2,6 @@ const fs = require("fs");
 const path = require("path");
 const crypto = require("crypto");
 const { getStore, DATA_DIR } = require("./stores");
-const { hashPassword } = require("./passwords");
 
 const REGISTRY_FILE = path.join(DATA_DIR, "_registry.json");
 
@@ -29,14 +28,9 @@ function generateId() {
   return crypto.randomBytes(6).toString("hex");
 }
 
-const MIN_PASSWORD_LENGTH = 8;
-
-async function createLeilao({ title, host, hostAvatar, hostTwitchUserId, hostTwitchLogin, password }) {
+async function createLeilao({ title, host, hostAvatar, hostTwitchUserId, hostTwitchLogin }) {
   if (!hostTwitchUserId) {
     throw new Error("É necessário fazer login com a Twitch antes de criar o leilão");
-  }
-  if (!password || String(password).length < MIN_PASSWORD_LENGTH) {
-    throw new Error(`A senha precisa ter pelo menos ${MIN_PASSWORD_LENGTH} caracteres`);
   }
 
   let id;
@@ -53,8 +47,10 @@ async function createLeilao({ title, host, hostAvatar, hostTwitchUserId, hostTwi
   registry.leiloes[id] = meta;
   save();
 
+  // sem senha na criação -- o dono entra direto via Twitch (requireLeilaoAdmin
+  // já aceita isso). Se precisar delegar pra um moderador, gera um código de
+  // uso único depois, no próprio modo apresentador (ver rota /admin/generate-code)
   const store = getStore(id);
-  store.setState("adminSecretHash", await hashPassword(password));
   store.setState("title", meta.title);
   store.setState("host", meta.host);
   store.setState("hostAvatar", hostAvatar || null);

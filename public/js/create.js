@@ -140,9 +140,6 @@ form.addEventListener("submit", async (e) => {
   if (!currentSession || !currentSession.loggedIn || !currentSession.mpConnected) return;
 
   const title = document.getElementById("f-title").value.trim();
-  const password = document.getElementById("f-password").value;
-
-  if (!password) return;
 
   submitBtn.disabled = true;
   submitBtn.textContent = "Criando…";
@@ -151,7 +148,7 @@ form.addEventListener("submit", async (e) => {
     const res = await fetch("/api/leiloes", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ title, password }),
+      body: JSON.stringify({ title }),
     });
     const data = await res.json().catch(() => ({}));
     if (!res.ok) throw new Error(data.error || `Erro ${res.status}`);

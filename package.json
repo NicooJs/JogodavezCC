@@ -8,8 +8,7 @@
     "node": ">=18.0.0"
   },
   "scripts": {
-    "start": "node server.js",
-    "test-webhook": "node scripts/test-webhook.js"
+    "start": "node server.js"
   },
   "dependencies": {
     "dotenv": "^16.4.5",

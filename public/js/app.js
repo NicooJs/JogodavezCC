@@ -28,6 +28,7 @@ const totalHideToggleEl = document.getElementById("total-hide-toggle");
 const lotCountEl = document.getElementById("lot-count");
 const donorCountEl = document.getElementById("donor-count");
 const presenterToggleEl = document.getElementById("presenter-toggle");
+const presenterExitEl = document.getElementById("presenter-exit");
 const presenterDrawerEl = document.getElementById("presenter-drawer");
 const timerRingFillEl = document.getElementById("timer-ring-fill");
 const donateModalTimerEl = document.getElementById("donate-modal-timer");
@@ -1791,10 +1792,15 @@ async function presenterFetch(path, options = {}) {
   return res.status === 204 ? null : res.json();
 }
 
+let isPresenterOwner = false;
+
 function setPresenterMode(active) {
   document.body.classList.toggle("presenter-mode", active);
   presenterToggleEl.classList.toggle("active", active);
-  presenterToggleEl.title = active ? "Sair do modo apresentador" : "Entrar no modo apresentador";
+  presenterExitEl.hidden = !active;
+  presenterToggleEl.title = active
+    ? (isPresenterOwner ? "Gerar código para moderador" : "Modo apresentador ativo")
+    : "Entrar no modo apresentador";
   presenterDrawerEl.hidden = !active;
   updateWebhookWarning();
   updatePixWarning();
@@ -1834,7 +1840,7 @@ async function submitPresenterLogin() {
     });
     if (!res.ok) {
       const data = await res.json().catch(() => ({}));
-      presenterLoginError.textContent = data.error || "Senha incorreta";
+      presenterLoginError.textContent = data.error || "Código incorreto ou expirado";
       presenterLoginError.hidden = false;
       presenterLoginPassword.select();
       return;
@@ -1853,18 +1859,57 @@ async function submitPresenterLogin() {
 
 async function checkPresenterAccess() {
   try {
-    const { isPresenter } = await fetch(`/api/l/${LEILAO_ID}/admin/check-session`, { credentials: "same-origin" }).then((r) => r.json());
+    const { isPresenter, isOwner } = await fetch(`/api/l/${LEILAO_ID}/admin/check-session`, { credentials: "same-origin" }).then((r) => r.json());
+    isPresenterOwner = !!isOwner;
     return !!isPresenter;
   } catch (err) {
+    isPresenterOwner = false;
     return false;
   }
 }
 
+const modCodeModal = document.getElementById("mod-code-modal");
+const modCodeClose = document.getElementById("mod-code-close");
+const modCodeValue = document.getElementById("mod-code-value");
+const modCodeCopy = document.getElementById("mod-code-copy");
+
+function closeModCodeModal() {
+  modCodeModal.hidden = true;
+}
+
+async function generateModCode() {
+  presenterToggleEl.disabled = true;
+  try {
+    const res = await fetch(`/api/l/${LEILAO_ID}/admin/generate-code`, { method: "POST", credentials: "same-origin" });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(data.error || "Não foi possível gerar o código");
+    modCodeValue.value = data.code;
+    modCodeCopy.textContent = "Copiar";
+    modCodeModal.hidden = false;
+  } catch (err) {
+    alert(err.message);
+  } finally {
+    presenterToggleEl.disabled = false;
+  }
+}
+
+modCodeCopy.addEventListener("click", async () => {
+  try {
+    await navigator.clipboard.writeText(modCodeValue.value);
+    modCodeCopy.textContent = "Copiado!";
+    setTimeout(() => { modCodeCopy.textContent = "Copiar"; }, 1500);
+  } catch (err) {
+    modCodeValue.select();
+  }
+});
+
+modCodeClose.addEventListener("click", closeModCodeModal);
+modCodeModal.addEventListener("click", (e) => { if (e.target === modCodeModal) closeModCodeModal(); });
+
 presenterToggleEl.addEventListener("click", async () => {
   const isActive = document.body.classList.contains("presenter-mode");
   if (isActive) {
-    await fetch(`/api/l/${LEILAO_ID}/admin/logout`, { method: "POST", credentials: "same-origin" }).catch(() => {});
-    setPresenterMode(false);
+    if (isPresenterOwner) await generateModCode();
     return;
   }
   if (await checkPresenterAccess()) {
@@ -1874,7 +1919,13 @@ presenterToggleEl.addEventListener("click", async () => {
   openPresenterLogin();
 });
 
-// Precisa ser um <form> real -- senão o Chrome tenta associar esse campo de senha a outro texto da página.
+presenterExitEl.addEventListener("click", async () => {
+  await fetch(`/api/l/${LEILAO_ID}/admin/logout`, { method: "POST", credentials: "same-origin" }).catch(() => {});
+  isPresenterOwner = false;
+  setPresenterMode(false);
+});
+
+// Precisa ser um <form> real -- senão o Chrome tenta associar esse campo de código a outro texto da página.
 presenterLoginForm.addEventListener("submit", (e) => {
   e.preventDefault();
   submitPresenterLogin();
@@ -1956,7 +2007,7 @@ document.getElementById("p-toggle-open").addEventListener("click", async () => {
 document.getElementById("p-reset-btn").addEventListener("click", async () => {
   const ok = await confirmDialog({
     title: "Zerar leilão",
-    message: "Isso apaga TODOS os jogos e o histórico desse leilão. Título, host e senha continuam os mesmos. Tem certeza?",
+    message: "Isso apaga TODOS os jogos e o histórico desse leilão. Título e host continuam os mesmos. Tem certeza?",
     confirmLabel: "Zerar",
     danger: true,
   });

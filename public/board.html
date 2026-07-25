@@ -46,11 +46,13 @@
           <svg class="icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 4h8v3.5a4 4 0 0 1-8 0V4z"/><path d="M6 5H3.5A1.5 1.5 0 0 0 2 6.5v0A2.5 2.5 0 0 0 4.5 9H6M14 5h2.5A1.5 1.5 0 0 1 18 6.5v0A2.5 2.5 0 0 1 15.5 9H14"/><path d="M10 11.5V14"/><path d="M7 16.5h6"/><path d="M8 14h4l.6 2.5H7.4L8 14z"/></svg>
           Ranking
         </button>
-        <button class="presenter-toggle" id="presenter-toggle" type="button">
-          <span class="presenter-toggle-dot" aria-hidden="true"></span>
-          <span class="presenter-toggle-label">modo apresentador</span>
-          <span class="presenter-toggle-x" aria-hidden="true">✕</span>
-        </button>
+        <div class="presenter-toggle-wrap">
+          <button class="presenter-toggle" id="presenter-toggle" type="button">
+            <span class="presenter-toggle-dot" aria-hidden="true"></span>
+            <span class="presenter-toggle-label">modo apresentador</span>
+          </button>
+          <button class="presenter-toggle-exit" id="presenter-exit" type="button" title="Sair do modo apresentador" aria-label="Sair do modo apresentador" hidden>✕</button>
+        </div>
       </div>
     </header>
 
@@ -64,7 +66,7 @@
         <svg class="icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M10 4.5v11M4.5 10h11"/></svg>
         Adicionar lote
       </button>
-      <button class="pbar-btn pbar-btn-danger" id="p-reset-btn" type="button" title="Apaga todos os jogos e o histórico (mantém título, host e senha)">
+      <button class="pbar-btn pbar-btn-danger" id="p-reset-btn" type="button" title="Apaga todos os jogos e o histórico (mantém título e host)">
         <svg class="icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 6h10M8.5 6V4.5h3V6M6.5 6l.6 9a1 1 0 0 0 1 .9h3.8a1 1 0 0 0 1-.9l.6-9"/></svg>
         Zerar leilão
       </button>
@@ -281,21 +283,43 @@
       <div class="modal-head">
         <div class="modal-head-text">
           <p class="modal-eyebrow">modo apresentador</p>
-          <h2 class="modal-title" id="presenter-login-title">Entrar</h2>
+          <h2 class="modal-title" id="presenter-login-title">Entrar com código</h2>
+          <p class="modal-current">Peça o código de acesso pro streamer — ele gera um novo toda vez que precisa te dar entrada.</p>
         </div>
       </div>
 
       <div class="modal-field">
-        <label class="modal-label" for="presenter-login-password">senha</label>
-        <input type="password" id="presenter-login-password" class="modal-input" placeholder="••••••••" autocomplete="current-password" />
+        <label class="modal-label" for="presenter-login-password">código</label>
+        <input type="text" id="presenter-login-password" class="modal-input" placeholder="XXXXXXXX" autocomplete="off" autocapitalize="characters" />
       </div>
-      <p class="modal-error" id="presenter-login-error" hidden>Senha incorreta</p>
+      <p class="modal-error" id="presenter-login-error" hidden>Código incorreto ou expirado</p>
 
       <div class="modal-actions">
         <button class="btn-mini" id="presenter-login-cancel" type="button">Cancelar</button>
         <button class="btn-mini primary" id="presenter-login-submit" type="submit">Entrar</button>
       </div>
     </form>
+  </div>
+
+  <div class="modal-overlay" id="mod-code-modal" hidden>
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="mod-code-title">
+      <button class="modal-close" id="mod-code-close" type="button" aria-label="Fechar">✕</button>
+      <div class="modal-head">
+        <div class="modal-head-text">
+          <p class="modal-eyebrow">código pra moderador</p>
+          <h2 class="modal-title" id="mod-code-title">Código gerado</h2>
+          <p class="modal-current">Vale só pra um acesso — some assim que alguém entrar com ele. Copie antes de fechar, não tem como ver de novo.</p>
+        </div>
+      </div>
+
+      <div class="modal-field">
+        <label class="modal-label" for="mod-code-value">código de acesso</label>
+        <div class="mod-code-row">
+          <input type="text" id="mod-code-value" class="modal-input" readonly />
+          <button class="btn-mini" id="mod-code-copy" type="button">Copiar</button>
+        </div>
+      </div>
+    </div>
   </div>
 
   <div class="modal-overlay" id="lot-modal" hidden>

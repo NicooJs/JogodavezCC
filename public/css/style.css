@@ -525,8 +525,9 @@ body.board-body.has-bg-image .board-cover-bg { display: none; }
 .donate-open-btn:active { transform: translateY(0); }
 .donate-open-btn .icon { width: 15px; height: 15px; }
 
+.presenter-toggle-wrap { display: inline-flex; align-items: center; gap: 4px; }
+
 .presenter-toggle-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--accent); display: none; }
-.presenter-toggle-x { display: none; font-size: 10px; opacity: 0.75; margin-left: 1px; }
 
 .presenter-toggle.active {
   background: var(--accent-bg);
@@ -534,13 +535,32 @@ body.board-body.has-bg-image .board-cover-bg { display: none; }
   color: var(--accent-text);
 }
 .presenter-toggle.active .presenter-toggle-dot { display: inline-block; box-shadow: 0 0 0 3px rgba(255, 122, 69, 0.15); }
-.presenter-toggle.active .presenter-toggle-x { display: inline-block; }
 .presenter-toggle.active:hover {
-  background: var(--danger-bg);
-  border-color: rgba(239, 68, 112, 0.5);
-  color: var(--danger);
+  background: var(--accent);
+  color: var(--accent-ink);
+  border-color: var(--accent);
 }
-.presenter-toggle.active:hover .presenter-toggle-dot { background: var(--danger); box-shadow: none; }
+
+.presenter-toggle-exit {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  font-size: 11px;
+  line-height: 1;
+  color: var(--muted);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 50%;
+  cursor: pointer;
+  transition: color 0.15s ease, border-color 0.15s ease, background 0.15s ease;
+}
+.presenter-toggle-exit:hover {
+  color: var(--danger);
+  border-color: rgba(239, 68, 112, 0.5);
+  background: var(--danger-bg);
+}
 
 .presenter-bar {
   display: flex;
@@ -2608,6 +2628,17 @@ body.board-body.has-bg-image .board-cover-bg { display: none; }
   font-size: 13.5px;
 }
 .modal-input:focus { outline: none; border-color: var(--accent); }
+
+.mod-code-row { display: flex; gap: 8px; }
+.mod-code-row .modal-input {
+  flex: 1;
+  min-width: 0;
+  font-family: var(--font-mono);
+  letter-spacing: 0.08em;
+  color: var(--accent-text);
+  text-align: center;
+}
+.mod-code-row .btn-mini { flex-shrink: 0; }
 
 .modal-textarea { height: auto; padding: 8px 12px; resize: none; font-family: var(--font-body); line-height: 1.4; }
 
