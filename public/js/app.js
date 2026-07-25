@@ -722,11 +722,12 @@ function loadImageSafe(url) {
   return new Promise((resolve) => {
     if (!url) return resolve(null);
     const img = new Image();
-    img.crossOrigin = "anonymous"; // sem isso, "suja" o canvas e quebra o toDataURL depois
     const timer = setTimeout(() => resolve(null), 4000);
     img.onload = () => { clearTimeout(timer); resolve(img); };
     img.onerror = () => { clearTimeout(timer); resolve(null); };
-    img.src = url;
+    // via nosso servidor (mesma origem, sem depender do CORS da CDN externa) --
+    // só pra URL remota de verdade, data: URI (medalha) carrega direto
+    img.src = url.startsWith("http") ? `/api/image-proxy?url=${encodeURIComponent(url)}` : url;
   });
 }
 

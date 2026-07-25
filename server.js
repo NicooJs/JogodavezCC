@@ -759,6 +759,33 @@ app.get("/api/board-bg-covers", async (req, res) => {
   res.json({ covers });
 });
 
+const IMAGE_PROXY_ALLOWED_HOSTS = new Set(["media.rawg.io", "static-cdn.jtvnw.net"]);
+
+// mesma origem = sem depender do header CORS da CDN (a da RAWG às vezes não manda de forma
+// confiável), usado só pelo canvas do recap que precisa ler pixel da imagem
+app.get("/api/image-proxy", async (req, res) => {
+  const target = String(req.query.url || "");
+  let parsed;
+  try {
+    parsed = new URL(target);
+  } catch (err) {
+    return res.status(400).end();
+  }
+  if (parsed.protocol !== "https:" || !IMAGE_PROXY_ALLOWED_HOSTS.has(parsed.hostname)) {
+    return res.status(400).end();
+  }
+  try {
+    const upstream = await fetch(parsed.toString());
+    if (!upstream.ok) return res.status(upstream.status).end();
+    res.set("Content-Type", upstream.headers.get("content-type") || "image/jpeg");
+    res.set("Cache-Control", "public, max-age=604800, immutable");
+    const buffer = Buffer.from(await upstream.arrayBuffer());
+    res.send(buffer);
+  } catch (err) {
+    res.status(502).end();
+  }
+});
+
 app.delete("/api/admin/leiloes/:id", (req, res) => {
   if (superAdminRateLimiter.isLimited(req.ip)) {
     return res.status(429).json({ error: "Muitas tentativas. Aguarde alguns minutos e tente de novo." });
