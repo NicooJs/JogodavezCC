@@ -1996,15 +1996,7 @@ donateModalActionSeg.querySelectorAll("button").forEach((b) => {
 donateModalSubmitEl.addEventListener("click", submitDonateModal);
 donateModalAmountEl.addEventListener("keydown", (e) => { if (e.key === "Enter") submitDonateModal(); });
 
-donateCopyBtnEl.addEventListener("click", async () => {
-  try {
-    await navigator.clipboard.writeText(donateCopyInputEl.value);
-    donateCopyBtnEl.textContent = "Copiado!";
-    setTimeout(() => { donateCopyBtnEl.textContent = "Copiar"; }, 1500);
-  } catch (err) {
-    donateCopyInputEl.select();
-  }
-});
+wireCopyButton(donateCopyBtnEl, donateCopyInputEl);
 
 async function presenterFetch(path, options = {}) {
   // FormData define seu próprio Content-Type (boundary) -- não fixar aqui.
@@ -2127,7 +2119,8 @@ async function generateModCode() {
     const data = await res.json().catch(() => ({}));
     if (!res.ok) throw new Error(data.error || "Não foi possível gerar o código");
     modCodeValue.value = data.code;
-    modCodeCopy.textContent = "Copiar";
+    modCodeCopy.classList.remove("is-copied");
+    modCodeCopy.disabled = false;
     setModCodeVisible(false);
     modCodeModal.hidden = false;
   } catch (err) {
@@ -2139,15 +2132,7 @@ async function generateModCode() {
 
 modCodeToggle.addEventListener("click", () => setModCodeVisible(modCodeValue.type === "password"));
 
-modCodeCopy.addEventListener("click", async () => {
-  try {
-    await navigator.clipboard.writeText(modCodeValue.value);
-    modCodeCopy.textContent = "Copiado!";
-    setTimeout(() => { modCodeCopy.textContent = "Copiar"; }, 1500);
-  } catch (err) {
-    modCodeValue.select();
-  }
-});
+wireCopyButton(modCodeCopy, modCodeValue);
 
 modCodeClose.addEventListener("click", closeModCodeModal);
 modCodeModal.addEventListener("click", (e) => { if (e.target === modCodeModal) closeModCodeModal(); });

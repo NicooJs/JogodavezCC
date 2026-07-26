@@ -168,13 +168,5 @@ form.addEventListener("submit", async (e) => {
   }
 });
 
-resultCopyBtn.addEventListener("click", async () => {
-  try {
-    await navigator.clipboard.writeText(resultUrlEl.value);
-    resultCopyBtn.textContent = "Copiado!";
-    setTimeout(() => { resultCopyBtn.textContent = "Copiar"; }, 1500);
-  } catch (err) {
-    resultUrlEl.select();
-  }
-});
+wireCopyButton(resultCopyBtn, resultUrlEl);
 

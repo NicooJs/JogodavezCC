@@ -80,16 +80,7 @@ settingsOverlayEl.addEventListener("click", (e) => { if (e.target === settingsOv
 function wireCopyLink(inputId, btnId, path) {
   const inputEl = document.getElementById(inputId);
   inputEl.value = `${location.origin}/l/${LEILAO_ID}${path}`;
-  document.getElementById(btnId).addEventListener("click", async () => {
-    const btn = document.getElementById(btnId);
-    try {
-      await navigator.clipboard.writeText(inputEl.value);
-      btn.textContent = "Copiado!";
-      setTimeout(() => { btn.textContent = "Copiar"; }, 1500);
-    } catch (err) {
-      inputEl.select();
-    }
-  });
+  wireCopyButton(document.getElementById(btnId), inputEl);
 }
 wireCopyLink("donate-link-input", "donate-link-copy", "/doar");
 wireCopyLink("alert-link-input", "alert-link-copy", "/alerta");

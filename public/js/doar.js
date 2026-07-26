@@ -355,15 +355,7 @@ againBtn.addEventListener("click", () => {
   showStep("form");
 });
 
-copyBtnEl.addEventListener("click", async () => {
-  try {
-    await navigator.clipboard.writeText(copyInputEl.value);
-    copyBtnEl.textContent = "Copiado!";
-    setTimeout(() => { copyBtnEl.textContent = "Copiar"; }, 1500);
-  } catch (err) {
-    copyInputEl.select();
-  }
-});
+wireCopyButton(copyBtnEl, copyInputEl);
 
 socket.on("update", ({ leaderboard, lastEvent }) => {
   applyMediaLabels(leaderboard.mode);

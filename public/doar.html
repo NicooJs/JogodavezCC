@@ -108,7 +108,11 @@
           </div>
           <div class="donate-copy-wrap">
             <input type="text" id="doar-copy-input" class="modal-input" readonly />
-            <button class="btn-mini" id="doar-copy-btn" type="button">Copiar</button>
+            <button class="copy-btn" id="doar-copy-btn" type="button" data-tooltip="Copiar">
+              <span class="copy-btn-icon copy-btn-icon-copy" aria-hidden="true"><svg class="icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="7" y="7" width="9" height="9" rx="1.5"/><path d="M13 7V5.5A1.5 1.5 0 0 0 11.5 4h-6A1.5 1.5 0 0 0 4 5.5v6A1.5 1.5 0 0 0 5.5 13H7"/></svg></span>
+              <span class="copy-btn-icon copy-btn-icon-check" aria-hidden="true"><svg class="icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 10.5l4 4 8-9"/></svg></span>
+              <span class="copy-btn-sr">Copiar</span>
+            </button>
           </div>
           <p class="donate-waiting">
             <span class="donate-waiting-dot" aria-hidden="true"></span>
@@ -128,6 +132,7 @@
     </main>
   </div>
 
+  <script src="/js/copy-button.js"></script>
   <script src="/socket.io/socket.io.js"></script>
   <script src="/js/doar.js"></script>
 </body>

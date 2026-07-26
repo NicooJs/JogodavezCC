@@ -15,15 +15,16 @@ function startFluid(canvas) {
     SIM_RESOLUTION: 128,
     DYE_RESOLUTION: 512,
     DENSITY_DISSIPATION: 2.4,
-    VELOCITY_DISSIPATION: 0.4,
+    VELOCITY_DISSIPATION: 0.6,
     PRESSURE: 0.8,
     PRESSURE_ITERATIONS: 20,
-    CURL: 16,
-    SPLAT_RADIUS: 0.16,
+    CURL: 7,
+    SPLAT_RADIUS: 0.18,
     SPLAT_FORCE: 2000,
-    DISPLAY_BRIGHTNESS: 0.5,
-    IDLE_MS: 2200,
-    AUTO_SPLAT_INTERVAL_MS: 1600,
+    DISPLAY_BRIGHTNESS: 0.42,
+    IDLE_MS: 3200,
+    AUTO_SPLAT_INTERVAL_MS: 5200,
+    AUTO_SPLAT_FORCE_FACTOR: 0.14,
   };
 
   const { gl, ext } = getWebGLContext(canvas);
@@ -275,7 +276,7 @@ function startFluid(canvas) {
   }
 
   const rootStyle = getComputedStyle(document.documentElement);
-  const palette = ["--accent", "--accent-text", "--positive"]
+  const palette = ["--accent", "--accent-text"]
     .map((token) => rootStyle.getPropertyValue(token))
     .filter((value) => value && value.trim().startsWith("#"))
     .map(hexToRgb);
@@ -344,8 +345,8 @@ function startFluid(canvas) {
     autoTargetY += (Math.random() - 0.5) * 0.3;
     autoTargetX = Math.min(0.85, Math.max(0.15, autoTargetX));
     autoTargetY = Math.min(0.85, Math.max(0.15, autoTargetY));
-    const dx = (Math.random() - 0.5) * config.SPLAT_FORCE * 0.35;
-    const dy = (Math.random() - 0.5) * config.SPLAT_FORCE * 0.35;
+    const dx = (Math.random() - 0.5) * config.SPLAT_FORCE * config.AUTO_SPLAT_FORCE_FACTOR;
+    const dy = (Math.random() - 0.5) * config.SPLAT_FORCE * config.AUTO_SPLAT_FORCE_FACTOR;
     splat(autoTargetX, autoTargetY, dx, dy, nextColor());
   }
 

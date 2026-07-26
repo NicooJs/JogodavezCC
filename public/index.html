@@ -110,7 +110,7 @@
               <span class="create-hint" id="create-mp-hint">Faça login com a Twitch primeiro pra liberar a conexão.</span>
 
               <p class="create-warning">
-                <svg class="icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 3.5l7.5 13h-15l7.5-13z"/><path d="M10 8.5v3.2"/><circle cx="10" cy="14.2" r="0.9" fill="currentColor" stroke="none"/></svg>
+                <svg class="icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="10" cy="10" r="7.25"/><path d="M10 9.2v4.3"/><circle cx="10" cy="6.7" r="0.9" fill="currentColor" stroke="none"/></svg>
                 <span>Confira se sua conta do Mercado Pago já tem uma <strong>chave Pix cadastrada</strong> — sem isso, as doações não conseguem cair na sua conta.</span>
               </p>
             </div>
@@ -142,7 +142,11 @@
           </p>
           <div class="create-result-link">
             <input type="text" id="create-result-url" readonly />
-            <button type="button" id="create-result-copy">Copiar</button>
+            <button class="copy-btn" type="button" id="create-result-copy" data-tooltip="Copiar">
+              <span class="copy-btn-icon copy-btn-icon-copy" aria-hidden="true"><svg class="icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="7" y="7" width="9" height="9" rx="1.5"/><path d="M13 7V5.5A1.5 1.5 0 0 0 11.5 4h-6A1.5 1.5 0 0 0 4 5.5v6A1.5 1.5 0 0 0 5.5 13H7"/></svg></span>
+              <span class="copy-btn-icon copy-btn-icon-check" aria-hidden="true"><svg class="icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 10.5l4 4 8-9"/></svg></span>
+              <span class="copy-btn-sr">Copiar</span>
+            </button>
           </div>
           <a class="create-result-open" id="create-result-open" href="#">Abrir meu leilão →</a>
         </div>
@@ -159,6 +163,7 @@
 
   <script type="module" src="/js/create-fluid.js"></script>
   <script type="module" src="/js/create-intro.js"></script>
+  <script src="/js/copy-button.js"></script>
   <script src="/js/create.js"></script>
 </body>
 </html>
