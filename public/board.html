@@ -81,6 +81,15 @@
         <button class="theme-dot theme-dot-safira" data-theme="safira" type="button" title="Tema Safira"></button>
         <button class="theme-dot theme-dot-grafite" data-theme="grafite" type="button" title="Tema Grafite"></button>
       </div>
+      <button class="mode-toggle" id="mode-toggle-board" type="button" data-mode="jogos" title="Modalidade: Jogos (clique pra trocar pra Filmes)" aria-label="Trocar modalidade do leilão pra Filmes">
+        <span class="mode-toggle-thumb" aria-hidden="true"></span>
+        <span class="mode-toggle-icon mode-toggle-icon-jogos" aria-hidden="true">
+          <svg class="icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M6 6h8a3 3 0 0 1 3 3.2l-.6 4.5a2 2 0 0 1-3.4 1.2L11.8 13H8.2l-1.2 1.9a2 2 0 0 1-3.4-1.2L3 9.2A3 3 0 0 1 6 6z"/><path d="M6.5 8.3v2.4M5.3 9.5h2.4"/><circle cx="14" cy="8.6" r="0.6" fill="currentColor" stroke="none"/><circle cx="15.3" cy="9.9" r="0.6" fill="currentColor" stroke="none"/></svg>
+        </span>
+        <span class="mode-toggle-icon mode-toggle-icon-filmes" aria-hidden="true">
+          <svg class="icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 8.5h14V15a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V8.5z"/><path d="M3 8.5l1.2-4h11.6l1.2 4"/><path d="M6.5 4.5l-1 4M10 4.5l-1 4M13.5 4.5l-1 4"/></svg>
+        </span>
+      </button>
       <button class="presenter-bar-link presenter-bar-icon-link" id="admin-link" type="button" title="Configurações" aria-label="Configurações">
         <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg>
       </button>
@@ -136,8 +145,8 @@
           </p>
           <div class="arena-grid" id="lot-list">
             <p class="empty-state arena-empty" id="empty-state">
-              <span class="arena-empty-title">Arena vazia</span>
-              Capture a atenção do chat — o primeiro lance abre a disputa.
+              <span class="arena-empty-title">Catálogo vazio</span>
+              O primeiro lance abre a disputa.
             </p>
           </div>
         </section>
@@ -308,14 +317,18 @@
         <div class="modal-head-text">
           <p class="modal-eyebrow">código pra moderador</p>
           <h2 class="modal-title" id="mod-code-title">Código gerado</h2>
-          <p class="modal-current">Vale só pra um acesso — some assim que alguém entrar com ele. Copie antes de fechar, não tem como ver de novo.</p>
+          <p class="modal-current">Código de uso único.</p>
         </div>
       </div>
 
       <div class="modal-field">
         <label class="modal-label" for="mod-code-value">código de acesso</label>
         <div class="mod-code-row">
-          <input type="text" id="mod-code-value" class="modal-input" readonly />
+          <input type="password" id="mod-code-value" class="modal-input" readonly autocomplete="off" />
+          <button class="btn-mini" id="mod-code-toggle" type="button" title="Mostrar código" aria-label="Mostrar código" aria-pressed="false">
+            <svg class="icon icon-eye" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M1.5 10S4.5 4.5 10 4.5 18.5 10 18.5 10 15.5 15.5 10 15.5 1.5 10 1.5 10z"/><circle cx="10" cy="10" r="2.5"/></svg>
+            <svg class="icon icon-eye-off" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2.5 2.5l15 15"/><path d="M8.3 5.1C8.85 4.9 9.4 4.9 10 4.9c5.5 0 8.5 5.1 8.5 5.1s-1 1.7-2.7 3.3M5.2 6.2C3.2 7.6 1.5 10 1.5 10s3 5.1 8.5 5.1c1.1 0 2.1-.2 3-.6"/><path d="M7.9 8.1a2.5 2.5 0 0 0 3.5 3.5"/></svg>
+          </button>
           <button class="btn-mini" id="mod-code-copy" type="button">Copiar</button>
         </div>
       </div>
@@ -649,17 +662,6 @@
             </thead>
             <tbody id="history-body"></tbody>
           </table>
-        </div>
-
-        <div class="panel">
-          <h2 class="panel-title">Modalidade do leilão</h2>
-          <p class="hint">Define se o catálogo busca jogos ou filmes pra sugerir capa automaticamente. Trocar de modalidade zera o catálogo atual (as duas fontes de capa não se misturam).</p>
-          <div class="panel-row">
-            <div class="seg" id="mode-select">
-              <button type="button" data-mode="jogos" class="active">Jogos</button>
-              <button type="button" data-mode="filmes">Filmes</button>
-            </div>
-          </div>
         </div>
 
         <div class="panel danger-zone">

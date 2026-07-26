@@ -30,6 +30,7 @@ const donorCountEl = document.getElementById("donor-count");
 const presenterToggleEl = document.getElementById("presenter-toggle");
 const presenterExitEl = document.getElementById("presenter-exit");
 const presenterDrawerEl = document.getElementById("presenter-drawer");
+const modeToggleBoardEl = document.getElementById("mode-toggle-board");
 const timerRingFillEl = document.getElementById("timer-ring-fill");
 const donateModalTimerEl = document.getElementById("donate-modal-timer");
 const donateModalTimerLabelEl = document.getElementById("donate-modal-timer-label");
@@ -120,6 +121,13 @@ function applyMediaLabels(mode) {
   document.querySelectorAll("[data-label-text]").forEach((el) => { el.textContent = fill(el.dataset.labelText); });
   document.querySelectorAll("[data-label-placeholder]").forEach((el) => { el.placeholder = fill(el.dataset.labelPlaceholder); });
   document.querySelectorAll("[data-label-title]").forEach((el) => { el.title = fill(el.dataset.labelTitle); });
+
+  if (modeToggleBoardEl) {
+    modeToggleBoardEl.dataset.mode = currentMode;
+    const otherLabel = currentMode === "filmes" ? "Jogos" : "Filmes";
+    modeToggleBoardEl.title = `Modalidade: ${Media}s (clique pra trocar pra ${otherLabel})`;
+    modeToggleBoardEl.setAttribute("aria-label", `Trocar modalidade do leilão pra ${otherLabel}`);
+  }
 }
 
 function escapeHtml(str) {
@@ -2096,9 +2104,20 @@ const modCodeModal = document.getElementById("mod-code-modal");
 const modCodeClose = document.getElementById("mod-code-close");
 const modCodeValue = document.getElementById("mod-code-value");
 const modCodeCopy = document.getElementById("mod-code-copy");
+const modCodeToggle = document.getElementById("mod-code-toggle");
 
 function closeModCodeModal() {
   modCodeModal.hidden = true;
+}
+
+// fica escondido por padrão de propósito -- quem grava a tela não pode
+// deixar o código do mod visível sem querer no vídeo/live
+function setModCodeVisible(visible) {
+  modCodeValue.type = visible ? "text" : "password";
+  modCodeToggle.classList.toggle("active", visible);
+  modCodeToggle.title = visible ? "Esconder código" : "Mostrar código";
+  modCodeToggle.setAttribute("aria-label", modCodeToggle.title);
+  modCodeToggle.setAttribute("aria-pressed", String(visible));
 }
 
 async function generateModCode() {
@@ -2109,6 +2128,7 @@ async function generateModCode() {
     if (!res.ok) throw new Error(data.error || "Não foi possível gerar o código");
     modCodeValue.value = data.code;
     modCodeCopy.textContent = "Copiar";
+    setModCodeVisible(false);
     modCodeModal.hidden = false;
   } catch (err) {
     alert(err.message);
@@ -2116,6 +2136,8 @@ async function generateModCode() {
     presenterToggleEl.disabled = false;
   }
 }
+
+modCodeToggle.addEventListener("click", () => setModCodeVisible(modCodeValue.type === "password"));
 
 modCodeCopy.addEventListener("click", async () => {
   try {
@@ -2238,6 +2260,23 @@ document.getElementById("p-reset-btn").addEventListener("click", async () => {
   if (!ok) return;
   try {
     await presenterFetch("/admin/reset", { method: "POST" });
+  } catch (err) {
+    alert(err.message);
+  }
+});
+
+modeToggleBoardEl.addEventListener("click", async () => {
+  const newMode = currentMode === "filmes" ? "jogos" : "filmes";
+  const label = newMode === "filmes" ? "Filmes" : "Jogos";
+  const ok = await confirmDialog({
+    title: `Trocar pra ${label}`,
+    message: "Isso zera o catálogo e o histórico atual do leilão, pra não misturar capa buscada de um jeito com a de outro. Título e host continuam os mesmos. Tem certeza?",
+    confirmLabel: `Trocar pra ${label}`,
+    danger: true,
+  });
+  if (!ok) return;
+  try {
+    await presenterFetch("/admin/set-mode", { method: "POST", body: JSON.stringify({ mode: newMode }) });
   } catch (err) {
     alert(err.message);
   }

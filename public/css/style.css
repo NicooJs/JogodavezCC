@@ -619,6 +619,57 @@ body.board-body.has-bg-image .board-cover-bg { display: none; }
 
 .theme-dots { display: flex; align-items: center; gap: 7px; margin-left: auto; }
 
+/* switch de modalidade (jogos/filmes) direto na barra do apresentador --
+   igual um interruptor de tema claro/escuro, pra ser óbvio pra qualquer um */
+.mode-toggle {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  width: 56px;
+  height: 28px;
+  padding: 3px;
+  border-radius: 999px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: border-color 0.15s ease;
+}
+.mode-toggle:hover { border-color: var(--accent-soft); }
+
+.mode-toggle-thumb {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: var(--accent);
+  transition: transform 0.25s var(--ease);
+}
+.mode-toggle[data-mode="filmes"] .mode-toggle-thumb { transform: translateX(26px); }
+
+.mode-toggle-icon {
+  position: relative;
+  z-index: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  color: var(--muted);
+  transition: color 0.15s ease;
+}
+.mode-toggle-icon .icon { width: 13px; height: 13px; }
+.mode-toggle[data-mode="jogos"] .mode-toggle-icon-jogos,
+.mode-toggle[data-mode="filmes"] .mode-toggle-icon-filmes {
+  color: var(--accent-ink);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .mode-toggle-thumb { transition: none; }
+}
+
 .theme-dot {
   width: 18px;
   height: 18px;
@@ -1869,16 +1920,21 @@ body.board-body.has-bg-image .board-cover-bg { display: none; }
   content: "";
   flex: 1;
   height: 1px;
-  background: repeating-linear-gradient(90deg, var(--border) 0 6px, transparent 6px 11px);
+  background: repeating-linear-gradient(90deg, var(--accent-soft) 0 6px, transparent 6px 11px);
 }
 
 .qualify-divider span {
   font-family: var(--font-mono);
-  font-size: 9.5px;
-  letter-spacing: 0.09em;
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
-  color: var(--muted);
+  color: var(--accent-text);
   white-space: nowrap;
+  padding: 4px 11px;
+  background: var(--accent-bg);
+  border: 1px solid var(--accent-glow);
+  border-radius: 999px;
 }
 
 .lot-card {
@@ -2825,6 +2881,18 @@ body.board-body.has-bg-image .board-cover-bg { display: none; }
   text-align: center;
 }
 .mod-code-row .btn-mini { flex-shrink: 0; }
+
+#mod-code-toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  padding: 0;
+}
+#mod-code-toggle .icon { width: 16px; height: 16px; }
+#mod-code-toggle .icon-eye-off { display: none; }
+#mod-code-toggle.active .icon-eye { display: none; }
+#mod-code-toggle.active .icon-eye-off { display: block; }
 
 .modal-textarea { height: auto; padding: 8px 12px; resize: none; font-family: var(--font-body); line-height: 1.4; }
 
