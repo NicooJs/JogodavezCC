@@ -5,9 +5,11 @@ const MAX_TILES = 140;
 async function init() {
   // sem checar .has-bg-image aqui: a classe é aplicada async por app.js, o CSS resolve a corrida
 
+  const leilaoId = location.pathname.match(/^\/l\/([a-z0-9_-]+)/i)?.[1] || "";
+
   let covers = [];
   try {
-    const res = await fetch("/api/board-bg-covers");
+    const res = await fetch(`/api/board-bg-covers?leilaoId=${encodeURIComponent(leilaoId)}`);
     if (res.ok) {
       const json = await res.json();
       covers = Array.isArray(json.covers) ? json.covers.filter(Boolean) : [];

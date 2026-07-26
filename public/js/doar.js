@@ -10,6 +10,25 @@ function escapeHtml(str) {
   return String(str).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 }
 
+const MEDIA_LABELS = { jogos: "jogo", filmes: "filme" };
+let currentMode = "jogos";
+
+function mediaLabel() { return MEDIA_LABELS[currentMode] || "jogo"; }
+function mediaLabelCap() {
+  const label = mediaLabel();
+  return label.charAt(0).toUpperCase() + label.slice(1);
+}
+
+function applyMediaLabels(mode) {
+  currentMode = mode === "filmes" ? "filmes" : "jogos";
+  const media = mediaLabel();
+  const Media = mediaLabelCap();
+  const fill = (template) => template.replace(/\{Media\}/g, Media).replace(/\{media\}/g, media);
+  document.querySelectorAll("[data-label-text]").forEach((el) => { el.textContent = fill(el.dataset.labelText); });
+  document.querySelectorAll("[data-label-placeholder]").forEach((el) => { el.placeholder = fill(el.dataset.labelPlaceholder); });
+  document.querySelectorAll("[data-label-title]").forEach((el) => { el.title = fill(el.dataset.labelTitle); });
+}
+
 const loadingEl = document.getElementById("doar-loading");
 const closedEl = document.getElementById("doar-closed");
 const stepFormEl = document.getElementById("doar-step-form");
@@ -183,7 +202,7 @@ function pickGameShelfCard(cardEl) {
 
 function renderGameShelf(catalogMatches, newMatches) {
   if (catalogMatches.length === 0 && newMatches.length === 0) {
-    gameShelfEl.innerHTML = '<p class="game-shelf-empty">nenhum jogo encontrado — toque em + pra adicionar mesmo assim</p>';
+    gameShelfEl.innerHTML = `<p class="game-shelf-empty">nenhum ${mediaLabel()} encontrado — toque em + pra adicionar mesmo assim</p>`;
   } else {
     gameShelfEl.innerHTML =
       catalogMatches.map((g) => gameShelfCardHtml(g, false)).join("") +
@@ -283,7 +302,7 @@ async function submitDonation(e) {
   errorEl.hidden = true;
 
   if (!game || !gameConfirmed) {
-    errorEl.textContent = "Escolha um jogo da lista ou toque em + pra adicionar um novo";
+    errorEl.textContent = `Escolha um ${mediaLabel()} da lista ou toque em + pra adicionar um novo`;
     errorEl.hidden = false;
     return gameEl.focus();
   }
@@ -347,6 +366,7 @@ copyBtnEl.addEventListener("click", async () => {
 });
 
 socket.on("update", ({ leaderboard, lastEvent }) => {
+  applyMediaLabels(leaderboard.mode);
   document.documentElement.dataset.theme = leaderboard.theme || "ametista";
   leaderboardItems = leaderboard.items || [];
 

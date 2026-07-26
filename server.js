@@ -11,7 +11,8 @@ const registry = require("./src/registry");
 const { getStore, deleteStore, DATA_DIR } = require("./src/stores");
 const { hashPassword, verifyPassword, timingSafeEqualString } = require("./src/passwords");
 const { parseMessage, normalizeKey, leftoverAfterMatch, looksLikeNoise } = require("./src/parser");
-const { fetchGameImage, searchGames, identifyGameFromNoisyText, fetchPopularCovers } = require("./src/gameImages");
+const gameImages = require("./src/gameImages");
+const { getMediaAdapter, mediaLabel, normalizeMode, MODES: LEILAO_MODES } = require("./src/mediaAdapter");
 const { fetchTwitchAvatar } = require("./src/twitchClient");
 const twitchAuth = require("./src/twitchAuth");
 const session = require("./src/session");
@@ -254,15 +255,16 @@ function getDonorAvatar(username, onResolved) {
 async function resolveParsedGame(store, parsed) {
   if (store.hasGame(parsed.key)) return parsed;
 
+  const media = getMediaAdapter(store);
   const matchedKey = store.resolveExistingKey(parsed.key);
   if (matchedKey) {
     const leftover = leftoverAfterMatch(parsed.key, matchedKey);
     if (!looksLikeNoise(leftover)) {
-      const rawgMatch = await identifyGameFromNoisyText(parsed.name);
-      if (rawgMatch) {
-        const rawgKey = normalizeKey(rawgMatch.name);
-        if (rawgKey !== matchedKey) {
-          return { ...parsed, key: rawgKey, name: rawgMatch.name };
+      const match = await media.identifyGameFromNoisyText(parsed.name);
+      if (match) {
+        const matchKey = normalizeKey(match.name);
+        if (matchKey !== matchedKey) {
+          return { ...parsed, key: matchKey, name: match.name };
         }
       }
     }
@@ -270,9 +272,9 @@ async function resolveParsedGame(store, parsed) {
     return { ...parsed, key: matchedKey, name: existing.name };
   }
 
-  const rawgMatch = await identifyGameFromNoisyText(parsed.name);
-  if (rawgMatch) {
-    return { ...parsed, key: normalizeKey(rawgMatch.name), name: rawgMatch.name };
+  const match = await media.identifyGameFromNoisyText(parsed.name);
+  if (match) {
+    return { ...parsed, key: normalizeKey(match.name), name: match.name };
   }
 
   return parsed;
@@ -316,6 +318,7 @@ function serializeLeaderboard(store, leilaoId) {
 
   return {
     title: store.getState("title", "Leilão de Jogos"),
+    mode: normalizeMode(store.getState("mode", "jogos")),
     host: store.getState("host", ""),
     hostAvatar: store.getState("hostAvatar", null),
     hostVerified: getHostVerified(store),
@@ -374,6 +377,7 @@ function buildRecap(store) {
 
   return {
     title: store.getState("title", "Leilão de Jogos"),
+    mode: normalizeMode(store.getState("mode", "jogos")),
     host: store.getState("host", ""),
     hostAvatar: store.getState("hostAvatar", null),
     totalRaised: getHideTotalRaised(store) ? null : centsToNumber(store.getTotalRaised()),
@@ -392,7 +396,7 @@ function broadcastUpdate(leilaoId, store, lastEvent) {
 
 function maybeFetchGameImage(leilaoId, store, key, name, needsImage) {
   if (!needsImage) return;
-  fetchGameImage(name)
+  getMediaAdapter(store).fetchGameImage(name)
     .then((imageUrl) => {
       if (!imageUrl) return;
       store.setGameImage(key, imageUrl);
@@ -761,12 +765,16 @@ app.get("/api/l/:id/ranking", loadLeilao, (req, res) => {
 });
 
 app.get("/api/board-bg-covers", async (req, res) => {
-  const covers = await fetchPopularCovers();
+  const leilaoId = String(req.query.leilaoId || "");
+  const media = leilaoId && /^[a-z0-9_-]+$/i.test(leilaoId) && registry.leilaoExists(leilaoId)
+    ? getMediaAdapter(getStore(leilaoId))
+    : gameImages;
+  const covers = await media.fetchPopularCovers();
   res.set("Cache-Control", "public, max-age=1800");
   res.json({ covers });
 });
 
-const IMAGE_PROXY_ALLOWED_HOSTS = new Set(["media.rawg.io", "static-cdn.jtvnw.net"]);
+const IMAGE_PROXY_ALLOWED_HOSTS = new Set(["media.rawg.io", "static-cdn.jtvnw.net", "image.tmdb.org"]);
 
 // mesma origem = sem depender do header CORS da CDN (a da RAWG às vezes não manda de forma
 // confiável), usado só pelo canvas do recap que precisa ler pixel da imagem
@@ -887,14 +895,14 @@ app.post("/api/l/:id/doacao", loadLeilao, async (req, res) => {
   const { name, amount, action, donorUsername, donorNote, donorVoiceId } = req.body || {};
 
   if (!name || !amount || Number.isNaN(Number(amount)) || Number(amount) <= 0) {
-    return res.status(400).json({ error: "Informe o jogo e um valor válido" });
+    return res.status(400).json({ error: `Informe o ${mediaLabel(store)} e um valor válido` });
   }
   const isOpen = store.getState("open", "true") === "true";
   if (!isOpen) {
     return res.status(400).json({ error: "Esse leilão está encerrado no momento" });
   }
   const parsed = parseMessage(`${action === "remove" ? "-" : "+"}${name}`);
-  if (!parsed) return res.status(400).json({ error: "Nome de jogo inválido" });
+  if (!parsed) return res.status(400).json({ error: `Nome de ${mediaLabel(store)} inválido` });
 
   let streamer;
   try {
@@ -977,7 +985,7 @@ app.get("/api/l/:id/game-search", loadLeilao, async (req, res) => {
   gameSearchRateLimiter.record(req.ip);
 
   const { store } = req;
-  const results = await searchGames(q);
+  const results = await getMediaAdapter(store).searchGames(q);
   res.json({ results: results.filter((g) => !store.hasGame(normalizeKey(g.name))) });
 });
 
@@ -1119,18 +1127,18 @@ app.get("/api/l/:id/admin/check-session", loadLeilao, (req, res) => {
 app.get("/api/l/:id/admin/game-search", loadLeilao, requireLeilaoAdmin, async (req, res) => {
   const q = String(req.query.q || "").trim();
   if (!q) return res.json({ results: [] });
-  const results = await searchGames(q);
+  const results = await getMediaAdapter(req.store).searchGames(q);
   res.json({ results });
 });
 
 app.post("/api/l/:id/admin/manual-entry", loadLeilao, requireLeilaoAdmin, async (req, res) => {
   const { name, amount, action, username } = req.body || {};
   if (!name || !amount || Number.isNaN(Number(amount))) {
-    return res.status(400).json({ error: "Informe name e amount" });
+    return res.status(400).json({ error: `Informe nome e valor` });
   }
   const { leilaoId, store } = req;
   let parsed = parseMessage(`${action === "remove" ? "-" : "+"}${name}`);
-  if (!parsed) return res.status(400).json({ error: "Nome de jogo inválido" });
+  if (!parsed) return res.status(400).json({ error: `Nome de ${mediaLabel(store)} inválido` });
   parsed = await resolveParsedGame(store, parsed);
 
   const needsImage = !store.hasGame(parsed.key) || !store.hasGameImage(parsed.key);
@@ -1226,6 +1234,27 @@ app.post("/api/l/:id/admin/reset", loadLeilao, requireLeilaoAdmin, (req, res) =>
   store.resetAll();
   broadcastUpdate(leilaoId, store, { type: "reset" });
   res.json({ ok: true });
+});
+
+// trocar de modalidade (jogos <-> filmes) muda a fonte de busca/capa (RAWG
+// vs TMDB) -- misturar capa de jogo com item de filme no mesmo catálogo não
+// faz sentido, então a troca sempre zera o leilão primeiro, igual o reset manual
+app.post("/api/l/:id/admin/set-mode", loadLeilao, requireLeilaoAdmin, (req, res) => {
+  const { mode } = req.body || {};
+  if (!LEILAO_MODES.has(mode)) {
+    return res.status(400).json({ error: "Modalidade inválida" });
+  }
+  const { store, leilaoId } = req;
+  const currentMode = normalizeMode(store.getState("mode", "jogos"));
+  if (mode === currentMode) {
+    return res.json({ ok: true, mode, reset: false });
+  }
+  const recap = buildRecap(store);
+  if (recap.totalGames > 0) store.archiveAuction(recap, { openRound: false });
+  store.resetAll();
+  store.setState("mode", mode);
+  broadcastUpdate(leilaoId, store, { type: "reset" });
+  res.json({ ok: true, mode, reset: true });
 });
 
 app.post("/api/l/:id/admin/toggle-open", loadLeilao, requireLeilaoAdmin, (req, res) => {

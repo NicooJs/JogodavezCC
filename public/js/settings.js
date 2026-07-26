@@ -191,7 +191,35 @@ function renderSettingsFromLeaderboard(leaderboard) {
   if (document.activeElement !== qualifyInput) qualifyInput.value = leaderboard.qualifyCount || 3;
   renderGamesTable();
   renderMergeOptions();
+  renderModeSelect(leaderboard.mode);
 }
+
+function renderModeSelect(mode) {
+  document.querySelectorAll("#mode-select button[data-mode]").forEach((btn) => {
+    btn.classList.toggle("active", btn.dataset.mode === (mode || "jogos"));
+  });
+}
+
+document.querySelectorAll("#mode-select button[data-mode]").forEach((btn) => {
+  btn.addEventListener("click", async () => {
+    const mode = btn.dataset.mode;
+    if (btn.classList.contains("active")) return;
+    const label = mode === "filmes" ? "Filmes" : "Jogos";
+    const ok = await confirmDialog({
+      title: `Trocar pra ${label}`,
+      message: "Isso zera o catálogo e o histórico atual do leilão, pra não misturar capa buscada de um jeito com a de outro. Título e host continuam os mesmos. Tem certeza?",
+      confirmLabel: `Trocar pra ${label}`,
+      danger: true,
+    });
+    if (!ok) return;
+    try {
+      await presenterFetch("/admin/set-mode", { method: "POST", body: JSON.stringify({ mode }) });
+      loadSettingsHistory();
+    } catch (err) {
+      alert(err.message);
+    }
+  });
+});
 
 function renderOpenState(open) {
   const badge = document.getElementById("open-state");

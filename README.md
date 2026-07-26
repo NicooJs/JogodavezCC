@@ -73,17 +73,30 @@ O projeto é hoje mantido rodando no **Railway**:
   Pago exige HTTPS até pra teste, então o fluxo de conectar conta não
   funciona em `localhost` puro).
 
-## Capas dos jogos (automático)
+## Modalidade: jogos ou filmes
 
-Quando um jogo novo entra no catálogo, o servidor busca a capa dele na
-**RAWG** (banco de dados aberto com mais de 500 mil jogos).
+Todo leilão nasce na modalidade **jogos**. O dono pode trocar pra
+**filmes** a qualquer momento em Configurações → Avançado → Modalidade
+do leilão — a troca **zera o catálogo e o histórico atuais** (as duas
+modalidades buscam capa em fontes diferentes, então não dá pra misturar).
+Todo o texto do site ("+Jogo apoia", "Buscar um jogo...", etc.) se adapta
+sozinho pra "filme" quando a modalidade muda.
 
-1. Crie uma chave grátis em https://rawg.io/apidocs.
-2. Coloque em `RAWG_API_KEY` no `.env`.
+## Capas automáticas
 
-Sem a chave, o site funciona normalmente, só que sem as miniaturas
-(aparece um quadradinho com a inicial do jogo no lugar) — mesmo fallback
-usado quando um jogo específico não é encontrado na busca.
+Quando um item novo entra no catálogo, o servidor busca a capa dele numa
+fonte externa, de acordo com a modalidade do leilão:
+
+- **Jogos** → **RAWG** (banco de dados aberto com mais de 500 mil jogos).
+  Crie uma chave grátis em https://rawg.io/apidocs e coloque em
+  `RAWG_API_KEY` no `.env`.
+- **Filmes** → **TMDB** (The Movie Database). Crie uma chave grátis em
+  https://www.themoviedb.org/settings/api ("API Key (v3 auth)") e coloque
+  em `TMDB_API_KEY` no `.env`.
+
+Sem a chave correspondente, o site funciona normalmente, só que sem as
+miniaturas (aparece um quadradinho com a inicial no lugar) — mesmo
+fallback usado quando um item específico não é encontrado na busca.
 
 ## Estrutura do projeto
 
@@ -99,7 +112,8 @@ src/mpAuth.js/mpApi.js/mpWebhook.js  OAuth do Mercado Pago + criação/confirma�
 src/streamersStore.js/paymentsStore.js  Postgres: credencial OAuth e histórico de pagamento
 src/tokenCrypto.js           cifra os tokens do Mercado Pago em repouso
 src/stateBackup.js           cópia de segurança periódica do estado do leilão no Postgres
-src/gameImages.js            busca de capa/jogo na RAWG
+src/gameImages.js/movieImages.js    busca de capa na RAWG e na TMDB
+src/mediaAdapter.js          escolhe RAWG ou TMDB pela modalidade do leilão
 public/index.html            criação de leilão
 public/board.html            placar + painel de apresentador
 public/doar.html             página de doação

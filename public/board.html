@@ -59,7 +59,7 @@
     <section class="presenter-bar" id="presenter-drawer" hidden>
       <div class="field-wrap presenter-search">
         <svg class="field-icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="8.5" cy="8.5" r="6"/><path d="M13 13l5 5"/></svg>
-        <input type="text" id="p-manual-name" placeholder="Buscar um jogo pra lançar…" autocomplete="off" />
+        <input type="text" id="p-manual-name" placeholder="Buscar um jogo pra lançar…" autocomplete="off" data-label-placeholder="Buscar um {media} pra lançar…" />
         <div class="suggestions" id="game-suggestions" hidden></div>
       </div>
       <button class="pbar-btn pbar-btn-primary" id="p-manual-submit" title="Usa o texto digitado direto, sem escolher uma sugestão da busca">
@@ -130,9 +130,9 @@
         <section class="panel arena-panel">
           <p class="panel-label">catálogo do leilão <span class="panel-count" id="lot-count">0</span></p>
           <p class="panel-hint">
-            Doe pelo Pix aqui do lado e escreva o nome do jogo.
-            <span class="tag tag-add">+Jogo</span> apoia ·
-            <span class="tag tag-remove">-Jogo</span> sabota um rival.
+            Doe pelo Pix aqui do lado e escreva o nome do <span data-label-text="{media}">jogo</span>.
+            <span class="tag tag-add" data-label-text="+{Media}">+Jogo</span> apoia ·
+            <span class="tag tag-remove" data-label-text="-{Media}">-Jogo</span> sabota um rival.
           </p>
           <div class="arena-grid" id="lot-list">
             <p class="empty-state arena-empty" id="empty-state">
@@ -391,14 +391,14 @@
         </div>
 
         <div class="modal-field">
-          <label class="modal-label" for="donate-modal-game">jogo</label>
+          <label class="modal-label" for="donate-modal-game" data-label-text="{media}">jogo</label>
           <div class="game-input-wrap">
             <span class="game-input-icon" id="donate-modal-game-icon" hidden></span>
-            <input type="text" id="donate-modal-game" class="modal-input" placeholder="nome do jogo" autocomplete="off" />
-            <button type="button" class="game-add-btn" id="donate-modal-game-add-btn" title="Adicionar um jogo que não está na lista">+</button>
+            <input type="text" id="donate-modal-game" class="modal-input" placeholder="nome do jogo" autocomplete="off" data-label-placeholder="nome do {media}" />
+            <button type="button" class="game-add-btn" id="donate-modal-game-add-btn" title="Adicionar um jogo que não está na lista" data-label-title="Adicionar um {media} que não está na lista">+</button>
           </div>
           <div class="game-shelf" id="donate-modal-game-shelf" hidden></div>
-          <p class="game-confirm-hint" id="donate-modal-game-hint" hidden>Escolha um jogo da lista ou toque em + pra adicionar um novo.</p>
+          <p class="game-confirm-hint" id="donate-modal-game-hint" hidden data-label-text="Escolha um {media} da lista ou toque em + pra adicionar um novo.">Escolha um jogo da lista ou toque em + pra adicionar um novo.</p>
         </div>
 
         <div class="modal-field">
@@ -498,7 +498,7 @@
         <span class="settings-tab-pill" id="settings-tab-pill" aria-hidden="true"></span>
         <button class="settings-tab active" data-tab="geral" type="button" role="tab" aria-selected="true">Geral</button>
         <button class="settings-tab" data-tab="aparencia" type="button" role="tab" aria-selected="false">Aparência</button>
-        <button class="settings-tab" data-tab="jogos" type="button" role="tab" aria-selected="false">Jogos</button>
+        <button class="settings-tab" data-tab="jogos" type="button" role="tab" aria-selected="false" data-label-text="{Media}s">Jogos</button>
         <button class="settings-tab" data-tab="avancado" type="button" role="tab" aria-selected="false">Avançado</button>
       </div>
 
@@ -591,7 +591,7 @@
           <h2 class="panel-title">Lançamento manual</h2>
           <p class="hint">Use se receber um pix fora do app, ou pra testar o sistema.</p>
           <div class="panel-row wrap">
-            <input type="text" id="manual-name" placeholder="Nome do jogo" autocomplete="off" />
+            <input type="text" id="manual-name" placeholder="Nome do jogo" autocomplete="off" data-label-placeholder="Nome do {media}" />
             <input type="number" id="manual-amount" placeholder="Valor (R$)" step="0.01" autocomplete="off" />
             <select id="manual-action">
               <option value="add">Apoiar (+)</option>
@@ -603,17 +603,17 @@
         </div>
 
         <div class="panel">
-          <h2 class="panel-title">Jogos na disputa</h2>
+          <h2 class="panel-title" data-label-text="{Media}s na disputa">Jogos na disputa</h2>
           <table class="table" id="games-table">
             <thead>
-              <tr><th>#</th><th>Jogo</th><th>Total</th><th>Ações</th></tr>
+              <tr><th>#</th><th data-label-text="{Media}">Jogo</th><th>Total</th><th>Ações</th></tr>
             </thead>
             <tbody id="games-body"></tbody>
           </table>
         </div>
 
         <div class="panel">
-          <h2 class="panel-title">Mesclar jogos duplicados</h2>
+          <h2 class="panel-title" data-label-text="Mesclar {media}s duplicados">Mesclar jogos duplicados</h2>
           <p class="hint">Ex: alguém escreveu "elden ring" e outra vez "eldenring". Escolha a origem e o destino.</p>
           <div class="panel-row wrap">
             <select id="merge-from"></select>
@@ -649,6 +649,17 @@
             </thead>
             <tbody id="history-body"></tbody>
           </table>
+        </div>
+
+        <div class="panel">
+          <h2 class="panel-title">Modalidade do leilão</h2>
+          <p class="hint">Define se o catálogo busca jogos ou filmes pra sugerir capa automaticamente. Trocar de modalidade zera o catálogo atual (as duas fontes de capa não se misturam).</p>
+          <div class="panel-row">
+            <div class="seg" id="mode-select">
+              <button type="button" data-mode="jogos" class="active">Jogos</button>
+              <button type="button" data-mode="filmes">Filmes</button>
+            </div>
+          </div>
         </div>
 
         <div class="panel danger-zone">

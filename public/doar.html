@@ -49,14 +49,14 @@
           </div>
 
           <div class="modal-field">
-            <label class="modal-label" for="doar-game">jogo</label>
+            <label class="modal-label" for="doar-game" data-label-text="{media}">jogo</label>
             <div class="game-input-wrap">
               <span class="game-input-icon" id="doar-game-icon" hidden></span>
-              <input type="text" id="doar-game" class="modal-input" placeholder="nome do jogo" autocomplete="off" />
-              <button type="button" class="game-add-btn" id="doar-game-add-btn" title="Adicionar um jogo que não está na lista">+</button>
+              <input type="text" id="doar-game" class="modal-input" placeholder="nome do jogo" autocomplete="off" data-label-placeholder="nome do {media}" />
+              <button type="button" class="game-add-btn" id="doar-game-add-btn" title="Adicionar um jogo que não está na lista" data-label-title="Adicionar um {media} que não está na lista">+</button>
             </div>
             <div class="game-shelf" id="doar-game-shelf" hidden></div>
-            <p class="game-confirm-hint" id="doar-game-hint" hidden>Escolha um jogo da lista ou toque em + pra adicionar um novo.</p>
+            <p class="game-confirm-hint" id="doar-game-hint" hidden data-label-text="Escolha um {media} da lista ou toque em + pra adicionar um novo.">Escolha um jogo da lista ou toque em + pra adicionar um novo.</p>
           </div>
 
           <div class="modal-field">

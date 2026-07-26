@@ -101,6 +101,27 @@ function formatBRL(value) {
   return value.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 }
 
+// "jogo" ou "filme" -- os textos que mencionam o tipo de item do catálogo se
+// adaptam sozinhos conforme a modalidade do leilão (ver /admin/set-mode)
+const MEDIA_LABELS = { jogos: "jogo", filmes: "filme" };
+let currentMode = "jogos";
+
+function mediaLabel() { return MEDIA_LABELS[currentMode] || "jogo"; }
+function mediaLabelCap() {
+  const label = mediaLabel();
+  return label.charAt(0).toUpperCase() + label.slice(1);
+}
+
+function applyMediaLabels(mode) {
+  currentMode = mode === "filmes" ? "filmes" : "jogos";
+  const media = mediaLabel();
+  const Media = mediaLabelCap();
+  const fill = (template) => template.replace(/\{Media\}/g, Media).replace(/\{media\}/g, media);
+  document.querySelectorAll("[data-label-text]").forEach((el) => { el.textContent = fill(el.dataset.labelText); });
+  document.querySelectorAll("[data-label-placeholder]").forEach((el) => { el.placeholder = fill(el.dataset.labelPlaceholder); });
+  document.querySelectorAll("[data-label-title]").forEach((el) => { el.title = fill(el.dataset.labelTitle); });
+}
+
 function escapeHtml(str) {
   return String(str).replace(/[&<>"']/g, (c) => ({
     "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;",
@@ -323,7 +344,7 @@ function lotTopDonorHtml(item) {
     ? `<img class="lot-top-donor-avatar" src="${escapeHtml(item.topDonor.avatar)}" alt="" loading="lazy" />`
     : `<span class="lot-top-donor-avatar lot-top-donor-avatar-placeholder">${escapeHtml(item.topDonor.username[0].toUpperCase())}</span>`;
   return `
-    <div class="lot-top-donor" title="Quem mais apoiou este jogo">
+    <div class="lot-top-donor" title="Quem mais apoiou este ${mediaLabel()}">
       ${avatar}
       <span class="lot-top-donor-name">${escapeHtml(item.topDonor.username)}</span>
     </div>
@@ -1624,6 +1645,7 @@ function scheduleStreakExpiry(key, remainingMs) {
 }
 
 socket.on("update", ({ leaderboard, lastEvent }) => {
+  applyMediaLabels(leaderboard.mode);
   document.documentElement.dataset.theme = leaderboard.theme || "ametista";
   document.querySelectorAll(".theme-dot").forEach((dot) => {
     dot.classList.toggle("active", dot.dataset.theme === (leaderboard.theme || "ametista"));
@@ -1841,7 +1863,7 @@ function pickDonateGameShelfCard(cardEl) {
 
 function renderDonateGameShelf(catalogMatches, newMatches) {
   if (catalogMatches.length === 0 && newMatches.length === 0) {
-    donateModalGameShelfEl.innerHTML = '<p class="game-shelf-empty">nenhum jogo encontrado — toque em + pra adicionar mesmo assim</p>';
+    donateModalGameShelfEl.innerHTML = `<p class="game-shelf-empty">nenhum ${mediaLabel()} encontrado — toque em + pra adicionar mesmo assim</p>`;
   } else {
     donateModalGameShelfEl.innerHTML =
       catalogMatches.map((g) => donateGameShelfCardHtml(g, false)).join("") +
@@ -1908,7 +1930,7 @@ async function submitDonateModal() {
   const amount = donateModalAmountEl.value;
   donateModalErrorEl.hidden = true;
   if (!game || !donateGameConfirmed) {
-    donateModalErrorEl.textContent = "Escolha um jogo da lista ou toque em + pra adicionar um novo";
+    donateModalErrorEl.textContent = `Escolha um ${mediaLabel()} da lista ou toque em + pra adicionar um novo`;
     donateModalErrorEl.hidden = false;
     return donateModalGameEl.focus();
   }
@@ -2209,7 +2231,7 @@ document.getElementById("p-toggle-open").addEventListener("click", async () => {
 document.getElementById("p-reset-btn").addEventListener("click", async () => {
   const ok = await confirmDialog({
     title: "Zerar leilão",
-    message: "Isso apaga TODOS os jogos e o histórico desse leilão. Título e host continuam os mesmos. Tem certeza?",
+    message: `Isso apaga TODOS os ${mediaLabel()}s e o histórico desse leilão. Título e host continuam os mesmos. Tem certeza?`,
     confirmLabel: "Zerar",
     danger: true,
   });
