@@ -89,6 +89,10 @@ let historyItems = [];
 let currentLeaderKey = null;
 let lastTotalRaised = null;
 let previousTotals = new Map();
+let streakTimers = new Map();
+let lastStreakTierByKey = new Map();
+let hasRenderedLotsOnce = false;
+let lastDuelPair = null;
 let currentItems = [];
 let donorNames = [];
 let modalGame = null;
@@ -326,7 +330,7 @@ function lotTopDonorHtml(item) {
   `;
 }
 
-function lotCardInnerHtml(item, barPct, hitBadge, changed) {
+function lotCardInnerHtml(item, barPct, hitBadge, changed, streakBadge, duelGlow, duelBadge) {
   const thumb = thumbHtml(item, "lot-thumb");
   const bg = item.image
     ? `<div class="lot-card-bg" style="background-image:url('${escapeHtml(item.image)}')"></div>`
@@ -334,6 +338,7 @@ function lotCardInnerHtml(item, barPct, hitBadge, changed) {
   return `
     ${bg}
     <div class="lot-card-fill"></div>
+    ${duelGlow}
     <div class="lot-card-content">
       <span class="lot-rank">${rankBadgeHtml(item.rank)}</span>
       ${thumb}
@@ -344,6 +349,8 @@ function lotCardInnerHtml(item, barPct, hitBadge, changed) {
       </div>
       <div class="lot-meta">
         <span class="lot-total${changed ? " tick" : ""}">${formatBRL(item.total)}</span>
+        ${streakBadge}
+        ${duelBadge}
         ${hitBadge}
         <div class="lot-edit">
           <button data-key="${item.key}" type="button" aria-label="Editar ${escapeHtml(item.name)}" title="Editar">
@@ -389,6 +396,99 @@ function triggerBigWinCelebration(key, type) {
   setTimeout(() => burst.remove(), 2900);
 }
 
+// dispara só quando o jogo SOBE de nível de streak (2->3 doações vira nível
+// 1, 4 vira nível 2, 7 vira nível 3) -- não em toda doação dentro do mesmo nível
+function triggerStreakIgnite(key, tier) {
+  const card = lotListEl.querySelector(`.lot-card[data-key="${CSS.escape(key)}"]`);
+  if (!card) return;
+
+  const flash = document.createElement("span");
+  flash.className = "streak-ignite-flash" + (tier >= 3 ? " streak-ignite-flash-strong" : "");
+  flash.setAttribute("aria-hidden", "true");
+  card.appendChild(flash);
+  setTimeout(() => flash.remove(), 700);
+
+  const rect = card.getBoundingClientRect();
+  const colors = tier >= 3
+    ? ["var(--danger)", "var(--accent)", "#ffb347"]
+    : ["var(--accent)", "var(--accent-text)", "#ffb347"];
+  const burst = document.createElement("div");
+  burst.className = "confetti-burst";
+  burst.style.left = `${rect.left}px`;
+  burst.style.top = `${rect.top}px`;
+  burst.style.width = `${rect.width}px`;
+  burst.style.height = `${rect.height}px`;
+  const count = tier >= 3 ? 22 : 14;
+  for (let i = 0; i < count; i++) {
+    const piece = document.createElement("span");
+    piece.className = "confetti-piece confetti-piece-ember";
+    // majoritariamente pra cima -- faísca subindo, não confete caindo
+    const angle = -90 + (Math.random() * 100 - 50);
+    const dist = 40 + Math.random() * 90;
+    piece.style.setProperty("--dx", `${Math.cos((angle * Math.PI) / 180) * dist}px`);
+    piece.style.setProperty("--dy", `${Math.sin((angle * Math.PI) / 180) * dist}px`);
+    piece.style.left = `${30 + Math.random() * 40}%`;
+    piece.style.top = `${40 + Math.random() * 30}%`;
+    piece.style.background = colors[i % colors.length];
+    piece.style.color = colors[i % colors.length];
+    piece.style.animationDuration = `${1.1 + Math.random() * 0.5}s`;
+    piece.style.animationDelay = `${Math.random() * 0.15}s`;
+    burst.appendChild(piece);
+  }
+  document.body.appendChild(burst);
+  setTimeout(() => burst.remove(), 1900);
+}
+
+// clímax da disputa pela vaga: o desafiante VIROU o jogo de verdade (rank
+// trocou de lugar entre os dois mesmos jogos) -- momento mais intenso que o
+// ignite do streak, com faíscas de impacto nos dois cards + rajada no meio
+function triggerDuelOvertake(defenderKey, challengerKey) {
+  const defenderCard = lotListEl.querySelector(`.lot-card[data-key="${CSS.escape(defenderKey)}"]`);
+  const challengerCard = lotListEl.querySelector(`.lot-card[data-key="${CSS.escape(challengerKey)}"]`);
+  [defenderCard, challengerCard].forEach((card) => {
+    if (!card) return;
+    const flash = document.createElement("span");
+    flash.className = "duel-overtake-flash";
+    flash.setAttribute("aria-hidden", "true");
+    card.appendChild(flash);
+    setTimeout(() => flash.remove(), 900);
+
+    const punch = document.createElement("span");
+    punch.className = "duel-overtake-punch";
+    punch.setAttribute("aria-hidden", "true");
+    card.appendChild(punch);
+    setTimeout(() => punch.remove(), 550);
+  });
+
+  const anchor = defenderCard || challengerCard;
+  if (!anchor) return;
+  const rect = anchor.getBoundingClientRect();
+  const colors = ["var(--accent)", "var(--danger)", "#ffb347", "var(--accent-text)"];
+  const burst = document.createElement("div");
+  burst.className = "confetti-burst";
+  burst.style.left = `${rect.left}px`;
+  burst.style.top = `${rect.top - 30}px`;
+  burst.style.width = `${rect.width}px`;
+  burst.style.height = `${rect.height + 60}px`;
+  for (let i = 0; i < 36; i++) {
+    const piece = document.createElement("span");
+    piece.className = "confetti-piece confetti-piece-spark";
+    const angle = Math.random() * 360;
+    const dist = 70 + Math.random() * 150;
+    piece.style.setProperty("--dx", `${Math.cos((angle * Math.PI) / 180) * dist}px`);
+    piece.style.setProperty("--dy", `${Math.sin((angle * Math.PI) / 180) * dist - 20}px`);
+    piece.style.setProperty("--rot", `${Math.random() * 900 - 450}deg`);
+    piece.style.left = `${15 + Math.random() * 70}%`;
+    piece.style.top = `${20 + Math.random() * 50}%`;
+    piece.style.background = colors[i % colors.length];
+    piece.style.animationDuration = `${1.4 + Math.random() * 0.6}s`;
+    piece.style.animationDelay = `${Math.random() * 0.2}s`;
+    burst.appendChild(piece);
+  }
+  document.body.appendChild(burst);
+  setTimeout(() => burst.remove(), 2400);
+}
+
 function renderLots(items, flashKey, flashType, lastSabotagedKey, qualifyCount) {
   lotCountEl.textContent = String(items.length);
 
@@ -397,6 +497,10 @@ function renderLots(items, flashKey, flashType, lastSabotagedKey, qualifyCount) 
     lotListEl.innerHTML = emptyStateEl.outerHTML;
     previousTotals = new Map();
     currentLeaderKey = null;
+    streakTimers.forEach((timer) => clearTimeout(timer));
+    streakTimers.clear();
+    lastStreakTierByKey.clear();
+    lastDuelPair = null;
     return;
   }
   emptyStateEl.style.display = "none";
@@ -412,6 +516,31 @@ function renderLots(items, flashKey, flashType, lastSabotagedKey, qualifyCount) 
     firstRects.set(el.dataset.key, el.getBoundingClientRect());
   });
 
+  // "disputa pela vaga": o último classificado (defensor) vs o primeiro de
+  // fora (desafiante), só quando o placar tá de verdade próximo -- senão
+  // não faz sentido chamar de disputa um 500 contra um 5
+  let duelDefender = null;
+  let duelChallenger = null;
+  if (items.length > qualifyCount) {
+    const defenderCandidate = items.find((i) => i.rank === qualifyCount) || null;
+    const challengerCandidate = items.find((i) => i.rank === qualifyCount + 1) || null;
+    if (defenderCandidate && challengerCandidate && defenderCandidate.total > 0) {
+      const ratio = challengerCandidate.total / defenderCandidate.total;
+      if (ratio >= 0.65) {
+        duelDefender = defenderCandidate;
+        duelChallenger = challengerCandidate;
+      }
+    }
+  }
+  const wasDuelPair = lastDuelPair;
+  const isSameDuelPairSwapped = duelDefender && duelChallenger && wasDuelPair
+    && wasDuelPair.defenderKey === duelChallenger.key
+    && wasDuelPair.challengerKey === duelDefender.key;
+  const shouldTriggerOvertake = hasRenderedLotsOnce && isSameDuelPairSwapped;
+  lastDuelPair = duelDefender && duelChallenger
+    ? { defenderKey: duelDefender.key, challengerKey: duelChallenger.key }
+    : null;
+
   const seenKeys = new Set();
   items.forEach((item) => {
     seenKeys.add(item.key);
@@ -426,26 +555,66 @@ function renderLots(items, flashKey, flashType, lastSabotagedKey, qualifyCount) 
     const changed = previousTotals.has(item.key) && previousTotals.get(item.key) !== item.total;
     nextTotals.set(item.key, item.total);
 
+    const now = Date.now();
+    const combo = item.combo;
+    const streakActive = !!combo && combo.count >= 2 && combo.expiresAt > now;
+    const tier = streakActive ? streakTier(combo.count) : 0;
+    const streakBadge = streakActive
+      ? `<span class="badge-streak" data-tier="${tier}">×${combo.count}</span>`
+      : "";
+    const streakClass = streakActive ? " is-streaking" : "";
+
+    const isDuelDefender = duelDefender && item.key === duelDefender.key;
+    const isDuelChallenger = duelChallenger && item.key === duelChallenger.key;
+    const duelClass = isDuelDefender ? " is-duel-defender" : isDuelChallenger ? " is-duel-challenger" : "";
+    const duelGlow = isDuelDefender
+      ? '<span class="duel-glow" data-role="defender" aria-hidden="true"></span>'
+      : isDuelChallenger
+        ? '<span class="duel-glow" data-role="challenger" aria-hidden="true"></span>'
+        : "";
+    const duelBadge = isDuelDefender
+      ? '<span class="badge-duel" data-role="defender">defendendo a vaga</span>'
+      : isDuelChallenger
+        ? `<span class="badge-duel" data-role="challenger">faltam ${formatBRL(duelDefender.total - item.total)}</span>`
+        : "";
+
     let card = lotListEl.querySelector(`.lot-card[data-key="${CSS.escape(item.key)}"]`);
     if (!card) {
       card = document.createElement("div");
       card.dataset.key = item.key;
     }
-    card.className = `lot-card rank-${item.rank}${flashClass}`;
+    card.className = `lot-card rank-${item.rank}${flashClass}${streakClass}${duelClass}`;
+    if (streakActive) card.dataset.streakTier = String(tier);
+    else delete card.dataset.streakTier;
     card.style.setProperty("--pct", `${barPct}%`);
-    card.innerHTML = lotCardInnerHtml(item, barPct, hitBadge, changed);
+    card.innerHTML = lotCardInnerHtml(item, barPct, hitBadge, changed, streakBadge, duelGlow, duelBadge);
     lotListEl.appendChild(card);
+
+    if (streakActive) {
+      scheduleStreakExpiry(item.key, combo.expiresAt - now);
+      // não dispara no primeiro render (reload/reconexão no meio de um streak já em andamento)
+      if (hasRenderedLotsOnce && tier >= 2 && tier > (lastStreakTierByKey.get(item.key) || 0)) {
+        triggerStreakIgnite(item.key, tier);
+      }
+    }
+    lastStreakTierByKey.set(item.key, tier);
 
     if (item.rank === qualifyCount && items.length > qualifyCount) {
       let divider = lotListEl.querySelector(".qualify-divider");
       if (!divider) {
         divider = document.createElement("div");
         divider.className = "qualify-divider";
-        divider.innerHTML = "<span>classificados até aqui</span>";
       }
+      const isDuel = !!(duelDefender && duelChallenger);
+      divider.className = `qualify-divider${isDuel ? " is-duel" : ""}`;
+      divider.innerHTML = `<span>${isDuel ? "disputa pela última vaga" : "classificados até aqui"}</span>`;
       lotListEl.appendChild(divider);
     }
   });
+  hasRenderedLotsOnce = true;
+  // só depois do forEach: o card.innerHTML = ... acima apagaria o flash/punch
+  // se a rajada disparasse antes dos cards serem reconstruídos
+  if (shouldTriggerOvertake) triggerDuelOvertake(duelDefender.key, duelChallenger.key);
   if (items.length <= qualifyCount) {
     const divider = lotListEl.querySelector(".qualify-divider");
     if (divider) divider.remove();
@@ -453,6 +622,15 @@ function renderLots(items, flashKey, flashType, lastSabotagedKey, qualifyCount) 
 
   lotListEl.querySelectorAll(".lot-card").forEach((el) => {
     if (!seenKeys.has(el.dataset.key)) el.remove();
+  });
+  streakTimers.forEach((timer, key) => {
+    if (!seenKeys.has(key)) {
+      clearTimeout(timer);
+      streakTimers.delete(key);
+    }
+  });
+  lastStreakTierByKey.forEach((_tier, key) => {
+    if (!seenKeys.has(key)) lastStreakTierByKey.delete(key);
   });
 
   previousTotals = nextTotals;
@@ -1420,6 +1598,30 @@ totalHideToggleEl.addEventListener("click", async () => {
     alert(err.message);
   }
 });
+
+function streakTier(count) {
+  if (count >= 7) return 3;
+  if (count >= 4) return 2;
+  return 1;
+}
+
+// combo é do JOGO, não do leilão -- expira sozinho na tela mesmo sem
+// nenhum evento novo chegar (sem isso ficaria "streakado" pra sempre)
+function scheduleStreakExpiry(key, remainingMs) {
+  const prev = streakTimers.get(key);
+  if (prev) clearTimeout(prev);
+  const timer = setTimeout(() => {
+    streakTimers.delete(key);
+    lastStreakTierByKey.delete(key);
+    const card = lotListEl.querySelector(`.lot-card[data-key="${CSS.escape(key)}"]`);
+    if (!card) return;
+    card.classList.remove("is-streaking");
+    card.removeAttribute("data-streak-tier");
+    const badge = card.querySelector(".badge-streak");
+    if (badge) badge.remove();
+  }, remainingMs);
+  streakTimers.set(key, timer);
+}
 
 socket.on("update", ({ leaderboard, lastEvent }) => {
   document.documentElement.dataset.theme = leaderboard.theme || "ametista";

@@ -13,6 +13,7 @@ body::before { display: none; }
 }
 
 .alerta-card {
+  position: relative;
   display: flex;
   align-items: center;
   gap: 18px;
@@ -25,6 +26,22 @@ body::before { display: none; }
   transform: translateY(18px) scale(0.94);
 }
 .alerta-card[hidden] { display: none; }
+
+.alerta-combo {
+  position: absolute;
+  top: -10px;
+  right: 14px;
+  padding: 3px 10px;
+  background: var(--accent);
+  color: var(--accent-ink);
+  border-radius: 999px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  box-shadow: 0 4px 12px -4px var(--accent-glow);
+}
+.alerta-combo[hidden] { display: none; }
 
 .alerta-card.is-in {
   animation: alerta-in 0.55s var(--ease) forwards;

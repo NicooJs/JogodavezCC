@@ -1997,6 +1997,43 @@ body.board-body.has-bg-image .board-cover-bg { display: none; }
 
 .lot-card.flash-remove { animation: fill-pulse-remove 0.9s ease; border-color: rgba(239, 68, 112, 0.5); }
 
+.confetti-piece-ember {
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  animation-name: ember-fly;
+  box-shadow: 0 0 6px 1px currentColor;
+}
+@keyframes ember-fly {
+  0% { opacity: 1; transform: translate(0, 0) scale(1); }
+  25% { opacity: 1; }
+  100% { opacity: 0; transform: translate(var(--dx), var(--dy)) scale(0.3); }
+}
+
+/* flash de "ignição" quando um jogo sobe de nível de streak -- elemento
+   próprio (não usa a propriedade animation do .lot-card) pra nunca brigar
+   com o flash de doação (.flash-add/.flash-remove) que roda ao mesmo tempo */
+.streak-ignite-flash {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  border-radius: inherit;
+  background: radial-gradient(circle at 85% 50%, var(--accent-glow), transparent 70%);
+  opacity: 0;
+  animation: streak-ignite-flash-anim 0.65s ease-out forwards;
+}
+.streak-ignite-flash-strong {
+  background: radial-gradient(circle at 85% 50%, var(--danger), transparent 70%);
+}
+@keyframes streak-ignite-flash-anim {
+  0% { opacity: 0; }
+  30% { opacity: 0.9; }
+  100% { opacity: 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .streak-ignite-flash { display: none; }
+}
+
 @keyframes content-shake {
   10%, 90% { transform: translateX(-1px); }
   20%, 80% { transform: translateX(2px); }
@@ -2169,6 +2206,155 @@ body.board-body.has-bg-image .board-cover-bg { display: none; }
   background: transparent;
   border: 1px solid rgba(239, 68, 112, 0.4);
   opacity: 0.85;
+}
+
+/* jogo recebendo doações em sequência rápida (ver COMBO_WINDOW_MS no server) */
+.badge-streak {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  font-weight: 700;
+  padding: 2px 7px;
+  border-radius: 3px;
+  background: var(--accent-bg);
+  color: var(--accent-text);
+  opacity: 0;
+  transform: scale(0.85);
+  animation: badge-streak-in 200ms ease-out forwards;
+}
+@keyframes badge-streak-in {
+  from { opacity: 0; transform: scale(0.85); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+.badge-streak[data-tier="2"] {
+  background: var(--accent);
+  color: var(--accent-ink);
+  animation: badge-streak-in 200ms ease-out forwards, badge-streak-pulse 1.1s ease-in-out 200ms infinite;
+}
+.badge-streak[data-tier="3"] {
+  background: linear-gradient(135deg, var(--accent), var(--danger));
+  color: var(--accent-ink);
+  animation: badge-streak-in 200ms ease-out forwards, badge-streak-pulse 0.75s ease-in-out 200ms infinite;
+}
+@keyframes badge-streak-pulse {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.08); }
+}
+
+.lot-card.is-streaking { border-color: var(--accent-glow); }
+.lot-card.is-streaking[data-streak-tier="3"] { border-color: var(--danger); }
+
+@media (prefers-reduced-motion: reduce) {
+  .badge-streak,
+  .badge-streak[data-tier="2"],
+  .badge-streak[data-tier="3"] {
+    animation: none;
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* disputa pela última vaga classificada: o último classificado ("defensor")
+   contra o primeiro de fora ("desafiante"), quando o placar tá próximo --
+   incentiva o público a tentar virar o jogo. Usa um elemento FILHO (não a
+   propriedade animation do .lot-card) pra nunca brigar com flash-add/
+   flash-remove nem com o reposicionamento FLIP quando o rank vira. */
+.duel-glow {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  border-radius: inherit;
+  /* sem z-index de propósito: fica atrás de .lot-card-content na ordem
+     natural do DOM (ele vem depois), senão o brilho cobre o texto do card */
+}
+.duel-glow[data-role="defender"] {
+  animation: duel-glow-defender 1.1s ease-in-out infinite;
+}
+.duel-glow[data-role="challenger"] {
+  animation: duel-glow-challenger 1.1s ease-in-out infinite;
+}
+@keyframes duel-glow-defender {
+  0%, 100% { box-shadow: inset 0 0 0 1px var(--accent), inset 0 0 16px -2px var(--accent-glow); opacity: 0.65; }
+  50% { box-shadow: inset 0 0 0 2px var(--accent), inset 0 0 38px 2px var(--accent-glow); opacity: 1; }
+}
+@keyframes duel-glow-challenger {
+  0%, 100% { box-shadow: inset 0 0 0 1px var(--danger), inset 0 0 16px -2px rgba(239, 68, 112, 0.55); opacity: 0.65; }
+  50% { box-shadow: inset 0 0 0 2px var(--danger), inset 0 0 38px 2px rgba(239, 68, 112, 0.55); opacity: 1; }
+}
+
+.badge-duel {
+  display: inline-flex;
+  align-items: center;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  padding: 2px 7px;
+  border-radius: 3px;
+}
+.badge-duel[data-role="defender"] { background: var(--accent-bg); color: var(--accent-text); }
+.badge-duel[data-role="challenger"] { background: var(--danger-bg); color: var(--danger); }
+
+.qualify-divider.is-duel span {
+  color: var(--accent-text);
+  font-weight: 700;
+  animation: duel-label-pulse 1.1s ease-in-out infinite;
+}
+.qualify-divider.is-duel::before,
+.qualify-divider.is-duel::after {
+  background: repeating-linear-gradient(90deg, var(--accent) 0 6px, transparent 6px 11px);
+}
+@keyframes duel-label-pulse {
+  0%, 100% { opacity: 0.7; }
+  50% { opacity: 1; }
+}
+
+/* rajada "de impacto" quando o desafiante ultrapassa o defensor de verdade
+   -- bem mais intensa que o ignite do streak, é o clímax da disputa */
+.duel-overtake-flash {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  border-radius: inherit;
+  z-index: 2;
+  background: radial-gradient(circle at 50% 50%, rgba(255, 255, 255, 0.55), var(--accent-glow) 40%, transparent 75%);
+  opacity: 0;
+  animation: duel-overtake-flash-anim 0.9s ease-out forwards;
+}
+@keyframes duel-overtake-flash-anim {
+  0% { opacity: 0; }
+  15% { opacity: 1; }
+  100% { opacity: 0; }
+}
+
+.duel-overtake-punch {
+  position: absolute;
+  inset: -6px;
+  pointer-events: none;
+  border-radius: inherit;
+  border: 3px solid var(--accent);
+  opacity: 0;
+  animation: duel-punch-ring 0.55s ease-out forwards;
+}
+@keyframes duel-punch-ring {
+  0% { opacity: 1; transform: scale(0.85); }
+  100% { opacity: 0; transform: scale(1.3); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .duel-glow[data-role="defender"],
+  .duel-glow[data-role="challenger"] {
+    animation: none;
+    opacity: 0.9;
+  }
+  .qualify-divider.is-duel span { animation: none; opacity: 1; }
+  .duel-overtake-flash,
+  .duel-overtake-punch {
+    display: none;
+  }
 }
 
 .lot-card.flash-add .lot-card-fill { background-color: var(--accent-bg); }

@@ -350,6 +350,22 @@ function createStore(filePath) {
     return data;
   }
 
+  // streak de doações num jogo específico, dentro de uma janela de tempo --
+  // reseta pra 1 se a última doação NESSE jogo já saiu da janela
+  function registerGameCombo(key, windowMs) {
+    const game = data.games[key];
+    if (!game) return null;
+    const now = Date.now();
+    const prevExpiresAt = game.comboExpiresAt || 0;
+    const prevCount = game.comboCount || 0;
+    const count = now <= prevExpiresAt ? prevCount + 1 : 1;
+    const expiresAt = now + windowMs;
+    game.comboCount = count;
+    game.comboExpiresAt = expiresAt;
+    save();
+    return { count, expiresAt };
+  }
+
   return {
     getState,
     setState,
@@ -382,6 +398,7 @@ function createStore(filePath) {
     archiveAuction,
     getPastAuctions,
     getRawSnapshot,
+    registerGameCombo,
   };
 }
 

@@ -203,6 +203,10 @@ function touchActivity(store, reopen = false) {
   }
 }
 
+// streak de doações NUM JOGO ESPECÍFICO (não do leilão todo) -- só hype
+// visual, nunca mexe em valor de doação. Ver src/db.js#registerGameCombo
+const COMBO_WINDOW_MS = 60 * 1000;
+
 function captureAuctionDuration(store) {
   const openedAt = Number(store.getState("leilaoOpenedAt", 0));
   if (openedAt > 0) {
@@ -299,6 +303,7 @@ function serializeLeaderboard(store, leilaoId) {
       topDonor: topDonor
         ? { username: topDonor.username, total: centsToNumber(topDonor.total_cents), avatar: getDonorAvatar(topDonor.username, onAvatarResolved) }
         : null,
+      combo: { count: row.comboCount || 0, expiresAt: row.comboExpiresAt || 0 },
     };
   });
 
@@ -464,6 +469,7 @@ async function processDonationMessage(leilaoId, store, { id, fallbackUsername, f
 
   // precisa rodar antes do broadcast, senão o timer só aparece esticado no próximo evento
   touchActivity(store);
+  const combo = store.registerGameCombo(game.key, COMBO_WINDOW_MS);
 
   broadcastUpdate(leilaoId, store, {
     type: parsed.action,
@@ -474,6 +480,7 @@ async function processDonationMessage(leilaoId, store, { id, fallbackUsername, f
     voiceId: note ? fallbackVoiceId : null,
     game: { key: game.key, name: game.name, total: centsToNumber(game.total_cents) },
     paymentId: id,
+    comboCount: combo.count,
   });
 
   maybeFetchGameImage(leilaoId, store, game.key, game.name, needsImage);

@@ -4,6 +4,7 @@ if (!LEILAO_ID) throw new Error("LEILAO_ID ausente na URL");
 const socket = io({ query: { leilaoId: LEILAO_ID } });
 
 const cardEl = document.getElementById("alerta-card");
+const comboEl = document.getElementById("alerta-combo");
 const iconEl = document.getElementById("alerta-icon");
 const donorEl = document.getElementById("alerta-donor");
 const actionEl = document.getElementById("alerta-action");
@@ -60,6 +61,12 @@ function showNext() {
     noteEl.hidden = false;
   } else {
     noteEl.hidden = true;
+  }
+  if (item.comboCount >= 2) {
+    comboEl.textContent = `×${item.comboCount} combo`;
+    comboEl.hidden = false;
+  } else {
+    comboEl.hidden = true;
   }
 
   cardEl.hidden = false;
