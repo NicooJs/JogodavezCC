@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>Leilão de Jogos — criar o meu</title>
+<title>JogodaVez — criar o meu</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Abril+Fatface&family=Nunito:ital,wght@0,500;0,600;0,700;1,500;1,600;1,700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/css/style.css" />
@@ -13,12 +13,9 @@
   <div class="create-page">
     <header class="topbar create-topbar">
       <p class="topbar-mark">
-        <span class="brand-word">Leilão de Jogos</span>
+        <span class="brand-word">JogodaVez</span>
         <span class="brand-sub">criar o meu</span>
       </p>
-      <nav class="create-topbar-nav">
-        <a href="/meus-leiloes">meus leilões</a>
-      </nav>
     </header>
 
     <main class="create-hero">
@@ -65,7 +62,7 @@
             <span class="create-step-num">1</span>
             <div class="create-form-step-body create-field create-twitch-block">
               <p class="create-step-title">Conecte sua Twitch</p>
-              <p class="create-step-hint">Confirma quem é o streamer — evita alguém se passar por você.</p>
+              
 
               <div class="create-twitch-logged-out" id="create-twitch-logged-out">
                 <a class="create-twitch-login" id="create-twitch-login" href="/auth/twitch/start?returnTo=/">
@@ -87,7 +84,6 @@
             <span class="create-step-num">2</span>
             <div class="create-form-step-body create-field create-twitch-block">
               <p class="create-step-title">Conecte o Mercado Pago</p>
-              <p class="create-step-hint">É pra onde o Pix de cada doação cai, direto na sua conta.</p>
 
               <div class="create-mp-disconnected" id="create-mp-disconnected">
                 <a class="create-mp-login is-disabled" id="create-mp-connect" href="/auth/mercadopago/start?returnTo=/">
@@ -120,7 +116,7 @@
 
               <label class="create-field">
                 <span>Nome do leilão</span>
-                <input type="text" id="f-title" placeholder="Leilão de Jogos" autocomplete="off" />
+                <input type="text" id="f-title" placeholder="JogodaVez" autocomplete="off" />
               </label>
             </div>
           </div>
@@ -128,25 +124,6 @@
           <button class="create-submit" id="create-submit" type="submit" disabled>Criar leilão →</button>
           <p class="create-error" id="create-error" hidden></p>
         </form>
-
-        <div class="create-result" id="create-result" hidden>
-          <p class="create-result-title">Pronto — seu leilão está no ar</p>
-          <p class="create-result-hint">
-            Esse é o link do seu placar. Bota ele numa aba do navegador (ou
-            captura de tela) durante a live. Pra entrar no modo apresentador,
-            é só clicar nele — como sua Twitch já tá conectada, você entra
-            direto, sem senha.
-          </p>
-          <div class="create-result-link">
-            <input type="text" id="create-result-url" readonly />
-            <button class="copy-btn" type="button" id="create-result-copy" data-tooltip="Copiar">
-              <span class="copy-btn-icon copy-btn-icon-copy" aria-hidden="true"><svg class="icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="7" y="7" width="9" height="9" rx="1.5"/><path d="M13 7V5.5A1.5 1.5 0 0 0 11.5 4h-6A1.5 1.5 0 0 0 4 5.5v6A1.5 1.5 0 0 0 5.5 13H7"/></svg></span>
-              <span class="copy-btn-icon copy-btn-icon-check" aria-hidden="true"><svg class="icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 10.5l4 4 8-9"/></svg></span>
-              <span class="copy-btn-sr">Copiar</span>
-            </button>
-          </div>
-          <a class="create-result-open" id="create-result-open" href="#">Abrir meu leilão →</a>
-        </div>
       </div>
     </main>
 
@@ -159,7 +136,6 @@
   </div>
 
   <script type="module" src="/js/create-intro.js"></script>
-  <script src="/js/copy-button.js"></script>
   <script src="/js/board-cover-bg.js"></script>
   <script src="/js/create.js"></script>
 </body>

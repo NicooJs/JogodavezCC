@@ -319,7 +319,7 @@ function serializeLeaderboard(store, leilaoId) {
   }));
 
   return {
-    title: store.getState("title", "Leilão de Jogos"),
+    title: store.getState("title", "JogodaVez"),
     mode: normalizeMode(store.getState("mode", "jogos")),
     host: store.getState("host", ""),
     hostAvatar: store.getState("hostAvatar", null),
@@ -378,7 +378,7 @@ function buildRecap(store) {
   const durationMs = Number(store.getState("lastAuctionDurationMs", 0)) || null;
 
   return {
-    title: store.getState("title", "Leilão de Jogos"),
+    title: store.getState("title", "JogodaVez"),
     mode: normalizeMode(store.getState("mode", "jogos")),
     host: store.getState("host", ""),
     hostAvatar: store.getState("hostAvatar", null),
@@ -656,7 +656,7 @@ app.get("/api/meus-leiloes", (req, res) => {
       const store = getStore(meta.id);
       return {
         id: meta.id,
-        title: store.getState("title", meta.title || "Leilão de Jogos"),
+        title: store.getState("title", meta.title || "JogodaVez"),
         url: `/l/${meta.id}`,
         createdAt: meta.createdAt,
         hostVerified: getHostVerified(store),
@@ -766,7 +766,7 @@ function computeOwnerRanking(twitchUserId) {
       if (getHideTotalRaised(store)) return null;
       return {
         id: meta.id,
-        title: store.getState("title", meta.title || "Leilão de Jogos"),
+        title: store.getState("title", meta.title || "JogodaVez"),
         totalRaised: computeLeilaoTotalRaised(store),
         createdAt: meta.createdAt || "",
       };
@@ -1373,7 +1373,7 @@ app.post("/api/l/:id/admin/set-timer", loadLeilao, requireLeilaoAdmin, (req, res
 
 app.post("/api/l/:id/admin/title", loadLeilao, requireLeilaoAdmin, (req, res) => {
   const { title } = req.body || {};
-  req.store.setState("title", title || "Leilão de Jogos");
+  req.store.setState("title", title || "JogodaVez");
   broadcastUpdate(req.leilaoId, req.store, { type: "title" });
   res.json({ ok: true });
 });

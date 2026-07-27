@@ -39,7 +39,7 @@ async function createLeilao({ title, host, hostAvatar, hostTwitchUserId, hostTwi
   } while (registry.leiloes[id]);
 
   const meta = {
-    title: title || "Leilão de Jogos",
+    title: title || "JogodaVez",
     host: host || "",
     ownerTwitchUserId: hostTwitchUserId,
     createdAt: new Date().toISOString(),

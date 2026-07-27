@@ -3,10 +3,6 @@ const STORAGE_KEY = "meus-leiloes";
 const form = document.getElementById("create-form");
 const errorEl = document.getElementById("create-error");
 const submitBtn = document.getElementById("create-submit");
-const resultEl = document.getElementById("create-result");
-const resultUrlEl = document.getElementById("create-result-url");
-const resultOpenEl = document.getElementById("create-result-open");
-const resultCopyBtn = document.getElementById("create-result-copy");
 const existingEl = document.getElementById("create-existing");
 const existingListEl = document.getElementById("create-existing-list");
 const existingNewBtn = document.getElementById("create-existing-new");
@@ -82,7 +78,7 @@ async function renderExisting() {
 
   existingListEl.innerHTML = stillValid.map((item) => `
     <div class="create-existing-item">
-      <span>${escapeHtml(item.title || "Leilão de Jogos")}</span>
+      <span>${escapeHtml(item.title || "JogodaVez")}</span>
       <a href="${escapeHtml(item.url)}" target="_blank">Abrir →</a>
     </div>
   `).join("");
@@ -95,12 +91,32 @@ existingNewBtn.addEventListener("click", () => {
   form.hidden = false;
 });
 
+async function findExistingLeilao() {
+  try {
+    const res = await fetch("/api/meus-leiloes");
+    if (!res.ok) return null;
+    const { leiloes } = await res.json();
+    return leiloes && leiloes.length ? leiloes[0] : null;
+  } catch (err) {
+    return null;
+  }
+}
+
 async function loadSession() {
   try {
     currentSession = await fetch("/api/session/me").then((r) => r.json());
   } catch (err) {
     currentSession = { loggedIn: false };
   }
+
+  if (currentSession.loggedIn) {
+    const existing = await findExistingLeilao();
+    if (existing) {
+      location.href = existing.url;
+      return;
+    }
+  }
+
   renderTwitchBlock();
 }
 
@@ -153,12 +169,8 @@ form.addEventListener("submit", async (e) => {
     const data = await res.json().catch(() => ({}));
     if (!res.ok) throw new Error(data.error || `Erro ${res.status}`);
 
-    const url = `${location.origin}${data.url}`;
-    saveLeilao({ title: title || "Leilão de Jogos", url: data.url });
-    resultUrlEl.value = url;
-    resultOpenEl.href = data.url;
-    form.hidden = true;
-    resultEl.hidden = false;
+    saveLeilao({ title: title || "JogodaVez", url: data.url });
+    location.href = data.url;
   } catch (err) {
     errorEl.textContent = err.message;
     errorEl.hidden = false;
@@ -167,6 +179,4 @@ form.addEventListener("submit", async (e) => {
     submitBtn.textContent = "Criar leilão";
   }
 });
-
-wireCopyButton(resultCopyBtn, resultUrlEl);
 

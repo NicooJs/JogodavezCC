@@ -1063,7 +1063,7 @@ async function buildRecapCanvas() {
     ctx.fillStyle = textColor;
     ctx.font = "600 16px 'IBM Plex Sans', sans-serif";
     ctx.textBaseline = "middle";
-    ctx.fillText("Leilão de Jogos", marginX + 22, 54);
+    ctx.fillText("JogodaVez", marginX + 22, 54);
     ctx.textBaseline = "alphabetic";
 
     ctx.fillStyle = accentText;
@@ -1087,7 +1087,7 @@ async function buildRecapCanvas() {
     }
     ctx.fillStyle = textColor;
     ctx.font = "italic 700 38px 'Nunito', sans-serif";
-    const title = recap.title || "Leilão de Jogos";
+    const title = recap.title || "JogodaVez";
     ctx.fillText(truncateToWidth(ctx, title, colDivider - titleX), titleX, 118);
 
     const totalText = recap.totalRaised === null ? "oculto" : formatBRL(recap.totalRaised || 0);
@@ -1386,7 +1386,7 @@ function renderRecap(recap, eyebrowText) {
   } else {
     recapHostAvatarEl.hidden = true;
   }
-  recapTitleEl.textContent = recap.title || "Leilão de Jogos";
+  recapTitleEl.textContent = recap.title || "JogodaVez";
   recapTotalEl.textContent = recap.totalRaised === null ? "oculto" : formatBRL(recap.totalRaised || 0);
   recapDurationEl.textContent = formatDuration(recap.durationMs);
   recapDonorsEl.textContent = String(recap.totalDonors || 0);
