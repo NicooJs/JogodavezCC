@@ -230,6 +230,8 @@ body.create-body.has-covers .board-cover-bg { opacity: 1; }
 }
 
 .create-hint { font-size: 12px; color: var(--muted); line-height: 1.4; }
+.create-hint a { color: var(--accent-text); }
+.create-hint a:hover { color: var(--accent); }
 
 .create-twitch-logged-out,
 .create-twitch-logged-in,
@@ -480,6 +482,49 @@ body.create-body.has-covers .board-cover-bg { opacity: 1; }
 }
 .create-footer-github .icon { width: 15px; height: 15px; }
 .create-footer-github:hover { color: var(--text); }
+
+.create-footer-legal {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--muted);
+}
+.create-footer-legal a { color: var(--muted); }
+.create-footer-legal a:hover { color: var(--text); }
+.create-footer-legal-sep { opacity: 0.5; }
+
+.legal-page {
+  max-width: 680px;
+  margin: 0 auto;
+  padding-bottom: 40px;
+  color: var(--text);
+}
+.legal-page h1 {
+  font-family: var(--font-display);
+  font-style: italic;
+  font-weight: 700;
+  font-size: 30px;
+  margin: 0 0 4px;
+}
+.legal-updated { font-size: 12px; color: var(--muted); margin: 0 0 32px; }
+.legal-page h2 {
+  font-family: var(--font-display);
+  font-size: 17px;
+  font-weight: 600;
+  margin: 28px 0 8px;
+}
+.legal-page p {
+  font-size: 14px;
+  line-height: 1.7;
+  color: var(--muted);
+  margin: 0 0 4px;
+}
+.legal-page strong { color: var(--text); }
+.legal-page a { color: var(--accent-text); }
+.legal-page a:hover { color: var(--accent); }
+.legal-see-also { margin-top: 32px; padding-top: 16px; border-top: 1px solid var(--border-soft); }
 
 .my-leiloes-main {
   max-width: 560px;

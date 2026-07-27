@@ -670,6 +670,14 @@ app.get("/meus-leiloes", (req, res) => {
   res.sendFile(path.join(__dirname, "public", "meus-leiloes.html"));
 });
 
+app.get("/termos", (req, res) => {
+  res.sendFile(path.join(__dirname, "public", "termos.html"));
+});
+
+app.get("/privacidade", (req, res) => {
+  res.sendFile(path.join(__dirname, "public", "privacidade.html"));
+});
+
 // ---------- criação de leilão ----------
 
 app.post("/api/leiloes", async (req, res) => {
@@ -990,9 +998,15 @@ app.post("/api/l/:id/doacao", loadLeilao, async (req, res) => {
     }
     console.error(`[doação] erro ao criar cobrança Pix (leilaoId="${leilaoId}"):`, err.message);
     const noPixKey = /without key enabled/i.test(err.message);
+    // Mercado Pago não documenta um código único pra "conta restrita/em análise" -- o texto
+    // costuma citar o estado da conta do vendedor (collector), então detectamos por palavra-chave
+    // em vez de status HTTP (que também pode ser 400 aqui, não só 401).
+    const accountRestricted = /collector|blocked|suspend|under review|restricted|not_authorized/i.test(err.message);
     res.status(502).json({
       error: noPixKey
         ? "O streamer ainda não cadastrou uma chave Pix na conta do Mercado Pago -- avise ele pra cadastrar uma em mercadopago.com.br antes de tentar de novo."
+        : accountRestricted
+        ? "O Mercado Pago sinalizou algo na conta do streamer -- avise ele pra entrar em mercadopago.com.br e conferir se não tem nenhuma verificação de identidade ou segurança pendente."
         : "Não foi possível gerar o Pix agora. Tente de novo em instantes.",
     });
   }
