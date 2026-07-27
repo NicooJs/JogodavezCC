@@ -17,6 +17,7 @@ const mpDisconnectedEl = document.getElementById("create-mp-disconnected");
 const mpConnectedEl = document.getElementById("create-mp-connected");
 const mpConnectLinkEl = document.getElementById("create-mp-connect");
 const mpHintEl = document.getElementById("create-mp-hint");
+const termsCheckEl = document.getElementById("f-terms");
 
 let currentSession = null;
 
@@ -136,8 +137,10 @@ function renderTwitchBlock() {
   mpConnectLinkEl.classList.toggle("is-disabled", !loggedIn);
   mpHintEl.hidden = loggedIn;
 
-  submitBtn.disabled = !(loggedIn && mpConnected);
+  submitBtn.disabled = !(loggedIn && mpConnected && termsCheckEl.checked);
 }
+
+termsCheckEl.addEventListener("change", renderTwitchBlock);
 
 twitchLogoutBtn.addEventListener("click", async () => {
   try {
@@ -153,7 +156,7 @@ loadSession();
 form.addEventListener("submit", async (e) => {
   e.preventDefault();
   errorEl.hidden = true;
-  if (!currentSession || !currentSession.loggedIn || !currentSession.mpConnected) return;
+  if (!currentSession || !currentSession.loggedIn || !currentSession.mpConnected || !termsCheckEl.checked) return;
 
   const title = document.getElementById("f-title").value.trim();
 

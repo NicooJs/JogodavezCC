@@ -233,6 +233,26 @@ body.create-body.has-covers .board-cover-bg { opacity: 1; }
 .create-hint a { color: var(--accent-text); }
 .create-hint a:hover { color: var(--accent); }
 
+.create-terms-check {
+  display: flex;
+  align-items: flex-start;
+  gap: 9px;
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: var(--muted);
+  cursor: pointer;
+}
+.create-terms-check input {
+  margin: 2px 0 0;
+  width: 15px;
+  height: 15px;
+  flex-shrink: 0;
+  accent-color: var(--accent);
+  cursor: pointer;
+}
+.create-terms-check a { color: var(--accent-text); }
+.create-terms-check a:hover { color: var(--accent); }
+
 .create-twitch-logged-out,
 .create-twitch-logged-in,
 .create-mp-disconnected,
