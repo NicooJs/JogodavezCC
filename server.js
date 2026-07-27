@@ -787,7 +787,10 @@ app.get("/api/board-bg-covers", async (req, res) => {
     ? getMediaAdapter(getStore(leilaoId))
     : gameImages;
   const covers = await media.fetchPopularCovers();
-  res.set("Cache-Control", "public, max-age=1800");
+  // sem Cache-Control aqui de propósito -- a URL não muda quando a modalidade troca
+  // (mesma leilaoId), e um cache HTTP guardaria capa de jogo depois de trocar pra
+  // filme (ou vice-versa); a busca em si já é cacheada 6h no módulo de mídia
+  res.set("Cache-Control", "no-store");
   res.json({ covers });
 });
 
