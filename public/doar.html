@@ -88,11 +88,15 @@
 
             <div class="modal-field">
               <span class="modal-label">voz de IA pra ler no alerta <span class="modal-opt">(opcional)</span></span>
-              <div class="seg" id="doar-voice">
-                <button type="button" data-voice="" class="active">Sem voz</button>
-                <button type="button" data-voice="1">Voz 1</button>
-                <button type="button" data-voice="2">Voz 2</button>
-                <button type="button" data-voice="3">Voz 3</button>
+              <div class="voice-picker-row">
+                <div class="seg" id="doar-voice">
+                  <button type="button" data-voice="" class="active">Sem voz</button>
+                  <button type="button" data-voice="1">Com voz</button>
+                </div>
+                <button type="button" class="voice-preview-btn" id="doar-voice-preview">
+                  <svg class="icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 7.5v5l4.5-2.5-4.5-2.5z" fill="currentColor" stroke="none"/><path d="M13 6.8a4 4 0 0 1 0 6.4M15.3 4.5a7.5 7.5 0 0 1 0 11"/></svg>
+                  ouvir exemplo
+                </button>
               </div>
             </div>
           </div>
@@ -133,6 +137,7 @@
   </div>
 
   <script src="/js/copy-button.js"></script>
+  <script src="/js/voice-preview.js"></script>
   <script src="/socket.io/socket.io.js"></script>
   <script src="/js/doar.js"></script>
 </body>

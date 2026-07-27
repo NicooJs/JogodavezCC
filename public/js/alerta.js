@@ -90,24 +90,9 @@ function startHideTimer(delayMs) {
   }, delayMs);
 }
 
-let ptVoices = [];
-function refreshPtVoices() {
-  ptVoices = window.speechSynthesis.getVoices().filter((v) => v.lang && v.lang.toLowerCase().startsWith("pt"));
-}
-if (window.speechSynthesis) {
-  refreshPtVoices();
-  window.speechSynthesis.addEventListener("voiceschanged", refreshPtVoices);
-}
-
-function pickVoice(voiceId) {
-  if (!ptVoices.length) return null;
-  const index = (Number(voiceId) - 1) % ptVoices.length;
-  return ptVoices[Math.max(0, index)];
-}
-
-// Timeouts de segurança: voz bloqueada/travada não pode segurar a fila de alertas.
+// Timeouts de segurança: voz travada (áudio não chega, ou fica preso) não pode segurar a fila de alertas.
 function scheduleHide(item) {
-  if (!item.note || !item.voiceId || !window.speechSynthesis) {
+  if (!item.note || !item.voiceId) {
     startHideTimer(SHOW_MS);
     return;
   }
@@ -117,14 +102,22 @@ function scheduleHide(item) {
     settled = true;
     startHideTimer(delayMs);
   };
-  const utterance = new SpeechSynthesisUtterance(item.note);
-  const voice = pickVoice(item.voiceId);
-  if (voice) utterance.voice = voice;
-  utterance.lang = "pt-BR";
-  utterance.addEventListener("end", () => finish(700));
-  utterance.addEventListener("error", () => finish(SHOW_MS));
-  setTimeout(() => finish(SHOW_MS), 12000);
-  setTimeout(() => window.speechSynthesis.speak(utterance), 450);
+  const safety = setTimeout(() => finish(SHOW_MS), 12000);
+
+  setTimeout(async () => {
+    try {
+      const res = await fetch(`/api/tts?text=${encodeURIComponent(item.note)}`);
+      if (!res.ok) throw new Error("tts falhou");
+      const blob = await res.blob();
+      const audio = new Audio(URL.createObjectURL(blob));
+      audio.addEventListener("ended", () => { clearTimeout(safety); finish(700); });
+      audio.addEventListener("error", () => { clearTimeout(safety); finish(SHOW_MS); });
+      await audio.play();
+    } catch (err) {
+      clearTimeout(safety);
+      finish(SHOW_MS);
+    }
+  }, 450);
 }
 
 socket.on("update", ({ leaderboard, lastEvent }) => {

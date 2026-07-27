@@ -5,6 +5,9 @@ const MAX_TILES = 140;
 async function init() {
   // sem checar .has-bg-image aqui: a classe é aplicada async por app.js, o CSS resolve a corrida
 
+  document.querySelector(".board-cover-bg")?.remove();
+  document.body.classList.remove("has-covers");
+
   const leilaoId = location.pathname.match(/^\/l\/([a-z0-9_-]+)/i)?.[1] || "";
 
   let covers = [];
@@ -61,3 +64,4 @@ async function init() {
 }
 
 init();
+window.refreshBoardCoverBg = init;

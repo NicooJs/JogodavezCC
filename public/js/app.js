@@ -1772,6 +1772,7 @@ donateModalVoiceEl.querySelectorAll("button").forEach((b) => {
     donateModalVoiceEl.querySelectorAll("button").forEach((x) => x.classList.toggle("active", x === b));
   });
 });
+wireVoicePreview(document.getElementById("donate-modal-voice-preview"));
 
 function setDonateAction(action) {
   donateModalActionSeg.querySelectorAll("button").forEach((b) => {
@@ -2262,6 +2263,7 @@ modeToggleBoardEl.addEventListener("click", async () => {
   if (!ok) return;
   try {
     await presenterFetch("/admin/set-mode", { method: "POST", body: JSON.stringify({ mode: newMode }) });
+    window.refreshBoardCoverBg?.();
   } catch (err) {
     alert(err.message);
   }

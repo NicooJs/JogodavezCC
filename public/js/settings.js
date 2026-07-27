@@ -361,6 +361,18 @@ document.getElementById("merge-submit").addEventListener("click", async () => {
   }
 });
 
+document.getElementById("account-logout-btn").addEventListener("click", async () => {
+  const ok = await confirmDialog({
+    title: "Sair da conta",
+    message: "Isso desconecta sua conta da Twitch nesse navegador. Você precisa entrar de novo pra voltar ao modo apresentador.",
+    confirmLabel: "Sair da conta",
+    danger: true,
+  });
+  if (!ok) return;
+  await fetch("/api/session/logout", { method: "POST" }).catch(() => {});
+  location.href = "/";
+});
+
 document.getElementById("reset-btn").addEventListener("click", async () => {
   const ok = await confirmDialog({ title: "Zerar leilão", message: "Isso apaga TODOS os jogos e o histórico. Tem certeza?", confirmLabel: "Zerar leilão", danger: true });
   if (!ok) return;

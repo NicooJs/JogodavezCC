@@ -21,8 +21,9 @@ const mpApi = require("./src/mpApi");
 const mpWebhook = require("./src/mpWebhook");
 const streamersStore = require("./src/streamersStore");
 const paymentsStore = require("./src/paymentsStore");
+const freeTts = require("./src/freeTts");
 
-const DONOR_VOICE_IDS = new Set(["1", "2", "3"]);
+const DONOR_VOICE_IDS = new Set(["1"]);
 
 const app = express();
 // Railway termina TLS na borda; sem isso req.protocol sempre volta "http".
@@ -54,6 +55,7 @@ const loginRateLimiter = createRateLimiter(5 * 60_000, 10);
 const superAdminRateLimiter = createRateLimiter(10 * 60_000, 5);
 const gameSearchRateLimiter = createRateLimiter(60_000, 20);
 const donationRateLimiter = createRateLimiter(60_000, 5);
+const ttsRateLimiter = createRateLimiter(60_000, 20);
 
 const UPLOADS_DIR = path.join(DATA_DIR, "uploads");
 fs.mkdirSync(UPLOADS_DIR, { recursive: true });
@@ -987,6 +989,24 @@ app.get("/api/l/:id/game-search", loadLeilao, async (req, res) => {
   const { store } = req;
   const results = await getMediaAdapter(store).searchGames(q);
   res.json({ results: results.filter((g) => !store.hasGame(normalizeKey(g.name))) });
+});
+
+app.get("/api/tts", async (req, res) => {
+  const text = String(req.query.text || "").trim();
+  if (!text) return res.status(400).json({ error: "Informe o texto" });
+  if (ttsRateLimiter.isLimited(req.ip)) return res.status(429).json({ error: "Muitas requisições, tente de novo em instantes" });
+  ttsRateLimiter.record(req.ip);
+
+  try {
+    const audio = await freeTts.synthesize(text);
+    if (!audio) return res.status(400).json({ error: "Texto vazio" });
+    res.set("Content-Type", audio.contentType);
+    res.set("Cache-Control", "public, max-age=86400");
+    res.send(audio.buffer);
+  } catch (err) {
+    console.error("[tts] falha ao sintetizar:", err.message);
+    res.status(502).json({ error: "Não foi possível gerar o áudio" });
+  }
 });
 
 app.post("/webhook/mercadopago", async (req, res) => {

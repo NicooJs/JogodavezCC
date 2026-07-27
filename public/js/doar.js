@@ -294,6 +294,7 @@ voiceSegEl.querySelectorAll("button").forEach((b) => {
     voiceSegEl.querySelectorAll("button").forEach((x) => x.classList.toggle("active", x === b));
   });
 });
+wireVoicePreview(document.getElementById("doar-voice-preview"));
 
 async function submitDonation(e) {
   e.preventDefault();

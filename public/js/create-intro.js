@@ -30,10 +30,8 @@ async function loadProof() {
       .map((row) => `<img src="${row.hostAvatar.replace(/"/g, "&quot;")}" alt="" loading="lazy" />`)
       .join("");
 
-    const totalRaised = ranking.reduce((sum, row) => sum + (row.totalRaised || 0), 0);
-    const totalBRL = totalRaised.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
     const streamerWord = ranking.length === 1 ? "streamer" : "streamers";
-    proofTextEl.innerHTML = `<strong>${ranking.length} ${streamerWord}</strong> já arrecadaram <strong>${totalBRL}</strong> com o site`;
+    proofTextEl.innerHTML = `<strong>${ranking.length} ${streamerWord}</strong> já estão usando o site`;
 
     proofEl.hidden = false;
   } catch (err) {
