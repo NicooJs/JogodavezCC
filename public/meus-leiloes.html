@@ -43,6 +43,22 @@
     </main>
   </div>
 
+  <div class="modal-overlay dialog-overlay" id="confirm-dialog-overlay" hidden>
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="confirm-dialog-title">
+      <button class="modal-close" id="confirm-dialog-close" type="button" aria-label="Fechar">✕</button>
+      <div class="modal-head">
+        <div class="modal-head-text">
+          <h2 class="modal-title" id="confirm-dialog-title">Título</h2>
+        </div>
+      </div>
+      <p class="modal-message" id="confirm-dialog-message">Mensagem</p>
+      <div class="modal-actions">
+        <button class="btn-mini" id="confirm-dialog-cancel" type="button">Cancelar</button>
+        <button class="btn-mini" id="confirm-dialog-confirm" type="button">Confirmar</button>
+      </div>
+    </div>
+  </div>
+
   <script src="/js/meus-leiloes.js"></script>
 </body>
 </html>

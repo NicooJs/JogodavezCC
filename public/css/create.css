@@ -444,6 +444,25 @@
 }
 .create-existing-item a:hover { color: var(--accent); }
 
+.create-existing-item-actions { display: flex; align-items: center; gap: 14px; flex-shrink: 0; }
+
+.create-existing-unlink {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  flex-shrink: 0;
+  background: none;
+  border: none;
+  border-radius: 6px;
+  color: var(--muted);
+  cursor: pointer;
+  transition: color 0.15s ease, background 0.15s ease;
+}
+.create-existing-unlink .icon { width: 15px; height: 15px; }
+.create-existing-unlink:hover { color: var(--danger); background: var(--danger-bg); }
+
 .create-existing-new {
   align-self: flex-start;
   background: none;

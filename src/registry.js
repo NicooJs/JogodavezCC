@@ -88,6 +88,16 @@ function deleteLeilao(id) {
   save();
 }
 
+// tira o vínculo do leilão com a conta Twitch (some de "meus leilões" e a sessão
+// do dono deixa de administrar automaticamente) -- o leilão e os dados continuam
+// intactos, só o dono via sessão Twitch perde o acesso; útil pra desvincular a
+// conta de um leilão acessado de outro aparelho
+function unlinkOwner(id) {
+  if (!registry.leiloes[id]) return;
+  registry.leiloes[id].ownerTwitchUserId = null;
+  save();
+}
+
 module.exports = {
   createLeilao,
   leilaoExists,
@@ -95,4 +105,5 @@ module.exports = {
   listLeilaoIds,
   listLeiloesByOwner,
   deleteLeilao,
+  unlinkOwner,
 };

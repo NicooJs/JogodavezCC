@@ -621,7 +621,12 @@ app.get("/api/session/me", async (req, res) => {
   const s = getTwitchSession(req);
   if (!s) return res.json({ loggedIn: false });
 
-  const streamer = await streamersStore.findByTwitchUserId(s.twitchUserId);
+  let streamer = null;
+  try {
+    streamer = await streamersStore.findByTwitchUserId(s.twitchUserId);
+  } catch (err) {
+    console.error("[session/me] falha ao checar conexão com Mercado Pago:", err.message);
+  }
   res.json({
     loggedIn: true,
     twitchUserId: s.twitchUserId,
@@ -630,6 +635,16 @@ app.get("/api/session/me", async (req, res) => {
     avatarUrl: s.avatarUrl,
     mpConnected: !!streamer,
   });
+});
+
+app.post("/api/l/:id/admin/unlink-account", loadLeilao, (req, res) => {
+  const twitchSession = getTwitchSession(req);
+  const meta = registry.getLeilaoMeta(req.leilaoId);
+  if (!twitchSession || !meta || !meta.ownerTwitchUserId || twitchSession.twitchUserId !== meta.ownerTwitchUserId) {
+    return res.status(401).json({ error: "Sessão inválida" });
+  }
+  registry.unlinkOwner(req.leilaoId);
+  res.json({ ok: true });
 });
 
 app.get("/api/meus-leiloes", (req, res) => {

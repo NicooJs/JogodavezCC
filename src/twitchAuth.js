@@ -12,6 +12,9 @@ function buildAuthorizeUrl({ redirectUri, state }) {
     response_type: "code",
     scope: "",
     state,
+    // força a Twitch a pedir aprovação de novo mesmo com sessão ativa no navegador --
+    // sem isso, um "sair da conta" nosso não impede reentrar com 1 clique no mesmo aparelho
+    force_verify: "true",
   });
   return `${AUTHORIZE_URL}?${params.toString()}`;
 }
