@@ -296,6 +296,8 @@ voiceSegEl.querySelectorAll("button").forEach((b) => {
 });
 wireVoicePreview(document.getElementById("doar-voice-preview"));
 
+const MIN_DONATION = 5; // R$5 -- mesmo valor em server.js (MIN_DONATION_CENTS), mantenha os dois em sincronia
+
 async function submitDonation(e) {
   e.preventDefault();
   const game = gameEl.value.trim();
@@ -307,8 +309,8 @@ async function submitDonation(e) {
     errorEl.hidden = false;
     return gameEl.focus();
   }
-  if (!amount || Number(amount) <= 0) {
-    errorEl.textContent = "Informe um valor válido";
+  if (!amount || Number(amount) < MIN_DONATION) {
+    errorEl.textContent = `Informe um valor de pelo menos R$${MIN_DONATION.toFixed(2).replace(".", ",")}`;
     errorEl.hidden = false;
     return amountEl.focus();
   }

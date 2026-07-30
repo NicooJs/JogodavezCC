@@ -44,37 +44,56 @@ bloqueio individual).
   streamer já tem configurado por fora, modelo de assinatura, não comparável
   em taxa de gateway.
 
-## Pendências externas (bloqueiam início da implementação)
+## Pendências externas
 
-- Aprovação da conta Efí Empresas (documentos em análise).
+- Conta Efí Empresas **ainda não finalizada** (documentos em análise) —
+  cliente decidiu conscientemente começar a implementação em paralelo, ver
+  seção de progresso abaixo. Nada foi conectado a um ambiente Efí real ainda.
 - Resposta do comercial da Efí sobre taxa negociada de saque.
 - Confirmação se o endpoint de Pix Out (`pix.send`) vem liberado por padrão
   ou exige análise/scope release separado.
+- Confirmar se existe ambiente de homologação/sandbox da Efí utilizável
+  antes da conta de produção estar aprovada — se existir, priorizar testar
+  `efiApi`/`efiAuth`/`efiWebhook` contra ele assim que forem escritos, em vez
+  de deixar esse código sem nenhum teste real até a conta final sair.
 
-**Regra: nenhuma linha de código de pagamento deve ser escrita até a conta
-Efí estar aprovada e as chaves de API em mãos.** Não dá pra testar contra
-nada real antes disso.
+## Progresso da implementação
 
-## Plano técnico completo
+**Feito e testado** (não depende de conta/credencial da Efí):
+- `src/migrations/005_efi_ledger.sql` — schema completo (`fee_config`,
+  `streamer_pix_keys`, `streamer_balances`, `withdrawals`, `ledger_entries`,
+  `reconciliation_log`). Ainda não aplicado contra nenhum Postgres (sem
+  `DATABASE_URL` local configurado nesta sessão) — só revisado, não rodado.
+- `src/ledgerStore.js` — `computeDonationSplit()`/`computeWithdrawal()` são
+  funções puras (sem I/O) e **foram testadas de verdade** via `node -e`:
+  soma de `streamerShare + platformNet + entradaCost` bate exatamente com o
+  bruto pra qualquer valor realista de doação (R$5 a R$10.000), trava de
+  segurança dispara corretamente se a config de taxa ficaria negativa. O
+  resto do módulo (`creditDonation`, `createWithdrawal`, etc., que tocam o
+  banco) segue o mesmo padrão de `paymentsStore.js`/`streamersStore.js` mas
+  **não foi testado contra um Postgres real** ainda.
+- `src/pg.js` ganhou `withTransaction()` — helper de transação (BEGIN/COMMIT/
+  ROLLBACK) que o ledger precisa pra creditar doação + atualizar saldo
+  atomicamente.
 
-O desenho de schema (tabelas `ledger_entries`, `streamer_balances`,
-`withdrawals`, `fee_config`, `reconciliation_log`, `streamer_pix_keys`),
-módulos novos (`efiAuth.js`, `efiApi.js`, `efiWebhook.js`, `ledgerStore.js`,
-`reconciliation.js`) e fluxos de cash-in/cash-out estão detalhados num
-arquivo de plano que **só existe localmente na máquina onde foi escrito**
-(`~/.claude/plans/efi-custodia-migracao.md`, fora do repositório). Se esse
-arquivo não estiver disponível nesta sessão/máquina, ele precisa ser
-reconstruído a partir deste resumo + da conversa com o usuário — os pontos
-principais:
+**Ainda não escrito** (bloqueado por falta de conta/documentação real da
+Efí, ou aguardando decisão): `efiAuth.js` (autenticação, provavelmente mTLS
+com certificado `.p12` — não confirmado), `efiApi.js` (criação de cobrança
+Pix, consulta, envio via Pix Out), `efiWebhook.js` (validação de assinatura
+do webhook de pagamento — formato da Efí ainda não estudado a fundo),
+`reconciliation.js`. Nenhuma rota em `server.js` foi tocada — o Mercado Pago
+continua sendo o único caminho de pagamento ativo em produção.
 
-- Tudo em **centavos inteiros**, nunca float.
+- Tudo em **centavos inteiros**, nunca float (confirmado no `ledgerStore.js`).
 - `fee_config` como tabela editável (não hardcoded), pra atualizar a taxa
   negociada sem redeploy.
 - Job de **reconciliação periódica** comparando saldo do ledger vs. extrato
   real da Efí (mesmo padrão do backup de estado do leilão em
-  `src/stateBackup.js`).
+  `src/stateBackup.js`) — tabela já existe (`reconciliation_log`), job ainda
+  não escrito.
 - Webhook com verificação de assinatura + idempotência dupla (igual ao
-  padrão já usado em `src/mpWebhook.js`).
+  padrão já usado em `src/mpWebhook.js`) — `creditDonation()` já é idempotente
+  por `payment_id`.
 - **Nunca persistir CPF** no nosso banco — só passa direto pra API da Efí
   quando necessário (ex: cadastro de chave Pix / KYC de saque).
 

@@ -1943,8 +1943,8 @@ async function submitDonateModal() {
     donateModalErrorEl.hidden = false;
     return donateModalGameEl.focus();
   }
-  if (!amount || Number(amount) <= 0) {
-    donateModalErrorEl.textContent = "Informe um valor válido";
+  if (!amount || Number(amount) < 5) {
+    donateModalErrorEl.textContent = "Informe um valor de pelo menos R$5,00";
     donateModalErrorEl.hidden = false;
     return donateModalAmountEl.focus();
   }

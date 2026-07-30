@@ -912,6 +912,8 @@ app.get("/api/l/:id/events/recent", loadLeilao, (req, res) => {
   res.json({ events });
 });
 
+const MIN_DONATION_CENTS = 500; // R$5 -- mesmo valor em public/js/doar.js, mantenha os dois em sincronia
+
 // não aplica a contribuição aqui -- só quando o webhook confirmar o pagamento
 app.post("/api/l/:id/doacao", loadLeilao, async (req, res) => {
   if (donationRateLimiter.isLimited(req.ip)) {
@@ -922,8 +924,9 @@ app.post("/api/l/:id/doacao", loadLeilao, async (req, res) => {
   const { leilaoId, store } = req;
   const { name, amount, action, donorUsername, donorNote, donorVoiceId } = req.body || {};
 
-  if (!name || !amount || Number.isNaN(Number(amount)) || Number(amount) <= 0) {
-    return res.status(400).json({ error: `Informe o ${mediaLabel(store)} e um valor válido` });
+  const amountCents = Math.round(Number(amount) * 100);
+  if (!name || !amount || Number.isNaN(amountCents) || amountCents < MIN_DONATION_CENTS) {
+    return res.status(400).json({ error: `Informe o ${mediaLabel(store)} e um valor de pelo menos R$${(MIN_DONATION_CENTS / 100).toFixed(2).replace(".", ",")}` });
   }
   const isOpen = store.getState("open", "true") === "true";
   if (!isOpen) {
@@ -946,7 +949,7 @@ app.post("/api/l/:id/doacao", loadLeilao, async (req, res) => {
     return res.status(409).json({ error: "O streamer ainda não conectou o Mercado Pago nesse leilão -- avise ele." });
   }
 
-  const valorTotalCents = Math.round(Number(amount) * 100);
+  const valorTotalCents = amountCents;
   const applicationFeeCents = Math.round(valorTotalCents * 0.03);
   const externalReference = paymentsStore.buildExternalReference(leilaoId);
   const cleanDonorUsername = (donorUsername || "").trim().slice(0, 60) || "Anônimo";

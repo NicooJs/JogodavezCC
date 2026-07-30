@@ -26,4 +26,22 @@ async function query(text, params) {
   return res;
 }
 
-module.exports = { query, getPool };
+// pro ledger: várias queries precisam ser atômicas (ex: creditar doação +
+// atualizar saldo materializado), sem isso uma falha no meio deixaria o
+// saldo inconsistente com o histórico de entradas
+async function withTransaction(fn) {
+  const client = await getPool().connect();
+  try {
+    await client.query("BEGIN");
+    const result = await fn(client);
+    await client.query("COMMIT");
+    return result;
+  } catch (err) {
+    await client.query("ROLLBACK").catch(() => {});
+    throw err;
+  } finally {
+    client.release();
+  }
+}
+
+module.exports = { query, getPool, withTransaction };
