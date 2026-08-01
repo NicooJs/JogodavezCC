@@ -51,10 +51,36 @@ endpoint (sem código de erro/razão no JSON). Segunda tentativa resolveu em
 ~5s (não ficou minutos "em processamento"), o que sugere uma regra sendo
 aplicada de forma consistente, não uma análise manual variável.
 
-**Ação pendente do cliente**: checar painel da Efí (Pix → Pix enviados /
-Extrato) se aparece motivo mais detalhado; se não, abrir chamado com o
-suporte levando os dois `idEnvio` acima e perguntar o motivo exato do
-`NAO_REALIZADO`.
+**Painel conferido (2026-08-01): nenhum registro dos dois envios aparece
+lá** — nem como falha, nem com motivo nenhum. Reforça a hipótese de que a
+rejeição acontece antes de virar uma transação de verdade no extrato (bate
+com resolver em ~5s e o saldo nunca mudar).
+
+**Hipótese da titularidade testada e descartada (2026-08-01)**: os dois
+`idEnvio` acima eram autoenvio (chave da empresa → chave pessoal do dono,
+mesma titularidade), e a Efí tem um endpoint dedicado só pra isso
+(`PUT /v2/gn/pix/:idEnvio/mesma-titularidade`, escopo
+`gn.pix.sameownership.send`, não habilitado na nossa aplicação) — parecia
+explicar o `NAO_REALIZADO` sem precisar de suporte. **Testado com uma
+terceira tentativa, pra uma chave celular de titularidade genuinamente
+diferente (`+5511995822094`, formato internacional corrigido depois de um
+`400 valor_invalido` na primeira tentativa sem o `+55`)**: passou da
+validação de formato, `status: EM_PROCESSAMENTO` na resposta, `e2eId`
+gerado — mas o resultado final, depois de ~5s, foi **o mesmo
+`NAO_REALIZADO`**. Isso descarta a titularidade como causa: aconteceu
+igual com uma chave de pessoa diferente.
+
+`idEnvio` da terceira tentativa: `554109b8d9cbba65e6d2c1b881cfe1e4`.
+
+**Conclusão: são 3 tentativas consistentes (2 mesma titularidade + 1
+titularidade diferente), todas rejeitadas em ~5s, sem mexer saldo, sem
+aparecer no extrato.** Já não é mais explicável por nada do nosso lado
+(formato de chave e titularidade descartados) — aponta pra algo do lado da
+Efí em Produção, provavelmente exigindo um aditivo/liberação separada pra
+`pix.send` que a conta ainda não tem. **Chamado com o suporte da Efí é o
+próximo passo real agora**, levando os três `idEnvio`
+(`8c7d1676b9771a65e9374ebc74f2a67c`, `343d41df29d0be026f932f7e4f3a54e2`,
+`554109b8d9cbba65e6d2c1b881cfe1e4`). Ainda não aberto.
 
 **Não trocar `EFI_ENV` pra `producao` até isso se resolver.** Acionar
 doação real sem saber se o saque funciona de verdade recria o problema
