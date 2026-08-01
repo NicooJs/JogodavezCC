@@ -60,21 +60,30 @@ bloqueio individual).
 ## Progresso da implementação
 
 **Feito e testado** (não depende de conta/credencial da Efí):
-- `src/migrations/005_efi_ledger.sql` — schema completo (`fee_config`,
-  `streamer_pix_keys`, `streamer_balances`, `withdrawals`, `ledger_entries`,
-  `reconciliation_log`). Ainda não aplicado contra nenhum Postgres (sem
-  `DATABASE_URL` local configurado nesta sessão) — só revisado, não rodado.
-- `src/ledgerStore.js` — `computeDonationSplit()`/`computeWithdrawal()` são
-  funções puras (sem I/O) e **foram testadas de verdade** via `node -e`:
-  soma de `streamerShare + platformNet + entradaCost` bate exatamente com o
-  bruto pra qualquer valor realista de doação (R$5 a R$10.000), trava de
-  segurança dispara corretamente se a config de taxa ficaria negativa. O
-  resto do módulo (`creditDonation`, `createWithdrawal`, etc., que tocam o
-  banco) segue o mesmo padrão de `paymentsStore.js`/`streamersStore.js` mas
-  **não foi testado contra um Postgres real** ainda.
+- `src/migrations/005_efi_ledger.sql` e `006_payments_efi_txid.sql`
+  **aplicadas contra o Postgres de produção** (2026-08-01, via
+  `scripts/migrate.js` apontado pro `DATABASE_PUBLIC_URL`, já que
+  `DATABASE_URL` interno só resolve de dentro da rede do Railway). Tabelas
+  `fee_config`, `streamer_pix_keys`, `streamer_balances`, `withdrawals`,
+  `ledger_entries`, `reconciliation_log` existem de verdade agora, e
+  `payments` ganhou a coluna `efi_txid` (mesma tabela do MP, agnóstica de
+  processador).
+- `src/ledgerStore.js` — `computeDonationSplit()`/`computeWithdrawal()`
+  (puras) e agora também `creditDonation()` (idempotência incluída),
+  `createWithdrawal()`, `markWithdrawalSent()` **testados de ponta a ponta
+  contra o Postgres real de produção**, com streamer/payments/withdrawal
+  descartáveis criados e removidos depois (nenhum dado real tocado).
+  Achado na hora de limpar: `ledger_entries` de `platform_credit`/
+  `platform_withdrawal_cost` ficam com `streamer_id NULL`, então uma
+  limpeza/consulta que filtra só por `streamer_id` não pega essas linhas —
+  vale lembrar disso em qualquer script futuro que mexa nessa tabela.
 - `src/pg.js` ganhou `withTransaction()` — helper de transação (BEGIN/COMMIT/
   ROLLBACK) que o ledger precisa pra creditar doação + atualizar saldo
   atomicamente.
+- `paymentsStore.js` ganhou `markCreatedEfi`/`markPaidEfi`/`findByEfiTxid`,
+  espelhando as funções que já existiam pro MP (`createPending` e
+  `buildExternalReference` já eram agnósticos de processador, reusados
+  como estavam).
 
 **Feito e testado de verdade contra a Efí** (2026-07-31): conta Efí criada,
 aplicações de Produção e Homologação configuradas com os escopos de API Pix
@@ -159,11 +168,13 @@ mesmo padrão do `mpWebhook.js`/rota `/webhook/mercadopago`: checar estado
 atual antes de processar, não confiar só na camada de transporte.
 
 **Ainda não escrito**: mudança na rota `/doacao` pra usar `efiApi.criarCobranca`
-e guardar o txid, tabela de rastreio txid → doação, crédito de verdade no
-webhook (`ledgerStore.creditDonation`), `reconciliation.js`. Nenhuma rota
-de doação foi tocada — o Mercado Pago continua sendo o único caminho de
-pagamento ativo em produção. Solicitação de liberação do `pix.send`
-(aditivo com a Efí) ainda pendente do lado do cliente.
+e chamar `paymentsStore.createPending`/`markCreatedEfi` (a tabela e as
+funções já existem, só falta a rota usar), crédito de verdade no webhook
+via `paymentsStore.markPaidEfi` + `ledgerStore.creditDonation`,
+`reconciliation.js`. Nenhuma rota de doação foi tocada — o Mercado Pago
+continua sendo o único caminho de pagamento ativo em produção. Solicitação
+de liberação do `pix.send` (aditivo com a Efí) ainda pendente do lado do
+cliente.
 
 - Tudo em **centavos inteiros**, nunca float (confirmado no `ledgerStore.js`).
 - `fee_config` como tabela editável (não hardcoded), pra atualizar a taxa
