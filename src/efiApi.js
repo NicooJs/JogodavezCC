@@ -41,9 +41,12 @@ async function consultarCobranca(env, txid) {
   });
 }
 
-// NÃO TESTADO CONTRA A EFÍ DE VERDADE ainda: exige (1) aprovação separada
-// da Efí pro escopo pix.send (aditivo, não é só marcar a caixinha) e (2) um
-// webhook associado à chave pagadora, que ainda não existe (efiWebhook.js).
+// Escopo pix.send confirmado funcionando em homologação (testado: erro
+// devolvido foi de negócio "chave do favorecido não encontrada", não de
+// permissão). Envio completo de ponta a ponta ainda não confirmado --
+// falta uma segunda chave existente dentro do sandbox pra mandar de
+// verdade (ver criarChaveAleatoria). Em Produção, pix.send pode exigir
+// aditivo separado com a Efí -- ainda não confirmado.
 // idEnvio é a chave de idempotência: reenviar com o mesmo valor não duplica
 // o débito, então quem chamar essa função deve guardar e reusar o idEnvio
 // em caso de retry, não gerar um novo.
@@ -111,6 +114,18 @@ async function consultarWebhook(env, chave) {
   });
 }
 
+// só pra teste em homologação: cria uma 2a chave na mesma conta pra dar
+// pra enviarPix ter um favorecido que existe de verdade dentro do sandbox.
+// Escopo gn.pix.evp.write.
+async function criarChaveAleatoria(env) {
+  const token = await getAccessToken(env);
+  return request(env, {
+    method: "POST",
+    path: "/v2/gn/evp",
+    headers: { Authorization: `Bearer ${token}` },
+  });
+}
+
 module.exports = {
   criarCobranca,
   consultarCobranca,
@@ -119,4 +134,5 @@ module.exports = {
   gerarIdEnvio,
   registrarWebhook,
   consultarWebhook,
+  criarChaveAleatoria,
 };
