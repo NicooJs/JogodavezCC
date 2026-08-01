@@ -16,13 +16,22 @@ const { getMediaAdapter, mediaLabel, normalizeMode, MODES: LEILAO_MODES } = requ
 const { fetchTwitchAvatar } = require("./src/twitchClient");
 const twitchAuth = require("./src/twitchAuth");
 const session = require("./src/session");
-const mpAuth = require("./src/mpAuth");
-const mpApi = require("./src/mpApi");
-const mpWebhook = require("./src/mpWebhook");
 const efiWebhook = require("./src/efiWebhook");
+const efiApi = require("./src/efiApi");
+const ledgerStore = require("./src/ledgerStore");
 const streamersStore = require("./src/streamersStore");
+const streamerPixKeysStore = require("./src/streamerPixKeysStore");
 const paymentsStore = require("./src/paymentsStore");
 const freeTts = require("./src/freeTts");
+
+// homologacao até confirmar a conta de Produção da Efí de verdade -- trocar
+// via variável de ambiente, sem precisar redeploy de código
+const EFI_ENV = process.env.EFI_ENV === "producao" ? "producao" : "homologacao";
+function efiChavePix() {
+  const chave = EFI_ENV === "producao" ? process.env.EFI_CHAVE_PIX_PRODUCAO : process.env.EFI_CHAVE_PIX_HOMOLOGACAO;
+  if (!chave) throw new Error(`EFI_CHAVE_PIX_${EFI_ENV === "producao" ? "PRODUCAO" : "HOMOLOGACAO"} não configurada`);
+  return chave;
+}
 
 const DONOR_VOICE_IDS = new Set(["1"]);
 
@@ -148,17 +157,6 @@ function buildTwitchRedirectUri(req) {
   return `${req.protocol}://${req.get("host")}/auth/twitch/callback`;
 }
 
-const LEILAO_RETURN_PATH_RE = /^\/l\/[a-z0-9_-]+$/i;
-function safeReturnToMp(value) {
-  if (value === "/" || value === "/meus-leiloes") return value;
-  if (typeof value === "string" && LEILAO_RETURN_PATH_RE.test(value)) return value;
-  return "/";
-}
-
-function buildMpRedirectUri(req) {
-  return `${req.protocol}://${req.get("host")}/auth/mercadopago/callback`;
-}
-
 function getTwitchSession(req) {
   const payload = session.getCookie(req, "leilao_session");
   return payload && payload.twitchUserId ? payload : null;
@@ -221,14 +219,6 @@ function captureAuctionDuration(store) {
 function archiveOpenRoundSnapshot(store) {
   const recap = buildRecap(store);
   if (recap.totalGames > 0) store.archiveAuction(recap, { openRound: true });
-}
-
-function setLeiloesMpDisconnected(twitchUserId, disconnected) {
-  for (const { id } of registry.listLeiloesByOwner(twitchUserId)) {
-    const store = getStore(id);
-    store.setState("mpDisconnected", disconnected ? "true" : "false");
-    broadcastUpdate(id, store, null);
-  }
 }
 
 const donorAvatarCache = new Map();
@@ -341,7 +331,6 @@ function serializeLeaderboard(store, leilaoId) {
     timerRemainingMs: isPaused ? Number(store.getState("pausedRemainingMs", autoCloseMs)) : null,
     timerDurationMs: autoCloseMs,
     timerLocked: store.getState("timerLocked", "false") === "true",
-    mpDisconnected: store.getState("mpDisconnected", "false") === "true",
   };
 }
 
@@ -416,6 +405,18 @@ function loadLeilao(req, res, next) {
   req.leilaoId = id;
   req.store = getStore(id);
   next();
+}
+
+// mais restrito que requireLeilaoAdmin de propósito: rotas de saldo/saque
+// não podem aceitar sessão de moderador (código de uso único), só o dono
+// de verdade -- moderador não deve conseguir mexer em dinheiro do streamer
+function requireLeilaoOwner(req, res, next) {
+  const twitchSession = getTwitchSession(req);
+  const meta = registry.getLeilaoMeta(req.leilaoId);
+  if (twitchSession && meta && meta.ownerTwitchUserId && twitchSession.twitchUserId === meta.ownerTwitchUserId) {
+    return next();
+  }
+  return res.status(401).json({ error: "Só o dono do leilão pode fazer isso." });
 }
 
 function requireLeilaoAdmin(req, res, next) {
@@ -551,90 +552,21 @@ app.get("/auth/twitch/callback", async (req, res) => {
   }
 });
 
-// ---------- conexão com o Mercado Pago (OAuth marketplace) ----------
-
-app.get("/auth/mercadopago/start", (req, res) => {
-  if (!process.env.MP_CLIENT_ID || !process.env.MP_CLIENT_SECRET) {
-    return res.status(500).send("Conexão com o Mercado Pago não está configurada nesse servidor.");
-  }
-  const twitchSession = getTwitchSession(req);
-  if (!twitchSession) {
-    return res.status(401).send("Faça login com a Twitch antes de conectar o Mercado Pago.");
-  }
-
-  const state = crypto.randomBytes(32).toString("base64url");
-  const returnTo = safeReturnToMp(req.query.returnTo);
-
-  try {
-    // twitchUserId vai dentro do cookie assinado, não é relido da sessão no callback --
-    // fica preso a quem iniciou o fluxo mesmo que a sessão Twitch mude nesse meio tempo
-    session.setCookie(req, res, "leilao_mp_oauth_state", { state, returnTo, twitchUserId: twitchSession.twitchUserId }, OAUTH_STATE_MAX_AGE_SECONDS);
-  } catch (err) {
-    console.error("Falha ao iniciar conexão com o Mercado Pago:", err.message);
-    return res.status(500).send("Não foi possível iniciar a conexão. Tente de novo.");
-  }
-
-  res.redirect(mpAuth.buildAuthorizeUrl({ redirectUri: buildMpRedirectUri(req), state }));
-});
-
-app.get("/auth/mercadopago/callback", async (req, res) => {
-  const statePayload = session.getCookie(req, "leilao_mp_oauth_state");
-  session.clearCookie(req, res, "leilao_mp_oauth_state");
-
-  if (!statePayload) {
-    return res.status(400).send("Sessão de conexão expirou. Volte e tente de novo.");
-  }
-  if (req.query.error) {
-    return res.redirect(safeReturnToMp(statePayload.returnTo));
-  }
-  if (!req.query.state || !timingSafeEqualString(req.query.state, statePayload.state)) {
-    return res.status(400).send("Estado de conexão inválido. Tente de novo.");
-  }
-  if (!req.query.code) {
-    return res.status(400).send("Código de autorização ausente.");
-  }
-
-  try {
-    const redirectUri = buildMpRedirectUri(req);
-    const tokenResult = await mpAuth.exchangeCodeForToken({ code: req.query.code, redirectUri });
-    await streamersStore.upsertStreamer({
-      twitchUserId: statePayload.twitchUserId,
-      mpUserId: tokenResult.userId,
-      accessToken: tokenResult.accessToken,
-      refreshToken: tokenResult.refreshToken,
-      publicKey: tokenResult.publicKey,
-      expiresAt: tokenResult.expiresAt,
-    });
-    setLeiloesMpDisconnected(statePayload.twitchUserId, false);
-    res.redirect(safeReturnToMp(statePayload.returnTo));
-  } catch (err) {
-    console.error("Erro ao conectar Mercado Pago:", err.message);
-    res.status(502).send("Não foi possível confirmar a conexão com o Mercado Pago. Tente de novo.");
-  }
-});
-
 app.post("/api/session/logout", (req, res) => {
   session.clearCookie(req, res, "leilao_session");
   res.json({ ok: true });
 });
 
-app.get("/api/session/me", async (req, res) => {
+app.get("/api/session/me", (req, res) => {
   const s = getTwitchSession(req);
   if (!s) return res.json({ loggedIn: false });
 
-  let streamer = null;
-  try {
-    streamer = await streamersStore.findByTwitchUserId(s.twitchUserId);
-  } catch (err) {
-    console.error("[session/me] falha ao checar conexão com Mercado Pago:", err.message);
-  }
   res.json({
     loggedIn: true,
     twitchUserId: s.twitchUserId,
     twitchLogin: s.twitchLogin,
     displayName: s.displayName,
     avatarUrl: s.avatarUrl,
-    mpConnected: !!streamer,
   });
 });
 
@@ -646,6 +578,78 @@ app.post("/api/l/:id/admin/unlink-account", loadLeilao, (req, res) => {
   }
   registry.unlinkOwner(req.leilaoId);
   res.json({ ok: true });
+});
+
+async function findOwnerStreamer(leilaoId) {
+  const meta = registry.getLeilaoMeta(leilaoId);
+  const ownerTwitchUserId = meta && meta.ownerTwitchUserId;
+  if (!ownerTwitchUserId) return null;
+  return streamersStore.ensureByTwitchUserId(ownerTwitchUserId);
+}
+
+app.get("/api/l/:id/admin/saldo", loadLeilao, requireLeilaoOwner, async (req, res) => {
+  try {
+    const streamer = await findOwnerStreamer(req.leilaoId);
+    const [balanceCents, pixKey] = await Promise.all([
+      ledgerStore.getBalance(streamer.id),
+      streamerPixKeysStore.getPixKey(streamer.id),
+    ]);
+    res.json({ balanceCents, pixKey });
+  } catch (err) {
+    console.error(`[saldo] erro (leilaoId="${req.leilaoId}"):`, err.message);
+    res.status(502).json({ error: "Não foi possível consultar o saldo agora." });
+  }
+});
+
+app.post("/api/l/:id/admin/pix-key", loadLeilao, requireLeilaoOwner, async (req, res) => {
+  const pixKey = String((req.body && req.body.pixKey) || "").trim();
+  if (!pixKey || pixKey.length > 140) {
+    return res.status(400).json({ error: "Chave Pix inválida." });
+  }
+  try {
+    const streamer = await findOwnerStreamer(req.leilaoId);
+    await streamerPixKeysStore.setPixKey(streamer.id, pixKey);
+    res.json({ ok: true });
+  } catch (err) {
+    console.error(`[pix-key] erro (leilaoId="${req.leilaoId}"):`, err.message);
+    res.status(502).json({ error: "Não foi possível salvar a chave Pix agora." });
+  }
+});
+
+app.post("/api/l/:id/admin/saque", loadLeilao, requireLeilaoOwner, async (req, res) => {
+  let streamer, pixKey;
+  try {
+    streamer = await findOwnerStreamer(req.leilaoId);
+    pixKey = await streamerPixKeysStore.getPixKey(streamer.id);
+  } catch (err) {
+    console.error(`[saque] erro ao buscar streamer/chave (leilaoId="${req.leilaoId}"):`, err.message);
+    return res.status(502).json({ error: "Não foi possível iniciar o saque agora." });
+  }
+  if (!pixKey) {
+    return res.status(400).json({ error: "Cadastre sua chave Pix antes de pedir saque." });
+  }
+
+  let withdrawal;
+  try {
+    withdrawal = await ledgerStore.createWithdrawal({ streamerId: streamer.id });
+  } catch (err) {
+    return res.status(400).json({ error: err.message });
+  }
+
+  try {
+    const envio = await efiApi.enviarPix(EFI_ENV, {
+      valorCentavos: withdrawal.sentCents,
+      chavePagadora: efiChavePix(),
+      chaveFavorecido: pixKey,
+      infoPagador: "Saque JogodaVez",
+    });
+    await ledgerStore.markWithdrawalSent(withdrawal.withdrawalId, envio.idEnvio || envio.e2eId || null);
+    res.json({ ok: true, sentCents: withdrawal.sentCents, feeCents: withdrawal.feeCents });
+  } catch (err) {
+    console.error(`[saque] falha ao enviar Pix (withdrawalId=${withdrawal.withdrawalId}):`, err.message);
+    await ledgerStore.markWithdrawalFailed(withdrawal.withdrawalId);
+    res.status(502).json({ error: "Não foi possível concluir o saque agora, o valor voltou pro seu saldo. Tente de novo em instantes." });
+  }
 });
 
 app.get("/api/meus-leiloes", (req, res) => {
@@ -688,10 +692,7 @@ app.post("/api/leiloes", async (req, res) => {
       return res.status(401).json({ error: "Faça login com a Twitch antes de criar o leilão" });
     }
 
-    const streamer = await streamersStore.findByTwitchUserId(twitchSession.twitchUserId);
-    if (!streamer) {
-      return res.status(409).json({ error: "Conecte sua conta do Mercado Pago antes de criar o leilão" });
-    }
+    await streamersStore.ensureByTwitchUserId(twitchSession.twitchUserId);
 
     const { title } = req.body || {};
     const { id } = await registry.createLeilao({
@@ -940,18 +941,27 @@ app.post("/api/l/:id/doacao", loadLeilao, async (req, res) => {
   try {
     const meta = registry.getLeilaoMeta(leilaoId);
     const ownerTwitchUserId = meta && meta.ownerTwitchUserId;
-    streamer = ownerTwitchUserId ? await streamersStore.findByTwitchUserId(ownerTwitchUserId) : null;
+    // streamer existe só por vínculo com o Twitch -- não tem "conectar" separado
+    streamer = ownerTwitchUserId ? await streamersStore.ensureByTwitchUserId(ownerTwitchUserId) : null;
   } catch (err) {
     // sem esse catch, o erro vira rejection sem handler e derruba o processo inteiro
     console.error(`[doação] erro ao buscar streamer (leilaoId="${leilaoId}"):`, err.message);
-    return res.status(502).json({ error: "Não foi possível verificar a conexão com o Mercado Pago agora. Tente de novo em instantes." });
+    return res.status(502).json({ error: "Não foi possível iniciar a doação agora. Tente de novo em instantes." });
   }
   if (!streamer) {
-    return res.status(409).json({ error: "O streamer ainda não conectou o Mercado Pago nesse leilão -- avise ele." });
+    return res.status(409).json({ error: "Esse leilão não tem um streamer vinculado." });
   }
 
   const valorTotalCents = amountCents;
-  const applicationFeeCents = Math.round(valorTotalCents * 0.03);
+  let feeConfig, applicationFeeCents;
+  try {
+    feeConfig = await ledgerStore.getFeeConfig();
+    applicationFeeCents = valorTotalCents - ledgerStore.computeDonationSplit(valorTotalCents, feeConfig).streamerShareCents;
+  } catch (err) {
+    console.error(`[doação] erro ao calcular taxa (leilaoId="${leilaoId}"):`, err.message);
+    return res.status(502).json({ error: "Não foi possível gerar o Pix agora. Tente de novo em instantes." });
+  }
+
   const externalReference = paymentsStore.buildExternalReference(leilaoId);
   const cleanDonorUsername = (donorUsername || "").trim().slice(0, 60) || "Anônimo";
   const cleanDonorNote = (donorNote || "").trim().slice(0, 140);
@@ -976,43 +986,32 @@ app.post("/api/l/:id/doacao", loadLeilao, async (req, res) => {
   }
 
   try {
-    // e-mail é só placeholder pro formulário do MP -- ele valida formato mas nunca
-    // envia nada, e rejeita TLDs reservados tipo .local/.test/.invalid
-    const payerEmail = `${normalizeKey(cleanDonorUsername).replace(/\s+/g, ".") || "doador"}@doador.leilao-de-jogos.com`;
-    const payment = await mpApi.createPixPayment({
-      accessToken: streamer.accessToken,
-      transactionAmountCents: valorTotalCents,
-      applicationFeeCents,
-      description: `Doação -- ${rawMessage}`,
-      externalReference,
-      payerEmail,
-      idempotencyKey: externalReference,
+    const cobranca = await efiApi.criarCobranca(EFI_ENV, {
+      valorCentavos: valorTotalCents,
+      chave: efiChavePix(),
+      solicitacaoPagador: `Doação -- ${rawMessage}`.slice(0, 140),
     });
-    await paymentsStore.markCreated(externalReference, payment.mpPaymentId);
+    await paymentsStore.markCreatedEfi(externalReference, cobranca.txid);
+
+    // POST /v2/cob não devolve a imagem do QR, só o copia-e-cola -- busca
+    // separada pelo loc.id que veio na resposta da cobrança
+    let qrCodeBase64 = null;
+    try {
+      const qr = await efiApi.buscarQrCode(EFI_ENV, cobranca.loc.id);
+      qrCodeBase64 = qr.imagemQrcode ? qr.imagemQrcode.replace(/^data:image\/png;base64,/, "") : null;
+    } catch (err) {
+      console.error(`[doação] falha ao buscar QR code (txid="${cobranca.txid}"):`, err.message);
+    }
+
     res.json({
-      paymentId: payment.mpPaymentId,
-      qrCodeBase64: payment.qrCodeBase64,
-      copyPaste: payment.qrCode,
+      paymentId: cobranca.txid,
+      qrCodeBase64,
+      copyPaste: cobranca.pixCopiaECola,
       valorTotal: centsToNumber(valorTotalCents),
     });
   } catch (err) {
-    if (err.status === 401) {
-      await streamersStore.markDisconnected(ownerTwitchUserId);
-      setLeiloesMpDisconnected(ownerTwitchUserId, true);
-    }
     console.error(`[doação] erro ao criar cobrança Pix (leilaoId="${leilaoId}"):`, err.message);
-    const noPixKey = /without key enabled/i.test(err.message);
-    // Mercado Pago não documenta um código único pra "conta restrita/em análise" -- o texto
-    // costuma citar o estado da conta do vendedor (collector), então detectamos por palavra-chave
-    // em vez de status HTTP (que também pode ser 400 aqui, não só 401).
-    const accountRestricted = /collector|blocked|suspend|under review|restricted|not_authorized/i.test(err.message);
-    res.status(502).json({
-      error: noPixKey
-        ? "O streamer ainda não cadastrou uma chave Pix na conta do Mercado Pago -- avise ele pra cadastrar uma em mercadopago.com.br antes de tentar de novo."
-        : accountRestricted
-        ? "O Mercado Pago sinalizou algo na conta do streamer -- avise ele pra entrar em mercadopago.com.br e conferir se não tem nenhuma verificação de identidade ou segurança pendente."
-        : "Não foi possível gerar o Pix agora. Tente de novo em instantes.",
-    });
+    res.status(502).json({ error: "Não foi possível gerar o Pix agora. Tente de novo em instantes." });
   }
 });
 
@@ -1045,91 +1044,9 @@ app.get("/api/tts", async (req, res) => {
   }
 });
 
-app.post("/webhook/mercadopago", async (req, res) => {
-  // responde 200 já, antes de processar -- o webhook não deve esperar nem falhar por causa da gente
-  res.sendStatus(200);
-
-  const dataId = req.query["data.id"] || req.query.id;
-  const type = req.query.type || req.query.topic;
-  console.log(`[webhook mercadopago] POST recebido -- type="${type}" dataId="${dataId}" x-request-id="${req.header("x-request-id")}"`);
-
-  if (type !== "payment" || !dataId) {
-    console.log(`[webhook mercadopago] ignorado -- type/dataId não é uma notificação de pagamento reconhecida.`);
-    return;
-  }
-
-  const secret = process.env.MP_WEBHOOK_SECRET || "";
-  const signatureOk = mpWebhook.verifySignature({
-    signatureHeader: req.header("x-signature"),
-    requestId: req.header("x-request-id"),
-    dataId,
-    secret,
-  });
-  if (!signatureOk) {
-    console.warn(`[webhook mercadopago] assinatura inválida pra dataId="${dataId}", ignorado.`);
-    return;
-  }
-
-  try {
-    const payment = await paymentsStore.findByMpPaymentId(Number(dataId));
-    if (!payment) {
-      console.warn(`[webhook mercadopago] nenhum pagamento nosso encontrado pra mp_payment_id=${dataId}.`);
-      return;
-    }
-    if (payment.status === "PAID") {
-      console.log(`[webhook mercadopago] mp_payment_id=${dataId} já estava PAID, ignorando (idempotência).`);
-      return;
-    }
-
-    const streamer = await streamersStore.findById(payment.streamerId);
-    if (!streamer) {
-      console.warn(`[webhook mercadopago] streamer id=${payment.streamerId} não encontrado pra mp_payment_id=${dataId}.`);
-      return;
-    }
-
-    let mpPayment;
-    try {
-      mpPayment = await mpApi.getPayment({ accessToken: streamer.accessToken, paymentId: dataId });
-    } catch (err) {
-      if (err.status === 401) {
-        await streamersStore.markDisconnected(streamer.twitchUserId);
-        setLeiloesMpDisconnected(streamer.twitchUserId, true);
-      }
-      throw err;
-    }
-    console.log(`[webhook mercadopago] mp_payment_id=${dataId} status="${mpPayment.status}" leilaoId="${payment.leilaoId}"`);
-
-    if (mpPayment.status !== "approved") {
-      console.log(`[webhook mercadopago] status "${mpPayment.status}" não é "approved" ainda, nada a fazer por enquanto.`);
-      return;
-    }
-
-    const marked = await paymentsStore.markPaid(Number(dataId));
-    if (!marked) {
-      console.log(`[webhook mercadopago] mp_payment_id=${dataId} já tinha sido marcado PAID por outra chamada (corrida entre webhooks), ignorando.`);
-      return;
-    }
-
-    const store = getStore(payment.leilaoId);
-    await processDonationMessage(payment.leilaoId, store, {
-      id: String(dataId),
-      fallbackUsername: payment.donorUsername,
-      fallbackMessage: payment.donorMessage,
-      fallbackAmount: payment.valorTotalCents,
-      fallbackNote: payment.donorNote,
-      fallbackVoiceId: payment.donorVoiceId,
-    });
-  } catch (err) {
-    console.error(`[webhook mercadopago] erro ao processar dataId="${dataId}":`, err.message);
-  }
-});
-
 // A Efí não assina o webhook (diferente do MP) -- autenticidade é pelo
 // segredo imprevisível na própria URL (ver src/efiWebhook.js; o IP deles
 // não é confiável o bastante pra bloquear, só logamos quando é inesperado).
-// AINDA NÃO credita doação: falta o lado da criação da cobrança (rota
-// /doacao) guardar txid -> leilaoId/doador em algum lugar pra esse handler
-// conseguir achar o que foi pago. Por enquanto só autentica e loga.
 app.post("/webhooks/efi/pix/:token", (req, res) => {
   const authentic = efiWebhook.isAuthentic({
     pathToken: req.params.token,
@@ -1143,16 +1060,54 @@ app.post("/webhooks/efi/pix/:token", (req, res) => {
     console.warn(`[webhook efi] token válido mas ip="${req.ip}" fora da lista conhecida (só log, não bloqueia).`);
   }
 
+  // responde 200 já, antes de processar -- o webhook não deve esperar nem falhar por causa da gente
   res.sendStatus(200);
 
   const eventos = Array.isArray(req.body && req.body.pix) ? req.body.pix : [];
   for (const evento of eventos) {
-    console.log(
-      `[webhook efi] pix recebido -- txid="${evento.txid || ""}" endToEndId="${evento.endToEndId || ""}" ` +
-        `valor="${evento.valor || ""}" status="${evento.status || "RECEBIDO"}"`
-    );
+    creditarPixRecebido(evento).catch((err) => {
+      console.error(`[webhook efi] erro ao processar txid="${evento.txid}":`, err.message);
+    });
   }
 });
+
+async function creditarPixRecebido(evento) {
+  const txid = evento.txid;
+  console.log(`[webhook efi] pix recebido -- txid="${txid}" endToEndId="${evento.endToEndId || ""}" valor="${evento.valor || ""}"`);
+  if (!txid) return;
+
+  const payment = await paymentsStore.findByEfiTxid(txid);
+  if (!payment) {
+    console.warn(`[webhook efi] nenhum pagamento nosso encontrado pra txid="${txid}".`);
+    return;
+  }
+  if (payment.status === "PAID") {
+    console.log(`[webhook efi] txid="${txid}" já estava PAID, ignorando (idempotência).`);
+    return;
+  }
+
+  const marked = await paymentsStore.markPaidEfi(txid);
+  if (!marked) {
+    console.log(`[webhook efi] txid="${txid}" já tinha sido marcado PAID por outra chamada (corrida entre webhooks), ignorando.`);
+    return;
+  }
+
+  await ledgerStore.creditDonation({
+    streamerId: payment.streamerId,
+    paymentId: payment.id,
+    grossCents: payment.valorTotalCents,
+  });
+
+  const store = getStore(payment.leilaoId);
+  await processDonationMessage(payment.leilaoId, store, {
+    id: txid,
+    fallbackUsername: payment.donorUsername,
+    fallbackMessage: payment.donorMessage,
+    fallbackAmount: payment.valorTotalCents,
+    fallbackNote: payment.donorNote,
+    fallbackVoiceId: payment.donorVoiceId,
+  });
+}
 
 // ---------- rotas de admin (id-scoped) ----------
 

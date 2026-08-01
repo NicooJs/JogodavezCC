@@ -41,6 +41,19 @@ async function consultarCobranca(env, txid) {
   });
 }
 
+// POST /v2/cob não devolve a imagem do QR, só o texto copia-e-cola --
+// precisa dessa segunda chamada pro loc.id que vem na resposta da cobrança.
+// Escopo payloadlocation.read.
+async function buscarQrCode(env, locId) {
+  if (!locId) throw new Error("locId é obrigatório");
+  const token = await getAccessToken(env);
+  return request(env, {
+    method: "GET",
+    path: `/v2/loc/${locId}/qrcode`,
+    headers: { Authorization: `Bearer ${token}` },
+  });
+}
+
 // Escopo pix.send confirmado funcionando em homologação (testado: erro
 // devolvido foi de negócio "chave do favorecido não encontrada", não de
 // permissão). Envio completo de ponta a ponta ainda não confirmado --
@@ -129,6 +142,7 @@ async function criarChaveAleatoria(env) {
 module.exports = {
   criarCobranca,
   consultarCobranca,
+  buscarQrCode,
   enviarPix,
   consultarEnvioPix,
   gerarIdEnvio,

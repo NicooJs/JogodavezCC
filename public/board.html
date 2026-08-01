@@ -95,17 +95,9 @@
       </button>
     </section>
 
-    <section class="webhook-warning" id="mp-warning" hidden>
-      <svg class="icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 3.5l7.5 13h-15l7.5-13z"/><path d="M10 8.5v3.2"/><circle cx="10" cy="14.2" r="0.9" fill="currentColor" stroke="none"/></svg>
-      <span>
-        <span id="mp-warning-text">A conexão com o Mercado Pago caiu — as doações podem não estar chegando.</span>
-        <button type="button" id="mp-warning-link">Reconectar nas configurações →</button>
-      </span>
-    </section>
-
     <section class="webhook-warning pix-warning" id="pix-warning" hidden>
       <svg class="icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 3.5l7.5 13h-15l7.5-13z"/><path d="M10 8.5v3.2"/><circle cx="10" cy="14.2" r="0.9" fill="currentColor" stroke="none"/></svg>
-      <span>Confira se sua conta do Mercado Pago já tem uma <strong>chave Pix cadastrada</strong> — sem isso, as doações não conseguem cair na sua conta.</span>
+      <span>Cadastre sua <strong>chave Pix</strong> nas Configurações → Avançado pra poder sacar as doações.</span>
       <button type="button" id="pix-warning-close" aria-label="Fechar aviso">✕</button>
     </section>
 
@@ -518,7 +510,6 @@
           <p class="modal-eyebrow">Configurações</p>
           <h2 class="modal-title" id="settings-title">Painel do leilão</h2>
         </div>
-        <span id="mp-state" class="badge" title="Status da conexão com o Mercado Pago">verificando…</span>
       </div>
 
       <div class="settings-tabs" id="settings-tabs" role="tablist">
@@ -661,17 +652,22 @@
 
       <div class="settings-panel-group" data-tab-panel="avancado" hidden>
         <div class="panel">
-          <h2 class="panel-title">Conexão com o Mercado Pago</h2>
+          <h2 class="panel-title">Chave Pix e saldo</h2>
           <p class="hint">
-            É a conta que recebe o Pix de cada doação (menos a taxa da
-            plataforma). Se a conexão cair (ex: token expirado ou revogado
-            no painel do Mercado Pago), as doações param de gerar cobrança
-            até você reconectar.
+            As doações caem numa conta única da plataforma e ficam
+            guardadas pra você até pedir o saque. Cadastre sua chave Pix
+            pra poder sacar.
           </p>
-          <div class="panel-row">
-            <span id="mp-advanced-state" class="badge">verificando…</span>
-            <a class="btn-mini" id="mp-reconnect-link" href="#">Reconectar</a>
+          <div class="panel-row wrap">
+            <input type="text" id="pix-key-input" placeholder="Sua chave Pix (aleatória, e-mail, telefone, CPF/CNPJ)" autocomplete="off" />
+            <button class="btn-mini primary" id="pix-key-save">Salvar chave</button>
           </div>
+          <p class="hint" id="pix-key-feedback" hidden></p>
+          <div class="panel-row">
+            <span id="saldo-state" class="badge">verificando…</span>
+            <button class="btn-mini" id="saque-submit" disabled>Solicitar saque</button>
+          </div>
+          <p class="hint" id="saque-feedback" hidden></p>
         </div>
 
         <div class="panel">

@@ -59,7 +59,6 @@ const historyCloseEl = document.getElementById("history-close");
 const historyGridEl = document.getElementById("history-grid");
 const historyModalEmptyEl = document.getElementById("history-modal-empty");
 const historyOpenBtnEl = document.getElementById("history-open-btn");
-const webhookWarningEl = document.getElementById("mp-warning");
 const pixWarningEl = document.getElementById("pix-warning");
 const pixWarningCloseEl = document.getElementById("pix-warning-close");
 
@@ -85,7 +84,6 @@ let isOpenState = null;
 let isPausedState = false;
 let pausedRemainingMs = null;
 let isTimerLockedState = false;
-let mpDisconnectedState = false;
 let historyItems = [];
 let currentLeaderKey = null;
 let lastTotalRaised = null;
@@ -226,11 +224,6 @@ function flashTotalBeam() {
 function setStatus(online) {
   statusEl.classList.toggle("online", online);
   statusTextEl.textContent = online ? "ao vivo" : "reconectando…";
-}
-
-function updateWebhookWarning() {
-  const active = document.body.classList.contains("presenter-mode");
-  webhookWarningEl.hidden = !(active && mpDisconnectedState);
 }
 
 const PIX_WARNING_DISMISSED_KEY = `pix-warning-dismissed-${LEILAO_ID}`;
@@ -1701,9 +1694,6 @@ socket.on("update", ({ leaderboard, lastEvent }) => {
   if (leaderboard.timerDurationMs) timerDurationMs = leaderboard.timerDurationMs;
   tickTimer();
 
-  mpDisconnectedState = !!leaderboard.mpDisconnected;
-  updateWebhookWarning();
-
   topbarTotalEl.classList.toggle("is-hidden", !!leaderboard.hideTotalRaised);
   totalHideToggleEl.classList.toggle("active", !!leaderboard.hideTotalRaised);
   totalHideToggleEl.title = leaderboard.hideTotalRaised ? "Mostrar valor arrecadado pro público" : "Ocultar valor arrecadado do público";
@@ -2027,7 +2017,6 @@ function setPresenterMode(active) {
     ? (isPresenterOwner ? "Gerar código para moderador" : "Modo apresentador ativo")
     : "Entrar no modo apresentador";
   presenterDrawerEl.hidden = !active;
-  updateWebhookWarning();
   updatePixWarning();
 }
 

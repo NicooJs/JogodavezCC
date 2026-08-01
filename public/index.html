@@ -24,7 +24,7 @@
         <p class="create-lede reveal-item">
           Espectadores doam via <strong>Pix</strong> direto no seu placar e
           escrevem o nome do jogo — sem sair da página, sem redirecionamento.
-          O dinheiro cai direto na sua conta do Mercado Pago.
+          Cadastre sua chave Pix depois e peça o saque quando quiser.
         </p>
 
         <div class="create-proof reveal-item" id="create-proof" hidden>
@@ -36,7 +36,7 @@
           <li class="reveal-item">
             <span class="create-step-num">01</span>
             <div class="create-step-text">
-              <p class="create-step-title">Conecte sua Twitch e o Mercado Pago</p>
+              <p class="create-step-title">Conecte sua Twitch</p>
               <p class="create-step-hint">Só uma vez — a Twitch já libera o modo apresentador direto pra você, sem senha.</p>
             </div>
           </li>
@@ -82,36 +82,6 @@
 
           <div class="create-form-step">
             <span class="create-step-num">2</span>
-            <div class="create-form-step-body create-field create-twitch-block">
-              <p class="create-step-title">Conecte o Mercado Pago</p>
-
-              <div class="create-mp-disconnected" id="create-mp-disconnected">
-                <a class="create-mp-login is-disabled" id="create-mp-connect" href="/auth/mercadopago/start?returnTo=/">
-                  <svg class="icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7.5 2.5h-3a1 1 0 00-1 1v13a1 1 0 001 1h3"/><path d="M11 6.5l4 3.5-4 3.5"/><path d="M15 10H6.5"/></svg>
-                  Conectar Mercado Pago
-                </a>
-              </div>
-
-              <div class="create-mp-connected" id="create-mp-connected" hidden>
-                <span class="create-mp-status-icon" aria-hidden="true">
-                  <svg class="icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 10.5l4 4 8-9"/></svg>
-                </span>
-                <span class="create-mp-status-text">Mercado Pago conectado</span>
-                <a class="create-mp-reconnect" id="create-mp-reconnect" href="/auth/mercadopago/start?returnTo=/">reconectar</a>
-              </div>
-
-              <span class="create-hint" id="create-mp-hint">Faça login com a Twitch primeiro pra liberar a conexão.</span>
-              <span class="create-hint">O dinheiro cai direto na sua conta —  Detalhes nos <a href="/termos">Termos de Uso</a>.</span>
-
-              <p class="create-warning">
-                <svg class="icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="10" cy="10" r="7.25"/><path d="M10 9.2v4.3"/><circle cx="10" cy="6.7" r="0.9" fill="currentColor" stroke="none"/></svg>
-                <span>Confira se sua conta do Mercado Pago já tem uma <strong>chave Pix cadastrada</strong> — sem isso, as doações não conseguem cair na sua conta.</span>
-              </p>
-            </div>
-          </div>
-
-          <div class="create-form-step">
-            <span class="create-step-num">3</span>
             <div class="create-form-step-body">
               <p class="create-step-title">Finalize</p>
 
@@ -119,6 +89,11 @@
                 <span>Nome do leilão</span>
                 <input type="text" id="f-title" placeholder="JogodaVez" autocomplete="off" />
               </label>
+
+              <p class="create-warning">
+                <svg class="icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="10" cy="10" r="7.25"/><path d="M10 9.2v4.3"/><circle cx="10" cy="6.7" r="0.9" fill="currentColor" stroke="none"/></svg>
+                <span>Depois de criar, cadastre sua <strong>chave Pix</strong> nas Configurações do seu leilão pra poder sacar as doações.</span>
+              </p>
             </div>
           </div>
 

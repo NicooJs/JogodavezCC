@@ -1,7 +1,7 @@
 {
   "name": "leilao-de-jogos",
   "version": "1.0.0",
-  "description": "Leilão de jogos ao vivo integrado com doações via Pix (Mercado Pago)",
+  "description": "Leilão de jogos ao vivo integrado com doações via Pix (Efí Bank)",
   "type": "commonjs",
   "main": "server.js",
   "engines": {

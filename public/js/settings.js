@@ -2,7 +2,6 @@
 const settingsOverlayEl = document.getElementById("settings-overlay");
 const settingsCloseEl = document.getElementById("settings-close");
 const adminLinkEl = document.getElementById("admin-link");
-const mpWarningLinkEl = document.getElementById("mp-warning-link");
 
 const promptDialogOverlayEl = document.getElementById("prompt-dialog-overlay");
 const confirmDialogOverlayEl = document.getElementById("confirm-dialog-overlay");
@@ -55,6 +54,7 @@ function openSettingsModal() {
   activateSettingsTab("geral", { instant: true });
   if (settingsLeaderboard) renderSettingsFromLeaderboard(settingsLeaderboard);
   loadSettingsHistory();
+  loadSaldo();
 }
 
 function closeSettingsModal() {
@@ -72,7 +72,6 @@ async function requireLoginThenOpenSettings() {
 }
 
 adminLinkEl.addEventListener("click", requireLoginThenOpenSettings);
-mpWarningLinkEl.addEventListener("click", requireLoginThenOpenSettings);
 
 settingsCloseEl.addEventListener("click", closeSettingsModal);
 settingsOverlayEl.addEventListener("click", (e) => { if (e.target === settingsOverlayEl) closeSettingsModal(); });
@@ -174,7 +173,6 @@ function renderSettingsFromLeaderboard(leaderboard) {
   const titleInput = document.getElementById("title-input");
   if (document.activeElement !== titleInput) titleInput.value = leaderboard.title;
   renderOpenState(leaderboard.open);
-  renderMpState(leaderboard.mpDisconnected);
   renderSettingsThemePicker(leaderboard.theme);
   const bgInput = document.getElementById("bg-image-url");
   if (document.activeElement !== bgInput) bgInput.value = leaderboard.backgroundImageUrl || "";
@@ -191,20 +189,63 @@ function renderOpenState(open) {
   document.getElementById("toggle-open").textContent = open ? "Encerrar leilão" : "Reabrir leilão";
 }
 
-function renderMpState(disconnected) {
-  const text = disconnected ? "desconectado — reconecte pra continuar recebendo" : "conectado";
-  const badgeClass = "badge" + (disconnected ? " closed" : "");
+let currentBalanceCents = 0;
 
-  const badge = document.getElementById("mp-state");
-  badge.textContent = text;
-  badge.className = badgeClass;
-
-  const advancedBadge = document.getElementById("mp-advanced-state");
-  advancedBadge.textContent = text;
-  advancedBadge.className = badgeClass;
-
-  document.getElementById("mp-reconnect-link").href = `/auth/mercadopago/start?returnTo=/l/${LEILAO_ID}`;
+async function loadSaldo() {
+  const badge = document.getElementById("saldo-state");
+  const saqueBtn = document.getElementById("saque-submit");
+  const pixInput = document.getElementById("pix-key-input");
+  try {
+    const data = await presenterFetch("/admin/saldo");
+    currentBalanceCents = data.balanceCents || 0;
+    badge.textContent = `saldo: ${formatBRL(currentBalanceCents / 100)}`;
+    badge.className = "badge";
+    if (document.activeElement !== pixInput) pixInput.value = data.pixKey || "";
+    saqueBtn.disabled = !data.pixKey || currentBalanceCents <= 0;
+  } catch (err) {
+    badge.textContent = "erro ao carregar saldo";
+    badge.className = "badge closed";
+  }
 }
+
+document.getElementById("pix-key-save").addEventListener("click", async () => {
+  const pixKey = document.getElementById("pix-key-input").value.trim();
+  const feedback = document.getElementById("pix-key-feedback");
+  feedback.hidden = true;
+  if (!pixKey) return;
+  try {
+    await presenterFetch("/admin/pix-key", { method: "POST", body: JSON.stringify({ pixKey }) });
+    feedback.textContent = "Chave Pix salva!";
+    feedback.hidden = false;
+    loadSaldo();
+  } catch (err) {
+    feedback.textContent = "Erro: " + err.message;
+    feedback.hidden = false;
+  }
+});
+
+document.getElementById("saque-submit").addEventListener("click", async () => {
+  const feedback = document.getElementById("saque-feedback");
+  feedback.hidden = true;
+  const ok = await confirmDialog({
+    title: "Solicitar saque",
+    message: `Sacar ${formatBRL(currentBalanceCents / 100)} pra sua chave Pix cadastrada?`,
+    confirmLabel: "Solicitar saque",
+  });
+  if (!ok) return;
+  const btn = document.getElementById("saque-submit");
+  btn.disabled = true;
+  try {
+    const data = await presenterFetch("/admin/saque", { method: "POST" });
+    feedback.textContent = `Saque enviado: ${formatBRL(data.sentCents / 100)}.`;
+    feedback.hidden = false;
+    loadSaldo();
+  } catch (err) {
+    feedback.textContent = "Erro: " + err.message;
+    feedback.hidden = false;
+    btn.disabled = false;
+  }
+});
 
 function renderSettingsThemePicker(theme) {
   document.querySelectorAll("#settings-theme-picker .theme-swatch").forEach((btn) => {

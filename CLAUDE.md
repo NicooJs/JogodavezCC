@@ -13,11 +13,17 @@ no Railway) com cópia de segurança periódica no Postgres.
 
 ## Estado do pagamento (importante, muda com frequência)
 
-O sistema de pagamento está em transição: Mercado Pago (atual, em produção)
-→ Efí Bank (planejado, custódia própria). **Antes de mexer em qualquer coisa
-relacionada a pagamento, leia [docs/STATUS-EFI.md](docs/STATUS-EFI.md)** —
-não assuma que o Mercado Pago continua sendo o destino final, e não reviva
-ideias de integração com pix.gg (abandonado há tempos).
+**Mercado Pago foi removido do código (2026-08-01)**. O pagamento agora é
+100% via **Efí Bank**, custódia numa Conta Master única + ledger interno no
+Postgres (`fee_config`, `streamer_balances`, `ledger_entries`, etc., ver
+`src/ledgerStore.js`). Não existe mais OAuth por streamer — a identidade do
+streamer vem só do vínculo com o Twitch (`streamersStore.ensureByTwitchUserId`),
+e ele cadastra uma chave Pix própria pra receber saque, não pra receber
+doação direto. **Antes de mexer em qualquer coisa relacionada a pagamento,
+leia [docs/STATUS-EFI.md](docs/STATUS-EFI.md)** — o ambiente ativo
+(`EFI_ENV`) por padrão é `homologacao` até a conta de Produção da Efí ser
+confirmada; não reviva ideias de integração com pix.gg (abandonado há
+tempos) nem assuma que o Mercado Pago ainda existe em algum lugar do código.
 
 **Regra permanente**: qualquer código que mexa com dinheiro precisa manter o
 mesmo padrão de segurança já usado no projeto — queries sempre parametrizadas
@@ -98,8 +104,9 @@ compartilhados. Ao adicionar CSS novo, seguir a convenção visual existente
 
 ### Criação/login (`index.html` + `create.js`)
 
-3 passos: conectar Twitch → conectar Mercado Pago → título + aceite dos
-Termos. Bloco `.create-existing` mostra leilões já criados nesse navegador.
+2 passos: conectar Twitch → título + aceite dos Termos (chave Pix é
+cadastrada depois, nas Configurações do leilão, não bloqueia a criação).
+Bloco `.create-existing` mostra leilões já criados nesse navegador.
 `create-intro.js` anima entrada (lib Motion) e busca `GET /api/ranking` pra
 mostrar prova social ("N streamers usando"). Login Twitch é sempre
 obrigatório pra criar leilão novo.
@@ -142,8 +149,8 @@ na aba Avançado das Configurações.
 **Configurações** (4 abas com indicador deslizante): Geral (título, links de
 doação/alerta, abrir/encerrar, qualifyCount), Aparência (tema, imagem de
 fundo), Jogos/Filmes (lançamento manual, tabela com editar/excluir/mesclar
-duplicados), Avançado (status Mercado Pago, histórico de leilões, sair da
-conta, zerar leilão).
+duplicados), Avançado (chave Pix + saldo/saque, histórico de leilões, sair
+da conta, zerar leilão).
 
 Toggle de modalidade Jogos↔Filmes fica na `presenter-bar` (não dentro de
 Configurações) e troca todos os textos da UI via sistema de labels dinâmicos

@@ -13,10 +13,6 @@ const twitchAvatarEl = document.getElementById("create-twitch-avatar");
 const twitchNameEl = document.getElementById("create-twitch-name");
 const twitchLogoutBtn = document.getElementById("create-twitch-logout");
 
-const mpDisconnectedEl = document.getElementById("create-mp-disconnected");
-const mpConnectedEl = document.getElementById("create-mp-connected");
-const mpConnectLinkEl = document.getElementById("create-mp-connect");
-const mpHintEl = document.getElementById("create-mp-hint");
 const termsCheckEl = document.getElementById("f-terms");
 
 let currentSession = null;
@@ -123,7 +119,6 @@ async function loadSession() {
 
 function renderTwitchBlock() {
   const loggedIn = !!(currentSession && currentSession.loggedIn);
-  const mpConnected = !!(currentSession && currentSession.mpConnected);
 
   twitchLoggedOutEl.hidden = loggedIn;
   twitchLoggedInEl.hidden = !loggedIn;
@@ -132,12 +127,7 @@ function renderTwitchBlock() {
     twitchNameEl.textContent = currentSession.displayName || currentSession.twitchLogin || "";
   }
 
-  mpDisconnectedEl.hidden = mpConnected;
-  mpConnectedEl.hidden = !mpConnected;
-  mpConnectLinkEl.classList.toggle("is-disabled", !loggedIn);
-  mpHintEl.hidden = loggedIn;
-
-  submitBtn.disabled = !(loggedIn && mpConnected && termsCheckEl.checked);
+  submitBtn.disabled = !(loggedIn && termsCheckEl.checked);
 }
 
 termsCheckEl.addEventListener("change", renderTwitchBlock);
@@ -156,7 +146,7 @@ loadSession();
 form.addEventListener("submit", async (e) => {
   e.preventDefault();
   errorEl.hidden = true;
-  if (!currentSession || !currentSession.loggedIn || !currentSession.mpConnected || !termsCheckEl.checked) return;
+  if (!currentSession || !currentSession.loggedIn || !termsCheckEl.checked) return;
 
   const title = document.getElementById("f-title").value.trim();
 
