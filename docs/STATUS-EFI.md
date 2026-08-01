@@ -46,16 +46,18 @@ bloqueio individual).
 
 ## Pendências externas
 
-- Conta Efí Empresas **ainda não finalizada** (documentos em análise) —
-  cliente decidiu conscientemente começar a implementação em paralelo, ver
-  seção de progresso abaixo. Nada foi conectado a um ambiente Efí real ainda.
 - Resposta do comercial da Efí sobre taxa negociada de saque.
-- Confirmação se o endpoint de Pix Out (`pix.send`) vem liberado por padrão
-  ou exige análise/scope release separado.
-- Confirmar se existe ambiente de homologação/sandbox da Efí utilizável
-  antes da conta de produção estar aprovada — se existir, priorizar testar
-  `efiApi`/`efiAuth`/`efiWebhook` contra ele assim que forem escritos, em vez
-  de deixar esse código sem nenhum teste real até a conta final sair.
+- Confirmar se `pix.send` em **Produção** exige aditivo separado (em
+  Homologação já testamos e não exige — ver seção de progresso). Enquanto
+  não tiver resposta, tratar Produção como bloqueada pra envio de Pix.
+- Falta uma segunda chave Pix de teste (diferente da `fd7aaa7e-...` já
+  cadastrada) pra conseguir testar um `enviarPix` completo em homologação,
+  não só confirmar que o escopo não está bloqueado.
+
+Resolvido nesta sessão (2026-08-01): conta Efí criada, ambiente de
+homologação confirmado utilizável e usado pra testar tudo que foi escrito
+(`efiAuth`, `efiApi`, `efiWebhook`) contra a Efí de verdade, em vez de
+ficar sem nenhum teste real.
 
 ## Progresso da implementação
 
@@ -119,17 +121,26 @@ doação anônima (sem CPF do doador) continua válida como desenhada.
 
 `enviarPix`/`consultarEnvioPix` escritos em `efiApi.js` (`PUT /v3/gn/pix/:idEnvio`,
 `idEnvio` como chave de idempotência) seguindo a doc oficial confirmada via
-busca. **NÃO testados contra a Efí** — dois bloqueios confirmados (não são
-mais suposição):
-- **`pix.send` não vem liberado só marcando o escopo.** Exige solicitação
-  separada à Efí, que analisa e faz assinar um aditivo antes de liberar de
-  verdade. Ação externa pendente: abrir esse pedido com o comercial/suporte
-  da Efí (mesmo contato da negociação da taxa de saque).
-- **Webhook é obrigatório pra usar o envio**: a chave Pix pagadora (Conta
-  Master) precisa ter um webhook associado, porque a confirmação do envio
-  não vem na resposta HTTP (que só devolve `status: "EM_PROCESSAMENTO"`),
-  vem por notificação assíncrona. `efiWebhook.js` precisa existir antes de
-  qualquer teste real de saque, mesmo em homologação.
+busca.
+
+**Atualização 2026-08-01, testado de verdade contra homologação**: a
+suposição de que `pix.send` "não vem liberado só marcando o escopo" (baseada
+em posts da comunidade Efí, não doc oficial) **não se confirmou em
+homologação**. Chamei `enviarPix` contra `pix-h.api.efipay.com.br` e a Efí
+respondeu `404 chave_favorecido_nao_encontrada` — ou seja, passou pela
+autenticação e pela checagem de escopo, e só barrou porque usei a mesma
+chave como pagador e favorecido (não existe uma segunda chave Pix cadastrada
+pra testar um envio de verdade ainda). Se o escopo estivesse bloqueado, o
+erro teria sido 403/escopo, não uma validação de negócio. **Hipótese**: a
+exigência de aditivo é só pra Produção (dinheiro real), não pro sandbox.
+Ainda não temos confirmação sobre Produção — isso só se resolve com a
+resposta da Efí ou tentando de verdade quando tivermos uma chave de
+favorecido de teste válida.
+
+Continua valendo: **webhook é obrigatório pra usar o envio** (a chave Pix
+pagadora precisa ter webhook associado; a confirmação não vem na resposta
+HTTP, que só devolve `status: "EM_PROCESSAMENTO"`, vem por notificação
+assíncrona) — isso já está resolvido, ver seção do webhook abaixo.
 
 `src/efiWebhook.js` escrito, testado (funções puras) e **rota real em
 produção** (`POST /webhooks/efi/pix/:token` em `server.js`).
