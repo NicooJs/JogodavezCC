@@ -122,30 +122,48 @@ mais suposição):
   vem por notificação assíncrona. `efiWebhook.js` precisa existir antes de
   qualquer teste real de saque, mesmo em homologação.
 
-`src/efiWebhook.js` escrito e testado (funções puras, via `node -e`).
+`src/efiWebhook.js` escrito, testado (funções puras) e **rota real em
+produção** (`POST /webhooks/efi/pix/:token` em `server.js`).
 **Descoberta importante**: a Efí não assina o webhook com HMAC como o
 Mercado Pago (`mpWebhook.js`) — a autenticidade deles é via **mTLS na
 camada de conexão**, que não dá pra verificar no nosso caso porque o
-Railway termina o TLS antes do tráfego chegar no Node (o app nunca vê o
-handshake bruto). A própria doc da Efí reconhece essa limitação e sugere a
-alternativa que implementamos: **IP fixo da Efí** (`34.193.116.226`,
-configurável via `EFI_WEBHOOK_IPS` caso mude) **+ segredo embutido na URL**
-do webhook (`verifyIp`/`verifyToken`/`isAuthentic`, timing-safe, reusa
-`timingSafeEqualString` de `passwords.js`). Registro do webhook em si
-(`PUT /v2/webhook/:chave`) ainda não implementado em `efiApi.js`.
+Railway termina o TLS antes do tráfego chegar no Node. A Efí trava o
+registro do webhook com um erro ("TLS mútuo não configurado") até você
+mandar o header `x-skip-mtls-checking: true` na chamada de registro —
+solução oficial deles pra PaaS/serverless sem controle de TLS bruto
+(`registrarWebhook()` em `efiApi.js` já manda esse header por padrão).
 
-Payload que a Efí envia (confirmado via doc): `{"pix": [{ endToEndId, txid,
-chave, valor, horario, infoPagador }]}` pra recebimento, e pra status de
-envio inclui `tipo`, `status`, `gnExtras.idEnvio`. Idempotência deve seguir
-o mesmo padrão do `mpWebhook.js`/rota `/webhook/mercadopago` em `server.js`:
-checar estado atual antes de processar (ex: já está `PAID`?), não confiar
-só na camada de transporte.
+IP também não é confiável pra bloquear: a doc cita só `34.193.116.226`,
+mas o IP real observado na validação foi `152.233.47.x` (várias
+terminações diferentes) — provavelmente um pool não documentado. Por isso
+`isAuthentic()` decide só pelo segredo de 24 bytes na URL; IP fora da
+lista conhecida (`isKnownIp()`) vira só um log de aviso, nunca bloqueia.
 
-**Ainda não escrito**: registro do webhook (`efiApi.js`), a rota
-`POST /webhooks/efi/pix/:token` em `server.js`, `reconciliation.js`.
-Nenhuma rota em `server.js` foi tocada — o Mercado Pago continua sendo o
-único caminho de pagamento ativo em produção. Solicitação de liberação do
-`pix.send` (aditivo com a Efí) ainda pendente do lado do cliente.
+Webhook **registrado com sucesso contra homologação** (confirmado via
+`consultarWebhook`) e uma entrega real chegou na rota com o token válido.
+**Não deu pra confirmar o formato exato do payload ao vivo**: testei 3
+cobranças de R$7-9 (na faixa R$0,01-R$10 que o sandbox confirma sozinho),
+as 3 ficaram `CONCLUIDA` do lado da Efí, mas só 1 das 3 entregas de
+webhook chegou no nosso servidor — entrega em homologação parece
+inconsistente, não parece ser bug nosso. O parsing em `server.js` segue o
+formato documentado oficialmente: `{"pix": [{ endToEndId, txid, chave,
+valor, horario, infoPagador }]}` pra recebimento (status de envio de Pix
+inclui também `tipo`, `status`, `gnExtras.idEnvio`). Confirmação de ponta
+a ponta fica pra quando isso estiver ligado a uma doação de verdade.
+
+A rota hoje **só autentica e loga** o evento — ainda falta o lado da
+criação da cobrança (rota `/doacao`) guardar `txid -> leilaoId/doador` em
+algum lugar (tabela nova, não existe ainda) pra esse handler conseguir
+achar o que foi pago e creditar de verdade. Idempotência deve seguir o
+mesmo padrão do `mpWebhook.js`/rota `/webhook/mercadopago`: checar estado
+atual antes de processar, não confiar só na camada de transporte.
+
+**Ainda não escrito**: mudança na rota `/doacao` pra usar `efiApi.criarCobranca`
+e guardar o txid, tabela de rastreio txid → doação, crédito de verdade no
+webhook (`ledgerStore.creditDonation`), `reconciliation.js`. Nenhuma rota
+de doação foi tocada — o Mercado Pago continua sendo o único caminho de
+pagamento ativo em produção. Solicitação de liberação do `pix.send`
+(aditivo com a Efí) ainda pendente do lado do cliente.
 
 - Tudo em **centavos inteiros**, nunca float (confirmado no `ledgerStore.js`).
 - `fee_config` como tabela editável (não hardcoded), pra atualizar a taxa
