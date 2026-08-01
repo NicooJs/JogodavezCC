@@ -1124,20 +1124,23 @@ app.post("/webhook/mercadopago", async (req, res) => {
   }
 });
 
-// A Efí não assina o webhook (diferente do MP) -- autenticidade é por IP
-// fixo deles + segredo imprevisível na própria URL (ver src/efiWebhook.js).
+// A Efí não assina o webhook (diferente do MP) -- autenticidade é pelo
+// segredo imprevisível na própria URL (ver src/efiWebhook.js; o IP deles
+// não é confiável o bastante pra bloquear, só logamos quando é inesperado).
 // AINDA NÃO credita doação: falta o lado da criação da cobrança (rota
 // /doacao) guardar txid -> leilaoId/doador em algum lugar pra esse handler
 // conseguir achar o que foi pago. Por enquanto só autentica e loga.
 app.post("/webhooks/efi/pix/:token", (req, res) => {
   const authentic = efiWebhook.isAuthentic({
-    remoteIp: req.ip,
     pathToken: req.params.token,
     secret: process.env.EFI_WEBHOOK_SECRET || "",
   });
   if (!authentic) {
     console.warn(`[webhook efi] requisição não autenticada de ip="${req.ip}", rejeitada.`);
     return res.sendStatus(403);
+  }
+  if (!efiWebhook.isKnownIp(req.ip)) {
+    console.warn(`[webhook efi] token válido mas ip="${req.ip}" fora da lista conhecida (só log, não bloqueia).`);
   }
 
   res.sendStatus(200);
