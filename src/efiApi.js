@@ -79,7 +79,12 @@ async function consultarEnvioPix(env, idEnvio) {
   });
 }
 
-async function registrarWebhook(env, { chave, webhookUrl } = {}) {
+// skipMtls: Railway termina o TLS na borda, então não dá pra exigir
+// certificado cliente de verdade (ver src/efiWebhook.js). A própria Efí
+// documenta esse header pra plataformas serverless/PaaS nessa situação --
+// a Efí continua mandando o certificado dela, só que nosso servidor não
+// tem como validar, por isso o segredo na URL + IP de log é quem protege.
+async function registrarWebhook(env, { chave, webhookUrl, skipMtls = true } = {}) {
   if (!chave) throw new Error("chave é obrigatória");
   if (!webhookUrl) throw new Error("webhookUrl é obrigatória");
 
@@ -88,7 +93,10 @@ async function registrarWebhook(env, { chave, webhookUrl } = {}) {
   return request(env, {
     method: "PUT",
     path: `/v2/webhook/${chave}?ignorar=`,
-    headers: { Authorization: `Bearer ${token}` },
+    headers: {
+      Authorization: `Bearer ${token}`,
+      ...(skipMtls ? { "x-skip-mtls-checking": "true" } : {}),
+    },
     body: { webhookUrl },
   });
 }

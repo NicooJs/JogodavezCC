@@ -8,6 +8,7 @@ function rowToPayment(row) {
     leilaoId: row.leilao_id,
     streamerId: row.streamer_id,
     mpPaymentId: row.mp_payment_id ? Number(row.mp_payment_id) : null,
+    efiTxid: row.efi_txid || null,
     externalReference: row.external_reference,
     status: row.status,
     valorTotalCents: row.valor_total_cents,
@@ -63,4 +64,35 @@ async function findByMpPaymentId(mpPaymentId) {
   return rowToPayment(res.rows[0]);
 }
 
-module.exports = { buildExternalReference, createPending, markCreated, markPaid, findByExternalReference, findByMpPaymentId };
+async function markCreatedEfi(externalReference, efiTxid) {
+  const res = await query(
+    `UPDATE payments SET efi_txid = $2, updated_at = now() WHERE external_reference = $1 RETURNING *`,
+    [externalReference, efiTxid]
+  );
+  return rowToPayment(res.rows[0]);
+}
+
+async function markPaidEfi(efiTxid) {
+  const res = await query(
+    `UPDATE payments SET status = 'PAID', paid_at = now(), updated_at = now() WHERE efi_txid = $1 AND status != 'PAID' RETURNING *`,
+    [efiTxid]
+  );
+  return rowToPayment(res.rows[0]);
+}
+
+async function findByEfiTxid(efiTxid) {
+  const res = await query(`SELECT * FROM payments WHERE efi_txid = $1`, [efiTxid]);
+  return rowToPayment(res.rows[0]);
+}
+
+module.exports = {
+  buildExternalReference,
+  createPending,
+  markCreated,
+  markPaid,
+  findByExternalReference,
+  findByMpPaymentId,
+  markCreatedEfi,
+  markPaidEfi,
+  findByEfiTxid,
+};
