@@ -237,7 +237,7 @@ document.getElementById("saque-submit").addEventListener("click", async () => {
   btn.disabled = true;
   try {
     const data = await presenterFetch("/admin/saque", { method: "POST" });
-    feedback.textContent = `Saque enviado: ${formatBRL(data.sentCents / 100)}.`;
+    feedback.textContent = `Saque solicitado: ${formatBRL(data.sentCents / 100)}. A confirmação pode levar alguns instantes -- seu saldo atualiza sozinho quando sair.`;
     feedback.hidden = false;
     loadSaldo();
   } catch (err) {

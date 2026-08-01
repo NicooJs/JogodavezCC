@@ -5,6 +5,61 @@
 > real do projeto — não confie em ideias antigas de outra sessão que
 > contradigam o que está escrito aqui.
 
+## Correção crítica de confiabilidade do saque (2026-08-01)
+
+Revisão completa do fluxo de dinheiro pedida pelo cliente ("revise
+totalmente, não podemos passar por problemas") encontrou e corrigiu um bug
+real, com potencial de inconsistência de saldo em produção:
+
+**O bug**: `POST /api/l/:id/admin/saque` chamava `ledgerStore.markWithdrawalSent()`
+assim que `efiApi.enviarPix()` respondia `201 EM_PROCESSAMENTO` — tratando
+a resposta síncrona como confirmação de sucesso. Só que essa mesma sessão
+provou, com testes reais em Produção, que `EM_PROCESSAMENTO` não garante
+nada: o resultado de verdade (`REALIZADO`/`NAO_REALIZADO`) chega depois,
+assíncrono. Se isso rodasse com o `pix.send` liberado, um saque aceito mas
+rejeitado depois ficaria marcado "enviado" com o saldo do streamer já
+debitado, enquanto o dinheiro nunca saiu da Conta Master de verdade — e o
+webhook só processava eventos de recebimento, nunca de status de envio, sem
+nenhum caminho de reconciliação.
+
+**A correção**:
+- `POST /admin/saque` gera o `idEnvio` **antes** de chamar `enviarPix` e
+  grava ele no saque (`ledgerStore.attachEfiEnvioId`) antes da chamada --
+  se o processo cair logo depois de mandar pra Efí, o rastro do envio
+  sobrevive. A resposta da rota não marca mais nada como concluído, só
+  confirma que a solicitação foi aceita (`status: "pending"`).
+- O webhook (`server.js`) agora diferencia eventos de recebimento
+  (têm `txid`) de eventos de status de envio (têm `tipo`, sem `txid`,
+  formato confirmado na doc oficial: `{tipo, status, gnExtras: {idEnvio,
+  erro?}}`). Envio confirmado `REALIZADO` marca o saque como enviado de
+  verdade; `NAO_REALIZADO` estorna o saldo automaticamente
+  (`ledgerStore.resolveEnvioStatus`, compartilhado entre webhook e
+  reconciliação). Status desconhecido não mexe em nada -- fica pending
+  pra investigação manual em vez de arriscar um estorno ou confirmação
+  errada.
+- **`src/reconciliation.js` (novo)**: como a entrega do webhook de envio já
+  se mostrou inconsistente em homologação (só 1 de 3 entregas chegou, ver
+  seção de progresso abaixo), um job a cada 60s resolve saques que ficaram
+  "pending" há mais de 2 minutos consultando `consultarEnvioPix`
+  diretamente -- rede de segurança pro caso do webhook nunca chegar.
+
+**Testado de ponta a ponta contra o Postgres de produção** (streamer/saque
+descartáveis, limpos depois, nenhum dado real tocado): crédito de doação,
+débito de saque, confirmação `REALIZADO`, idempotência (resolver 2x não
+duplica nem reprocessa), estorno automático em `NAO_REALIZADO`, status
+desconhecido deixado intacto, e detecção de saque "parado" pela
+reconciliação (testado com timestamp forçado pra trás).
+
+**Bug adicional achado durante esse teste**: `withdrawals.id`,
+`streamers.id` e `payments.id` são `BIGSERIAL` -- o driver do Postgres
+devolve `BIGINT` como **string**, não number. `rowToWithdrawal`,
+`rowToStreamer` e `rowToPayment` não convertiam isso, então qualquer
+comparação estrita (`===`) contra um id quebrava silenciosamente (pego ao
+vivo: `findStalePendingWithdrawals` não achava um saque que a própria
+query SQL confirmava ter retornado). Corrigido nos três `rowToX()` com
+`Number()` explícito. Vale lembrar essa pegadinha em qualquer `rowToX()`
+novo que vier a existir.
+
 ## Status em 2026-08-01: migração de código concluída, rodando em homologação
 
 O Mercado Pago foi **removido por completo do código** (não é mais "em
@@ -75,12 +130,26 @@ igual com uma chave de pessoa diferente.
 **Conclusão: são 3 tentativas consistentes (2 mesma titularidade + 1
 titularidade diferente), todas rejeitadas em ~5s, sem mexer saldo, sem
 aparecer no extrato.** Já não é mais explicável por nada do nosso lado
-(formato de chave e titularidade descartados) — aponta pra algo do lado da
-Efí em Produção, provavelmente exigindo um aditivo/liberação separada pra
-`pix.send` que a conta ainda não tem. **Chamado com o suporte da Efí é o
-próximo passo real agora**, levando os três `idEnvio`
-(`8c7d1676b9771a65e9374ebc74f2a67c`, `343d41df29d0be026f932f7e4f3a54e2`,
-`554109b8d9cbba65e6d2c1b881cfe1e4`). Ainda não aberto.
+(formato de chave e titularidade descartados).
+
+**Causa provável encontrada (2026-08-01), via post da Comunidade Efí**: o
+envio de Pix (`pix.send`) **não é liberado só marcando o escopo na
+aplicação** — precisa de um processo separado: preencher um formulário de
+solicitação, a Efí analisa e aprova (ou não), e só depois de **assinar um
+aditivo contratual** o endpoint passa a funcionar de verdade em Produção.
+O mesmo post confirma que quando o `NAO_REALIZADO` tem uma causa de
+negócio normal, ele vem com motivo (ex: "Negado por timeout") — nos nossos
+3 casos não veio motivo nenhum, o que bate mais com "conta sem esse
+aditivo assinado" do que com uma rejeição pontual de transação.
+Fonte: [comunidade.sejaefi.com.br/discussao/problemas-api-pagamento-pix-producao-45](https://comunidade.sejaefi.com.br/discussao/problemas-api-pagamento-pix-producao-45).
+
+**Confirmado pelo suporte da Efí (via Discord, 2026-08-01): é isso mesmo.**
+Precisa preencher um formulário de solicitação pra liberar `pix.send` em
+Produção. Aditivo contratual é assinado depois da aprovação. **Ação
+pendente do cliente**: localizar e preencher esse formulário (checar
+painel da Efí ou pedir o link direto no mesmo canal de suporte). Até isso
+ser aprovado, `pix.send` em Produção continua bloqueado -- comportamento
+esperado agora, não é mais um mistério.
 
 **Não trocar `EFI_ENV` pra `producao` até isso se resolver.** Acionar
 doação real sem saber se o saque funciona de verdade recria o problema

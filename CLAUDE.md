@@ -27,10 +27,24 @@ tempos) nem assuma que o Mercado Pago ainda existe em algum lugar do código.
 
 **Regra permanente**: qualquer código que mexa com dinheiro precisa manter o
 mesmo padrão de segurança já usado no projeto — queries sempre parametrizadas
-(nunca concatenar SQL), credenciais cifradas em repouso (AES-256-GCM, ver
-`src/tokenCrypto.js`), toda rota administrativa/de saldo autenticada, webhook
-sempre com verificação de assinatura + idempotência dupla, nunca logar
-segredo/token/CPF, CPF nunca persistido no nosso banco.
+(nunca concatenar SQL), certificado/credencial da Efí só em variável de
+ambiente (nunca em disco, nunca commitado), toda rota administrativa/de
+saldo autenticada (rotas de saldo/saque exigem `requireLeilaoOwner`, mais
+restrito que `requireLeilaoAdmin` — moderador com código de uso único não
+pode mexer em dinheiro), webhook sempre com verificação + idempotência
+dupla, nunca logar segredo/token/CPF, CPF nunca persistido no nosso banco.
+**IDs de tabela são `BIGSERIAL`** (`streamers.id`, `payments.id`,
+`withdrawals.id`) — o driver do Postgres devolve isso como string, não
+number; todo `rowToX()` precisa converter com `Number()` explicitamente,
+senão comparação estrita (`===`) quebra silenciosamente (bug real já visto
+e corrigido, ver `docs/STATUS-EFI.md`).
+
+**Confirmação de saque é sempre assíncrona**: `efiApi.enviarPix()` só
+confirma que a Efí ACEITOU o pedido (`EM_PROCESSAMENTO`), nunca que o
+dinheiro saiu de verdade — o resultado real (`REALIZADO`/`NAO_REALIZADO`)
+chega depois, via webhook, ou via `src/reconciliation.js` se o webhook não
+chegar (confirmado que a entrega é inconsistente). Nunca marcar um saque
+como concluído na resposta síncrona da chamada.
 
 ## Sistema de design
 

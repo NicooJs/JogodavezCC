@@ -4,9 +4,9 @@ const crypto = require("crypto");
 function rowToPayment(row) {
   if (!row) return null;
   return {
-    id: row.id,
+    id: Number(row.id), // payments.id é BIGSERIAL -- node-pg devolve BIGINT como string
     leilaoId: row.leilao_id,
-    streamerId: row.streamer_id,
+    streamerId: Number(row.streamer_id), // streamers.id também é BIGSERIAL
     mpPaymentId: row.mp_payment_id ? Number(row.mp_payment_id) : null,
     efiTxid: row.efi_txid || null,
     externalReference: row.external_reference,

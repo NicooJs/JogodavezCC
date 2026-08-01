@@ -49,6 +49,43 @@ function computeWithdrawal(balanceCents, feeConfig) {
   return { feeCents, sentCents };
 }
 
+function rowToWithdrawal(row) {
+  if (!row) return null;
+  return {
+    id: Number(row.id), // withdrawals.id é BIGSERIAL -- node-pg devolve BIGINT como string, converte pra evitar "5" !== 5
+    streamerId: Number(row.streamer_id), // streamers.id também é BIGSERIAL
+    requestedCents: Number(row.requested_cents),
+    feeCents: Number(row.fee_cents),
+    sentCents: Number(row.sent_cents),
+    efiEnvioId: row.efi_envio_id,
+    status: row.status,
+    createdAt: row.created_at,
+    completedAt: row.completed_at,
+  };
+}
+
+// grava o idEnvio assim que a Efí aceita a chamada -- mesmo que o processo
+// caia logo em seguida, o registro de qual idEnvio foi usado sobrevive, e
+// dá pra consultar o status depois em vez de perder o rastro do envio
+async function attachEfiEnvioId(withdrawalId, efiEnvioId) {
+  await query(`UPDATE withdrawals SET efi_envio_id = $2 WHERE id = $1`, [withdrawalId, efiEnvioId]);
+}
+
+async function findWithdrawalByEfiEnvioId(efiEnvioId) {
+  const res = await query(`SELECT * FROM withdrawals WHERE efi_envio_id = $1`, [efiEnvioId]);
+  return rowToWithdrawal(res.rows[0]);
+}
+
+// saques que ficaram "pending" por tempo demais -- cobre o caso do webhook
+// nunca chegar (confirmado instável em homologação, ver docs/STATUS-EFI.md)
+async function findStalePendingWithdrawals(olderThanMs) {
+  const res = await query(
+    `SELECT * FROM withdrawals WHERE status = 'pending' AND efi_envio_id IS NOT NULL AND created_at < now() - ($1 || ' milliseconds')::interval`,
+    [olderThanMs]
+  );
+  return res.rows.map(rowToWithdrawal);
+}
+
 async function getBalance(streamerId) {
   const res = await query(`SELECT balance_cents FROM streamer_balances WHERE streamer_id = $1`, [streamerId]);
   return res.rows[0] ? Number(res.rows[0].balance_cents) : 0;
@@ -164,6 +201,36 @@ async function markWithdrawalFailed(withdrawalId) {
   });
 }
 
+// resolve o resultado assíncrono de um saque -- enviarPix só confirma que a
+// Efí ACEITOU o pedido (EM_PROCESSAMENTO), não que o dinheiro saiu de
+// verdade; o resultado real (REALIZADO/NAO_REALIZADO) chega depois. Chamado
+// pelo webhook (server.js) e pela reconciliação (src/reconciliation.js) pros
+// saques que passaram tempo demais sem o webhook chegar -- os dois caminhos
+// convergem aqui pra não duplicar a lógica de idempotência/estorno.
+async function resolveEnvioStatus(idEnvio, status, detalhe) {
+  const withdrawal = await findWithdrawalByEfiEnvioId(idEnvio);
+  if (!withdrawal) {
+    console.warn(`[saque] nenhum saque nosso encontrado pra idEnvio="${idEnvio}".`);
+    return;
+  }
+  if (withdrawal.status !== "pending") {
+    console.log(`[saque] idEnvio="${idEnvio}" já estava "${withdrawal.status}", ignorando (idempotência).`);
+    return;
+  }
+
+  if (status === "REALIZADO") {
+    await markWithdrawalSent(withdrawal.id, idEnvio);
+    console.log(`[saque] idEnvio="${idEnvio}" confirmado REALIZADO, withdrawalId=${withdrawal.id}.`);
+  } else if (status === "NAO_REALIZADO") {
+    await markWithdrawalFailed(withdrawal.id);
+    console.warn(`[saque] idEnvio="${idEnvio}" veio NAO_REALIZADO, withdrawalId=${withdrawal.id} estornado. Detalhe: ${detalhe || "(sem motivo informado)"}`);
+  } else {
+    // status desconhecido/inesperado -- não mexe no estado, fica pending
+    // pra investigação manual em vez de arriscar um estorno ou confirmação errada
+    console.warn(`[saque] idEnvio="${idEnvio}" com status inesperado "${status}", withdrawalId=${withdrawal.id} deixado pending pra investigação.`);
+  }
+}
+
 module.exports = {
   getFeeConfig,
   computeDonationSplit,
@@ -171,6 +238,10 @@ module.exports = {
   getBalance,
   creditDonation,
   createWithdrawal,
+  attachEfiEnvioId,
+  findWithdrawalByEfiEnvioId,
+  findStalePendingWithdrawals,
   markWithdrawalSent,
   markWithdrawalFailed,
+  resolveEnvioStatus,
 };

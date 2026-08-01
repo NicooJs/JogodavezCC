@@ -1,30 +1,37 @@
-# Leilão de Jogos
+# JogodaVez (leilão de jogos)
 
-Placar de leilão ao vivo pra streamers: espectadores doam via Pix (Mercado
-Pago) apoiando ou sabotando itens de um catálogo, o dinheiro cai direto na
-conta do streamer (split automático), e o placar atualiza em tempo real —
+Placar de leilão ao vivo pra streamers: espectadores doam via Pix apoiando
+ou sabotando itens de um catálogo, e o placar atualiza em tempo real —
 pensado pra ficar aberto numa aba/captura de tela durante a live, não pra
 espectador acessar o link diretamente.
+
+Pagamento via **Efí Bank**, em modelo de custódia: o dinheiro entra numa
+Conta Master única da plataforma, um ledger interno (Postgres) controla
+quanto cada streamer tem direito a sacar, e o streamer pede o saque pra
+própria chave Pix quando quiser. Ver [docs/STATUS-EFI.md](docs/STATUS-EFI.md)
+pro estado detalhado dessa integração.
 
 ## Como funciona
 
 1. O streamer cria o leilão logando com a **Twitch** (confirma quem é,
-   evita alguém se passar por outro streamer) e conectando o **Mercado
-   Pago** (OAuth marketplace — é a conta que recebe o dinheiro).
+   evita alguém se passar por outro streamer) — não precisa conectar nada
+   de pagamento pra criar o leilão.
 2. Isso gera 3 links por leilão: o **placar** (`/l/:id`), a **página de
    doação** (`/l/:id/doar`, pra fixar no chat) e o **overlay pro OBS**
    (`/l/:id/alerta`, Browser Source com fundo transparente).
 3. O doador abre a página de doação, escolhe um jogo numa prateleira
    (busca na RAWG + jogos já no catálogo), decide se quer **apoiar** ou
-   **sabotar**, escolhe o valor e opcionalmente deixa nome + mensagem (com
-   narração por voz no overlay, via Web Speech API do navegador — grátis,
-   sem depender de nenhuma API paga).
-4. O Pix é gerado com **split automático** (Mercado Pago `application_fee`):
-   a maior parte cai direto na conta do streamer, uma fração pequena fica
-   pra plataforma. O dinheiro nunca passa pela nossa conta.
-5. Quando o Mercado Pago confirma o pagamento (webhook), o placar atualiza
-   sozinho via Socket.IO — sem recarregar a página — e o overlay do OBS
-   mostra o alerta com a voz.
+   **sabotar**, escolhe o valor (mínimo R$5) e opcionalmente deixa nome +
+   mensagem (com narração por voz no overlay, via síntese de voz grátis).
+4. A cobrança Pix é gerada na API da Efí. Quando o pagamento é confirmado
+   (webhook), o placar atualiza sozinho via Socket.IO — sem recarregar a
+   página — e o overlay do OBS mostra o alerta com a voz. O valor é
+   creditado no ledger interno: a maior parte fica disponível pro streamer
+   sacar, uma fração pequena é a taxa da plataforma.
+5. Nas Configurações do leilão, o streamer cadastra a própria chave Pix e
+   pode solicitar saque do saldo acumulado a qualquer momento — o saque
+   dispara um envio de Pix real via Efí, confirmado de forma assíncrona
+   (webhook + reconciliação de segurança, ver `src/reconciliation.js`).
 6. No fim, o placar mostra um recap (campeão, recorde de doação, maiores
    apoiadores) com opção de baixar como imagem ou compartilhar no X.
 
@@ -48,14 +55,15 @@ cp .env.example .env
 npm start
 ```
 
-Acesse `http://localhost:3000` pra criar um leilão. Login com a Twitch e
-conexão com o Mercado Pago são obrigatórios pra criar — sem isso não dá
-pra gerar leilão novo (leilões já existentes continuam funcionando
-normalmente mesmo se as chaves sumirem depois).
+Acesse `http://localhost:3000` pra criar um leilão. Login com a Twitch é
+obrigatório pra criar (leilões já existentes continuam funcionando
+normalmente mesmo se a chave sumir depois). Doação de verdade exige o
+Postgres configurado e as credenciais da Efí (ver `.env.example`).
 
-Se for usar o Postgres (guarda credencial OAuth do Mercado Pago, histórico
-de pagamento e cópia de segurança do estado do leilão — ver comentário de
-`DATABASE_URL` no `.env.example`), rode as migrations depois de configurar:
+Se for usar o Postgres (identidade dos streamers, chave Pix de saque,
+ledger de custódia, histórico de pagamento e cópia de segurança do estado
+do leilão — ver comentário de `DATABASE_URL` no `.env.example`), rode as
+migrations depois de configurar:
 
 ```bash
 node scripts/migrate.js
@@ -66,12 +74,14 @@ node scripts/migrate.js
 O projeto é hoje mantido rodando no **Railway**:
 - Precisa de um **Volume persistente** montado no serviço, apontando pra
   `DATA_DIR` (é onde o catálogo/eventos de cada leilão fica, em JSON).
-- Precisa de um serviço **Postgres** ligado (credencial OAuth, pagamentos,
+- Precisa de um serviço **Postgres** ligado (identidade, ledger, pagamentos,
   backup do estado — ver `.env.example`).
-- As URLs de callback do OAuth (Twitch e Mercado Pago) e do webhook do
-  Mercado Pago precisam apontar pro domínio real de produção (o Mercado
-  Pago exige HTTPS até pra teste, então o fluxo de conectar conta não
-  funciona em `localhost` puro).
+- A URL de callback do OAuth da Twitch precisa apontar pro domínio real de
+  produção. O webhook da Efí (`/webhooks/efi/pix/:token`) também precisa
+  estar registrado contra o domínio real (ver `docs/STATUS-EFI.md`).
+- `EFI_ENV` controla se o site está processando contra o ambiente de
+  homologação (sandbox, padrão) ou produção (dinheiro real) da Efí — trocar
+  isso é a única coisa que decide se é dinheiro de verdade ou não.
 
 ## Modalidade: jogos ou filmes
 
@@ -108,9 +118,11 @@ src/stores.js                cache em memória dos leilões ativos + eviction
 src/registry.js              catálogo de leilões (id -> dono, título)
 src/session.js               cookie de sessão assinado (login Twitch)
 src/twitchAuth.js/twitchClient.js   OAuth da Twitch + busca de avatar
-src/mpAuth.js/mpApi.js/mpWebhook.js  OAuth do Mercado Pago + criação/confirmação de Pix
-src/streamersStore.js/paymentsStore.js  Postgres: credencial OAuth e histórico de pagamento
-src/tokenCrypto.js           cifra os tokens do Mercado Pago em repouso
+src/efiAuth.js/efiClient.js/efiApi.js  autenticação mTLS + chamadas à API Pix da Efí
+src/efiWebhook.js            valida a notificação de pagamento/envio da Efí
+src/ledgerStore.js           split de doação/saque, saldo por streamer, em centavos inteiros
+src/streamersStore.js/paymentsStore.js/streamerPixKeysStore.js  Postgres: identidade, histórico de pagamento, chave Pix de saque
+src/reconciliation.js        resolve saques presos sem o webhook de confirmação chegar
 src/stateBackup.js           cópia de segurança periódica do estado do leilão no Postgres
 src/gameImages.js/movieImages.js    busca de capa na RAWG e na TMDB
 src/mediaAdapter.js          escolhe RAWG ou TMDB pela modalidade do leilão

@@ -636,16 +636,31 @@ app.post("/api/l/:id/admin/saque", loadLeilao, requireLeilaoOwner, async (req, r
     return res.status(400).json({ error: err.message });
   }
 
+  // idEnvio gerado ANTES da chamada e gravado no saque -- se o processo cair
+  // logo depois de mandar pra Efí, mesmo sem resposta, o registro de qual
+  // idEnvio foi usado sobrevive (dá pra consultar o status depois em vez de
+  // perder o rastro do envio)
+  const idEnvio = efiApi.gerarIdEnvio();
+  await ledgerStore.attachEfiEnvioId(withdrawal.withdrawalId, idEnvio);
+
   try {
-    const envio = await efiApi.enviarPix(EFI_ENV, {
+    await efiApi.enviarPix(EFI_ENV, {
+      idEnvio,
       valorCentavos: withdrawal.sentCents,
       chavePagadora: efiChavePix(),
       chaveFavorecido: pixKey,
       infoPagador: "Saque JogodaVez",
     });
-    await ledgerStore.markWithdrawalSent(withdrawal.withdrawalId, envio.idEnvio || envio.e2eId || null);
-    res.json({ ok: true, sentCents: withdrawal.sentCents, feeCents: withdrawal.feeCents });
+    // NÃO marca como enviado aqui -- a Efí só aceitou a solicitação
+    // (EM_PROCESSAMENTO), o resultado de verdade (REALIZADO/NAO_REALIZADO)
+    // vem depois, assíncrono, via webhook (ou via reconciliação, se o
+    // webhook não chegar -- ver src/reconciliation.js). Confirmado nesta
+    // mesma investigação que tratar a resposta síncrona como sucesso é
+    // exatamente o bug que gerava saldo debitado sem o dinheiro ter saído.
+    res.json({ ok: true, status: "pending", sentCents: withdrawal.sentCents, feeCents: withdrawal.feeCents });
   } catch (err) {
+    // erro síncrono (ex: chave inválida, HTTP 4xx/5xx) -- aqui sim já sabemos
+    // que não foi aceito, então reverte imediatamente em vez de deixar pendente
     console.error(`[saque] falha ao enviar Pix (withdrawalId=${withdrawal.withdrawalId}):`, err.message);
     await ledgerStore.markWithdrawalFailed(withdrawal.withdrawalId);
     res.status(502).json({ error: "Não foi possível concluir o saque agora, o valor voltou pro seu saldo. Tente de novo em instantes." });
@@ -1065,9 +1080,17 @@ app.post("/webhooks/efi/pix/:token", (req, res) => {
 
   const eventos = Array.isArray(req.body && req.body.pix) ? req.body.pix : [];
   for (const evento of eventos) {
-    creditarPixRecebido(evento).catch((err) => {
-      console.error(`[webhook efi] erro ao processar txid="${evento.txid}":`, err.message);
-    });
+    // recebimento tem txid, status de envio tem "tipo" (ex: "SOLICITACAO") e
+    // não tem txid -- documentado assim pela Efí, os dois vêm no mesmo array
+    if (evento.tipo) {
+      processarStatusEnvioPix(evento).catch((err) => {
+        console.error(`[webhook efi] erro ao processar status de envio (idEnvio="${evento.gnExtras && evento.gnExtras.idEnvio}"):`, err.message);
+      });
+    } else {
+      creditarPixRecebido(evento).catch((err) => {
+        console.error(`[webhook efi] erro ao processar txid="${evento.txid}":`, err.message);
+      });
+    }
   }
 });
 
@@ -1107,6 +1130,17 @@ async function creditarPixRecebido(evento) {
     fallbackNote: payment.donorNote,
     fallbackVoiceId: payment.donorVoiceId,
   });
+}
+
+async function processarStatusEnvioPix(evento) {
+  const idEnvio = evento.gnExtras && evento.gnExtras.idEnvio;
+  if (!idEnvio) {
+    console.warn("[webhook efi] evento de status de envio sem gnExtras.idEnvio, ignorado.");
+    return;
+  }
+  const erro = evento.gnExtras && evento.gnExtras.erro;
+  const detalhe = erro ? `${erro.codigo || ""} ${erro.motivo || ""}`.trim() : null;
+  await ledgerStore.resolveEnvioStatus(idEnvio, evento.status, detalhe);
 }
 
 // ---------- rotas de admin (id-scoped) ----------
@@ -1476,6 +1510,7 @@ setInterval(() => {
 }, 5000);
 
 require("./src/stateBackup").start();
+require("./src/reconciliation").start();
 
 // ---------- start ----------
 

@@ -3,7 +3,7 @@ const { query } = require("./pg");
 function rowToStreamer(row) {
   if (!row) return null;
   return {
-    id: row.id,
+    id: Number(row.id), // streamers.id é BIGSERIAL -- node-pg devolve BIGINT como string, converte pra evitar comparação estrita quebrada
     twitchUserId: row.twitch_user_id,
     connectedAt: row.connected_at,
   };
