@@ -90,7 +90,7 @@ async function consultarEnvioPix(env, idEnvio) {
   const token = await getAccessToken(env);
   return request(env, {
     method: "GET",
-    path: `/v3/gn/pix/${idEnvio}`,
+    path: `/v2/gn/pix/enviados/id-envio/${idEnvio}`,
     headers: { Authorization: `Bearer ${token}` },
   });
 }

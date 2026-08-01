@@ -34,25 +34,27 @@ cobrança real de R$1,00 criada em Produção (`status: ATIVA`), sem pagar
 
 Teste feito em 2026-08-01: registrado webhook em Produção (`efiApi.registrarWebhook("producao", ...)`,
 tinha esquecido isso antes -- é por ambiente, não compartilhado com
-Homologação). Depois disso, `enviarPix` de R$1,00 (chave da empresa →
-chave pessoal do dono, dentro do limite pré-aprovado de autoenvio) foi
-**aceito pela API** (`status: "EM_PROCESSAMENTO"`, `idEnvio`
-`8c7d1676b9771a65e9374ebc74f2a67c`, `e2eId`
-`E09089356202608011801API5423812e`, solicitado `2026-08-01T18:01:08Z`),
-mas depois disso:
-- Saldo da conta não mudou (continua R$2,00).
-- Não chegou na conta pessoal de destino.
-- Não aparece em "Pix enviados" no painel da Efí.
-- `GET /v3/gn/pix/:idEnvio` devolve 404 "não encontrado".
-- Nenhum webhook de status (`REALIZADO`/`FALHOU`) chegou depois do aceite inicial.
+Homologação). `enviarPix` de R$1,00 (chave da empresa → chave pessoal do
+dono, dentro do limite pré-aprovado de autoenvio) foi **aceito pela API**
+duas vezes (`idEnvio` `8c7d1676b9771a65e9374ebc74f2a67c` e
+`343d41df29d0be026f932f7e4f3a54e2`), mas nenhum dos dois completou.
 
-**Sem explicação encontrada até agora** -- pode ser análise antifraude do
-primeiro envio da conta (não teria como saber sem confirmação da Efí,
-já que nem no painel aparece), pode ser bug/atraso do lado deles. Não dá
-pra descartar nem confirmar. **Ação pendente do cliente**: abrir chamado
-com o suporte da Efí levando esses dados (idEnvio/e2eId acima) e
-perguntar se o envio foi processado, está em análise, ou falhou
-silenciosamente.
+Descoberto no processo: `consultarEnvioPix` estava com o **endpoint errado**
+(`GET /v3/gn/pix/:idEnvio`, escrito por suposição/simetria, nunca
+confirmado na doc -- erro meu). O certo, confirmado via busca:
+`GET /v2/gn/pix/enviados/id-envio/:idEnvio`, escopo `gn.pix.send.read`
+("Consultar pix enviado", não estava marcado, corrigido). Com o endpoint
+certo, os dois envios voltam **`status: "NAO_REALIZADO"`** -- ou seja,
+**não foi bug/atraso de consulta, o envio de fato falhou** dos dois lados.
+Saldo nunca mudou (sem risco de perda), motivo da falha não vem nesse
+endpoint (sem código de erro/razão no JSON). Segunda tentativa resolveu em
+~5s (não ficou minutos "em processamento"), o que sugere uma regra sendo
+aplicada de forma consistente, não uma análise manual variável.
+
+**Ação pendente do cliente**: checar painel da Efí (Pix → Pix enviados /
+Extrato) se aparece motivo mais detalhado; se não, abrir chamado com o
+suporte levando os dois `idEnvio` acima e perguntar o motivo exato do
+`NAO_REALIZADO`.
 
 **Não trocar `EFI_ENV` pra `producao` até isso se resolver.** Acionar
 doação real sem saber se o saque funciona de verdade recria o problema
