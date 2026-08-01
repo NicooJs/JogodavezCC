@@ -5,6 +5,39 @@
 > real do projeto — não confie em ideias antigas de outra sessão que
 > contradigam o que está escrito aqui.
 
+## Status em 2026-08-01: migração de código concluída, rodando em homologação
+
+O Mercado Pago foi **removido por completo do código** (não é mais "em
+transição" — não existe rota, arquivo nem UI de MP no repositório). O
+fluxo de doação → cobrança Efí → webhook → crédito no ledger foi **testado
+de ponta a ponta contra a Efí de verdade e o Postgres de produção**
+(streamer descartável, limpo depois): taxa calculada certinha, cobrança
+criada, QR buscado, pagamento marcado, saldo creditado corretamente,
+idempotência confirmada (webhook duplicado não credita 2x).
+
+`EFI_ENV=homologacao` no Railway agora mesmo -- o site em produção está
+processando doações reais contra o ambiente de **teste** da Efí, não
+contra dinheiro real, até alguém trocar essa variável conscientemente pra
+`producao`.
+
+**Conta de Produção confirmada ativa (2026-08-01)**: painel mostra conta
+plena (Cartões, Antecipação de recebíveis, Investimentos, Depositar, sem
+aviso de análise pendente). A chave Pix é **a mesma** pros dois ambientes
+(`fd7aaa7e-c08c-4048-a9d3-30ce8c71163d`) -- chave é da conta, não do
+ambiente de API; o que muda entre homologação/produção é só a
+credencial/certificado usado pra chamar a API. Testado com sucesso: uma
+cobrança real de R$1,00 criada em Produção (`status: ATIVA`), sem pagar
+(evitado de propósito -- não expusemos o QR/copia-e-cola em nenhum log).
+
+**Ainda falta antes de trocar `EFI_ENV` pra `producao` de verdade**:
+`pix.send` (envio/saque) só foi testado em Homologação -- ainda não
+confirmado se funciona em Produção sem aditivo. Não faz sentido aceitar
+doação real sem conseguir pagar o streamer depois (mesmo problema que
+motivou sair do Mercado Pago). Antes de ligar produção: confirmar
+`pix.send` em produção (idealmente testando um saque real pequeno, ação
+consciente do dono, não script automatizado -- é dinheiro saindo de
+verdade e irreversível).
+
 ## Se importa mais que tudo: o modelo mudou, não é mais pix.gg
 
 Numa fase anterior do projeto (noutra máquina), a ideia era integrar com
