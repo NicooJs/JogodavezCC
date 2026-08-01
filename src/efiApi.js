@@ -139,6 +139,15 @@ async function criarChaveAleatoria(env) {
   });
 }
 
+async function consultarSaldo(env) {
+  const token = await getAccessToken(env);
+  return request(env, {
+    method: "GET",
+    path: "/v2/gn/saldo/",
+    headers: { Authorization: `Bearer ${token}` },
+  });
+}
+
 module.exports = {
   criarCobranca,
   consultarCobranca,
@@ -149,4 +158,5 @@ module.exports = {
   registrarWebhook,
   consultarWebhook,
   criarChaveAleatoria,
+  consultarSaldo,
 };
