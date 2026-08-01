@@ -19,6 +19,7 @@ const session = require("./src/session");
 const mpAuth = require("./src/mpAuth");
 const mpApi = require("./src/mpApi");
 const mpWebhook = require("./src/mpWebhook");
+const efiWebhook = require("./src/efiWebhook");
 const streamersStore = require("./src/streamersStore");
 const paymentsStore = require("./src/paymentsStore");
 const freeTts = require("./src/freeTts");
@@ -1120,6 +1121,33 @@ app.post("/webhook/mercadopago", async (req, res) => {
     });
   } catch (err) {
     console.error(`[webhook mercadopago] erro ao processar dataId="${dataId}":`, err.message);
+  }
+});
+
+// A Efí não assina o webhook (diferente do MP) -- autenticidade é por IP
+// fixo deles + segredo imprevisível na própria URL (ver src/efiWebhook.js).
+// AINDA NÃO credita doação: falta o lado da criação da cobrança (rota
+// /doacao) guardar txid -> leilaoId/doador em algum lugar pra esse handler
+// conseguir achar o que foi pago. Por enquanto só autentica e loga.
+app.post("/webhooks/efi/pix/:token", (req, res) => {
+  const authentic = efiWebhook.isAuthentic({
+    remoteIp: req.ip,
+    pathToken: req.params.token,
+    secret: process.env.EFI_WEBHOOK_SECRET || "",
+  });
+  if (!authentic) {
+    console.warn(`[webhook efi] requisição não autenticada de ip="${req.ip}", rejeitada.`);
+    return res.sendStatus(403);
+  }
+
+  res.sendStatus(200);
+
+  const eventos = Array.isArray(req.body && req.body.pix) ? req.body.pix : [];
+  for (const evento of eventos) {
+    console.log(
+      `[webhook efi] pix recebido -- txid="${evento.txid || ""}" endToEndId="${evento.endToEndId || ""}" ` +
+        `valor="${evento.valor || ""}" status="${evento.status || "RECEBIDO"}"`
+    );
   }
 });
 

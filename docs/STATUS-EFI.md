@@ -76,13 +76,76 @@ bloqueio individual).
   ROLLBACK) que o ledger precisa pra creditar doação + atualizar saldo
   atomicamente.
 
-**Ainda não escrito** (bloqueado por falta de conta/documentação real da
-Efí, ou aguardando decisão): `efiAuth.js` (autenticação, provavelmente mTLS
-com certificado `.p12` — não confirmado), `efiApi.js` (criação de cobrança
-Pix, consulta, envio via Pix Out), `efiWebhook.js` (validação de assinatura
-do webhook de pagamento — formato da Efí ainda não estudado a fundo),
-`reconciliation.js`. Nenhuma rota em `server.js` foi tocada — o Mercado Pago
-continua sendo o único caminho de pagamento ativo em produção.
+**Feito e testado de verdade contra a Efí** (2026-07-31): conta Efí criada,
+aplicações de Produção e Homologação configuradas com os escopos de API Pix
+(cobrança, consulta/envio de Pix, webhooks, saldo, infrações MED — sem
+Cobranças/Split/Open Finance/Pagamento de Contas). Confirmado: a API Pix da
+Efí exige mTLS (certificado `.p12` por aplicação, um por ambiente), sem
+senha no certificado. `src/efiAuth.js` escrito (`getAccessToken(env)`,
+`env` = `"producao"` ou `"homologacao"`, token cacheado em memória até
+expirar) e testado com sucesso contra `homologacao` via `railway run`
+(token real recebido de `pix-h.api.efipay.com.br/oauth/token`).
+
+Variáveis no Railway (serviço `leilao-de-jogos`, ambiente `production`):
+`EFI_CLIENT_ID_PRODUCAO`/`EFI_CLIENT_SECRET_PRODUCAO`/`EFI_CERT_PRODUCAO_BASE64`
+e o mesmo trio com sufixo `_HOMOLOGACAO` (certificado guardado em base64,
+decodificado em memória no `pfx` do `https.request` — nunca escrito em
+disco nem commitado).
+
+`src/efiClient.js` extraído como cliente HTTP compartilhado (mTLS via
+`https.request`, timeout de 15s, `getConfig(env)`) — `efiAuth.js` usa ele
+por baixo, e `efiApi.js` também.
+
+`src/efiApi.js` escrito com `criarCobranca(env, {...})` (`POST /v2/cob`,
+sem txid) e `consultarCobranca(env, txid)`, **testado com sucesso contra
+homologação de verdade**: cobrança de R$5,00 criada com a chave Pix
+aleatória `fd7aaa7e-c08c-4048-a9d3-30ce8c71163d` (cadastrada na Conta
+Digital, fora da área de API), voltou `status: ATIVA` e `pixCopiaECola`
+pronto, sem precisar de uma segunda chamada pra buscar QR code (a doc
+sugeria isso, mas o campo já vem na resposta do `POST /v2/cob`).
+
+**Confirmado por teste real (não só doc, que era ambígua nisso): o campo
+`devedor` NÃO é obrigatório** pra criar cobrança imediata. A arquitetura de
+doação anônima (sem CPF do doador) continua válida como desenhada.
+
+`enviarPix`/`consultarEnvioPix` escritos em `efiApi.js` (`PUT /v3/gn/pix/:idEnvio`,
+`idEnvio` como chave de idempotência) seguindo a doc oficial confirmada via
+busca. **NÃO testados contra a Efí** — dois bloqueios confirmados (não são
+mais suposição):
+- **`pix.send` não vem liberado só marcando o escopo.** Exige solicitação
+  separada à Efí, que analisa e faz assinar um aditivo antes de liberar de
+  verdade. Ação externa pendente: abrir esse pedido com o comercial/suporte
+  da Efí (mesmo contato da negociação da taxa de saque).
+- **Webhook é obrigatório pra usar o envio**: a chave Pix pagadora (Conta
+  Master) precisa ter um webhook associado, porque a confirmação do envio
+  não vem na resposta HTTP (que só devolve `status: "EM_PROCESSAMENTO"`),
+  vem por notificação assíncrona. `efiWebhook.js` precisa existir antes de
+  qualquer teste real de saque, mesmo em homologação.
+
+`src/efiWebhook.js` escrito e testado (funções puras, via `node -e`).
+**Descoberta importante**: a Efí não assina o webhook com HMAC como o
+Mercado Pago (`mpWebhook.js`) — a autenticidade deles é via **mTLS na
+camada de conexão**, que não dá pra verificar no nosso caso porque o
+Railway termina o TLS antes do tráfego chegar no Node (o app nunca vê o
+handshake bruto). A própria doc da Efí reconhece essa limitação e sugere a
+alternativa que implementamos: **IP fixo da Efí** (`34.193.116.226`,
+configurável via `EFI_WEBHOOK_IPS` caso mude) **+ segredo embutido na URL**
+do webhook (`verifyIp`/`verifyToken`/`isAuthentic`, timing-safe, reusa
+`timingSafeEqualString` de `passwords.js`). Registro do webhook em si
+(`PUT /v2/webhook/:chave`) ainda não implementado em `efiApi.js`.
+
+Payload que a Efí envia (confirmado via doc): `{"pix": [{ endToEndId, txid,
+chave, valor, horario, infoPagador }]}` pra recebimento, e pra status de
+envio inclui `tipo`, `status`, `gnExtras.idEnvio`. Idempotência deve seguir
+o mesmo padrão do `mpWebhook.js`/rota `/webhook/mercadopago` em `server.js`:
+checar estado atual antes de processar (ex: já está `PAID`?), não confiar
+só na camada de transporte.
+
+**Ainda não escrito**: registro do webhook (`efiApi.js`), a rota
+`POST /webhooks/efi/pix/:token` em `server.js`, `reconciliation.js`.
+Nenhuma rota em `server.js` foi tocada — o Mercado Pago continua sendo o
+único caminho de pagamento ativo em produção. Solicitação de liberação do
+`pix.send` (aditivo com a Efí) ainda pendente do lado do cliente.
 
 - Tudo em **centavos inteiros**, nunca float (confirmado no `ledgerStore.js`).
 - `fee_config` como tabela editável (não hardcoded), pra atualizar a taxa
