@@ -1145,8 +1145,6 @@ app.post("/webhooks/efi/pix/:token", (req, res) => {
 
   res.sendStatus(200);
 
-  console.log(`[webhook efi] DEBUG body bruto: ${JSON.stringify(req.body)}`); // TODO: remover após diagnosticar formato real
-
   const eventos = Array.isArray(req.body && req.body.pix) ? req.body.pix : [];
   for (const evento of eventos) {
     console.log(
