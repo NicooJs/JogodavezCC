@@ -34,36 +34,65 @@
           <img class="perfil-avatar" id="perfil-avatar" src="" alt="" />
           <div class="perfil-identity-text">
             <h1 class="perfil-name" id="perfil-name">Streamer</h1>
-            <p class="perfil-login" id="perfil-login">@streamer</p>
+            <p class="perfil-login"><span id="perfil-login">@streamer</span><span class="perfil-since" id="perfil-since" hidden></span></p>
           </div>
           <button class="btn-mini" id="perfil-logout-btn" type="button">Sair da conta</button>
         </section>
 
-        <div class="perfil-grid">
-          <div class="perfil-col">
-            <section class="perfil-card">
-              <p class="perfil-card-label">chave pix</p>
-              <p class="perfil-card-hint">
-                As doações caem numa conta única da plataforma e ficam
-                guardadas pra você até pedir o saque. Cadastre sua chave
-                Pix pra poder sacar.
-              </p>
-              <div class="perfil-field-row">
-                <input type="text" id="pix-key-input" placeholder="Chave aleatória, e-mail, telefone, CPF/CNPJ" autocomplete="off" />
-                <button class="btn-mini primary" id="pix-key-save">Salvar</button>
-              </div>
-              <p class="perfil-feedback" id="pix-key-feedback" hidden></p>
-              <p class="perfil-card-footnote" id="pix-key-updated" hidden></p>
-            </section>
-
-            <section class="perfil-card perfil-balance-card">
-              <p class="perfil-card-label">saldo disponível</p>
-              <p class="perfil-balance-value" id="perfil-balance">R$ 0,00</p>
-              <p class="perfil-card-footnote" id="perfil-lifetime">já arrecadou R$ 0,00 no total</p>
-              <button class="btn-mini primary perfil-saque-btn" id="saque-submit" disabled>Solicitar saque</button>
-              <p class="perfil-feedback" id="saque-feedback" hidden></p>
-            </section>
+        <section class="perfil-hero">
+          <p class="perfil-card-label">saldo disponível</p>
+          <p class="perfil-balance-value" id="perfil-balance">R$ 0,00</p>
+          <div class="perfil-hero-footer">
+            <p class="perfil-card-footnote" id="perfil-lifetime">já arrecadou R$ 0,00 no total</p>
+            <button class="btn-mini primary perfil-saque-btn" id="saque-submit" disabled>Solicitar saque</button>
           </div>
+          <p class="perfil-feedback" id="saque-feedback" hidden></p>
+        </section>
+
+        <div class="perfil-stats-row">
+          <section class="perfil-stat-card">
+            <span class="perfil-stat-icon perfil-stat-icon-accent" aria-hidden="true">
+              <svg class="icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4 15.5V11M10 15.5V6.5M16 15.5V9"/></svg>
+            </span>
+            <div class="perfil-stat-text">
+              <p class="perfil-stat-value" id="perfil-donation-count">0</p>
+              <p class="perfil-stat-label">doações recebidas</p>
+              <p class="perfil-stat-footnote">últimos 30 dias</p>
+            </div>
+          </section>
+
+          <section class="perfil-stat-card">
+            <span class="perfil-stat-icon perfil-stat-icon-positive" aria-hidden="true">
+              <svg class="icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M3.5 13.5l4.5-5 3 3 5.5-6.5"/><path d="M13 5h3.5v3.5"/></svg>
+            </span>
+            <div class="perfil-stat-text">
+              <p class="perfil-stat-value" id="perfil-period-total">R$ 0,00</p>
+              <p class="perfil-stat-label">recebido no período</p>
+              <p class="perfil-stat-footnote">últimos 30 dias</p>
+            </div>
+          </section>
+        </div>
+
+        <section class="perfil-card perfil-chart-card">
+          <p class="perfil-card-label">recebido por dia</p>
+          <div class="perfil-chart-wrap" id="perfil-chart-wrap"></div>
+        </section>
+
+        <div class="perfil-grid">
+          <section class="perfil-card">
+            <p class="perfil-card-label">chave pix</p>
+            <p class="perfil-card-hint">
+              As doações caem numa conta única da plataforma e ficam
+              guardadas pra você até pedir o saque. Cadastre sua chave
+              Pix pra poder sacar.
+            </p>
+            <div class="perfil-field-row">
+              <input type="text" id="pix-key-input" placeholder="Chave aleatória, e-mail, telefone, CPF/CNPJ" autocomplete="off" />
+              <button class="btn-mini primary" id="pix-key-save">Salvar</button>
+            </div>
+            <p class="perfil-feedback" id="pix-key-feedback" hidden></p>
+            <p class="perfil-card-footnote" id="pix-key-updated" hidden></p>
+          </section>
 
           <section class="perfil-card perfil-history-card">
             <p class="perfil-card-label">histórico de saques</p>

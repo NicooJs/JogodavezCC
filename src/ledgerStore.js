@@ -110,6 +110,39 @@ async function getWithdrawalHistory(streamerId, limit = 50) {
   return res.rows.map(rowToWithdrawal);
 }
 
+// série diária dos últimos N dias pro gráfico do Perfil -- só dias com
+// doação vêm do banco, os dias vazios são preenchidos em JS (mais simples
+// que generate_series no SQL e o volume por streamer é sempre pequeno)
+async function getDonationSeries(streamerId, days = 30) {
+  const res = await query(
+    `SELECT date_trunc('day', created_at) AS day, COUNT(*) AS count, COALESCE(SUM(amount_cents), 0) AS total_cents
+     FROM ledger_entries
+     WHERE streamer_id = $1 AND kind = 'donation_credit' AND created_at >= now() - ($2 || ' days')::interval
+     GROUP BY day
+     ORDER BY day`,
+    [streamerId, days]
+  );
+  const byDay = new Map(res.rows.map((row) => [row.day.toISOString().slice(0, 10), row]));
+
+  const series = [];
+  let totalCents = 0;
+  let count = 0;
+  const today = new Date();
+  today.setUTCHours(0, 0, 0, 0);
+  for (let i = days - 1; i >= 0; i--) {
+    const d = new Date(today);
+    d.setUTCDate(d.getUTCDate() - i);
+    const key = d.toISOString().slice(0, 10);
+    const row = byDay.get(key);
+    const cents = row ? Number(row.total_cents) : 0;
+    const dayCount = row ? Number(row.count) : 0;
+    series.push({ date: key, cents, count: dayCount });
+    totalCents += cents;
+    count += dayCount;
+  }
+  return { series, totalCents, count };
+}
+
 // quanto deveria estar de verdade na Conta Master agora: saldo de todo
 // streamer (inclui saque "pending" -- o dinheiro já foi debitado do
 // streamer mas ainda não saiu da conta, então continua contando aqui) +
@@ -309,6 +342,7 @@ module.exports = {
   getBalance,
   getLifetimeEarnedCents,
   getWithdrawalHistory,
+  getDonationSeries,
   getLedgerTotals,
   logReconciliation,
   creditDonation,

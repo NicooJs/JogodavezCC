@@ -601,10 +601,11 @@ app.get("/api/perfil", async (req, res) => {
   if (!twitchSession) return res.status(401).json({ error: "Faça login com a Twitch" });
   try {
     const streamer = await streamersStore.ensureByTwitchUserId(twitchSession.twitchUserId);
-    const [balanceCents, lifetimeEarnedCents, pixKeyInfo] = await Promise.all([
+    const [balanceCents, lifetimeEarnedCents, pixKeyInfo, donationStats] = await Promise.all([
       ledgerStore.getBalance(streamer.id),
       ledgerStore.getLifetimeEarnedCents(streamer.id),
       streamerPixKeysStore.getPixKeyInfo(streamer.id),
+      ledgerStore.getDonationSeries(streamer.id, 30),
     ]);
     res.json({
       twitchLogin: twitchSession.twitchLogin,
@@ -616,6 +617,9 @@ app.get("/api/perfil", async (req, res) => {
       pixKey: pixKeyInfo ? pixKeyInfo.pixKey : null,
       pixKeyUpdatedAt: pixKeyInfo ? pixKeyInfo.updatedAt : null,
       cooldownRemainingMs: pixKeyChangeCooldownRemainingMs(pixKeyInfo),
+      donationCount30d: donationStats.count,
+      donationTotalCents30d: donationStats.totalCents,
+      donationSeries30d: donationStats.series,
     });
   } catch (err) {
     console.error(`[perfil] erro ao carregar (twitchUserId="${twitchSession.twitchUserId}"):`, err.message);
