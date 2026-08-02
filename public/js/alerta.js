@@ -31,19 +31,50 @@ const CHIME_PRESETS = {
   bell: { wave: "sine", apoio: [880, 1108], sabota: [440, 330] },
 };
 let currentChime = "classic";
+let customAudioEl = null;
+
+// pré-carrega o áudio customizado no load (não só na primeira doação) pra
+// não ter latência perceptível no primeiro alerta da live
+function applyCustomSound(url) {
+  if (!url) {
+    customAudioEl = null;
+    return;
+  }
+  const audio = new Audio(url);
+  audio.preload = "auto";
+  audio.addEventListener("error", () => { customAudioEl = null; });
+  customAudioEl = audio;
+}
 
 fetch(`/api/l/${LEILAO_ID}/alert-config`)
   .then((r) => r.json())
-  .then((d) => { if (CHIME_PRESETS[d.chime]) currentChime = d.chime; })
+  .then((d) => {
+    if (CHIME_PRESETS[d.chime] || d.chime === "custom") currentChime = d.chime;
+    applyCustomSound(d.soundUrl);
+  })
   .catch(() => {});
 
 // troca ao vivo, sem precisar recarregar a Browser Source no OBS -- disparado
 // só quando o streamer muda o som no Perfil, não em toda doação
 socket.on("alert-config", (data) => {
-  if (data && CHIME_PRESETS[data.chime]) currentChime = data.chime;
+  if (!data) return;
+  if (CHIME_PRESETS[data.chime] || data.chime === "custom") currentChime = data.chime;
+  applyCustomSound(data.soundUrl);
 });
 
 function playChime(isRemove) {
+  if (currentChime === "custom" && customAudioEl) {
+    customAudioEl.currentTime = 0;
+    const playPromise = customAudioEl.play();
+    if (playPromise && playPromise.catch) {
+      playPromise.catch(() => playSynthChime(isRemove));
+    }
+    return;
+  }
+  playSynthChime(isRemove);
+}
+
+function playSynthChime(isRemove) {
   try {
     const preset = CHIME_PRESETS[currentChime] || CHIME_PRESETS.classic;
     const ctx = new (window.AudioContext || window.webkitAudioContext)();

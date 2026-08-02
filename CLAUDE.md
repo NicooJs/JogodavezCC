@@ -242,6 +242,19 @@ pra todo leilão do streamer só nesse momento raro (troca de preferência),
 nunca a cada doação -- `alerta.js` escuta esse evento além do fetch
 inicial.
 
+Além dos 4 presets sintetizados, o streamer pode subir um áudio próprio
+(`chime = "custom"`, `custom_sound_url` em `streamer_alert_prefs`,
+migration 012). Upload em `POST /api/perfil/alert-sound` (multer, mesmo
+padrão de `UPLOADS_DIR`/Volume da imagem de fundo do board), com limite
+de 10s de duração (pedido explícito, sem negociação) validado no servidor
+via `music-metadata` (`parseFile`, lê metadata sem precisar de
+ffmpeg/ffprobe no Railway) -- checagem no cliente antes do upload é só
+UX, quem barra de verdade é o servidor. `streamerAlertPrefsStore.setChime`
+recusa selecionar `"custom"` se o streamer nunca subiu um áudio ainda.
+`alerta.js` pré-carrega o `<audio>` assim que a página abre (não só na
+primeira doação, pra não ter latência no primeiro alerta da live) e cai
+pro preset `classic` sintetizado se o arquivo falhar ao carregar ou tocar.
+
 ## Convenções gerais do projeto
 
 - Sem comentários explicativos triviais no código — só quando o *porquê* não é óbvio (ver exemplos reais: `pool.on("error")` em `src/pg.js`, `z-index:0` proposital em `style.css`, mod code mascarado por padrão em `app.js`).

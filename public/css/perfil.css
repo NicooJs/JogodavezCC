@@ -446,6 +446,10 @@
 .perfil-chime-desc { margin: 1px 0 0; font-size: 11.5px; color: var(--muted); }
 
 .perfil-chime-preview { flex-shrink: 0; height: 32px; padding: 0 14px; font-size: 12px; }
+.perfil-chime-preview:disabled { opacity: 0.45; cursor: not-allowed; }
+
+.perfil-chime-actions { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
+#chime-custom-upload { height: 32px; padding: 0 14px; font-size: 12px; }
 
 .perfil-subtabs {
   display: flex;

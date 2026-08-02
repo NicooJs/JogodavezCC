@@ -205,6 +205,18 @@
                     </div>
                     <button class="btn-mini perfil-chime-preview" type="button" data-preview="bell" aria-label="Ouvir Sino">Ouvir</button>
                   </div>
+                  <div class="perfil-chime-row" data-chime="custom">
+                    <span class="perfil-chime-radio" aria-hidden="true"></span>
+                    <div class="perfil-chime-text">
+                      <p class="perfil-chime-name">Personalizado</p>
+                      <p class="perfil-chime-desc" id="chime-custom-status">Nenhum áudio enviado ainda (até 10s, MP3/WAV/OGG).</p>
+                    </div>
+                    <div class="perfil-chime-actions">
+                      <input type="file" id="chime-custom-input" accept="audio/mpeg,audio/mp3,audio/wav,audio/x-wav,audio/ogg" hidden />
+                      <button class="btn-mini" id="chime-custom-upload" type="button">Enviar áudio</button>
+                      <button class="btn-mini perfil-chime-preview" type="button" id="chime-custom-preview" aria-label="Ouvir Personalizado" disabled>Ouvir</button>
+                    </div>
+                  </div>
                 </div>
                 <button class="btn-mini primary" id="chime-save" type="button">Salvar</button>
                 <p class="perfil-feedback" id="chime-feedback" hidden></p>

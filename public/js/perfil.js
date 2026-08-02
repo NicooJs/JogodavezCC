@@ -29,8 +29,14 @@ const chimeListEl = document.getElementById("chime-list");
 const chimeRows = [...document.querySelectorAll(".perfil-chime-row")];
 const chimeSaveBtn = document.getElementById("chime-save");
 const chimeFeedbackEl = document.getElementById("chime-feedback");
+const chimeCustomStatusEl = document.getElementById("chime-custom-status");
+const chimeCustomInputEl = document.getElementById("chime-custom-input");
+const chimeCustomUploadBtn = document.getElementById("chime-custom-upload");
+const chimeCustomPreviewBtn = document.getElementById("chime-custom-preview");
 let selectedChime = "classic";
 let savedChime = "classic";
+let customSoundUrl = null;
+const MAX_CUSTOM_SOUND_SECONDS = 10;
 
 const donationsSearchEl = document.getElementById("donations-search");
 const donationListEl = document.getElementById("donation-list");
@@ -204,10 +210,15 @@ subtabButtons.forEach((btn) => {
 });
 
 async function perfilFetch(path, options = {}) {
+  // FormData define seu próprio Content-Type (boundary) -- não fixar aqui.
+  const isFormData = options.body instanceof FormData;
   const res = await fetch(`/api/perfil${path}`, {
     ...options,
     credentials: "same-origin",
-    headers: { "Content-Type": "application/json", ...(options.headers || {}) },
+    headers: {
+      ...(isFormData ? {} : { "Content-Type": "application/json" }),
+      ...(options.headers || {}),
+    },
   });
   if (!res.ok) {
     const data = await res.json().catch(() => ({}));
@@ -279,6 +290,8 @@ async function loadPerfil() {
 
   selectedChime = data.alertChime || "classic";
   savedChime = selectedChime;
+  customSoundUrl = data.alertCustomSoundUrl || null;
+  applyCustomSoundStatus();
   applyChimeSelection();
 }
 
@@ -530,9 +543,17 @@ function applyChimeSelection() {
   chimeSaveBtn.disabled = selectedChime === savedChime;
 }
 
+function applyCustomSoundStatus() {
+  chimeCustomPreviewBtn.disabled = !customSoundUrl;
+  chimeCustomStatusEl.textContent = customSoundUrl
+    ? "Áudio enviado."
+    : "Nenhum áudio enviado ainda (até 10s, MP3/WAV/OGG).";
+}
+
 chimeRows.forEach((row) => {
   row.addEventListener("click", (e) => {
-    if (e.target.closest(".perfil-chime-preview")) return;
+    if (e.target.closest(".perfil-chime-actions")) return;
+    if (row.dataset.chime === "custom" && !customSoundUrl) return;
     selectedChime = row.dataset.chime;
     applyChimeSelection();
   });
@@ -541,9 +562,56 @@ chimeRows.forEach((row) => {
 document.querySelectorAll(".perfil-chime-preview").forEach((btn) => {
   btn.addEventListener("click", (e) => {
     e.stopPropagation();
+    if (btn === chimeCustomPreviewBtn) {
+      if (customSoundUrl) new Audio(customSoundUrl).play().catch(() => {});
+      return;
+    }
     playChimePreview(btn.dataset.preview);
   });
 });
+
+chimeCustomUploadBtn.addEventListener("click", (e) => {
+  e.stopPropagation();
+  chimeCustomInputEl.click();
+});
+
+chimeCustomInputEl.addEventListener("click", (e) => e.stopPropagation());
+
+chimeCustomInputEl.addEventListener("change", () => {
+  const file = chimeCustomInputEl.files && chimeCustomInputEl.files[0];
+  if (!file) return;
+
+  const probe = new Audio(URL.createObjectURL(file));
+  probe.addEventListener("loadedmetadata", () => {
+    if (probe.duration > MAX_CUSTOM_SOUND_SECONDS) {
+      chimeCustomStatusEl.textContent = `Esse áudio tem ${probe.duration.toFixed(1)}s -- o limite é ${MAX_CUSTOM_SOUND_SECONDS}s.`;
+      chimeCustomInputEl.value = "";
+      return;
+    }
+    uploadCustomSound(file);
+  });
+  probe.addEventListener("error", () => uploadCustomSound(file));
+});
+
+async function uploadCustomSound(file) {
+  chimeCustomStatusEl.textContent = "Enviando...";
+  chimeCustomUploadBtn.disabled = true;
+  try {
+    const formData = new FormData();
+    formData.append("audio", file);
+    const data = await perfilFetch("/alert-sound", { method: "POST", body: formData });
+    customSoundUrl = data.url;
+    selectedChime = "custom";
+    savedChime = "custom";
+    applyCustomSoundStatus();
+    applyChimeSelection();
+  } catch (err) {
+    chimeCustomStatusEl.textContent = "Erro: " + err.message;
+  } finally {
+    chimeCustomUploadBtn.disabled = false;
+    chimeCustomInputEl.value = "";
+  }
+}
 
 chimeSaveBtn.addEventListener("click", async () => {
   chimeFeedbackEl.hidden = true;

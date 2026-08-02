@@ -6,6 +6,7 @@ const express = require("express");
 const http = require("http");
 const { Server } = require("socket.io");
 const multer = require("multer");
+const mm = require("music-metadata");
 
 const registry = require("./src/registry");
 const { getStore, deleteStore, DATA_DIR } = require("./src/stores");
@@ -120,6 +121,35 @@ function deleteUploadedBackgroundsFor(leilaoId) {
     });
   }
 }
+
+const ALLOWED_AUDIO_TYPES = {
+  "audio/mpeg": ".mp3",
+  "audio/wav": ".wav",
+  "audio/wave": ".wav",
+  "audio/x-wav": ".wav",
+  "audio/ogg": ".ogg",
+};
+
+// som de alerta é da conta, não do leilão -- nome do arquivo usa o
+// twitchUserId (disponível síncrono via cookie, sem round-trip ao banco
+// só pra nomear o arquivo)
+const alertSoundUpload = multer({
+  storage: multer.diskStorage({
+    destination: (req, file, cb) => cb(null, UPLOADS_DIR),
+    filename: (req, file, cb) => {
+      const twitchSession = getTwitchSession(req);
+      const ext = ALLOWED_AUDIO_TYPES[file.mimetype] || "";
+      cb(null, `alert-${(twitchSession && twitchSession.twitchUserId) || "anon"}-${Date.now()}${ext}`);
+    },
+  }),
+  limits: { fileSize: 5 * 1024 * 1024 },
+  fileFilter: (req, file, cb) => {
+    if (!ALLOWED_AUDIO_TYPES[file.mimetype]) {
+      return cb(new Error("Envie um áudio MP3, WAV ou OGG"));
+    }
+    cb(null, true);
+  },
+});
 
 const DEFAULT_AUTO_CLOSE_MS = 5 * 60 * 1000;
 
@@ -603,12 +633,12 @@ app.get("/api/perfil", async (req, res) => {
   if (!twitchSession) return res.status(401).json({ error: "Faça login com a Twitch" });
   try {
     const streamer = await streamersStore.ensureByTwitchUserId(twitchSession.twitchUserId);
-    const [balanceCents, lifetimeEarnedCents, pixKeyInfo, donationStats, alertChime] = await Promise.all([
+    const [balanceCents, lifetimeEarnedCents, pixKeyInfo, donationStats, alertPrefs] = await Promise.all([
       ledgerStore.getBalance(streamer.id),
       ledgerStore.getLifetimeEarnedCents(streamer.id),
       streamerPixKeysStore.getPixKeyInfo(streamer.id),
       ledgerStore.getDonationSeries(streamer.id, 30),
-      streamerAlertPrefsStore.getChime(streamer.id),
+      streamerAlertPrefsStore.getPrefs(streamer.id),
     ]);
 
     // widget OBS referencia um leilão específico por natureza (a URL carrega
@@ -634,7 +664,8 @@ app.get("/api/perfil", async (req, res) => {
       donationCount30d: donationStats.count,
       donationTotalCents30d: donationStats.totalCents,
       donationSeries30d: donationStats.series,
-      alertChime,
+      alertChime: alertPrefs.chime,
+      alertCustomSoundUrl: alertPrefs.customSoundUrl,
       latestLeilao,
       leilaoCount: ownedLeiloes.length,
     });
@@ -671,17 +702,67 @@ app.post("/api/perfil/alert-chime", async (req, res) => {
   try {
     const streamer = await currentStreamer(req);
     await streamerAlertPrefsStore.setChime(streamer.id, chime);
+    const prefs = await streamerAlertPrefsStore.getPrefs(streamer.id);
     // avisa em tempo real qualquer overlay OBS já aberto de qualquer leilão
     // desse streamer -- sem isso só pegaria a troca no próximo carregamento
     // da página (recarregar a Browser Source no OBS)
     for (const meta of registry.listLeiloesByOwner(twitchSession.twitchUserId)) {
-      io.to(meta.id).emit("alert-config", { chime });
+      io.to(meta.id).emit("alert-config", { chime, soundUrl: chime === "custom" ? prefs.customSoundUrl : null });
     }
     res.json({ ok: true });
   } catch (err) {
+    if (err.message === "Nenhum áudio personalizado enviado ainda") {
+      return res.status(400).json({ error: err.message });
+    }
     console.error(`[perfil] erro ao salvar chime (twitchUserId="${twitchSession.twitchUserId}"):`, err.message);
     res.status(502).json({ error: "Não foi possível salvar o som do alerta agora." });
   }
+});
+
+// upload de áudio de alerta customizado -- duração validada aqui (music-metadata,
+// evita depender de ffmpeg/ffprobe no Railway), limite de 10s vem de pedido
+// explícito do usuário. Ativa 'custom' como chime atômico junto do upload.
+app.post("/api/perfil/alert-sound", (req, res) => {
+  const twitchSession = getTwitchSession(req);
+  if (!twitchSession) return res.status(401).json({ error: "Faça login com a Twitch" });
+  alertSoundUpload.single("audio")(req, res, async (err) => {
+    if (err) return res.status(400).json({ error: err.message });
+    if (!req.file) return res.status(400).json({ error: "Nenhum áudio enviado" });
+
+    let duration;
+    try {
+      const metadata = await mm.parseFile(req.file.path);
+      duration = metadata.format.duration || 0;
+    } catch {
+      fs.unlink(req.file.path, () => {});
+      return res.status(400).json({ error: "Não foi possível ler esse arquivo de áudio." });
+    }
+    if (duration > 10) {
+      fs.unlink(req.file.path, () => {});
+      return res.status(400).json({ error: "O áudio precisa ter no máximo 10 segundos." });
+    }
+
+    try {
+      const streamer = await currentStreamer(req);
+      const prevPrefs = await streamerAlertPrefsStore.getPrefs(streamer.id);
+      const url = `/uploads/${req.file.filename}`;
+      await streamerAlertPrefsStore.setCustomSound(streamer.id, url);
+      if (prevPrefs.customSoundUrl && prevPrefs.customSoundUrl.startsWith("/uploads/") && prevPrefs.customSoundUrl !== url) {
+        const oldPath = path.join(UPLOADS_DIR, path.basename(prevPrefs.customSoundUrl));
+        fs.unlink(oldPath, (e) => {
+          if (e && e.code !== "ENOENT") console.error("Falha ao apagar áudio de alerta antigo:", e.message);
+        });
+      }
+      for (const meta of registry.listLeiloesByOwner(twitchSession.twitchUserId)) {
+        io.to(meta.id).emit("alert-config", { chime: "custom", soundUrl: url });
+      }
+      res.json({ ok: true, url });
+    } catch (dbErr) {
+      fs.unlink(req.file.path, () => {});
+      console.error(`[perfil] erro ao salvar áudio de alerta (twitchUserId="${twitchSession.twitchUserId}"):`, dbErr.message);
+      res.status(502).json({ error: "Não foi possível salvar o áudio agora." });
+    }
+  });
 });
 
 app.post("/api/perfil/saque", async (req, res) => {
@@ -1234,14 +1315,16 @@ app.get("/api/l/:id/alert-config", loadLeilao, async (req, res) => {
   try {
     const meta = registry.getLeilaoMeta(req.leilaoId);
     const ownerTwitchUserId = meta && meta.ownerTwitchUserId;
-    if (!ownerTwitchUserId) return res.json({ chime: streamerAlertPrefsStore.DEFAULT_CHIME });
+    if (!ownerTwitchUserId) return res.json({ chime: streamerAlertPrefsStore.DEFAULT_CHIME, soundUrl: null });
 
     const streamer = await streamersStore.findByTwitchUserId(ownerTwitchUserId);
-    const chime = streamer ? await streamerAlertPrefsStore.getChime(streamer.id) : streamerAlertPrefsStore.DEFAULT_CHIME;
-    res.json({ chime });
+    const prefs = streamer
+      ? await streamerAlertPrefsStore.getPrefs(streamer.id)
+      : { chime: streamerAlertPrefsStore.DEFAULT_CHIME, customSoundUrl: null };
+    res.json({ chime: prefs.chime, soundUrl: prefs.customSoundUrl });
   } catch (err) {
     console.error(`[alert-config] erro (leilaoId="${req.leilaoId}"):`, err.message);
-    res.json({ chime: streamerAlertPrefsStore.DEFAULT_CHIME });
+    res.json({ chime: streamerAlertPrefsStore.DEFAULT_CHIME, soundUrl: null });
   }
 });
 
