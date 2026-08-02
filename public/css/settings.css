@@ -94,6 +94,8 @@
 }
 
 .settings-modal .hint { color: var(--muted); font-size: 12px; line-height: 1.5; margin: 2px 0 10px; }
+.settings-modal .hint a { color: var(--accent-text); }
+.settings-modal .hint a:hover { color: var(--accent); }
 
 .settings-modal label {
   display: block;

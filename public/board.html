@@ -97,7 +97,7 @@
 
     <section class="webhook-warning pix-warning" id="pix-warning" hidden>
       <svg class="icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 3.5l7.5 13h-15l7.5-13z"/><path d="M10 8.5v3.2"/><circle cx="10" cy="14.2" r="0.9" fill="currentColor" stroke="none"/></svg>
-      <span>Cadastre sua <strong>chave Pix</strong> nas Configurações → Avançado pra poder sacar as doações.</span>
+      <span>Cadastre sua <strong>chave Pix</strong> no <a href="/perfil">seu Perfil</a> pra poder sacar as doações.</span>
       <button type="button" id="pix-warning-close" aria-label="Fechar aviso">✕</button>
     </section>
 
@@ -106,6 +106,9 @@
         <section class="panel host-panel">
           <p class="panel-label">host do leilão</p>
           <div class="host-card">
+            <a class="host-card-perfil-link" id="host-perfil-link" href="/perfil" title="Ver seu perfil" aria-label="Ver seu perfil" hidden>
+              <svg class="icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="10" cy="6.6" r="3.1"/><path d="M4 16.5c0-3.3 2.7-5.5 6-5.5s6 2.2 6 5.5"/></svg>
+            </a>
             <div class="host-row">
               <div class="host-avatar-wrap">
                 <img class="host-avatar" id="host-avatar" alt="" hidden />
@@ -653,21 +656,7 @@
       <div class="settings-panel-group" data-tab-panel="avancado" hidden>
         <div class="panel">
           <h2 class="panel-title">Chave Pix e saldo</h2>
-          <p class="hint">
-            As doações caem numa conta única da plataforma e ficam
-            guardadas pra você até pedir o saque. Cadastre sua chave Pix
-            pra poder sacar.
-          </p>
-          <div class="panel-row wrap">
-            <input type="text" id="pix-key-input" placeholder="Sua chave Pix (aleatória, e-mail, telefone, CPF/CNPJ)" autocomplete="off" />
-            <button class="btn-mini primary" id="pix-key-save">Salvar chave</button>
-          </div>
-          <p class="hint" id="pix-key-feedback" hidden></p>
-          <div class="panel-row">
-            <span id="saldo-state" class="badge">verificando…</span>
-            <button class="btn-mini" id="saque-submit" disabled>Solicitar saque</button>
-          </div>
-          <p class="hint" id="saque-feedback" hidden></p>
+          <p class="hint">Chave Pix, saldo e saques agora ficam no <a href="/perfil">seu Perfil</a>, fora do escopo de um leilão específico.</p>
         </div>
 
         <div class="panel">
@@ -683,15 +672,12 @@
         </div>
 
         <div class="panel">
-          <h2 class="panel-title">Sua conta</h2>
-          <p class="hint">Desconecta sua conta da Twitch nesse navegador. Você sai do modo apresentador em todos os seus leilões.</p>
-          <div class="panel-row">
-            <button class="btn-mini" id="account-logout-btn" type="button">Sair da conta</button>
-          </div>
-          <p class="hint" style="margin-top: 14px;">
+          <h2 class="panel-title">Moderadores</h2>
+          <p class="hint">
             Derruba o acesso de qualquer moderador conectado agora com o
             código de uso único (eles precisam de um código novo pra
-            entrar de novo). Não afeta você.
+            entrar de novo). Não afeta você. Pra sair da sua própria conta,
+            use o <a href="/perfil">seu Perfil</a>.
           </p>
           <div class="panel-row">
             <button class="btn-mini danger" id="revoke-mods-btn" type="button">Revogar acesso de moderadores</button>

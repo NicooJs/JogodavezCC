@@ -54,7 +54,6 @@ function openSettingsModal() {
   activateSettingsTab("geral", { instant: true });
   if (settingsLeaderboard) renderSettingsFromLeaderboard(settingsLeaderboard);
   loadSettingsHistory();
-  loadSaldo();
 }
 
 function closeSettingsModal() {
@@ -189,73 +188,6 @@ function renderOpenState(open) {
   document.getElementById("toggle-open").textContent = open ? "Encerrar leilão" : "Reabrir leilão";
 }
 
-let currentBalanceCents = 0;
-
-async function loadSaldo() {
-  const badge = document.getElementById("saldo-state");
-  const saqueBtn = document.getElementById("saque-submit");
-  const pixInput = document.getElementById("pix-key-input");
-  const feedback = document.getElementById("saque-feedback");
-  try {
-    const data = await presenterFetch("/admin/saldo");
-    currentBalanceCents = data.balanceCents || 0;
-    badge.textContent = `saldo: ${formatBRL(currentBalanceCents / 100)}`;
-    badge.className = "badge";
-    if (document.activeElement !== pixInput) pixInput.value = data.pixKey || "";
-
-    const cooldownMs = data.cooldownRemainingMs || 0;
-    if (cooldownMs > 0) {
-      const horas = Math.ceil(cooldownMs / 3_600_000);
-      saqueBtn.disabled = true;
-      feedback.textContent = `Chave Pix trocada recentemente -- saque libera em ~${horas}h, por segurança.`;
-      feedback.hidden = false;
-    } else {
-      saqueBtn.disabled = !data.pixKey || currentBalanceCents <= 0;
-    }
-  } catch (err) {
-    badge.textContent = "erro ao carregar saldo";
-    badge.className = "badge closed";
-  }
-}
-
-document.getElementById("pix-key-save").addEventListener("click", async () => {
-  const pixKey = document.getElementById("pix-key-input").value.trim();
-  const feedback = document.getElementById("pix-key-feedback");
-  feedback.hidden = true;
-  if (!pixKey) return;
-  try {
-    await presenterFetch("/admin/pix-key", { method: "POST", body: JSON.stringify({ pixKey }) });
-    feedback.textContent = "Chave Pix salva!";
-    feedback.hidden = false;
-    loadSaldo();
-  } catch (err) {
-    feedback.textContent = "Erro: " + err.message;
-    feedback.hidden = false;
-  }
-});
-
-document.getElementById("saque-submit").addEventListener("click", async () => {
-  const feedback = document.getElementById("saque-feedback");
-  feedback.hidden = true;
-  const ok = await confirmDialog({
-    title: "Solicitar saque",
-    message: `Sacar ${formatBRL(currentBalanceCents / 100)} pra sua chave Pix cadastrada?`,
-    confirmLabel: "Solicitar saque",
-  });
-  if (!ok) return;
-  const btn = document.getElementById("saque-submit");
-  btn.disabled = true;
-  try {
-    const data = await presenterFetch("/admin/saque", { method: "POST" });
-    feedback.textContent = `Saque solicitado: ${formatBRL(data.sentCents / 100)}. A confirmação pode levar alguns instantes -- seu saldo atualiza sozinho quando sair.`;
-    feedback.hidden = false;
-    loadSaldo();
-  } catch (err) {
-    feedback.textContent = "Erro: " + err.message;
-    feedback.hidden = false;
-    btn.disabled = false;
-  }
-});
 
 function renderSettingsThemePicker(theme) {
   document.querySelectorAll("#settings-theme-picker .theme-swatch").forEach((btn) => {
@@ -410,18 +342,6 @@ document.getElementById("merge-submit").addEventListener("click", async () => {
   } catch (err) {
     alert(err.message);
   }
-});
-
-document.getElementById("account-logout-btn").addEventListener("click", async () => {
-  const ok = await confirmDialog({
-    title: "Sair da conta",
-    message: "Isso desconecta sua conta da Twitch nesse navegador. Você precisa entrar de novo pra voltar ao modo apresentador.",
-    confirmLabel: "Sair da conta",
-    danger: true,
-  });
-  if (!ok) return;
-  await fetch("/api/session/logout", { method: "POST" }).catch(() => {});
-  location.href = "/";
 });
 
 document.getElementById("revoke-mods-btn").addEventListener("click", async () => {

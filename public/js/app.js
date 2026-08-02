@@ -19,6 +19,7 @@ const hostNameEl = document.getElementById("host-name");
 const hostAvatarEl = document.getElementById("host-avatar");
 const hostTwitchBadgeEl = document.getElementById("host-twitch-badge");
 const hostTwitchLinkEl = document.getElementById("host-twitch-link");
+const hostPerfilLinkEl = document.getElementById("host-perfil-link");
 const timerEl = document.getElementById("timer");
 const timerClockEl = document.getElementById("timer-clock");
 const timerLabelEl = document.getElementById("timer-label");
@@ -2017,6 +2018,7 @@ function setPresenterMode(active) {
     ? (isPresenterOwner ? "Gerar código para moderador" : "Modo apresentador ativo")
     : "Entrar no modo apresentador";
   presenterDrawerEl.hidden = !active;
+  hostPerfilLinkEl.hidden = !(active && isPresenterOwner);
   updatePixWarning();
 }
 

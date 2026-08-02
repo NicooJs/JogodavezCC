@@ -163,12 +163,28 @@ na aba Avançado das Configurações.
 **Configurações** (4 abas com indicador deslizante): Geral (título, links de
 doação/alerta, abrir/encerrar, qualifyCount), Aparência (tema, imagem de
 fundo), Jogos/Filmes (lançamento manual, tabela com editar/excluir/mesclar
-duplicados), Avançado (chave Pix + saldo/saque, histórico de leilões, sair
-da conta, zerar leilão).
+duplicados), Avançado (histórico de leilões, revogar acesso de moderadores,
+zerar leilão). Chave Pix, saldo, saque e "sair da conta" **não** ficam mais
+aqui, ver Perfil abaixo.
 
 Toggle de modalidade Jogos↔Filmes fica na `presenter-bar` (não dentro de
 Configurações) e troca todos os textos da UI via sistema de labels dinâmicos
 (`data-label-text`/`data-label-placeholder`/`data-label-title`).
+
+Um ícone no canto do `host-panel` (`#host-perfil-link`) leva pro Perfil,
+visível só pro dono em modo apresentador (não pra público nem moderador).
+
+### Perfil (`perfil.html` + `perfil.js`)
+
+Tela de conta, fora do escopo de um leilão específico -- `streamerId` é por
+conta (`streamersStore.ensureByTwitchUserId`), então chave Pix, saldo,
+saque e histórico de saques são os mesmos não importa qual leilão o
+streamer está gerenciando. Rotas de conta em `server.js`:
+`GET /api/perfil`, `POST /api/perfil/pix-key`, `POST /api/perfil/saque`,
+`GET /api/perfil/saques` (gate é só `getTwitchSession(req)`, sem
+`leilaoId`). Também mostra o total histórico já arrecadado
+(`ledgerStore.getLifetimeEarnedCents`, nunca cai mesmo depois de sacado) e
+"sair da conta".
 
 ### Overlay OBS (`alerta.html` + `alerta.js`)
 

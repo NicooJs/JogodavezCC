@@ -91,6 +91,25 @@ async function getBalance(streamerId) {
   return res.rows[0] ? Number(res.rows[0].balance_cents) : 0;
 }
 
+// soma histórica de tudo que já caiu pro streamer via doação, nunca some
+// mesmo depois de sacado -- é "quanto essa conta já arrecadou na vida",
+// diferente do saldo atual (que cai a cada saque)
+async function getLifetimeEarnedCents(streamerId) {
+  const res = await query(
+    `SELECT COALESCE(SUM(amount_cents), 0) AS total FROM ledger_entries WHERE streamer_id = $1 AND kind = 'donation_credit'`,
+    [streamerId]
+  );
+  return Number(res.rows[0].total);
+}
+
+async function getWithdrawalHistory(streamerId, limit = 50) {
+  const res = await query(
+    `SELECT * FROM withdrawals WHERE streamer_id = $1 ORDER BY created_at DESC LIMIT $2`,
+    [streamerId, limit]
+  );
+  return res.rows.map(rowToWithdrawal);
+}
+
 // quanto deveria estar de verdade na Conta Master agora: saldo de todo
 // streamer (inclui saque "pending" -- o dinheiro já foi debitado do
 // streamer mas ainda não saiu da conta, então continua contando aqui) +
@@ -288,6 +307,8 @@ module.exports = {
   computeDonationSplit,
   computeWithdrawal,
   getBalance,
+  getLifetimeEarnedCents,
+  getWithdrawalHistory,
   getLedgerTotals,
   logReconciliation,
   creditDonation,

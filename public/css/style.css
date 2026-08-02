@@ -770,6 +770,8 @@ body.board-body.has-bg-image .board-cover-bg { display: none; }
 }
 .pix-warning .icon { color: var(--bronze); }
 .pix-warning span { flex: 1; min-width: 0; }
+.pix-warning a { color: var(--bronze); text-decoration: underline; }
+.pix-warning a:hover { color: var(--text); }
 .pix-warning button {
   color: var(--bronze);
   font-size: 15px;
@@ -1750,6 +1752,24 @@ body.board-body.has-bg-image .board-cover-bg { display: none; }
 }
 .host-twitch-link:hover { color: var(--accent); text-decoration: underline; }
 .host-twitch-link[hidden] { display: none; }
+
+.host-card-perfil-link {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  width: 26px;
+  height: 26px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  color: var(--muted);
+  background: transparent;
+  transition: color 0.15s ease, background 0.15s ease;
+}
+.host-card-perfil-link .icon { width: 15px; height: 15px; }
+.host-card-perfil-link:hover { color: var(--accent-text); background: var(--surface); }
+.host-card-perfil-link[hidden] { display: none; }
 
 .host-twitch-badge {
   position: absolute;

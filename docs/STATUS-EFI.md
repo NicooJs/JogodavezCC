@@ -5,6 +5,32 @@
 > real do projeto — não confie em ideias antigas de outra sessão que
 > contradigam o que está escrito aqui.
 
+## Perfil (conta) -- chave Pix/saldo/saque saíram do escopo do leilão (2026-08-01)
+
+`streamerId` sempre foi por conta (`streamersStore.ensureByTwitchUserId`
+devolve o mesmo streamer não importa qual leilão o dono está gerenciando),
+mas a UI ainda tratava saldo/chave Pix/saque como se fossem por leilão
+(dentro de Configurações → Avançado de cada board). Criada a página
+`/perfil` (`public/perfil.html/css/js`), fora do escopo de um leilão
+específico, com rotas de conta em `server.js`: `GET /api/perfil`,
+`POST /api/perfil/pix-key`, `POST /api/perfil/saque`, `GET /api/perfil/saques`
+(usa só `getTwitchSession(req)` + `streamersStore.ensureByTwitchUserId`, sem
+`leilaoId`). As rotas antigas `GET/POST /api/l/:id/admin/saldo|pix-key|saque`
+e o middleware `requireLeilaoOwner` foram **removidos** (não mantidos em
+paralelo, pra não duplicar caminho de código que mexe com dinheiro). Ganhos
+de código: `ledgerStore.getLifetimeEarnedCents` (soma histórica de
+`donation_credit`, nunca cai mesmo depois de sacado) e
+`ledgerStore.getWithdrawalHistory`.
+
+No board, o `host-panel` ganhou um ícone pequeno (`#host-perfil-link`) que
+leva pro Perfil, visível só quando `isPresenterOwner` está true (não pra
+público nem moderador) -- deliberadamente um elemento separado do badge/link
+existente do Twitch, pra não conflitar os dois destinos num mesmo clique.
+"Sair da conta" saiu de Configurações → Avançado e migrou pro Perfil (ação de
+conta, não de leilão); "Revogar acesso de moderadores" continua em
+Configurações (é por leilão, depende do `adminSessionVersion` daquele
+leilão específico).
+
 ## Revisão de fluxo: 3 itens médios corrigidos (2026-08-01/02)
 
 Cliente pediu revisão geral do fluxo e priorizou 3 achados de severidade

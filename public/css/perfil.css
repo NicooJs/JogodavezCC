@@ -1,0 +1,217 @@
+
+.perfil-main {
+  max-width: 780px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
+}
+
+.perfil-logged-out {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  background-color: var(--surface);
+  background-image: var(--grain);
+  background-blend-mode: overlay;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 26px;
+}
+.perfil-logged-out[hidden] { display: none; }
+.perfil-logged-out .create-twitch-login { align-self: flex-start; }
+
+.perfil-logged-in { display: flex; flex-direction: column; gap: 20px; }
+.perfil-logged-in[hidden] { display: none; }
+
+.perfil-identity {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  background-color: var(--surface);
+  background-image: var(--grain);
+  background-blend-mode: overlay;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 18px 22px;
+}
+
+.perfil-avatar {
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  object-fit: cover;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  flex-shrink: 0;
+}
+
+.perfil-identity-text { flex: 1; min-width: 0; }
+
+.perfil-name {
+  margin: 0;
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 18px;
+  color: var(--text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.perfil-login {
+  margin: 2px 0 0;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.perfil-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+  align-items: start;
+}
+
+.perfil-col { display: flex; flex-direction: column; gap: 20px; }
+
+.perfil-card {
+  display: flex;
+  flex-direction: column;
+  background-color: var(--surface);
+  background-image: var(--grain);
+  background-blend-mode: overlay;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 22px;
+}
+.perfil-col > .perfil-card:nth-of-type(2n) { border-radius: 14px 12px 14px 13px; }
+.perfil-col > .perfil-card:nth-of-type(2n+1) { border-radius: 12px 14px 13px 14px; }
+
+.perfil-card-label {
+  margin: 0 0 4px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted);
+  font-weight: 600;
+}
+
+.perfil-card-hint {
+  margin: 0 0 14px;
+  font-size: 12.5px;
+  line-height: 1.6;
+  color: var(--muted);
+}
+
+.perfil-card-footnote {
+  margin: 10px 0 0;
+  font-size: 11.5px;
+  color: var(--muted);
+}
+.perfil-card-footnote[hidden] { display: none; }
+
+.perfil-field-row {
+  display: flex;
+  gap: 8px;
+}
+
+.perfil-field-row input {
+  flex: 1;
+  min-width: 0;
+  height: 40px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  color: var(--text);
+  padding: 0 12px;
+  border-radius: var(--radius);
+  font-family: var(--font-body);
+  font-size: 13.5px;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+.perfil-field-row input:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-bg);
+}
+
+.perfil-feedback {
+  margin: 10px 0 0;
+  font-size: 12.5px;
+  color: var(--muted);
+  line-height: 1.5;
+}
+.perfil-feedback[hidden] { display: none; }
+.perfil-feedback.error { color: var(--danger); }
+.perfil-feedback.ok { color: var(--positive); }
+
+.perfil-balance-card { position: relative; overflow: hidden; }
+
+.perfil-balance-value {
+  margin: 4px 0 0;
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  font-size: 34px;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.perfil-saque-btn { margin-top: 16px; align-self: flex-start; }
+.perfil-saque-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+.perfil-history-card { min-width: 0; }
+
+.perfil-history-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-height: 420px;
+  overflow-y: auto;
+}
+
+.perfil-empty { margin: 0; font-size: 13px; color: var(--muted); }
+
+.perfil-saque-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  background: var(--surface-2);
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius);
+  padding: 10px 12px;
+}
+
+.perfil-saque-row-main { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+
+.perfil-saque-value {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.perfil-saque-date { font-size: 11px; color: var(--muted); }
+
+.perfil-saque-status {
+  flex-shrink: 0;
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  padding: 3px 8px;
+  border-radius: 3px;
+  background: var(--surface);
+  color: var(--muted);
+  border: 1px solid var(--border-soft);
+}
+.perfil-saque-status[data-status="sent"] { background: rgba(70, 177, 127, 0.14); color: var(--positive); border-color: transparent; }
+.perfil-saque-status[data-status="failed"] { background: var(--danger-bg); color: var(--danger); border-color: transparent; }
+.perfil-saque-status[data-status="pending"] { background: var(--accent-bg); color: var(--accent-text); border-color: transparent; }
+
+@media (max-width: 720px) {
+  .perfil-grid { grid-template-columns: 1fr; }
+  .perfil-identity { padding: 16px 18px; }
+}

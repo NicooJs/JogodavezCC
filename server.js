@@ -148,7 +148,7 @@ const SESSION_MAX_AGE_SECONDS = 30 * 24 * 60 * 60;
 const OAUTH_STATE_MAX_AGE_SECONDS = 600;
 
 // allowlist exata (não regex) pra fechar open-redirect
-const ALLOWED_RETURN_PATHS = new Set(["/", "/meus-leiloes"]);
+const ALLOWED_RETURN_PATHS = new Set(["/", "/meus-leiloes", "/perfil"]);
 function safeReturnTo(value) {
   return ALLOWED_RETURN_PATHS.has(value) ? value : "/";
 }
@@ -416,18 +416,6 @@ function loadLeilao(req, res, next) {
   next();
 }
 
-// mais restrito que requireLeilaoAdmin de propósito: rotas de saldo/saque
-// não podem aceitar sessão de moderador (código de uso único), só o dono
-// de verdade -- moderador não deve conseguir mexer em dinheiro do streamer
-function requireLeilaoOwner(req, res, next) {
-  const twitchSession = getTwitchSession(req);
-  const meta = registry.getLeilaoMeta(req.leilaoId);
-  if (twitchSession && meta && meta.ownerTwitchUserId && twitchSession.twitchUserId === meta.ownerTwitchUserId) {
-    return next();
-  }
-  return res.status(401).json({ error: "Só o dono do leilão pode fazer isso." });
-}
-
 function requireLeilaoAdmin(req, res, next) {
   if (hasAdminSession(req, req.leilaoId)) return next();
 
@@ -597,54 +585,71 @@ function pixKeyChangeCooldownRemainingMs(pixKeyInfo) {
   return Math.max(0, PIX_KEY_CHANGE_COOLDOWN_MS - elapsed);
 }
 
-async function findOwnerStreamer(leilaoId) {
-  const meta = registry.getLeilaoMeta(leilaoId);
-  const ownerTwitchUserId = meta && meta.ownerTwitchUserId;
-  if (!ownerTwitchUserId) return null;
-  return streamersStore.ensureByTwitchUserId(ownerTwitchUserId);
+// ---------- perfil (conta) -- streamerId é por conta, não por leilão, então
+// saldo/chave Pix/saque vivem aqui, fora do escopo de um leilão específico
+// (ver docs/STATUS-EFI.md: streamersStore.ensureByTwitchUserId já é o mesmo
+// streamer independente de qual leilão o dono está gerenciando no momento)
+
+async function currentStreamer(req) {
+  const twitchSession = getTwitchSession(req);
+  if (!twitchSession) return null;
+  return streamersStore.ensureByTwitchUserId(twitchSession.twitchUserId);
 }
 
-app.get("/api/l/:id/admin/saldo", loadLeilao, requireLeilaoOwner, async (req, res) => {
+app.get("/api/perfil", async (req, res) => {
+  const twitchSession = getTwitchSession(req);
+  if (!twitchSession) return res.status(401).json({ error: "Faça login com a Twitch" });
   try {
-    const streamer = await findOwnerStreamer(req.leilaoId);
-    const [balanceCents, pixKeyInfo] = await Promise.all([
+    const streamer = await streamersStore.ensureByTwitchUserId(twitchSession.twitchUserId);
+    const [balanceCents, lifetimeEarnedCents, pixKeyInfo] = await Promise.all([
       ledgerStore.getBalance(streamer.id),
+      ledgerStore.getLifetimeEarnedCents(streamer.id),
       streamerPixKeysStore.getPixKeyInfo(streamer.id),
     ]);
-    const cooldownRemainingMs = pixKeyChangeCooldownRemainingMs(pixKeyInfo);
     res.json({
+      twitchLogin: twitchSession.twitchLogin,
+      displayName: twitchSession.displayName,
+      avatarUrl: twitchSession.avatarUrl,
+      connectedAt: streamer.connectedAt,
       balanceCents,
+      lifetimeEarnedCents,
       pixKey: pixKeyInfo ? pixKeyInfo.pixKey : null,
-      cooldownRemainingMs,
+      pixKeyUpdatedAt: pixKeyInfo ? pixKeyInfo.updatedAt : null,
+      cooldownRemainingMs: pixKeyChangeCooldownRemainingMs(pixKeyInfo),
     });
   } catch (err) {
-    console.error(`[saldo] erro (leilaoId="${req.leilaoId}"):`, err.message);
-    res.status(502).json({ error: "Não foi possível consultar o saldo agora." });
+    console.error(`[perfil] erro ao carregar (twitchUserId="${twitchSession.twitchUserId}"):`, err.message);
+    res.status(502).json({ error: "Não foi possível carregar seu perfil agora." });
   }
 });
 
-app.post("/api/l/:id/admin/pix-key", loadLeilao, requireLeilaoOwner, async (req, res) => {
+app.post("/api/perfil/pix-key", async (req, res) => {
+  const twitchSession = getTwitchSession(req);
+  if (!twitchSession) return res.status(401).json({ error: "Faça login com a Twitch" });
   const pixKey = String((req.body && req.body.pixKey) || "").trim();
   if (!pixKey || pixKey.length > 140) {
     return res.status(400).json({ error: "Chave Pix inválida." });
   }
   try {
-    const streamer = await findOwnerStreamer(req.leilaoId);
+    const streamer = await currentStreamer(req);
     await streamerPixKeysStore.setPixKey(streamer.id, pixKey);
     res.json({ ok: true });
   } catch (err) {
-    console.error(`[pix-key] erro (leilaoId="${req.leilaoId}"):`, err.message);
+    console.error(`[perfil] erro ao salvar chave Pix (twitchUserId="${twitchSession.twitchUserId}"):`, err.message);
     res.status(502).json({ error: "Não foi possível salvar a chave Pix agora." });
   }
 });
 
-app.post("/api/l/:id/admin/saque", loadLeilao, requireLeilaoOwner, async (req, res) => {
+app.post("/api/perfil/saque", async (req, res) => {
+  const twitchSession = getTwitchSession(req);
+  if (!twitchSession) return res.status(401).json({ error: "Faça login com a Twitch" });
+
   let streamer, pixKeyInfo;
   try {
-    streamer = await findOwnerStreamer(req.leilaoId);
+    streamer = await currentStreamer(req);
     pixKeyInfo = await streamerPixKeysStore.getPixKeyInfo(streamer.id);
   } catch (err) {
-    console.error(`[saque] erro ao buscar streamer/chave (leilaoId="${req.leilaoId}"):`, err.message);
+    console.error(`[perfil] erro ao buscar streamer/chave (twitchUserId="${twitchSession.twitchUserId}"):`, err.message);
     return res.status(502).json({ error: "Não foi possível iniciar o saque agora." });
   }
   if (!pixKeyInfo || !pixKeyInfo.pixKey) {
@@ -652,7 +657,7 @@ app.post("/api/l/:id/admin/saque", loadLeilao, requireLeilaoOwner, async (req, r
   }
   const pixKey = pixKeyInfo.pixKey;
 
-  // cooldown entre trocar a chave Pix e poder sacar -- se a sessão do dono
+  // cooldown entre trocar a chave Pix e poder sacar -- se a sessão da conta
   // for comprometida, isso impede drenar o saldo na hora trocando a chave
   // e sacando em seguida (dá tempo do dono perceber e agir)
   const cooldownRemainingMs = pixKeyChangeCooldownRemainingMs(pixKeyInfo);
@@ -688,17 +693,42 @@ app.post("/api/l/:id/admin/saque", loadLeilao, requireLeilaoOwner, async (req, r
     // NÃO marca como enviado aqui -- a Efí só aceitou a solicitação
     // (EM_PROCESSAMENTO), o resultado de verdade (REALIZADO/NAO_REALIZADO)
     // vem depois, assíncrono, via webhook (ou via reconciliação, se o
-    // webhook não chegar -- ver src/reconciliation.js). Confirmado nesta
-    // mesma investigação que tratar a resposta síncrona como sucesso é
-    // exatamente o bug que gerava saldo debitado sem o dinheiro ter saído.
+    // webhook não chegar -- ver src/reconciliation.js).
     res.json({ ok: true, status: "pending", sentCents: withdrawal.sentCents, feeCents: withdrawal.feeCents });
   } catch (err) {
     // erro síncrono (ex: chave inválida, HTTP 4xx/5xx) -- aqui sim já sabemos
     // que não foi aceito, então reverte imediatamente em vez de deixar pendente
-    console.error(`[saque] falha ao enviar Pix (withdrawalId=${withdrawal.withdrawalId}):`, err.message);
+    console.error(`[perfil] falha ao enviar Pix (withdrawalId=${withdrawal.withdrawalId}):`, err.message);
     await ledgerStore.markWithdrawalFailed(withdrawal.withdrawalId);
     res.status(502).json({ error: "Não foi possível concluir o saque agora, o valor voltou pro seu saldo. Tente de novo em instantes." });
   }
+});
+
+app.get("/api/perfil/saques", async (req, res) => {
+  const twitchSession = getTwitchSession(req);
+  if (!twitchSession) return res.status(401).json({ error: "Faça login com a Twitch" });
+  try {
+    const streamer = await currentStreamer(req);
+    const withdrawals = await ledgerStore.getWithdrawalHistory(streamer.id);
+    res.json({
+      saques: withdrawals.map((w) => ({
+        id: w.id,
+        requestedCents: w.requestedCents,
+        feeCents: w.feeCents,
+        sentCents: w.sentCents,
+        status: w.status,
+        createdAt: w.createdAt,
+        completedAt: w.completedAt,
+      })),
+    });
+  } catch (err) {
+    console.error(`[perfil] erro ao listar saques (twitchUserId="${twitchSession.twitchUserId}"):`, err.message);
+    res.status(502).json({ error: "Não foi possível carregar o histórico de saques agora." });
+  }
+});
+
+app.get("/perfil", (req, res) => {
+  res.sendFile(path.join(__dirname, "public", "perfil.html"));
 });
 
 app.get("/api/meus-leiloes", (req, res) => {
