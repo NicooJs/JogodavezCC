@@ -91,7 +91,14 @@ async function getBalance(streamerId) {
   return res.rows[0] ? Number(res.rows[0].balance_cents) : 0;
 }
 
-// idempotente por payment_id -- um webhook reenviado não credita duas vezes
+// idempotente por payment_id -- um webhook reenviado não credita duas vezes.
+// A garantia de verdade é a constraint única em (payment_id, kind)
+// (migration 008): o SELECT abaixo é só um atalho pra não fazer trabalho à
+// toa na maioria das vezes, quem realmente impede duplicata sob concorrência
+// é o banco recusando o INSERT (capturado no catch). fee_config é lido sem
+// FOR UPDATE de propósito -- travar essa linha serializaria TODA doação da
+// plataforma inteira (não só do mesmo streamer) por uma tabela que quase
+// nunca muda; a constraint acima já cobre a idempotência sem precisar disso.
 async function creditDonation({ streamerId, paymentId, grossCents }) {
   return withTransaction(async (client) => {
     const existing = await client.query(
@@ -100,14 +107,26 @@ async function creditDonation({ streamerId, paymentId, grossCents }) {
     );
     if (existing.rows.length > 0) return { alreadyCredited: true };
 
-    const feeConfigRes = await client.query(`SELECT * FROM fee_config WHERE id = 1 FOR UPDATE`);
+    const feeConfigRes = await client.query(`SELECT * FROM fee_config WHERE id = 1`);
     const feeConfig = rowToFeeConfig(feeConfigRes.rows[0]);
     const { streamerShareCents, platformNetCents } = computeDonationSplit(grossCents, feeConfig);
 
-    await client.query(
-      `INSERT INTO ledger_entries (streamer_id, kind, amount_cents, payment_id) VALUES ($1, 'donation_credit', $2, $3)`,
-      [streamerId, streamerShareCents, paymentId]
-    );
+    // savepoint: se o INSERT violar a constraint, um erro dentro da transação
+    // a aborta inteira até um ROLLBACK -- sem o savepoint, o COMMIT lá no
+    // fim do withTransaction falharia mesmo capturando o erro aqui em JS
+    await client.query(`SAVEPOINT before_credit`);
+    try {
+      await client.query(
+        `INSERT INTO ledger_entries (streamer_id, kind, amount_cents, payment_id) VALUES ($1, 'donation_credit', $2, $3)`,
+        [streamerId, streamerShareCents, paymentId]
+      );
+    } catch (err) {
+      if (err.code === "23505") {
+        await client.query(`ROLLBACK TO SAVEPOINT before_credit`);
+        return { alreadyCredited: true }; // constraint pegou uma corrida de verdade
+      }
+      throw err;
+    }
     await client.query(
       `INSERT INTO ledger_entries (streamer_id, kind, amount_cents, payment_id) VALUES (NULL, 'platform_credit', $1, $2)`,
       [platformNetCents, paymentId]

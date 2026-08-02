@@ -5,6 +5,45 @@
 > real do projeto — não confie em ideias antigas de outra sessão que
 > contradigam o que está escrito aqui.
 
+## Race conditions sob doação simultânea -- testado de verdade (2026-08-01)
+
+Cliente pediu certeza de que doações concorrentes (várias pessoas doando ao
+mesmo tempo) não causam inconsistência. Em vez de só ler o código, rodei 3
+cenários de concorrência real (`Promise.all`, não sequencial) contra o
+Postgres de produção, com dados descartáveis:
+
+1. **30 doações diferentes, mesmo streamer, disparadas ao mesmo tempo**:
+   saldo final bateu exatamente com `30 × fatia esperada`, nenhuma perdida.
+   Garantido pelo padrão `balance_cents = balance_cents + $2` dentro do
+   `UPDATE` (o Postgres serializa escritas concorrentes na mesma linha por
+   trava de linha, mesmo em `READ COMMITTED` -- não é uma leitura seguida
+   de escrita em JS, que perderia incremento).
+2. **O mesmo pagamento "chegando" 15x ao mesmo tempo** (simula webhook
+   duplicado de verdade, não só sequencial): só 1 creditou.
+   **Achado no processo**: a primeira versão dependia só de um
+   `SELECT`-antes-de-`INSERT` dentro da transação, que tem uma janela de
+   corrida teórica real (duas chamadas concorrentes podem passar pelo
+   `SELECT` antes de qualquer uma commitar). Corrigido com uma **constraint
+   única** no banco (`ledger_entries_payment_kind_unique`, migration 008)
+   como garantia de verdade, não só convenção de aplicação -- o `INSERT`
+   duplicado é recusado pelo Postgres, capturado com `SAVEPOINT`/`ROLLBACK
+   TO SAVEPOINT` (sem isso, o erro aborta a transação inteira e o `COMMIT`
+   final falharia mesmo capturando o erro em JS).
+3. **5 pedidos de saque concorrentes pro mesmo streamer** (saldo só dava
+   pra 1): exatamente 1 teve sucesso, os outros 4 falharam por saldo
+   insuficiente (já tinha ido a zero), nenhum saque duplicado criado.
+   Garantido pelo `SELECT ... FOR UPDATE` em `streamer_balances` dentro de
+   `createWithdrawal` -- esse `FOR UPDATE` é o correto de manter (trava só
+   a linha daquele streamer específico, não a plataforma inteira).
+
+**Efeito colateral encontrado e corrigido**: `creditDonation` tinha um
+`SELECT * FROM fee_config WHERE id = 1 FOR UPDATE` que travava a **única**
+linha de configuração de taxa da plataforma inteira a cada doação -- ou
+seja, doações de streamers completamente diferentes, em leilões diferentes,
+serializavam entre si sem necessidade (fee_config quase nunca muda, não
+precisava de trava). Removido; a constraint única do banco já garante a
+idempotência sem precisar dessa trava global.
+
 ## Correção crítica de confiabilidade do saque (2026-08-01)
 
 Revisão completa do fluxo de dinheiro pedida pelo cliente ("revise
