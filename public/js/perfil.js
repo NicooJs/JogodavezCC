@@ -32,6 +32,12 @@ const chimeFeedbackEl = document.getElementById("chime-feedback");
 let selectedChime = "classic";
 let savedChime = "classic";
 
+const donationsSearchEl = document.getElementById("donations-search");
+const donationListEl = document.getElementById("donation-list");
+const donationEmptyEl = document.getElementById("donation-empty");
+const blockedListEl = document.getElementById("blocked-list");
+const blockedEmptyEl = document.getElementById("blocked-empty");
+
 const confirmDialogOverlayEl = document.getElementById("confirm-dialog-overlay");
 let confirmDialogResolve = null;
 
@@ -65,8 +71,26 @@ document.addEventListener("keydown", (e) => {
   if (e.key === "Escape" && !confirmDialogOverlayEl.hidden) settleConfirmDialog(false);
 });
 
+function escapeHtml(str) {
+  return String(str).replace(/[&<>"']/g, (c) => ({
+    "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;",
+  }[c]));
+}
+
 function formatBRL(value) {
   return value.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+}
+
+function formatRelativeTime(iso) {
+  const diffMs = Date.now() - new Date(iso).getTime();
+  const minutes = Math.floor(diffMs / 60_000);
+  if (minutes < 1) return "agora";
+  if (minutes < 60) return `há ${minutes} min`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `há ${hours}h`;
+  const days = Math.floor(hours / 24);
+  if (days < 30) return `há ${days}d`;
+  return formatDate(iso);
 }
 
 function formatDate(iso) {
@@ -167,6 +191,17 @@ function activateSection(name) {
 }
 
 navItems.forEach((btn) => btn.addEventListener("click", () => activateSection(btn.dataset.section)));
+
+const subtabButtons = [...document.querySelectorAll(".perfil-subtab[data-subtab]")];
+const subtabPanels = {};
+document.querySelectorAll("[data-subtab-panel]").forEach((el) => { subtabPanels[el.dataset.subtabPanel] = el; });
+
+subtabButtons.forEach((btn) => {
+  btn.addEventListener("click", () => {
+    subtabButtons.forEach((b) => b.classList.toggle("active", b === btn));
+    Object.entries(subtabPanels).forEach(([key, el]) => { el.hidden = key !== btn.dataset.subtab; });
+  });
+});
 
 async function perfilFetch(path, options = {}) {
   const res = await fetch(`/api/perfil${path}`, {
@@ -274,6 +309,131 @@ async function loadSaqueHistory() {
   `).join("");
 }
 
+const BLOCK_ICON_SVG = '<svg class="icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="10" cy="10" r="7"/><path d="M5 5l10 10"/></svg>';
+
+// cor do avatar é determinística a partir do nome, só pra dar identidade
+// visual sem guardar/gerar imagem nenhuma
+function avatarVariant(username) {
+  const code = String(username || "?").trim().charCodeAt(0) || 0;
+  return code % 4;
+}
+
+function donationsSummaryEl() {
+  return {
+    value: document.getElementById("donations-summary-value"),
+    label: document.getElementById("donations-summary-label"),
+  };
+}
+
+async function loadDonations(search) {
+  let data;
+  try {
+    const qs = search ? `?search=${encodeURIComponent(search)}` : "";
+    data = await perfilFetch(`/donations${qs}`);
+  } catch (err) {
+    return;
+  }
+  const donations = data.donations || [];
+
+  const { value: summaryValueEl, label: summaryLabelEl } = donationsSummaryEl();
+  const totalCents = donations.reduce((sum, d) => sum + d.valorTotalCents, 0);
+  summaryValueEl.textContent = formatBRL(totalCents / 100);
+  summaryLabelEl.textContent = `${donations.length} doaç${donations.length === 1 ? "ão" : "ões"}${search ? " encontrada(s)" : ""}`;
+
+  if (donations.length === 0) {
+    donationListEl.innerHTML = "";
+    donationEmptyEl.hidden = false;
+    return;
+  }
+  donationEmptyEl.hidden = true;
+  donationListEl.innerHTML = donations.map((d) => {
+    const name = d.donorUsername || "Anônimo";
+    const initial = name.trim().charAt(0).toUpperCase() || "?";
+    return `
+    <div class="perfil-donation-row" data-blocked="${d.blocked}">
+      <span class="perfil-donation-avatar" data-variant="${avatarVariant(name)}">${escapeHtml(initial)}</span>
+      <div class="perfil-donation-main">
+        <div class="perfil-donation-head">
+          <p class="perfil-donation-name">${escapeHtml(name)}</p>
+          <span class="perfil-donation-value">${formatBRL(d.valorTotalCents / 100)}</span>
+        </div>
+        ${d.donorNote ? `<p class="perfil-donation-note">"${escapeHtml(d.donorNote)}"</p>` : ""}
+        <p class="perfil-donation-date">${formatRelativeTime(d.paidAt)}</p>
+      </div>
+      ${d.blocked
+        ? '<span class="perfil-donation-blocked-badge">Bloqueado</span>'
+        : `<button class="perfil-donation-block-icon" type="button" data-tooltip="Bloquear" data-id="${d.id}" data-username="${escapeHtml(name)}">${BLOCK_ICON_SVG}</button>`}
+    </div>
+  `;
+  }).join("");
+}
+
+let donationsSearchTimeout = null;
+donationsSearchEl.addEventListener("input", () => {
+  clearTimeout(donationsSearchTimeout);
+  donationsSearchTimeout = setTimeout(() => loadDonations(donationsSearchEl.value.trim()), 300);
+});
+
+donationListEl.addEventListener("click", async (e) => {
+  const btn = e.target.closest(".perfil-donation-block-icon");
+  if (!btn) return;
+  const ok = await confirmDialog({
+    title: "Bloquear doador",
+    message: `Bloquear "${btn.dataset.username}"? A pessoa não vai mais conseguir gerar Pix pra doar em nenhum dos seus leilões (bloqueio por nome e pelo IP dessa doação).`,
+    confirmLabel: "Bloquear",
+    danger: true,
+  });
+  if (!ok) return;
+  btn.disabled = true;
+  try {
+    await perfilFetch(`/donations/${btn.dataset.id}/block`, { method: "POST" });
+    loadDonations(donationsSearchEl.value.trim());
+    loadBlocked();
+  } catch (err) {
+    btn.disabled = false;
+    alert(err.message);
+  }
+});
+
+async function loadBlocked() {
+  let data;
+  try {
+    data = await perfilFetch("/blocked-donors");
+  } catch (err) {
+    return;
+  }
+  const blocked = data.blocked || [];
+  if (blocked.length === 0) {
+    blockedListEl.innerHTML = "";
+    blockedEmptyEl.hidden = false;
+    return;
+  }
+  blockedEmptyEl.hidden = true;
+  blockedListEl.innerHTML = blocked.map((b) => `
+    <div class="perfil-blocked-row">
+      <div class="perfil-blocked-main">
+        <p class="perfil-blocked-name">${escapeHtml(b.donorUsername)}</p>
+        <p class="perfil-blocked-meta">IP ${escapeHtml(b.donorIp)} · bloqueado ${formatRelativeTime(b.blockedAt)}</p>
+      </div>
+      <button class="btn-mini perfil-blocked-unblock" type="button" data-id="${b.id}">Desbloquear</button>
+    </div>
+  `).join("");
+}
+
+blockedListEl.addEventListener("click", async (e) => {
+  const btn = e.target.closest(".perfil-blocked-unblock");
+  if (!btn) return;
+  btn.disabled = true;
+  try {
+    await perfilFetch(`/blocked-donors/${btn.dataset.id}/unblock`, { method: "POST" });
+    loadBlocked();
+    loadDonations(donationsSearchEl.value.trim());
+  } catch (err) {
+    btn.disabled = false;
+    alert(err.message);
+  }
+});
+
 async function loadSession() {
   const s = await fetch("/api/session/me").then((r) => r.json()).catch(() => ({ loggedIn: false }));
 
@@ -283,6 +443,8 @@ async function loadSession() {
 
   await loadPerfil();
   loadSaqueHistory();
+  loadDonations();
+  loadBlocked();
 }
 
 pixKeyInputEl.addEventListener("keydown", (e) => { if (e.key === "Enter") document.getElementById("pix-key-save").click(); });

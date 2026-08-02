@@ -57,6 +57,10 @@
                 <svg class="icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M10 3.3a4 4 0 0 0-4 4v2.1c0 .8-.3 1.5-.8 2.1L4 13h12l-1.2-1.5a3.3 3.3 0 0 1-.8-2.1V7.3a4 4 0 0 0-4-4z"/><path d="M8.3 15.2a1.8 1.8 0 0 0 3.4 0"/></svg>
                 <span>Alerta</span>
               </button>
+              <button class="perfil-nav-item" data-section="doacoes" type="button">
+                <svg class="icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="10" cy="10" r="6.7"/><path d="M10 6.8v6.4M7.8 8.3c0-.9.9-1.5 2.2-1.5s2.2.6 2.2 1.4-.9 1.2-2.2 1.4c-1.3.2-2.2.6-2.2 1.4s.9 1.5 2.2 1.5 2.2-.6 2.2-1.5"/></svg>
+                <span>Doações</span>
+              </button>
             </nav>
 
             <button class="perfil-nav-item perfil-nav-logout" id="perfil-logout-btn" type="button">
@@ -204,6 +208,35 @@
                 </div>
                 <button class="btn-mini primary" id="chime-save" type="button">Salvar</button>
                 <p class="perfil-feedback" id="chime-feedback" hidden></p>
+              </section>
+            </section>
+
+            <section class="perfil-section" data-section-panel="doacoes" hidden>
+              <div class="perfil-subtabs">
+                <button class="perfil-subtab active" data-subtab="lista" type="button">Doações</button>
+                <button class="perfil-subtab" data-subtab="bloqueados" type="button">Bloqueados</button>
+              </div>
+
+              <section class="perfil-donations-panel" data-subtab-panel="lista">
+                <div class="perfil-donations-summary">
+                  <p class="perfil-donations-summary-value" id="donations-summary-value">R$ 0,00</p>
+                  <p class="perfil-donations-summary-label" id="donations-summary-label">0 doações</p>
+                </div>
+                <div class="perfil-field-row">
+                  <input type="text" id="donations-search" placeholder="Buscar por nome" autocomplete="off" />
+                </div>
+                <div class="perfil-donation-list" id="donation-list"></div>
+                <p class="perfil-empty" id="donation-empty" hidden>Nenhuma doação ainda.</p>
+              </section>
+
+              <section class="perfil-card" data-subtab-panel="bloqueados" hidden>
+                <p class="perfil-card-hint">
+                  Quem tá bloqueado não consegue mais gerar Pix pra doar em
+                  nenhum dos seus leilões (bloqueio por nome e pelo IP de
+                  quem doou).
+                </p>
+                <div class="perfil-blocked-list" id="blocked-list"></div>
+                <p class="perfil-empty" id="blocked-empty" hidden>Ninguém bloqueado.</p>
               </section>
             </section>
           </div>

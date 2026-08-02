@@ -188,10 +188,11 @@ Tela de conta, fora do escopo de um leilão específico -- `streamerId` é por
 conta (`streamersStore.ensureByTwitchUserId`), então chave Pix, saldo,
 saque, histórico de saques e som do alerta são os mesmos não importa qual
 leilão o streamer está gerenciando (nunca precisa configurar de novo por
-leilão). Layout em sidebar com 4 seções: **Visão geral** (estatísticas de
+leilão). Layout em sidebar com 5 seções: **Visão geral** (estatísticas de
 doação + gráfico dos últimos 30 dias, SVG feito à mão), **Financeiro**
-(saldo, chave Pix, saque, histórico), **Widget OBS** (link do overlay) e
-**Alerta** (som da doação). Rotas de conta em `server.js`: `GET /api/perfil`,
+(saldo, chave Pix, saque, histórico), **Widget OBS** (link do overlay),
+**Alerta** (som da doação) e **Doações** (histórico + bloqueio de doador,
+ver abaixo). Rotas de conta em `server.js`: `GET /api/perfil`,
 `POST /api/perfil/pix-key`, `POST /api/perfil/saque`,
 `GET /api/perfil/saques`, `POST /api/perfil/alert-chime` (gate é só
 `getTwitchSession(req)`, sem `leilaoId`). Também mostra o total histórico já
@@ -204,6 +205,21 @@ recente do streamer como representante (`registry.listLeiloesByOwner`
 ordenado por `createdAt`), mesmo critério que `/api/ranking` já usa pra
 agrupar o total de doações por dono. Streamer com mais de um leilão vê um
 aviso com link pra `/meus-leiloes`.
+
+**Doações e bloqueio de doador**: `GET /api/perfil/donations` lista o
+histórico de doações PAGAS do streamer (todos os leilões, via `payments`
+no Postgres, busca opcional por nome). `POST /api/perfil/donations/:id/block`
+bloqueia o doador daquela doação específica. O nome do doador é texto livre
+sem autenticação nenhuma (qualquer um digita qualquer nome), então bloquear
+só por nome é fácil de burlar -- por isso o bloqueio guarda também o IP
+daquela doação (`payments.donor_ip`, capturado via `req.ip` na rota
+`/api/l/:id/doacao`; `app.set("trust proxy", 1)` já garante que é o IP real
+do cliente, não o do proxy da Railway) e a checagem em
+`blockedDonorsStore.isBlocked` recusa se nome OU IP bater. Isso já é IP
+coletado de propósito pra rate limit e a política de privacidade já avisa
+que serve "pra prevenir fraude" -- não é coleta nova. Tabela
+`streamer_blocked_donors` (migration 011), por conta como o resto do
+Perfil.
 
 ### Overlay OBS (`alerta.html` + `alerta.js`)
 

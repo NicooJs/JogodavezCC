@@ -18,6 +18,7 @@ function rowToPayment(row) {
     donorMessage: row.donor_message,
     donorNote: row.donor_note,
     donorVoiceId: row.donor_voice_id,
+    donorIp: row.donor_ip,
     createdAt: row.created_at,
     paidAt: row.paid_at,
   };
@@ -27,14 +28,36 @@ function buildExternalReference(leilaoId) {
   return `${leilaoId}:${crypto.randomBytes(8).toString("hex")}`;
 }
 
-async function createPending({ leilaoId, streamerId, externalReference, valorTotalCents, applicationFeeCents, donorUsername, donorMessage, donorNote, donorVoiceId }) {
+async function createPending({ leilaoId, streamerId, externalReference, valorTotalCents, applicationFeeCents, donorUsername, donorMessage, donorNote, donorVoiceId, donorIp }) {
   const streamerShareCents = valorTotalCents - applicationFeeCents;
   const res = await query(
-    `INSERT INTO payments (leilao_id, streamer_id, external_reference, valor_total_cents, application_fee_cents, streamer_share_cents, donor_username, donor_message, donor_note, donor_voice_id)
-     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+    `INSERT INTO payments (leilao_id, streamer_id, external_reference, valor_total_cents, application_fee_cents, streamer_share_cents, donor_username, donor_message, donor_note, donor_voice_id, donor_ip)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
      RETURNING *`,
-    [leilaoId, streamerId, externalReference, valorTotalCents, applicationFeeCents, streamerShareCents, donorUsername || null, donorMessage || null, donorNote || null, donorVoiceId || null]
+    [leilaoId, streamerId, externalReference, valorTotalCents, applicationFeeCents, streamerShareCents, donorUsername || null, donorMessage || null, donorNote || null, donorVoiceId || null, donorIp || null]
   );
+  return rowToPayment(res.rows[0]);
+}
+
+// histórico de doações da CONTA (todos os leilões do streamer), pro painel
+// do Perfil -- só doação confirmada (PAID), busca opcional por nome
+async function findRecentByStreamer(streamerId, { search, limit = 50 } = {}) {
+  const params = [streamerId];
+  let where = `streamer_id = $1 AND status = 'PAID'`;
+  if (search) {
+    params.push(`%${search}%`);
+    where += ` AND donor_username ILIKE $${params.length}`;
+  }
+  params.push(limit);
+  const res = await query(
+    `SELECT * FROM payments WHERE ${where} ORDER BY paid_at DESC LIMIT $${params.length}`,
+    params
+  );
+  return res.rows.map(rowToPayment);
+}
+
+async function findByIdForStreamer(paymentId, streamerId) {
+  const res = await query(`SELECT * FROM payments WHERE id = $1 AND streamer_id = $2`, [paymentId, streamerId]);
   return rowToPayment(res.rows[0]);
 }
 
@@ -95,4 +118,6 @@ module.exports = {
   markCreatedEfi,
   markPaidEfi,
   findByEfiTxid,
+  findRecentByStreamer,
+  findByIdForStreamer,
 };

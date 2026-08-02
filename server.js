@@ -23,6 +23,7 @@ const streamersStore = require("./src/streamersStore");
 const streamerPixKeysStore = require("./src/streamerPixKeysStore");
 const streamerAlertPrefsStore = require("./src/streamerAlertPrefsStore");
 const paymentsStore = require("./src/paymentsStore");
+const blockedDonorsStore = require("./src/blockedDonorsStore");
 const freeTts = require("./src/freeTts");
 
 // homologacao até confirmar a conta de Produção da Efí de verdade -- trocar
@@ -770,6 +771,86 @@ app.get("/api/perfil/saques", async (req, res) => {
   }
 });
 
+app.get("/api/perfil/donations", async (req, res) => {
+  const twitchSession = getTwitchSession(req);
+  if (!twitchSession) return res.status(401).json({ error: "Faça login com a Twitch" });
+  try {
+    const streamer = await currentStreamer(req);
+    const search = String((req.query && req.query.search) || "").trim().slice(0, 60);
+    const [donations, blocked] = await Promise.all([
+      paymentsStore.findRecentByStreamer(streamer.id, { search: search || undefined, limit: 100 }),
+      blockedDonorsStore.list(streamer.id),
+    ]);
+    const blockedUsernames = new Set(blocked.map((b) => b.donorUsername));
+    res.json({
+      donations: donations.map((d) => ({
+        id: d.id,
+        donorUsername: d.donorUsername,
+        valorTotalCents: d.valorTotalCents,
+        donorNote: d.donorNote,
+        paidAt: d.paidAt,
+        blocked: blockedUsernames.has(String(d.donorUsername || "").trim().toLowerCase()),
+      })),
+    });
+  } catch (err) {
+    console.error(`[perfil] erro ao listar doações (twitchUserId="${twitchSession.twitchUserId}"):`, err.message);
+    res.status(502).json({ error: "Não foi possível carregar as doações agora." });
+  }
+});
+
+app.post("/api/perfil/donations/:paymentId/block", async (req, res) => {
+  const twitchSession = getTwitchSession(req);
+  if (!twitchSession) return res.status(401).json({ error: "Faça login com a Twitch" });
+  const paymentId = Number(req.params.paymentId);
+  if (!Number.isInteger(paymentId)) return res.status(400).json({ error: "Doação inválida." });
+  try {
+    const streamer = await currentStreamer(req);
+    const payment = await paymentsStore.findByIdForStreamer(paymentId, streamer.id);
+    if (!payment) return res.status(404).json({ error: "Doação não encontrada." });
+    if (!payment.donorIp) return res.status(400).json({ error: "Essa doação é antiga demais pra bloquear (sem IP registrado)." });
+    await blockedDonorsStore.block(streamer.id, { username: payment.donorUsername, ip: payment.donorIp });
+    res.json({ ok: true });
+  } catch (err) {
+    console.error(`[perfil] erro ao bloquear doador (twitchUserId="${twitchSession.twitchUserId}"):`, err.message);
+    res.status(502).json({ error: "Não foi possível bloquear agora." });
+  }
+});
+
+app.get("/api/perfil/blocked-donors", async (req, res) => {
+  const twitchSession = getTwitchSession(req);
+  if (!twitchSession) return res.status(401).json({ error: "Faça login com a Twitch" });
+  try {
+    const streamer = await currentStreamer(req);
+    const blocked = await blockedDonorsStore.list(streamer.id);
+    res.json({
+      blocked: blocked.map((b) => ({
+        id: b.id,
+        donorUsername: b.donorUsernameDisplay,
+        donorIp: b.donorIp,
+        blockedAt: b.blockedAt,
+      })),
+    });
+  } catch (err) {
+    console.error(`[perfil] erro ao listar bloqueados (twitchUserId="${twitchSession.twitchUserId}"):`, err.message);
+    res.status(502).json({ error: "Não foi possível carregar a lista de bloqueados agora." });
+  }
+});
+
+app.post("/api/perfil/blocked-donors/:blockId/unblock", async (req, res) => {
+  const twitchSession = getTwitchSession(req);
+  if (!twitchSession) return res.status(401).json({ error: "Faça login com a Twitch" });
+  const blockId = Number(req.params.blockId);
+  if (!Number.isInteger(blockId)) return res.status(400).json({ error: "Bloqueio inválido." });
+  try {
+    const streamer = await currentStreamer(req);
+    await blockedDonorsStore.unblock(streamer.id, blockId);
+    res.json({ ok: true });
+  } catch (err) {
+    console.error(`[perfil] erro ao desbloquear (twitchUserId="${twitchSession.twitchUserId}"):`, err.message);
+    res.status(502).json({ error: "Não foi possível desbloquear agora." });
+  }
+});
+
 app.get("/perfil", (req, res) => {
   res.sendFile(path.join(__dirname, "public", "perfil.html"));
 });
@@ -1074,6 +1155,14 @@ app.post("/api/l/:id/doacao", loadLeilao, async (req, res) => {
     return res.status(409).json({ error: "Esse leilão não tem um streamer vinculado." });
   }
 
+  try {
+    if (await blockedDonorsStore.isBlocked(streamer.id, donorUsername, req.ip)) {
+      return res.status(403).json({ error: "Não foi possível processar sua doação." });
+    }
+  } catch (err) {
+    console.error(`[doação] erro ao checar bloqueio (leilaoId="${leilaoId}"):`, err.message);
+  }
+
   const valorTotalCents = amountCents;
   let feeConfig, applicationFeeCents;
   try {
@@ -1101,6 +1190,7 @@ app.post("/api/l/:id/doacao", loadLeilao, async (req, res) => {
       applicationFeeCents,
       donorUsername: cleanDonorUsername,
       donorMessage: rawMessage,
+      donorIp: req.ip,
     });
   } catch (err) {
     console.error(`[doação] erro ao registrar pagamento pendente (leilaoId="${leilaoId}"):`, err.message);
