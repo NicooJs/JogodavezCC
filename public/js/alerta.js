@@ -22,15 +22,37 @@ function formatBRL(value) {
   return `R$ ${Number(value || 0).toFixed(2).replace(".", ",")}`;
 }
 
+// escolha de som é da conta do streamer (Perfil -> Alerta), não do leilão --
+// esse mapa só traduz o nome escolhido pros parâmetros de síntese
+const CHIME_PRESETS = {
+  classic: { wave: "sine", apoio: [660, 880], sabota: [520, 390] },
+  arcade: { wave: "square", apoio: [523, 659, 784], sabota: [400, 300] },
+  chill: { wave: "triangle", apoio: [440, 554], sabota: [370, 300] },
+  bell: { wave: "sine", apoio: [880, 1108], sabota: [440, 330] },
+};
+let currentChime = "classic";
+
+fetch(`/api/l/${LEILAO_ID}/alert-config`)
+  .then((r) => r.json())
+  .then((d) => { if (CHIME_PRESETS[d.chime]) currentChime = d.chime; })
+  .catch(() => {});
+
+// troca ao vivo, sem precisar recarregar a Browser Source no OBS -- disparado
+// só quando o streamer muda o som no Perfil, não em toda doação
+socket.on("alert-config", (data) => {
+  if (data && CHIME_PRESETS[data.chime]) currentChime = data.chime;
+});
+
 function playChime(isRemove) {
   try {
+    const preset = CHIME_PRESETS[currentChime] || CHIME_PRESETS.classic;
     const ctx = new (window.AudioContext || window.webkitAudioContext)();
     const now = ctx.currentTime;
-    const notes = isRemove ? [520, 390] : [660, 880];
+    const notes = isRemove ? preset.sabota : preset.apoio;
     notes.forEach((freq, i) => {
       const osc = ctx.createOscillator();
       const gain = ctx.createGain();
-      osc.type = "sine";
+      osc.type = preset.wave;
       osc.frequency.value = freq;
       const t = now + i * 0.09;
       gain.gain.setValueAtTime(0, t);

@@ -178,13 +178,24 @@ visível só pro dono em modo apresentador (não pra público nem moderador).
 
 Tela de conta, fora do escopo de um leilão específico -- `streamerId` é por
 conta (`streamersStore.ensureByTwitchUserId`), então chave Pix, saldo,
-saque e histórico de saques são os mesmos não importa qual leilão o
-streamer está gerenciando. Rotas de conta em `server.js`:
-`GET /api/perfil`, `POST /api/perfil/pix-key`, `POST /api/perfil/saque`,
-`GET /api/perfil/saques` (gate é só `getTwitchSession(req)`, sem
-`leilaoId`). Também mostra o total histórico já arrecadado
-(`ledgerStore.getLifetimeEarnedCents`, nunca cai mesmo depois de sacado) e
-"sair da conta".
+saque, histórico de saques e som do alerta são os mesmos não importa qual
+leilão o streamer está gerenciando (nunca precisa configurar de novo por
+leilão). Layout em sidebar com 4 seções: **Visão geral** (estatísticas de
+doação + gráfico dos últimos 30 dias, SVG feito à mão), **Financeiro**
+(saldo, chave Pix, saque, histórico), **Widget OBS** (link do overlay) e
+**Alerta** (som da doação). Rotas de conta em `server.js`: `GET /api/perfil`,
+`POST /api/perfil/pix-key`, `POST /api/perfil/saque`,
+`GET /api/perfil/saques`, `POST /api/perfil/alert-chime` (gate é só
+`getTwitchSession(req)`, sem `leilaoId`). Também mostra o total histórico já
+arrecadado (`ledgerStore.getLifetimeEarnedCents`, nunca cai mesmo depois de
+sacado) e "sair da conta".
+
+O link do widget OBS **precisa** referenciar um leilão específico (a URL
+carrega o `leilaoId`, isso é estrutural) -- o Perfil mostra o leilão mais
+recente do streamer como representante (`registry.listLeiloesByOwner`
+ordenado por `createdAt`), mesmo critério que `/api/ranking` já usa pra
+agrupar o total de doações por dono. Streamer com mais de um leilão vê um
+aviso com link pra `/meus-leiloes`.
 
 ### Overlay OBS (`alerta.html` + `alerta.js`)
 
@@ -192,8 +203,20 @@ Fundo transparente forçado (`background: transparent !important`, grain
 desligado). Fila simples (`queue` + flag `showing`). TTS: se o evento tem
 nota+voz, busca `/api/tts`, toca como `Audio`, com **timeout de segurança de
 12s** pra nunca travar a fila se o áudio falhar. Chime sintetizado via Web
-Audio API (osciladores, sem arquivo de som) — tom diferente pra apoio vs
-sabotagem.
+Audio API (osciladores, sem arquivo de som) -- tom diferente pra apoio vs
+sabotagem. Qual preset tocar (`CHIME_PRESETS` em `alerta.js`: classic/
+arcade/chill/bell) vem de `GET /api/l/:id/alert-config` no load da página
+(rota pública, sem sessão -- o overlay do OBS não tem cookie), que resolve
+leilão → dono → `streamer_alert_prefs` (migration 010). A escolha em si é
+feita no Perfil, nunca por leilão -- `serializeLeaderboard` (síncrono,
+chamado toda hora em `broadcastUpdate`) não busca essa preferência, de
+propósito, pra não colocar consulta ao Postgres no caminho quente do
+socket (doação chega o tempo todo, trocar de som é raro). Troca ao vivo
+com o overlay já aberto funciona mesmo assim: `POST
+/api/perfil/alert-chime` emite `io.to(leilaoId).emit("alert-config", ...)`
+pra todo leilão do streamer só nesse momento raro (troca de preferência),
+nunca a cada doação -- `alerta.js` escuta esse evento além do fetch
+inicial.
 
 ## Convenções gerais do projeto
 

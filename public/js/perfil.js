@@ -19,6 +19,19 @@ const donationCountEl = document.getElementById("perfil-donation-count");
 const periodTotalEl = document.getElementById("perfil-period-total");
 const chartWrapEl = document.getElementById("perfil-chart-wrap");
 
+const obsEmptyEl = document.getElementById("obs-empty");
+const obsLinkBlockEl = document.getElementById("obs-link-block");
+const obsLinkInputEl = document.getElementById("obs-link-input");
+const obsLeilaoTitleEl = document.getElementById("obs-leilao-title");
+const obsMultiHintEl = document.getElementById("obs-multi-hint");
+
+const chimeListEl = document.getElementById("chime-list");
+const chimeRows = [...document.querySelectorAll(".perfil-chime-row")];
+const chimeSaveBtn = document.getElementById("chime-save");
+const chimeFeedbackEl = document.getElementById("chime-feedback");
+let selectedChime = "classic";
+let savedChime = "classic";
+
 const confirmDialogOverlayEl = document.getElementById("confirm-dialog-overlay");
 let confirmDialogResolve = null;
 
@@ -144,6 +157,17 @@ function renderDonationChart(series) {
   `;
 }
 
+const navItems = [...document.querySelectorAll(".perfil-nav-item[data-section]")];
+const sectionPanels = {};
+document.querySelectorAll(".perfil-section[data-section-panel]").forEach((el) => { sectionPanels[el.dataset.sectionPanel] = el; });
+
+function activateSection(name) {
+  navItems.forEach((btn) => btn.classList.toggle("active", btn.dataset.section === name));
+  Object.entries(sectionPanels).forEach(([key, el]) => { el.hidden = key !== name; });
+}
+
+navItems.forEach((btn) => btn.addEventListener("click", () => activateSection(btn.dataset.section)));
+
 async function perfilFetch(path, options = {}) {
   const res = await fetch(`/api/perfil${path}`, {
     ...options,
@@ -205,6 +229,22 @@ async function loadPerfil() {
   } else {
     saqueBtn.disabled = !data.pixKey || currentBalanceCents <= 0;
   }
+
+  if (data.latestLeilao) {
+    obsEmptyEl.hidden = true;
+    obsLinkBlockEl.hidden = false;
+    obsLinkInputEl.value = `${location.origin}${data.latestLeilao.alertUrl}`;
+    obsLeilaoTitleEl.textContent = `Leilão: ${data.latestLeilao.title}`;
+    obsLeilaoTitleEl.hidden = false;
+    obsMultiHintEl.hidden = (data.leilaoCount || 0) <= 1;
+  } else {
+    obsEmptyEl.hidden = false;
+    obsLinkBlockEl.hidden = true;
+  }
+
+  selectedChime = data.alertChime || "classic";
+  savedChime = selectedChime;
+  applyChimeSelection();
 }
 
 const STATUS_LABELS = { pending: "processando", sent: "enviado", failed: "falhou" };
@@ -285,6 +325,79 @@ saqueBtn.addEventListener("click", async () => {
     saqueFeedbackEl.className = "perfil-feedback error";
     saqueFeedbackEl.hidden = false;
     saqueBtn.disabled = false;
+  }
+});
+
+wireCopyButton(document.getElementById("obs-link-copy"), obsLinkInputEl);
+
+// duplica o mapa de presets do alerta.js de propósito -- cada página do
+// site já tem seus próprios helpers pequenos (formatBRL, confirmDialog),
+// aqui só serve pra tocar a prévia local, quem manda de verdade no overlay
+// é o alerta.js lendo o mesmo nome via /api/l/:id/alert-config
+const CHIME_PRESETS = {
+  classic: { wave: "sine", apoio: [660, 880] },
+  arcade: { wave: "square", apoio: [523, 659, 784] },
+  chill: { wave: "triangle", apoio: [440, 554] },
+  bell: { wave: "sine", apoio: [880, 1108] },
+};
+
+function playChimePreview(name) {
+  try {
+    const preset = CHIME_PRESETS[name] || CHIME_PRESETS.classic;
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    const now = ctx.currentTime;
+    preset.apoio.forEach((freq, i) => {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = preset.wave;
+      osc.frequency.value = freq;
+      const t = now + i * 0.09;
+      gain.gain.setValueAtTime(0, t);
+      gain.gain.linearRampToValueAtTime(0.18, t + 0.02);
+      gain.gain.exponentialRampToValueAtTime(0.0001, t + 0.35);
+      osc.connect(gain).connect(ctx.destination);
+      osc.start(t);
+      osc.stop(t + 0.4);
+    });
+  } catch (err) {
+  }
+}
+
+function applyChimeSelection() {
+  chimeRows.forEach((row) => row.classList.toggle("selected", row.dataset.chime === selectedChime));
+  chimeSaveBtn.disabled = selectedChime === savedChime;
+}
+
+chimeRows.forEach((row) => {
+  row.addEventListener("click", (e) => {
+    if (e.target.closest(".perfil-chime-preview")) return;
+    selectedChime = row.dataset.chime;
+    applyChimeSelection();
+  });
+});
+
+document.querySelectorAll(".perfil-chime-preview").forEach((btn) => {
+  btn.addEventListener("click", (e) => {
+    e.stopPropagation();
+    playChimePreview(btn.dataset.preview);
+  });
+});
+
+chimeSaveBtn.addEventListener("click", async () => {
+  chimeFeedbackEl.hidden = true;
+  chimeSaveBtn.disabled = true;
+  try {
+    await perfilFetch("/alert-chime", { method: "POST", body: JSON.stringify({ chime: selectedChime }) });
+    savedChime = selectedChime;
+    chimeFeedbackEl.textContent = "Som do alerta salvo! Vale pra todos os seus leilões.";
+    chimeFeedbackEl.className = "perfil-feedback ok";
+    chimeFeedbackEl.hidden = false;
+  } catch (err) {
+    chimeFeedbackEl.textContent = "Erro: " + err.message;
+    chimeFeedbackEl.className = "perfil-feedback error";
+    chimeFeedbackEl.hidden = false;
+  } finally {
+    applyChimeSelection();
   }
 });
 

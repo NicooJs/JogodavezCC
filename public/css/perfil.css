@@ -1,6 +1,6 @@
 
 .perfil-main {
-  max-width: 780px;
+  max-width: 1000px;
   margin: 0 auto;
   display: flex;
   flex-direction: column;
@@ -17,28 +17,45 @@
   border: 1px solid var(--border);
   border-radius: 14px;
   padding: 26px;
+  max-width: 560px;
 }
 .perfil-logged-out[hidden] { display: none; }
 .perfil-logged-out .create-twitch-login { align-self: flex-start; }
 
-.perfil-logged-in { display: flex; flex-direction: column; gap: 20px; }
+.perfil-logged-in { display: block; }
 .perfil-logged-in[hidden] { display: none; }
 
-.perfil-identity {
+.perfil-shell {
+  display: flex;
+  align-items: flex-start;
+  gap: 24px;
+}
+
+.perfil-sidebar {
+  width: 216px;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  position: sticky;
+  top: 24px;
+}
+
+.perfil-sidebar-identity {
   display: flex;
   align-items: center;
-  gap: 14px;
+  gap: 12px;
   background-color: var(--surface);
   background-image: var(--grain);
   background-blend-mode: overlay;
   border: 1px solid var(--border);
-  border-radius: 14px;
-  padding: 18px 22px;
+  border-radius: 13px;
+  padding: 14px 16px;
 }
 
 .perfil-avatar {
-  width: 52px;
-  height: 52px;
+  width: 42px;
+  height: 42px;
   border-radius: 50%;
   object-fit: cover;
   background: var(--surface-2);
@@ -46,13 +63,13 @@
   flex-shrink: 0;
 }
 
-.perfil-identity-text { flex: 1; min-width: 0; }
+.perfil-identity-text { min-width: 0; }
 
 .perfil-name {
   margin: 0;
   font-family: var(--font-display);
   font-weight: 700;
-  font-size: 18px;
+  font-size: 14.5px;
   color: var(--text);
   overflow: hidden;
   text-overflow: ellipsis;
@@ -62,13 +79,70 @@
 .perfil-login {
   margin: 2px 0 0;
   font-family: var(--font-mono);
-  font-size: 12px;
+  font-size: 10.5px;
   color: var(--muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .perfil-since { margin-left: 4px; }
 .perfil-since::before { content: "· "; }
 .perfil-since[hidden] { display: none; }
+
+.perfil-nav {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  background-color: var(--surface);
+  background-image: var(--grain);
+  background-blend-mode: overlay;
+  border: 1px solid var(--border);
+  border-radius: 13px;
+  padding: 8px;
+}
+
+.perfil-nav-item {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  height: 40px;
+  padding: 0 12px;
+  border-radius: 8px;
+  border: none;
+  background: none;
+  color: var(--muted);
+  font-family: var(--font-body);
+  font-size: 13.5px;
+  font-weight: 500;
+  text-align: left;
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+.perfil-nav-item .icon { width: 17px; height: 17px; flex-shrink: 0; }
+.perfil-nav-item:hover { color: var(--text); background: var(--surface-2); }
+.perfil-nav-item.active { color: var(--accent-text); background: var(--accent-bg); font-weight: 600; }
+
+.perfil-nav-logout {
+  background-color: var(--surface);
+  background-image: var(--grain);
+  background-blend-mode: overlay;
+  border: 1px solid var(--border);
+  border-radius: 13px;
+  padding: 0 16px;
+}
+.perfil-nav-logout:hover { color: var(--danger); background: var(--danger-bg); }
+
+.perfil-content {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.perfil-section[hidden] { display: none; }
+.perfil-section { display: flex; flex-direction: column; gap: 20px; }
 
 .perfil-hero {
   position: relative;
@@ -210,6 +284,8 @@
   line-height: 1.6;
   color: var(--muted);
 }
+.perfil-card-hint a { color: var(--accent-text); }
+.perfil-card-hint a:hover { color: var(--accent); }
 
 .perfil-card-footnote {
   margin: 10px 0 0;
@@ -217,6 +293,8 @@
   color: var(--muted);
 }
 .perfil-card-footnote[hidden] { display: none; }
+.perfil-card-footnote a { color: var(--accent-text); }
+.perfil-card-footnote a:hover { color: var(--accent); }
 
 .perfil-field-row {
   display: flex;
@@ -316,13 +394,76 @@
 .perfil-saque-status[data-status="failed"] { background: var(--danger-bg); color: var(--danger); border-color: transparent; }
 .perfil-saque-status[data-status="pending"] { background: var(--accent-bg); color: var(--accent-text); border-color: transparent; }
 
+.perfil-obs-empty { font-size: 13px; color: var(--muted); line-height: 1.6; }
+.perfil-obs-empty[hidden] { display: none; }
+.perfil-obs-empty a { color: var(--accent-text); }
+.perfil-obs-empty a:hover { color: var(--accent); }
+
+#obs-link-block[hidden] { display: none; }
+#obs-link-input { font-family: var(--font-mono); font-size: 12.5px; }
+
+.perfil-chime-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.perfil-chime-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: var(--surface-2);
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius);
+  padding: 12px 14px;
+  cursor: pointer;
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+.perfil-chime-row:hover { border-color: var(--border); }
+.perfil-chime-row.selected { border-color: var(--accent); background: var(--accent-bg); }
+
+.perfil-chime-radio {
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  border: 1.5px solid var(--border);
+  position: relative;
+  transition: border-color 0.15s ease;
+}
+.perfil-chime-row.selected .perfil-chime-radio { border-color: var(--accent); }
+.perfil-chime-row.selected .perfil-chime-radio::after {
+  content: "";
+  position: absolute;
+  inset: 3px;
+  border-radius: 50%;
+  background: var(--accent);
+}
+
+.perfil-chime-text { flex: 1; min-width: 0; }
+.perfil-chime-name { margin: 0; font-size: 13.5px; font-weight: 600; color: var(--text); }
+.perfil-chime-desc { margin: 1px 0 0; font-size: 11.5px; color: var(--muted); }
+
+.perfil-chime-preview { flex-shrink: 0; height: 32px; padding: 0 14px; font-size: 12px; }
+
+@media (max-width: 860px) {
+  .perfil-shell { flex-direction: column; }
+  .perfil-sidebar { width: 100%; position: static; flex-direction: row; flex-wrap: wrap; }
+  .perfil-sidebar-identity { flex: 1 1 100%; }
+  .perfil-nav { flex: 1; flex-direction: row; overflow-x: auto; }
+  .perfil-nav-item { flex-shrink: 0; }
+  .perfil-nav-item span { white-space: nowrap; }
+  .perfil-nav-logout { flex-shrink: 0; }
+}
+
 @media (max-width: 560px) {
   .perfil-grid, .perfil-stats-row { grid-template-columns: 1fr; }
-  .perfil-identity { flex-wrap: wrap; padding: 16px 18px; }
-  .perfil-identity-text { flex-basis: 100%; order: 1; }
-  .perfil-logout-btn, #perfil-logout-btn { order: 2; margin-left: 66px; }
   .perfil-hero { padding: 24px 20px; }
   .perfil-balance-value { font-size: 42px; }
   .perfil-hero-footer { flex-direction: column; align-items: stretch; }
   .perfil-saque-btn { width: 100%; }
+  .perfil-sidebar { flex-direction: column; }
+  .perfil-nav { flex-direction: column; }
+  .perfil-chime-row { flex-wrap: wrap; }
 }

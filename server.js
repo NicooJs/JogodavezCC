@@ -21,6 +21,7 @@ const efiApi = require("./src/efiApi");
 const ledgerStore = require("./src/ledgerStore");
 const streamersStore = require("./src/streamersStore");
 const streamerPixKeysStore = require("./src/streamerPixKeysStore");
+const streamerAlertPrefsStore = require("./src/streamerAlertPrefsStore");
 const paymentsStore = require("./src/paymentsStore");
 const freeTts = require("./src/freeTts");
 
@@ -601,12 +602,24 @@ app.get("/api/perfil", async (req, res) => {
   if (!twitchSession) return res.status(401).json({ error: "Faça login com a Twitch" });
   try {
     const streamer = await streamersStore.ensureByTwitchUserId(twitchSession.twitchUserId);
-    const [balanceCents, lifetimeEarnedCents, pixKeyInfo, donationStats] = await Promise.all([
+    const [balanceCents, lifetimeEarnedCents, pixKeyInfo, donationStats, alertChime] = await Promise.all([
       ledgerStore.getBalance(streamer.id),
       ledgerStore.getLifetimeEarnedCents(streamer.id),
       streamerPixKeysStore.getPixKeyInfo(streamer.id),
       ledgerStore.getDonationSeries(streamer.id, 30),
+      streamerAlertPrefsStore.getChime(streamer.id),
     ]);
+
+    // widget OBS referencia um leilão específico por natureza (a URL carrega
+    // o leilaoId) -- mostra o mais recente do streamer como representante,
+    // mesmo critério que /api/ranking já usa pra agrupar por dono
+    const ownedLeiloes = registry.listLeiloesByOwner(twitchSession.twitchUserId)
+      .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+    const latest = ownedLeiloes[0];
+    const latestLeilao = latest
+      ? { id: latest.id, title: getStore(latest.id).getState("title", latest.title || "JogodaVez"), alertUrl: `/l/${latest.id}/alerta` }
+      : null;
+
     res.json({
       twitchLogin: twitchSession.twitchLogin,
       displayName: twitchSession.displayName,
@@ -620,6 +633,9 @@ app.get("/api/perfil", async (req, res) => {
       donationCount30d: donationStats.count,
       donationTotalCents30d: donationStats.totalCents,
       donationSeries30d: donationStats.series,
+      alertChime,
+      latestLeilao,
+      leilaoCount: ownedLeiloes.length,
     });
   } catch (err) {
     console.error(`[perfil] erro ao carregar (twitchUserId="${twitchSession.twitchUserId}"):`, err.message);
@@ -641,6 +657,29 @@ app.post("/api/perfil/pix-key", async (req, res) => {
   } catch (err) {
     console.error(`[perfil] erro ao salvar chave Pix (twitchUserId="${twitchSession.twitchUserId}"):`, err.message);
     res.status(502).json({ error: "Não foi possível salvar a chave Pix agora." });
+  }
+});
+
+app.post("/api/perfil/alert-chime", async (req, res) => {
+  const twitchSession = getTwitchSession(req);
+  if (!twitchSession) return res.status(401).json({ error: "Faça login com a Twitch" });
+  const chime = String((req.body && req.body.chime) || "");
+  if (!streamerAlertPrefsStore.VALID_CHIMES.has(chime)) {
+    return res.status(400).json({ error: "Som de alerta inválido." });
+  }
+  try {
+    const streamer = await currentStreamer(req);
+    await streamerAlertPrefsStore.setChime(streamer.id, chime);
+    // avisa em tempo real qualquer overlay OBS já aberto de qualquer leilão
+    // desse streamer -- sem isso só pegaria a troca no próximo carregamento
+    // da página (recarregar a Browser Source no OBS)
+    for (const meta of registry.listLeiloesByOwner(twitchSession.twitchUserId)) {
+      io.to(meta.id).emit("alert-config", { chime });
+    }
+    res.json({ ok: true });
+  } catch (err) {
+    console.error(`[perfil] erro ao salvar chime (twitchUserId="${twitchSession.twitchUserId}"):`, err.message);
+    res.status(502).json({ error: "Não foi possível salvar o som do alerta agora." });
   }
 });
 
@@ -1095,6 +1134,24 @@ app.post("/api/l/:id/doacao", loadLeilao, async (req, res) => {
   } catch (err) {
     console.error(`[doação] erro ao criar cobrança Pix (leilaoId="${leilaoId}"):`, err.message);
     res.status(502).json({ error: "Não foi possível gerar o Pix agora. Tente de novo em instantes." });
+  }
+});
+
+// público (o overlay OBS não tem sessão) -- resolve leilão -> dono -> conta
+// -> som escolhido. Se o leilão não tiver dono vinculado (ou o dono nunca
+// escolheu um chime), cai no padrão "classic".
+app.get("/api/l/:id/alert-config", loadLeilao, async (req, res) => {
+  try {
+    const meta = registry.getLeilaoMeta(req.leilaoId);
+    const ownerTwitchUserId = meta && meta.ownerTwitchUserId;
+    if (!ownerTwitchUserId) return res.json({ chime: streamerAlertPrefsStore.DEFAULT_CHIME });
+
+    const streamer = await streamersStore.findByTwitchUserId(ownerTwitchUserId);
+    const chime = streamer ? await streamerAlertPrefsStore.getChime(streamer.id) : streamerAlertPrefsStore.DEFAULT_CHIME;
+    res.json({ chime });
+  } catch (err) {
+    console.error(`[alert-config] erro (leilaoId="${req.leilaoId}"):`, err.message);
+    res.json({ chime: streamerAlertPrefsStore.DEFAULT_CHIME });
   }
 });
 

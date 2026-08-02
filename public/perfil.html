@@ -25,80 +25,188 @@
     <main class="perfil-main">
       <div class="perfil-logged-out" id="perfil-logged-out" hidden>
         <p class="create-existing-title">Entre com a Twitch pra ver seu perfil</p>
-        <p class="create-hint">Chave Pix, saldo e saques são por conta, não por leilão.</p>
+        <p class="create-hint">Chave Pix, saldo, alerta e widget do OBS são por conta, não por leilão.</p>
         <a class="create-twitch-login" id="perfil-login-link" href="/auth/twitch/start?returnTo=/perfil">Continuar com a Twitch</a>
       </div>
 
       <div class="perfil-logged-in" id="perfil-logged-in" hidden>
-        <section class="perfil-identity">
-          <img class="perfil-avatar" id="perfil-avatar" src="" alt="" />
-          <div class="perfil-identity-text">
-            <h1 class="perfil-name" id="perfil-name">Streamer</h1>
-            <p class="perfil-login"><span id="perfil-login">@streamer</span><span class="perfil-since" id="perfil-since" hidden></span></p>
+        <div class="perfil-shell">
+          <aside class="perfil-sidebar">
+            <div class="perfil-sidebar-identity">
+              <img class="perfil-avatar" id="perfil-avatar" src="" alt="" />
+              <div class="perfil-identity-text">
+                <p class="perfil-name" id="perfil-name">Streamer</p>
+                <p class="perfil-login"><span id="perfil-login">@streamer</span><span class="perfil-since" id="perfil-since" hidden></span></p>
+              </div>
+            </div>
+
+            <nav class="perfil-nav">
+              <button class="perfil-nav-item active" data-section="geral" type="button">
+                <svg class="icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10L10 4l7 6"/><path d="M5 8.7V16h10V8.7"/></svg>
+                <span>Visão geral</span>
+              </button>
+              <button class="perfil-nav-item" data-section="financeiro" type="button">
+                <svg class="icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="6" width="14" height="10" rx="1.5"/><path d="M3 9h14"/><circle cx="14" cy="12.5" r="0.7" fill="currentColor" stroke="none"/></svg>
+                <span>Financeiro</span>
+              </button>
+              <button class="perfil-nav-item" data-section="obs" type="button">
+                <svg class="icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="14" height="9.5" rx="1.3"/><path d="M7 17h6M10 13.5V17"/></svg>
+                <span>Widget OBS</span>
+              </button>
+              <button class="perfil-nav-item" data-section="alerta" type="button">
+                <svg class="icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M10 3.3a4 4 0 0 0-4 4v2.1c0 .8-.3 1.5-.8 2.1L4 13h12l-1.2-1.5a3.3 3.3 0 0 1-.8-2.1V7.3a4 4 0 0 0-4-4z"/><path d="M8.3 15.2a1.8 1.8 0 0 0 3.4 0"/></svg>
+                <span>Alerta</span>
+              </button>
+            </nav>
+
+            <button class="perfil-nav-item perfil-nav-logout" id="perfil-logout-btn" type="button">
+              <svg class="icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M8 4H5.5A1.5 1.5 0 0 0 4 5.5v9A1.5 1.5 0 0 0 5.5 16H8"/><path d="M12.5 13.5l3-3.5-3-3.5"/><path d="M15.3 10H7.5"/></svg>
+              <span>Sair da conta</span>
+            </button>
+          </aside>
+
+          <div class="perfil-content">
+            <section class="perfil-section" data-section-panel="geral">
+              <div class="perfil-stats-row">
+                <section class="perfil-stat-card">
+                  <span class="perfil-stat-icon perfil-stat-icon-accent" aria-hidden="true">
+                    <svg class="icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4 15.5V11M10 15.5V6.5M16 15.5V9"/></svg>
+                  </span>
+                  <div class="perfil-stat-text">
+                    <p class="perfil-stat-value" id="perfil-donation-count">0</p>
+                    <p class="perfil-stat-label">doações recebidas</p>
+                    <p class="perfil-stat-footnote">últimos 30 dias</p>
+                  </div>
+                </section>
+
+                <section class="perfil-stat-card">
+                  <span class="perfil-stat-icon perfil-stat-icon-positive" aria-hidden="true">
+                    <svg class="icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M3.5 13.5l4.5-5 3 3 5.5-6.5"/><path d="M13 5h3.5v3.5"/></svg>
+                  </span>
+                  <div class="perfil-stat-text">
+                    <p class="perfil-stat-value" id="perfil-period-total">R$ 0,00</p>
+                    <p class="perfil-stat-label">recebido no período</p>
+                    <p class="perfil-stat-footnote">últimos 30 dias</p>
+                  </div>
+                </section>
+              </div>
+
+              <section class="perfil-card perfil-chart-card">
+                <p class="perfil-card-label">recebido por dia</p>
+                <div class="perfil-chart-wrap" id="perfil-chart-wrap"></div>
+              </section>
+            </section>
+
+            <section class="perfil-section" data-section-panel="financeiro" hidden>
+              <section class="perfil-hero">
+                <p class="perfil-card-label">saldo disponível</p>
+                <p class="perfil-balance-value" id="perfil-balance">R$ 0,00</p>
+                <div class="perfil-hero-footer">
+                  <p class="perfil-card-footnote" id="perfil-lifetime">já arrecadou R$ 0,00 no total</p>
+                  <button class="btn-mini primary perfil-saque-btn" id="saque-submit" disabled>Solicitar saque</button>
+                </div>
+                <p class="perfil-feedback" id="saque-feedback" hidden></p>
+              </section>
+
+              <div class="perfil-grid">
+                <section class="perfil-card">
+                  <p class="perfil-card-label">chave pix</p>
+                  <p class="perfil-card-hint">
+                    As doações caem numa conta única da plataforma e ficam
+                    guardadas pra você até pedir o saque. Cadastre sua chave
+                    Pix pra poder sacar.
+                  </p>
+                  <div class="perfil-field-row">
+                    <input type="text" id="pix-key-input" placeholder="Chave aleatória, e-mail, telefone, CPF/CNPJ" autocomplete="off" />
+                    <button class="btn-mini primary" id="pix-key-save">Salvar</button>
+                  </div>
+                  <p class="perfil-feedback" id="pix-key-feedback" hidden></p>
+                  <p class="perfil-card-footnote" id="pix-key-updated" hidden></p>
+                </section>
+
+                <section class="perfil-card perfil-history-card">
+                  <p class="perfil-card-label">histórico de saques</p>
+                  <div class="perfil-history-list" id="saque-history-list"></div>
+                  <p class="perfil-empty" id="saque-history-empty">Nenhum saque pedido ainda.</p>
+                </section>
+              </div>
+            </section>
+
+            <section class="perfil-section" data-section-panel="obs" hidden>
+              <section class="perfil-card">
+                <p class="perfil-card-label">widget pro OBS</p>
+                <p class="perfil-card-hint" id="obs-hint">
+                  Cole esse link como Browser Source no OBS (ou similar) pra
+                  ver os alertas de doação na tela, com transparência.
+                </p>
+                <div class="perfil-obs-empty" id="obs-empty" hidden>
+                  Você ainda não tem um leilão criado. Crie um em
+                  <a href="/">Criar leilão</a> pra gerar seu link do widget.
+                </div>
+                <div id="obs-link-block" hidden>
+                  <div class="perfil-field-row">
+                    <input type="text" id="obs-link-input" readonly />
+                    <button class="copy-btn" id="obs-link-copy" type="button" data-tooltip="Copiar">
+                      <span class="copy-btn-icon copy-btn-icon-copy" aria-hidden="true"><svg class="icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="7" y="7" width="9" height="9" rx="1.5"/><path d="M13 7V5.5A1.5 1.5 0 0 0 11.5 4h-6A1.5 1.5 0 0 0 4 5.5v6A1.5 1.5 0 0 0 5.5 13H7"/></svg></span>
+                      <span class="copy-btn-icon copy-btn-icon-check" aria-hidden="true"><svg class="icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 10.5l4 4 8-9"/></svg></span>
+                      <span class="copy-btn-sr">Copiar</span>
+                    </button>
+                  </div>
+                  <p class="perfil-card-footnote" id="obs-leilao-title"></p>
+                  <p class="perfil-card-footnote" id="obs-multi-hint" hidden>
+                    Esse é o link do seu leilão mais recente. Se quiser o de
+                    outro, veja em <a href="/meus-leiloes">meus leilões</a>.
+                  </p>
+                </div>
+              </section>
+            </section>
+
+            <section class="perfil-section" data-section-panel="alerta" hidden>
+              <section class="perfil-card">
+                <p class="perfil-card-label">som do alerta</p>
+                <p class="perfil-card-hint">
+                  Vale pra qualquer leilão que você já tem ou vier a criar --
+                  não precisa configurar de novo em cada um.
+                </p>
+                <div class="perfil-chime-list" id="chime-list">
+                  <div class="perfil-chime-row" data-chime="classic">
+                    <span class="perfil-chime-radio" aria-hidden="true"></span>
+                    <div class="perfil-chime-text">
+                      <p class="perfil-chime-name">Clássico</p>
+                      <p class="perfil-chime-desc">Toque suave, o padrão do site.</p>
+                    </div>
+                    <button class="btn-mini perfil-chime-preview" type="button" data-preview="classic" aria-label="Ouvir Clássico">Ouvir</button>
+                  </div>
+                  <div class="perfil-chime-row" data-chime="arcade">
+                    <span class="perfil-chime-radio" aria-hidden="true"></span>
+                    <div class="perfil-chime-text">
+                      <p class="perfil-chime-name">Arcade</p>
+                      <p class="perfil-chime-desc">Enérgico, arpejo de três notas.</p>
+                    </div>
+                    <button class="btn-mini perfil-chime-preview" type="button" data-preview="arcade" aria-label="Ouvir Arcade">Ouvir</button>
+                  </div>
+                  <div class="perfil-chime-row" data-chime="chill">
+                    <span class="perfil-chime-radio" aria-hidden="true"></span>
+                    <div class="perfil-chime-text">
+                      <p class="perfil-chime-name">Suave</p>
+                      <p class="perfil-chime-desc">Mais lento e discreto.</p>
+                    </div>
+                    <button class="btn-mini perfil-chime-preview" type="button" data-preview="chill" aria-label="Ouvir Suave">Ouvir</button>
+                  </div>
+                  <div class="perfil-chime-row" data-chime="bell">
+                    <span class="perfil-chime-radio" aria-hidden="true"></span>
+                    <div class="perfil-chime-text">
+                      <p class="perfil-chime-name">Sino</p>
+                      <p class="perfil-chime-desc">Agudo, se destaca no meio do jogo.</p>
+                    </div>
+                    <button class="btn-mini perfil-chime-preview" type="button" data-preview="bell" aria-label="Ouvir Sino">Ouvir</button>
+                  </div>
+                </div>
+                <button class="btn-mini primary" id="chime-save" type="button">Salvar</button>
+                <p class="perfil-feedback" id="chime-feedback" hidden></p>
+              </section>
+            </section>
           </div>
-          <button class="btn-mini" id="perfil-logout-btn" type="button">Sair da conta</button>
-        </section>
-
-        <section class="perfil-hero">
-          <p class="perfil-card-label">saldo disponível</p>
-          <p class="perfil-balance-value" id="perfil-balance">R$ 0,00</p>
-          <div class="perfil-hero-footer">
-            <p class="perfil-card-footnote" id="perfil-lifetime">já arrecadou R$ 0,00 no total</p>
-            <button class="btn-mini primary perfil-saque-btn" id="saque-submit" disabled>Solicitar saque</button>
-          </div>
-          <p class="perfil-feedback" id="saque-feedback" hidden></p>
-        </section>
-
-        <div class="perfil-stats-row">
-          <section class="perfil-stat-card">
-            <span class="perfil-stat-icon perfil-stat-icon-accent" aria-hidden="true">
-              <svg class="icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4 15.5V11M10 15.5V6.5M16 15.5V9"/></svg>
-            </span>
-            <div class="perfil-stat-text">
-              <p class="perfil-stat-value" id="perfil-donation-count">0</p>
-              <p class="perfil-stat-label">doações recebidas</p>
-              <p class="perfil-stat-footnote">últimos 30 dias</p>
-            </div>
-          </section>
-
-          <section class="perfil-stat-card">
-            <span class="perfil-stat-icon perfil-stat-icon-positive" aria-hidden="true">
-              <svg class="icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M3.5 13.5l4.5-5 3 3 5.5-6.5"/><path d="M13 5h3.5v3.5"/></svg>
-            </span>
-            <div class="perfil-stat-text">
-              <p class="perfil-stat-value" id="perfil-period-total">R$ 0,00</p>
-              <p class="perfil-stat-label">recebido no período</p>
-              <p class="perfil-stat-footnote">últimos 30 dias</p>
-            </div>
-          </section>
-        </div>
-
-        <section class="perfil-card perfil-chart-card">
-          <p class="perfil-card-label">recebido por dia</p>
-          <div class="perfil-chart-wrap" id="perfil-chart-wrap"></div>
-        </section>
-
-        <div class="perfil-grid">
-          <section class="perfil-card">
-            <p class="perfil-card-label">chave pix</p>
-            <p class="perfil-card-hint">
-              As doações caem numa conta única da plataforma e ficam
-              guardadas pra você até pedir o saque. Cadastre sua chave
-              Pix pra poder sacar.
-            </p>
-            <div class="perfil-field-row">
-              <input type="text" id="pix-key-input" placeholder="Chave aleatória, e-mail, telefone, CPF/CNPJ" autocomplete="off" />
-              <button class="btn-mini primary" id="pix-key-save">Salvar</button>
-            </div>
-            <p class="perfil-feedback" id="pix-key-feedback" hidden></p>
-            <p class="perfil-card-footnote" id="pix-key-updated" hidden></p>
-          </section>
-
-          <section class="perfil-card perfil-history-card">
-            <p class="perfil-card-label">histórico de saques</p>
-            <div class="perfil-history-list" id="saque-history-list"></div>
-            <p class="perfil-empty" id="saque-history-empty">Nenhum saque pedido ainda.</p>
-          </section>
         </div>
       </div>
     </main>
@@ -120,6 +228,7 @@
     </div>
   </div>
 
+  <script src="/js/copy-button.js"></script>
   <script src="/js/perfil.js"></script>
 </body>
 </html>
