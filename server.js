@@ -6,7 +6,15 @@ const express = require("express");
 const http = require("http");
 const { Server } = require("socket.io");
 const multer = require("multer");
-const mm = require("music-metadata");
+
+// music-metadata é ESM-only (sem "require" nos exports do package.json) --
+// import() dinâmico funciona em qualquer versão do Node, diferente de
+// require(esm), que só o Node 22+ suporta (produção roda Node 18)
+let musicMetadataPromise;
+function loadMusicMetadata() {
+  if (!musicMetadataPromise) musicMetadataPromise = import("music-metadata");
+  return musicMetadataPromise;
+}
 
 const registry = require("./src/registry");
 const { getStore, deleteStore, DATA_DIR } = require("./src/stores");
@@ -731,6 +739,7 @@ app.post("/api/perfil/alert-sound", (req, res) => {
 
     let duration;
     try {
+      const mm = await loadMusicMetadata();
       const metadata = await mm.parseFile(req.file.path);
       duration = metadata.format.duration || 0;
     } catch {
