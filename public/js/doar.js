@@ -202,7 +202,7 @@ function pickGameShelfCard(cardEl) {
 
 function renderGameShelf(catalogMatches, newMatches) {
   if (catalogMatches.length === 0 && newMatches.length === 0) {
-    gameShelfEl.innerHTML = `<p class="game-shelf-empty">nenhum ${mediaLabel()} encontrado — toque em + pra adicionar mesmo assim</p>`;
+    gameShelfEl.innerHTML = `<p class="game-shelf-empty">nenhum ${mediaLabel()} encontrado, toque em + pra adicionar mesmo assim</p>`;
   } else {
     gameShelfEl.innerHTML =
       catalogMatches.map((g) => gameShelfCardHtml(g, false)).join("") +

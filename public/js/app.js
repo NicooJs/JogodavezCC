@@ -881,7 +881,7 @@ function startSwirl() {
 let soldTimeout = null;
 function triggerSoldMoment(leaderName) {
   clearTimeout(soldTimeout);
-  soldMarkEl.textContent = leaderName ? `Vencedor — ${leaderName}!` : "Vencedor!";
+  soldMarkEl.textContent = leaderName ? `Vencedor: ${leaderName}!` : "Vencedor!";
   soldOverlayEl.hidden = false;
   soldOverlayEl.style.animation = "none";
   soldMarkEl.style.animation = "none";
@@ -1863,7 +1863,7 @@ function pickDonateGameShelfCard(cardEl) {
 
 function renderDonateGameShelf(catalogMatches, newMatches) {
   if (catalogMatches.length === 0 && newMatches.length === 0) {
-    donateModalGameShelfEl.innerHTML = `<p class="game-shelf-empty">nenhum ${mediaLabel()} encontrado — toque em + pra adicionar mesmo assim</p>`;
+    donateModalGameShelfEl.innerHTML = `<p class="game-shelf-empty">nenhum ${mediaLabel()} encontrado, toque em + pra adicionar mesmo assim</p>`;
   } else {
     donateModalGameShelfEl.innerHTML =
       catalogMatches.map((g) => donateGameShelfCardHtml(g, false)).join("") +
