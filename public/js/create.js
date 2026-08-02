@@ -1,11 +1,6 @@
-const STORAGE_KEY = "meus-leiloes";
-
 const form = document.getElementById("create-form");
 const errorEl = document.getElementById("create-error");
 const submitBtn = document.getElementById("create-submit");
-const existingEl = document.getElementById("create-existing");
-const existingListEl = document.getElementById("create-existing-list");
-const existingNewBtn = document.getElementById("create-existing-new");
 
 const twitchLoggedOutEl = document.getElementById("create-twitch-logged-out");
 const twitchLoggedInEl = document.getElementById("create-twitch-logged-in");
@@ -17,76 +12,10 @@ const termsCheckEl = document.getElementById("f-terms");
 
 let currentSession = null;
 
-function escapeHtml(str) {
-  return String(str).replace(/[&<>"']/g, (c) => ({
-    "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;",
-  }[c]));
-}
-
-function getSavedLeiloes() {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    return raw ? JSON.parse(raw) : [];
-  } catch (err) {
-    return [];
-  }
-}
-
-function saveLeilao(entry) {
-  const list = getSavedLeiloes();
-  list.push(entry);
-  try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(list));
-  } catch (err) {
-  }
-}
-
-function extractLeilaoId(url) {
-  const match = String(url || "").match(/\/l\/([a-z0-9_-]+)/i);
-  return match ? match[1] : null;
-}
-
-async function leilaoStillExists(id) {
-  if (!id) return false;
-  try {
-    const res = await fetch(`/api/l/${id}/leaderboard`);
-    if (res.status === 404) return false;
-    return true;
-  } catch (err) {
-    return true;
-  }
-}
-
-async function renderExisting() {
-  const saved = getSavedLeiloes();
-  if (saved.length === 0) return;
-
-  const checks = await Promise.all(saved.map((item) => leilaoStillExists(extractLeilaoId(item.url))));
-  const stillValid = saved.filter((_, index) => checks[index]);
-
-  if (stillValid.length !== saved.length) {
-    try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(stillValid));
-    } catch (err) {
-    }
-  }
-
-  if (stillValid.length === 0) return;
-
-  existingListEl.innerHTML = stillValid.map((item) => `
-    <div class="create-existing-item">
-      <span>${escapeHtml(item.title || "JogodaVez")}</span>
-      <a href="${escapeHtml(item.url)}" target="_blank">Abrir →</a>
-    </div>
-  `).join("");
-  existingEl.hidden = false;
-  form.hidden = true;
-}
-
-existingNewBtn.addEventListener("click", () => {
-  existingEl.hidden = true;
-  form.hidden = false;
-});
+// ?novo=1 pula o redirecionamento automático -- é o que "criar outro
+// leilão" em /meus-leiloes usa pra conseguir chegar no formulário mesmo
+// já tendo um leilão
+const skipAutoRedirect = new URLSearchParams(location.search).has("novo");
 
 async function findExistingLeilao() {
   try {
@@ -106,7 +35,7 @@ async function loadSession() {
     currentSession = { loggedIn: false };
   }
 
-  if (currentSession.loggedIn) {
+  if (currentSession.loggedIn && !skipAutoRedirect) {
     const existing = await findExistingLeilao();
     if (existing) {
       location.href = existing.url;
@@ -140,7 +69,6 @@ twitchLogoutBtn.addEventListener("click", async () => {
   await loadSession();
 });
 
-renderExisting();
 loadSession();
 
 form.addEventListener("submit", async (e) => {
@@ -162,7 +90,6 @@ form.addEventListener("submit", async (e) => {
     const data = await res.json().catch(() => ({}));
     if (!res.ok) throw new Error(data.error || `Erro ${res.status}`);
 
-    saveLeilao({ title: title || "JogodaVez", url: data.url });
     location.href = data.url;
   } catch (err) {
     errorEl.textContent = err.message;

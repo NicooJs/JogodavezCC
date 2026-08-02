@@ -119,11 +119,19 @@ compartilhados. Ao adicionar CSS novo, seguir a convenção visual existente
 ### Criação/login (`index.html` + `create.js`)
 
 2 passos: conectar Twitch → título + aceite dos Termos (chave Pix é
-cadastrada depois, nas Configurações do leilão, não bloqueia a criação).
-Bloco `.create-existing` mostra leilões já criados nesse navegador.
-`create-intro.js` anima entrada (lib Motion) e busca `GET /api/ranking` pra
-mostrar prova social ("N streamers usando"). Login Twitch é sempre
-obrigatório pra criar leilão novo.
+cadastrada depois, no Perfil, não bloqueia a criação). `create-intro.js`
+anima entrada (lib Motion) e busca `GET /api/ranking` pra mostrar prova
+social ("N streamers usando"). Login Twitch é sempre obrigatório pra criar
+leilão novo.
+
+Streamer logado que já tem leilão é redirecionado direto pro mais recente
+ao visitar `/` (`findExistingLeilao()` em `create.js`, via
+`/api/meus-leiloes`) -- não existe mais o antigo sistema de "leilões
+criados nesse navegador" em `localStorage` (era de antes do login com a
+Twitch existir, ficou redundante e foi removido). `?novo=1` na URL pula
+esse redirecionamento automático e força o formulário a aparecer -- é o
+que o link "criar novo" de `/meus-leiloes` usa, já que sem isso ele
+simplesmente devolvia o streamer pro leilão que ele já tinha.
 
 ### Doação (`doar.html` + `doar.js`)
 
