@@ -5,6 +5,56 @@
 > real do projeto — não confie em ideias antigas de outra sessão que
 > contradigam o que está escrito aqui.
 
+## Revisão de fluxo: 3 itens médios corrigidos (2026-08-01/02)
+
+Cliente pediu revisão geral do fluxo e priorizou 3 achados de severidade
+média pra corrigir. Todos testados via HTTP real contra servidor local +
+Postgres/Efí de produção (não só leitura de código), dados de teste limpos
+depois.
+
+1. **Cooldown entre trocar chave Pix e sacar** -- `POST /admin/saque` agora
+   recusa por 24h após qualquer troca de chave (`server.js`,
+   `pixKeyChangeCooldownRemainingMs`), com mensagem informando quanto falta.
+   `GET /admin/saldo` já devolve `cooldownRemainingMs` pro front desabilitar
+   o botão preventivamente. Motivo: sem isso, uma sessão de dono comprometida
+   permitiria trocar a chave e sacar tudo na hora, sem fricção nenhuma.
+   Também ganhou auditoria: `pix_key_history` (migration 009) grava
+   old→new a cada troca, via `streamerPixKeysStore.setPixKey` (agora
+   transacional). Testado via HTTP: saldo antes/depois de cadastrar chave,
+   saque bloqueado com a mensagem certa durante o cooldown.
+
+2. **Revogação de sessão de moderador** -- cookie `leilao_admin` passou a
+   carregar a versão da sessão por leilão (`{id, v}` em vez de só `id`);
+   `hasAdminSession` compara contra `adminSessionVersion` (estado do
+   leilão). Nova rota `POST /admin/revoke-mod-sessions` (só dono, via
+   Twitch) incrementa essa versão -- todo cookie de mod emitido antes vira
+   inválido na hora, sem afetar o dono nem outros leilões (não precisa mais
+   trocar `SESSION_SECRET` do site inteiro). Botão "Revogar acesso de
+   moderadores" em Configurações → Avançado → Sua conta. **Testado de
+   ponta a ponta via HTTP com cookie jars separados**: dono gera código →
+   "mod" loga (cookie próprio) → `check-session` confirma `isPresenter:
+   true` → dono revoga → mesmo cookie de mod agora dá `isPresenter: false`.
+
+3. **Reconciliação completa de saldo** -- `src/reconciliation.js` ganhou
+   `checkTotalBalance()`, rodando a cada 15min: soma
+   `streamer_balances` + fatia líquida da plataforma + saques ainda
+   "pending" (dinheiro debitado mas talvez ainda não saiu de verdade) via
+   `ledgerStore.getLedgerTotals()`, compara com `efiApi.consultarSaldo()`
+   de verdade, grava em `reconciliation_log` (tabela que já existia, sem
+   uso até agora) e loga erro se a diferença passar de 5 centavos
+   (tolerância de arredondamento). Só compara e loga -- nunca corrige nada
+   sozinho, drift de dinheiro precisa de olho humano. **Testado contra o
+   saldo real**: rodou em homologação (saldo 0 = 0, sem alarme) e forçado
+   em produção (saldo real R$2,00 vs ledger 0 -- disparou o alerta de
+   divergência certinho; esse R$2,00 é um resíduo conhecido de teste manual
+   anterior ao ledger existir, não é bug).
+
+Durante os testes, uma limpeza incompleta de sessões anteriores desta
+mesma revisão deixou ~67 linhas órfãs de `platform_credit`/
+`platform_withdrawal_cost` (`streamer_id NULL`) no Postgres de produção --
+removidas antes de fechar. Reforça por que o item 3 (reconciliação) importa:
+esse tipo de resíduo é exatamente o que ela existe pra pegar.
+
 ## Race conditions sob doação simultânea -- testado de verdade (2026-08-01)
 
 Cliente pediu certeza de que doações concorrentes (várias pessoas doando ao

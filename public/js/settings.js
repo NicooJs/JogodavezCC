@@ -195,13 +195,23 @@ async function loadSaldo() {
   const badge = document.getElementById("saldo-state");
   const saqueBtn = document.getElementById("saque-submit");
   const pixInput = document.getElementById("pix-key-input");
+  const feedback = document.getElementById("saque-feedback");
   try {
     const data = await presenterFetch("/admin/saldo");
     currentBalanceCents = data.balanceCents || 0;
     badge.textContent = `saldo: ${formatBRL(currentBalanceCents / 100)}`;
     badge.className = "badge";
     if (document.activeElement !== pixInput) pixInput.value = data.pixKey || "";
-    saqueBtn.disabled = !data.pixKey || currentBalanceCents <= 0;
+
+    const cooldownMs = data.cooldownRemainingMs || 0;
+    if (cooldownMs > 0) {
+      const horas = Math.ceil(cooldownMs / 3_600_000);
+      saqueBtn.disabled = true;
+      feedback.textContent = `Chave Pix trocada recentemente -- saque libera em ~${horas}h, por segurança.`;
+      feedback.hidden = false;
+    } else {
+      saqueBtn.disabled = !data.pixKey || currentBalanceCents <= 0;
+    }
   } catch (err) {
     badge.textContent = "erro ao carregar saldo";
     badge.className = "badge closed";
@@ -412,6 +422,26 @@ document.getElementById("account-logout-btn").addEventListener("click", async ()
   if (!ok) return;
   await fetch("/api/session/logout", { method: "POST" }).catch(() => {});
   location.href = "/";
+});
+
+document.getElementById("revoke-mods-btn").addEventListener("click", async () => {
+  const feedback = document.getElementById("revoke-mods-feedback");
+  feedback.hidden = true;
+  const ok = await confirmDialog({
+    title: "Revogar acesso de moderadores",
+    message: "Qualquer moderador conectado agora com o código de uso único perde o acesso imediatamente. Eles vão precisar de um código novo pra entrar de novo. Você não é afetado.",
+    confirmLabel: "Revogar acesso",
+    danger: true,
+  });
+  if (!ok) return;
+  try {
+    await presenterFetch("/admin/revoke-mod-sessions", { method: "POST" });
+    feedback.textContent = "Acesso de moderadores revogado.";
+    feedback.hidden = false;
+  } catch (err) {
+    feedback.textContent = "Erro: " + err.message;
+    feedback.hidden = false;
+  }
 });
 
 document.getElementById("reset-btn").addEventListener("click", async () => {

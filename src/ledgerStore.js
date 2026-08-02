@@ -91,6 +91,39 @@ async function getBalance(streamerId) {
   return res.rows[0] ? Number(res.rows[0].balance_cents) : 0;
 }
 
+// quanto deveria estar de verdade na Conta Master agora: saldo de todo
+// streamer (inclui saque "pending" -- o dinheiro já foi debitado do
+// streamer mas ainda não saiu da conta, então continua contando aqui) +
+// a fatia líquida acumulada da própria plataforma (créditos de doação
+// menos custo de envio absorvido). Usado só pra reconciliação/auditoria
+// (src/reconciliation.js), nunca no caminho quente de crédito/saque.
+async function getLedgerTotals() {
+  const res = await query(`
+    SELECT
+      COALESCE((SELECT SUM(balance_cents) FROM streamer_balances), 0) AS streamer_total,
+      COALESCE((SELECT SUM(amount_cents) FROM ledger_entries WHERE kind = 'platform_credit'), 0)
+        - COALESCE((SELECT SUM(amount_cents) FROM ledger_entries WHERE kind = 'platform_withdrawal_cost'), 0) AS platform_net,
+      COALESCE((SELECT SUM(sent_cents) FROM withdrawals WHERE status = 'pending'), 0) AS pending_outbound
+  `);
+  const row = res.rows[0];
+  const streamerTotalCents = Number(row.streamer_total);
+  const platformNetCents = Number(row.platform_net);
+  const pendingOutboundCents = Number(row.pending_outbound);
+  return {
+    streamerTotalCents,
+    platformNetCents,
+    pendingOutboundCents,
+    totalCents: streamerTotalCents + platformNetCents + pendingOutboundCents,
+  };
+}
+
+async function logReconciliation({ ledgerTotalCents, efiBalanceCents }) {
+  await query(
+    `INSERT INTO reconciliation_log (ledger_total_cents, efi_balance_cents, diff_cents) VALUES ($1, $2, $3)`,
+    [ledgerTotalCents, efiBalanceCents, efiBalanceCents - ledgerTotalCents]
+  );
+}
+
 // idempotente por payment_id -- um webhook reenviado não credita duas vezes.
 // A garantia de verdade é a constraint única em (payment_id, kind)
 // (migration 008): o SELECT abaixo é só um atalho pra não fazer trabalho à
@@ -255,6 +288,8 @@ module.exports = {
   computeDonationSplit,
   computeWithdrawal,
   getBalance,
+  getLedgerTotals,
+  logReconciliation,
   creditDonation,
   createWithdrawal,
   attachEfiEnvioId,

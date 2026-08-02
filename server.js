@@ -169,18 +169,27 @@ function getAdminLeiloes(req) {
   return payload && Array.isArray(payload.leiloes) ? payload.leiloes : [];
 }
 
+// cada entrada carrega a versão vigente no momento em que a sessão foi
+// concedida -- o dono pode invalidar todo mod de um leilão de uma vez só
+// aumentando adminSessionVersion (ver /admin/revoke-mod-sessions), sem
+// precisar trocar o SESSION_SECRET do site inteiro (que derrubaria todo
+// mundo, em todos os leilões)
 function hasAdminSession(req, leilaoId) {
-  return getAdminLeiloes(req).includes(leilaoId);
+  const entry = getAdminLeiloes(req).find((e) => e && e.id === leilaoId);
+  if (!entry) return false;
+  const currentVersion = req.store.getState("adminSessionVersion", 0);
+  return Number(entry.v) === Number(currentVersion);
 }
 
 function grantAdminSession(req, res, leilaoId) {
-  const leiloes = getAdminLeiloes(req).filter((id) => id !== leilaoId);
-  leiloes.push(leilaoId);
+  const version = req.store.getState("adminSessionVersion", 0);
+  const leiloes = getAdminLeiloes(req).filter((e) => e && e.id !== leilaoId);
+  leiloes.push({ id: leilaoId, v: version });
   session.setCookie(req, res, "leilao_admin", { leiloes }, ADMIN_SESSION_MAX_AGE_SECONDS);
 }
 
 function revokeAdminSession(req, res, leilaoId) {
-  const leiloes = getAdminLeiloes(req).filter((id) => id !== leilaoId);
+  const leiloes = getAdminLeiloes(req).filter((e) => e && e.id !== leilaoId);
   if (leiloes.length === 0) {
     session.clearCookie(req, res, "leilao_admin");
   } else {
@@ -580,6 +589,14 @@ app.post("/api/l/:id/admin/unlink-account", loadLeilao, (req, res) => {
   res.json({ ok: true });
 });
 
+const PIX_KEY_CHANGE_COOLDOWN_MS = 24 * 60 * 60 * 1000; // 24h entre trocar a chave e poder sacar
+
+function pixKeyChangeCooldownRemainingMs(pixKeyInfo) {
+  if (!pixKeyInfo || !pixKeyInfo.updatedAt) return 0;
+  const elapsed = Date.now() - new Date(pixKeyInfo.updatedAt).getTime();
+  return Math.max(0, PIX_KEY_CHANGE_COOLDOWN_MS - elapsed);
+}
+
 async function findOwnerStreamer(leilaoId) {
   const meta = registry.getLeilaoMeta(leilaoId);
   const ownerTwitchUserId = meta && meta.ownerTwitchUserId;
@@ -590,11 +607,16 @@ async function findOwnerStreamer(leilaoId) {
 app.get("/api/l/:id/admin/saldo", loadLeilao, requireLeilaoOwner, async (req, res) => {
   try {
     const streamer = await findOwnerStreamer(req.leilaoId);
-    const [balanceCents, pixKey] = await Promise.all([
+    const [balanceCents, pixKeyInfo] = await Promise.all([
       ledgerStore.getBalance(streamer.id),
-      streamerPixKeysStore.getPixKey(streamer.id),
+      streamerPixKeysStore.getPixKeyInfo(streamer.id),
     ]);
-    res.json({ balanceCents, pixKey });
+    const cooldownRemainingMs = pixKeyChangeCooldownRemainingMs(pixKeyInfo);
+    res.json({
+      balanceCents,
+      pixKey: pixKeyInfo ? pixKeyInfo.pixKey : null,
+      cooldownRemainingMs,
+    });
   } catch (err) {
     console.error(`[saldo] erro (leilaoId="${req.leilaoId}"):`, err.message);
     res.status(502).json({ error: "Não foi possível consultar o saldo agora." });
@@ -617,16 +639,28 @@ app.post("/api/l/:id/admin/pix-key", loadLeilao, requireLeilaoOwner, async (req,
 });
 
 app.post("/api/l/:id/admin/saque", loadLeilao, requireLeilaoOwner, async (req, res) => {
-  let streamer, pixKey;
+  let streamer, pixKeyInfo;
   try {
     streamer = await findOwnerStreamer(req.leilaoId);
-    pixKey = await streamerPixKeysStore.getPixKey(streamer.id);
+    pixKeyInfo = await streamerPixKeysStore.getPixKeyInfo(streamer.id);
   } catch (err) {
     console.error(`[saque] erro ao buscar streamer/chave (leilaoId="${req.leilaoId}"):`, err.message);
     return res.status(502).json({ error: "Não foi possível iniciar o saque agora." });
   }
-  if (!pixKey) {
+  if (!pixKeyInfo || !pixKeyInfo.pixKey) {
     return res.status(400).json({ error: "Cadastre sua chave Pix antes de pedir saque." });
+  }
+  const pixKey = pixKeyInfo.pixKey;
+
+  // cooldown entre trocar a chave Pix e poder sacar -- se a sessão do dono
+  // for comprometida, isso impede drenar o saldo na hora trocando a chave
+  // e sacando em seguida (dá tempo do dono perceber e agir)
+  const cooldownRemainingMs = pixKeyChangeCooldownRemainingMs(pixKeyInfo);
+  if (cooldownRemainingMs > 0) {
+    const horas = Math.ceil(cooldownRemainingMs / 3_600_000);
+    return res.status(400).json({
+      error: `Chave Pix trocada recentemente -- por segurança, aguarde ~${horas}h antes de sacar.`,
+    });
   }
 
   let withdrawal;
@@ -1184,6 +1218,23 @@ app.post("/api/l/:id/admin/generate-code", loadLeilao, async (req, res) => {
   const code = generateModCode();
   req.store.setState("adminSecretHash", await hashPassword(code));
   res.json({ ok: true, code });
+});
+
+// derruba TODOS os moderadores atualmente conectados nesse leilão de uma
+// vez (aumenta a versão -- cookies antigos de mod ficam com versão velha e
+// param de bater em hasAdminSession), sem afetar o dono nem outros leilões.
+// Não invalida código de uso único ainda não usado (esse já é resolvido
+// separadamente ao gerar um novo)
+app.post("/api/l/:id/admin/revoke-mod-sessions", loadLeilao, (req, res) => {
+  const twitchSession = getTwitchSession(req);
+  const meta = registry.getLeilaoMeta(req.leilaoId);
+  const isOwner = !!(twitchSession && meta && meta.ownerTwitchUserId && twitchSession.twitchUserId === meta.ownerTwitchUserId);
+  if (!isOwner) {
+    return res.status(401).json({ error: "Só o dono do leilão pode revogar acesso de moderadores" });
+  }
+  const currentVersion = req.store.getState("adminSessionVersion", 0);
+  req.store.setState("adminSessionVersion", Number(currentVersion) + 1);
+  res.json({ ok: true });
 });
 
 app.post("/api/l/:id/admin/logout", loadLeilao, (req, res) => {
