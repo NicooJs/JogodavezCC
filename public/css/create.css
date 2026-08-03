@@ -1,5 +1,5 @@
 
-.create-body { height: auto; overflow-y: auto; }
+.create-body { height: auto; overflow-x: hidden; overflow-y: auto; }
 
 .create-page {
   position: relative;
