@@ -20,7 +20,7 @@ pro estado detalhado dessa integração.
    doação** (`/l/:id/doar`, pra fixar no chat) e o **overlay pro OBS**
    (`/l/:id/alerta`, Browser Source com fundo transparente).
 3. O doador abre a página de doação, escolhe um jogo numa prateleira
-   (busca na RAWG + jogos já no catálogo), decide se quer **apoiar** ou
+   (busca na IGDB + jogos já no catálogo), decide se quer **apoiar** ou
    **sabotar**, escolhe o valor (mínimo R$5) e opcionalmente deixa nome +
    mensagem (com narração por voz no overlay, via síntese de voz grátis).
 4. A cobrança Pix é gerada na API da Efí. Quando o pagamento é confirmado
@@ -97,16 +97,16 @@ sozinho pra "filme" quando a modalidade muda.
 Quando um item novo entra no catálogo, o servidor busca a capa dele numa
 fonte externa, de acordo com a modalidade do leilão:
 
-- **Jogos** → **RAWG** (banco de dados aberto com mais de 500 mil jogos).
-  Crie uma chave grátis em https://rawg.io/apidocs e coloque em
-  `RAWG_API_KEY` no `.env`.
+- **Jogos** → **IGDB** (banco de dados de jogos mantido pela Twitch/Amazon).
+  Não precisa de chave nova, reaproveita `TWITCH_CLIENT_ID`/
+  `TWITCH_CLIENT_SECRET` já configurados pro login.
 - **Filmes** → **TMDB** (The Movie Database). Crie uma chave grátis em
   https://www.themoviedb.org/settings/api ("API Key (v3 auth)") e coloque
   em `TMDB_API_KEY` no `.env`.
 
-Sem a chave correspondente, o site funciona normalmente, só que sem as
-miniaturas (aparece um quadradinho com a inicial no lugar) — mesmo
-fallback usado quando um item específico não é encontrado na busca.
+Sem a chave/credencial correspondente, o site funciona normalmente, só
+que sem as miniaturas (aparece um quadradinho com a inicial no lugar) —
+mesmo fallback usado quando um item específico não é encontrado na busca.
 
 ## Estrutura do projeto
 
@@ -124,8 +124,8 @@ src/ledgerStore.js           split de doação/saque, saldo por streamer, em cen
 src/streamersStore.js/paymentsStore.js/streamerPixKeysStore.js  Postgres: identidade, histórico de pagamento, chave Pix de saque
 src/reconciliation.js        resolve saques presos sem o webhook de confirmação chegar
 src/stateBackup.js           cópia de segurança periódica do estado do leilão no Postgres
-src/gameImages.js/movieImages.js    busca de capa na RAWG e na TMDB
-src/mediaAdapter.js          escolhe RAWG ou TMDB pela modalidade do leilão
+src/igdbApi.js/movieImages.js    busca de capa na IGDB e na TMDB
+src/mediaAdapter.js          escolhe IGDB ou TMDB pela modalidade do leilão
 public/index.html            criação de leilão
 public/board.html            placar + painel de apresentador
 public/doar.html             página de doação

@@ -103,7 +103,7 @@ compartilhados. Ao adicionar CSS novo, seguir a convenção visual existente
 - **`promptDialog`/`confirmDialog`**: **duas implementações separadas, não compartilham módulo** — uma em `public/js/settings.js` (board), outra em `public/js/meus-leiloes.js`. Ambas retornam Promise, mesmo padrão de overlay (`.dialog-overlay`, `z-index: 70`, regra em `style.css` já que várias páginas usam).
 - **Sidebar de navegação com ícone + label dentro de modal**: `.settings-nav`/`.settings-nav-item` em `settings.css`, mesmo visual (ícone + label, estado ativo com fundo sólido na cor de destaque) do padrão `.perfil-nav-item` do Perfil, mas é uma implementação própria escopada ao modal, não reuso direto da classe.
 - **`.seg`** (segmented control): Apoiar/Sabotar, Sem voz/Com voz.
-- **`.game-shelf`**: carrossel horizontal de capas com `scroll-snap` + máscara de fade nas bordas, populado por catálogo local + busca RAWG/TMDB debounced.
+- **`.game-shelf`**: carrossel horizontal de capas com `scroll-snap` + máscara de fade nas bordas, populado por catálogo local + busca IGDB/TMDB debounced.
 - **`.modal`/`.modal-overlay`**: base de todos os diálogos, todos com grain.
 
 ### Animações — a maioria é JS/Canvas, não CSS puro
@@ -136,7 +136,7 @@ simplesmente devolvia o streamer pro leilão que ele já tinha.
 ### Doação (`doar.html` + `doar.js`)
 
 Fluxo: chega em `/l/:id/doar` → conecta Socket.IO (`query:{leilaoId}`) →
-formulário (ação apoiar/sabotar, jogo via `game-shelf` com busca RAWG/TMDB,
+formulário (ação apoiar/sabotar, jogo via `game-shelf` com busca IGDB/TMDB,
 valor, opcionalmente nome/mensagem/voz TTS atrás de um toggle) → submit
 (`POST /api/l/:id/doacao`) → tela de QR Pix + copia-e-cola → **confirmação
 só por Socket.IO** (evento `update` com `lastEvent.paymentId` batendo o

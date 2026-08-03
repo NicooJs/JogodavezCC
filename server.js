@@ -20,7 +20,7 @@ const registry = require("./src/registry");
 const { getStore, deleteStore, DATA_DIR } = require("./src/stores");
 const { hashPassword, verifyPassword, timingSafeEqualString } = require("./src/passwords");
 const { parseMessage, normalizeKey, leftoverAfterMatch, looksLikeNoise } = require("./src/parser");
-const gameImages = require("./src/gameImages");
+const igdbApi = require("./src/igdbApi");
 const { getMediaAdapter, mediaLabel, normalizeMode, MODES: LEILAO_MODES } = require("./src/mediaAdapter");
 const { fetchTwitchAvatar } = require("./src/twitchClient");
 const twitchAuth = require("./src/twitchAuth");
@@ -1089,7 +1089,7 @@ app.get("/api/board-bg-covers", async (req, res) => {
   const leilaoId = String(req.query.leilaoId || "");
   const media = leilaoId && /^[a-z0-9_-]+$/i.test(leilaoId) && registry.leilaoExists(leilaoId)
     ? getMediaAdapter(getStore(leilaoId))
-    : gameImages;
+    : igdbApi;
   const covers = await media.fetchPopularCovers();
   // sem Cache-Control aqui de propósito -- a URL não muda quando a modalidade troca
   // (mesma leilaoId), e um cache HTTP guardaria capa de jogo depois de trocar pra
@@ -1098,9 +1098,9 @@ app.get("/api/board-bg-covers", async (req, res) => {
   res.json({ covers });
 });
 
-const IMAGE_PROXY_ALLOWED_HOSTS = new Set(["media.rawg.io", "static-cdn.jtvnw.net", "image.tmdb.org"]);
+const IMAGE_PROXY_ALLOWED_HOSTS = new Set(["images.igdb.com", "static-cdn.jtvnw.net", "image.tmdb.org"]);
 
-// mesma origem = sem depender do header CORS da CDN (a da RAWG às vezes não manda de forma
+// mesma origem = sem depender do header CORS da CDN (a da IGDB às vezes não manda de forma
 // confiável), usado só pelo canvas do recap que precisa ler pixel da imagem
 app.get("/api/image-proxy", async (req, res) => {
   const target = String(req.query.url || "");
@@ -1636,7 +1636,7 @@ app.post("/api/l/:id/admin/reset", loadLeilao, requireLeilaoAdmin, (req, res) =>
   res.json({ ok: true });
 });
 
-// trocar de modalidade (jogos <-> filmes) muda a fonte de busca/capa (RAWG
+// trocar de modalidade (jogos <-> filmes) muda a fonte de busca/capa (IGDB
 // vs TMDB) -- misturar capa de jogo com item de filme no mesmo catálogo não
 // faz sentido, então a troca sempre zera o leilão primeiro, igual o reset manual
 app.post("/api/l/:id/admin/set-mode", loadLeilao, requireLeilaoAdmin, (req, res) => {
