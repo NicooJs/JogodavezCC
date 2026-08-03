@@ -435,6 +435,9 @@
 .perfil-saque-status[data-status="failed"] { background: var(--danger-bg); color: var(--danger); border-color: transparent; }
 .perfil-saque-status[data-status="pending"] { background: var(--accent-bg); color: var(--accent-text); border-color: transparent; }
 
+.perfil-saque-row-wrap { display: flex; flex-direction: column; gap: 4px; }
+.perfil-saque-reason { margin: 0 2px; font-size: 11px; line-height: 1.4; color: var(--muted); }
+
 .perfil-obs-empty { font-size: 13px; color: var(--muted); line-height: 1.6; }
 .perfil-obs-empty[hidden] { display: none; }
 .perfil-obs-empty a { color: var(--accent-text); }

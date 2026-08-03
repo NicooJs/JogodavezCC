@@ -59,6 +59,7 @@ function rowToWithdrawal(row) {
     sentCents: Number(row.sent_cents),
     efiEnvioId: row.efi_envio_id,
     status: row.status,
+    failureReason: row.failure_reason,
     createdAt: row.created_at,
     completedAt: row.completed_at,
   };
@@ -280,12 +281,14 @@ async function markWithdrawalSent(withdrawalId, efiEnvioId) {
 }
 
 // se o Pix Out falhar depois do saldo já debitado, devolve pro streamer --
-// nunca um UPDATE destrutivo no saldo, fica registrado como estorno no ledger
-async function markWithdrawalFailed(withdrawalId) {
+// nunca um UPDATE destrutivo no saldo, fica registrado como estorno no ledger.
+// reason é o motivo real (da Efí ou de um erro síncrono nosso), mostrado pro
+// streamer no histórico de saques em vez de só sumir sem explicação.
+async function markWithdrawalFailed(withdrawalId, reason = null) {
   return withTransaction(async (client) => {
     const res = await client.query(
-      `UPDATE withdrawals SET status = 'failed', completed_at = now() WHERE id = $1 AND status = 'pending' RETURNING *`,
-      [withdrawalId]
+      `UPDATE withdrawals SET status = 'failed', failure_reason = $2, completed_at = now() WHERE id = $1 AND status = 'pending' RETURNING *`,
+      [withdrawalId, reason]
     );
     const withdrawal = res.rows[0];
     if (!withdrawal) return null;
@@ -326,7 +329,7 @@ async function resolveEnvioStatus(idEnvio, status, detalhe) {
     await markWithdrawalSent(withdrawal.id, idEnvio);
     console.log(`[saque] idEnvio="${idEnvio}" confirmado REALIZADO, withdrawalId=${withdrawal.id}.`);
   } else if (status === "NAO_REALIZADO") {
-    await markWithdrawalFailed(withdrawal.id);
+    await markWithdrawalFailed(withdrawal.id, detalhe || "Não foi possível concluir o envio.");
     console.warn(`[saque] idEnvio="${idEnvio}" veio NAO_REALIZADO, withdrawalId=${withdrawal.id} estornado. Detalhe: ${detalhe || "(sem motivo informado)"}`);
   } else {
     // status desconhecido/inesperado -- não mexe no estado, fica pending

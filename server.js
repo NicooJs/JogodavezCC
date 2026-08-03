@@ -833,7 +833,7 @@ app.post("/api/perfil/saque", async (req, res) => {
     // erro síncrono (ex: chave inválida, HTTP 4xx/5xx) -- aqui sim já sabemos
     // que não foi aceito, então reverte imediatamente em vez de deixar pendente
     console.error(`[perfil] falha ao enviar Pix (withdrawalId=${withdrawal.withdrawalId}):`, err.message);
-    await ledgerStore.markWithdrawalFailed(withdrawal.withdrawalId);
+    await ledgerStore.markWithdrawalFailed(withdrawal.withdrawalId, "Não foi possível enviar o pedido pra Efí.");
     res.status(502).json({ error: "Não foi possível concluir o saque agora, o valor voltou pro seu saldo. Tente de novo em instantes." });
   }
 });
@@ -851,6 +851,7 @@ app.get("/api/perfil/saques", async (req, res) => {
         feeCents: w.feeCents,
         sentCents: w.sentCents,
         status: w.status,
+        failureReason: w.failureReason,
         createdAt: w.createdAt,
         completedAt: w.completedAt,
       })),

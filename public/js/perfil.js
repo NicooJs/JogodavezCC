@@ -351,12 +351,15 @@ async function loadSaqueHistory() {
   }
   historyEmptyEl.hidden = true;
   historyListEl.innerHTML = saques.map((s) => `
-    <div class="perfil-saque-row">
-      <div class="perfil-saque-row-main">
-        <span class="perfil-saque-value">${formatBRL(s.sentCents / 100)}</span>
-        <span class="perfil-saque-date">${formatDate(s.createdAt)}</span>
+    <div class="perfil-saque-row-wrap">
+      <div class="perfil-saque-row">
+        <div class="perfil-saque-row-main">
+          <span class="perfil-saque-value">${formatBRL(s.sentCents / 100)}</span>
+          <span class="perfil-saque-date">${formatDate(s.createdAt)}</span>
+        </div>
+        <span class="perfil-saque-status" data-status="${s.status}">${STATUS_LABELS[s.status] || s.status}</span>
       </div>
-      <span class="perfil-saque-status" data-status="${s.status}">${STATUS_LABELS[s.status] || s.status}</span>
+      ${s.status === "failed" ? `<p class="perfil-saque-reason">Valor devolvido pro saldo. ${escapeHtml(s.failureReason || "Não foi possível concluir o envio.")}</p>` : ""}
     </div>
   `).join("");
 }
@@ -505,6 +508,12 @@ document.getElementById("pix-key-save").addEventListener("click", async () => {
   const pixKey = pixKeyInputEl.value.trim();
   pixKeyFeedbackEl.hidden = true;
   if (!pixKey) return;
+  const ok = await confirmDialog({
+    title: "Trocar chave Pix",
+    message: `Confirmar troca da chave Pix pra "${pixKey}"? Por segurança, o saque fica bloqueado por 24h depois da troca.`,
+    confirmLabel: "Trocar chave",
+  });
+  if (!ok) return;
   try {
     await perfilFetch("/pix-key", { method: "POST", body: JSON.stringify({ pixKey }) });
     pixKeyFeedbackEl.textContent = "Chave Pix salva!";
