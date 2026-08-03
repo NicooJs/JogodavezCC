@@ -1,6 +1,6 @@
 
 .perfil-main {
-  max-width: 1000px;
+  max-width: 1120px;
   margin: 0 auto;
   display: flex;
   flex-direction: column;
@@ -32,7 +32,7 @@
 }
 
 .perfil-sidebar {
-  width: 216px;
+  width: 272px;
   flex-shrink: 0;
   display: flex;
   flex-direction: column;
@@ -43,16 +43,18 @@
   background-image: var(--grain);
   background-blend-mode: overlay;
   border: 1px solid var(--border);
-  border-radius: 14px;
-  padding: 14px 10px;
+  border-radius: 16px;
+  padding: 26px 14px 14px;
 }
 
 .perfil-sidebar-identity {
   display: flex;
+  flex-direction: column;
   align-items: center;
+  text-align: center;
   gap: 12px;
-  padding: 4px 6px 14px;
-  margin-bottom: 4px;
+  padding: 0 10px 22px;
+  margin-bottom: 8px;
   border-bottom: 1px solid var(--border-soft);
 }
 
@@ -63,22 +65,23 @@
 }
 
 .perfil-avatar {
-  width: 42px;
-  height: 42px;
+  width: 84px;
+  height: 84px;
   border-radius: 50%;
   object-fit: cover;
   background: var(--surface-2);
-  border: 1px solid var(--border);
+  border: 2px solid var(--accent-soft);
+  box-shadow: 0 0 0 4px var(--accent-bg);
   flex-shrink: 0;
 }
 
-.perfil-identity-text { min-width: 0; }
+.perfil-identity-text { min-width: 0; max-width: 100%; }
 
 .perfil-name {
   margin: 0;
   font-family: var(--font-display);
   font-weight: 700;
-  font-size: 14.5px;
+  font-size: 17px;
   color: var(--text);
   overflow: hidden;
   text-overflow: ellipsis;
@@ -86,9 +89,9 @@
 }
 
 .perfil-login {
-  margin: 2px 0 0;
+  margin: 4px 0 0;
   font-family: var(--font-mono);
-  font-size: 10.5px;
+  font-size: 11px;
   color: var(--muted);
   overflow: hidden;
   text-overflow: ellipsis;
