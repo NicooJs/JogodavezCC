@@ -282,9 +282,46 @@ de ser preenchido/aprovado do lado do cliente. A resposta do Marcelo
 serve como confirmação adicional de que PJ é (e sempre foi) o requisito
 certo, não como uma pista nova sobre o motivo do bloqueio atual.
 
-**Não trocar `EFI_ENV` pra `producao` até isso se resolver.** Acionar
-doação real sem saber se o saque funciona de verdade recria o problema
-que motivou sair do Mercado Pago.
+**Causa raiz real encontrada (2026-08-03), via material oficial da Efí (não
+mais suposição de post de comunidade): é limite diário, não aditivo/formulário.**
+Toda conta nova vem com um limite diário **pré-aprovado propositalmente
+baixo** pra envio de Pix via API, só pra teste: **R$0,30/dia em contas Efí
+Pro, R$1,00/dia em contas Efí Empresas**, e só pra destino "você mesmo ou
+contatos seguros". Isso explica os 3 `NAO_REALIZADO` sem precisar de
+nenhuma das hipóteses anteriores (aditivo, formulário, PJ vs PF): os dois
+primeiros testes de R$1,00 (autoenvio) provavelmente bateram exatamente no
+teto pré-aprovado de conta Empresas, e a terceira tentativa (chave de
+titularidade diferente, fora de "contatos seguros") não tem limite
+pré-aprovado nenhum até ser configurado. **A aprovação é feita pelo próprio
+usuário no painel, sem precisar acionar suporte nem preencher formulário
+nenhum:**
+
+1. tela inicial → "Configurações da conta" (⚙, menu superior direito);
+2. "Limites" → "Configurar limites";
+3. em "Pix e transferências" → "Pix";
+4. origem da transação: **API**;
+5. destino: pessoas físicas / empresas / você mesmo e contatos seguros
+   (conforme o caso de uso real do saque, que é sempre pra terceiros —
+   streamers, não "você mesmo");
+6. período (diurno/noturno — noturno só existe em contas Efí Para Você e
+   Efí Pro);
+7. editar o valor desejado → "Continuar";
+8. se pedir acima do pré-aprovado, dá pra justificar o motivo e anexar
+   documento;
+9. "Continuar" e autenticar a solicitação.
+
+Isso **supera** (não só refina) a teoria antiga de "formulário +
+aditivo contratual" — não existe esse processo separado, é
+autoatendimento no próprio painel. **Ação pendente do cliente**: seguir
+esse passo a passo e configurar um limite diário compatível com o volume
+real de saques esperado, pro destino "pessoas físicas" (é pra isso que o
+saque de streamer serve — não é "você mesmo" nem preenche o critério de
+"contato seguro" só por estar cadastrado como chave Pix).
+
+**Não trocar `EFI_ENV` pra `producao` até o limite estar configurado e
+testado com um saque real de valor baixo.** Acionar doação real sem saber
+se o saque funciona de verdade recria o problema que motivou sair do
+Mercado Pago.
 
 ## Se importa mais que tudo: o modelo mudou, não é mais pix.gg
 
@@ -327,13 +364,13 @@ bloqueio individual).
 
 ## Pendências externas
 
-- Preencher o formulário de solicitação de liberação de `pix.send` em
-  Produção (a conta já é PJ, confirmado -- esse não é mais um pré-requisito
-  em aberto, só falta o formulário/aditivo em si).
+- **Configurar o limite diário de envio de Pix via API no painel da Efí**
+  (Configurações da conta → Limites → Pix e transferências → Pix → origem
+  API → destino "pessoas físicas"), pro valor real esperado de saque. Não
+  é mais formulário/suporte -- é autoatendimento, ver passo a passo acima.
+  Depois de configurado, testar de novo com um `enviarPix` real de valor
+  baixo antes de confiar no fluxo em Produção.
 - Resposta do comercial da Efí sobre taxa negociada de saque.
-- Confirmar se `pix.send` em **Produção** exige aditivo separado (em
-  Homologação já testamos e não exige — ver seção de progresso). Enquanto
-  não tiver resposta, tratar Produção como bloqueada pra envio de Pix.
 - Falta uma segunda chave Pix de teste (diferente da `fd7aaa7e-...` já
   cadastrada) pra conseguir testar um `enviarPix` completo em homologação,
   não só confirmar que o escopo não está bloqueado.
