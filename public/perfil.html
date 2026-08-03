@@ -123,8 +123,14 @@
                     guardadas pra você até pedir o saque. Cadastre sua chave
                     Pix pra poder sacar.
                   </p>
+                  <div class="seg perfil-pix-key-type" id="pix-key-type">
+                    <button type="button" data-type="aleatoria" class="active">Aleatória</button>
+                    <button type="button" data-type="documento">CPF/CNPJ</button>
+                    <button type="button" data-type="celular">Celular</button>
+                    <button type="button" data-type="email">Email</button>
+                  </div>
                   <div class="perfil-field-row">
-                    <input type="text" id="pix-key-input" placeholder="Chave aleatória, e-mail, telefone, CPF/CNPJ" autocomplete="off" />
+                    <input type="text" id="pix-key-input" placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx" autocomplete="off" />
                     <button class="btn-mini primary" id="pix-key-save">Salvar</button>
                   </div>
                   <p class="perfil-feedback" id="pix-key-feedback" hidden></p>

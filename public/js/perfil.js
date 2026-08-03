@@ -9,6 +9,8 @@ const logoutBtn = document.getElementById("perfil-logout-btn");
 const pixKeyInputEl = document.getElementById("pix-key-input");
 const pixKeyFeedbackEl = document.getElementById("pix-key-feedback");
 const pixKeyUpdatedEl = document.getElementById("pix-key-updated");
+const pixKeyTypeEl = document.getElementById("pix-key-type");
+let selectedPixKeyType = "aleatoria";
 const balanceEl = document.getElementById("perfil-balance");
 const lifetimeEl = document.getElementById("perfil-lifetime");
 const saqueBtn = document.getElementById("saque-submit");
@@ -296,7 +298,11 @@ async function loadPerfil() {
   periodTotalEl.textContent = formatBRL((data.donationTotalCents30d || 0) / 100);
   renderDonationChart(data.donationSeries30d || []);
 
-  if (document.activeElement !== pixKeyInputEl) pixKeyInputEl.value = data.pixKey || "";
+  if (document.activeElement !== pixKeyInputEl) {
+    pixKeyInputEl.value = data.pixKey || "";
+    selectedPixKeyType = inferPixKeyType(data.pixKey);
+    applyPixKeyTypeUI();
+  }
   if (data.pixKeyUpdatedAt) {
     pixKeyUpdatedEl.textContent = `última troca: ${formatDate(data.pixKeyUpdatedAt)}`;
     pixKeyUpdatedEl.hidden = false;
@@ -502,12 +508,90 @@ async function loadSession() {
   loadBlocked();
 }
 
+const PIX_KEY_TYPE_META = {
+  aleatoria: { placeholder: "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx", inputMode: "text" },
+  documento: { placeholder: "CPF (000.000.000-00) ou CNPJ (00.000.000/0000-00)", inputMode: "numeric" },
+  celular: { placeholder: "(11) 91234-5678", inputMode: "tel" },
+  email: { placeholder: "seu@email.com", inputMode: "email" },
+};
+
+function applyPixKeyTypeUI() {
+  pixKeyTypeEl.querySelectorAll("button").forEach((b) => b.classList.toggle("active", b.dataset.type === selectedPixKeyType));
+  const meta = PIX_KEY_TYPE_META[selectedPixKeyType];
+  pixKeyInputEl.placeholder = meta.placeholder;
+  pixKeyInputEl.inputMode = meta.inputMode;
+}
+
+pixKeyTypeEl.querySelectorAll("button").forEach((b) => {
+  b.addEventListener("click", () => {
+    selectedPixKeyType = b.dataset.type;
+    applyPixKeyTypeUI();
+    pixKeyFeedbackEl.hidden = true;
+  });
+});
+
+// só define a posição inicial do seletor a partir da chave já salva -- não
+// bloqueia nada, é uma chave que já passou (ou nunca passou) pela validação
+function inferPixKeyType(key) {
+  if (!key) return "aleatoria";
+  const trimmed = key.trim();
+  if (trimmed.includes("@")) return "email";
+  if (/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(trimmed)) return "aleatoria";
+  const digits = trimmed.replace(/\D/g, "");
+  if (trimmed.startsWith("+") || (digits.length === 13 && digits.startsWith("55"))) return "celular";
+  if (digits.length === 11 || digits.length === 14) return "documento";
+  return "aleatoria";
+}
+
+// valida o formato certo por tipo e normaliza pro formato que a Efí espera --
+// pega erro de digitação na hora de cadastrar em vez de só descobrir quando
+// o saque de verdade falhar lá na Efí (ver docs/STATUS-EFI.md: já aconteceu
+// de verdade com uma chave celular sem o +55).
+function normalizePixKey(type, raw) {
+  const trimmed = raw.trim();
+  if (type === "email") {
+    const email = trimmed.toLowerCase();
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return { error: "E-mail inválido." };
+    return { value: email };
+  }
+  if (type === "documento") {
+    const digits = trimmed.replace(/\D/g, "");
+    if (digits.length !== 11 && digits.length !== 14) {
+      return { error: "CPF precisa ter 11 dígitos, CNPJ precisa ter 14 (só números, com ou sem pontuação)." };
+    }
+    return { value: digits };
+  }
+  if (type === "celular") {
+    let digits = trimmed.replace(/\D/g, "");
+    if (digits.length === 11) digits = "55" + digits;
+    if (digits.length !== 13 || !digits.startsWith("55")) {
+      return { error: "Celular inválido -- use DDD + número com o 9º dígito, ex: 11912345678." };
+    }
+    return { value: `+${digits}` };
+  }
+  const uuid = trimmed.toLowerCase();
+  if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/.test(uuid)) {
+    return { error: "Chave aleatória precisa ter o formato xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx." };
+  }
+  return { value: uuid };
+}
+
 pixKeyInputEl.addEventListener("keydown", (e) => { if (e.key === "Enter") document.getElementById("pix-key-save").click(); });
 
 document.getElementById("pix-key-save").addEventListener("click", async () => {
-  const pixKey = pixKeyInputEl.value.trim();
+  const raw = pixKeyInputEl.value.trim();
   pixKeyFeedbackEl.hidden = true;
-  if (!pixKey) return;
+  if (!raw) return;
+
+  const result = normalizePixKey(selectedPixKeyType, raw);
+  if (result.error) {
+    pixKeyFeedbackEl.textContent = result.error;
+    pixKeyFeedbackEl.className = "perfil-feedback error";
+    pixKeyFeedbackEl.hidden = false;
+    return;
+  }
+  const pixKey = result.value;
+
   const ok = await confirmDialog({
     title: "Trocar chave Pix",
     message: `Confirmar troca da chave Pix pra "${pixKey}"? Por segurança, o saque fica bloqueado por 24h depois da troca.`,
@@ -516,6 +600,7 @@ document.getElementById("pix-key-save").addEventListener("click", async () => {
   if (!ok) return;
   try {
     await perfilFetch("/pix-key", { method: "POST", body: JSON.stringify({ pixKey }) });
+    pixKeyInputEl.value = pixKey;
     pixKeyFeedbackEl.textContent = "Chave Pix salva!";
     pixKeyFeedbackEl.className = "perfil-feedback ok";
     pixKeyFeedbackEl.hidden = false;

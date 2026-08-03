@@ -342,6 +342,9 @@
   gap: 8px;
 }
 
+.perfil-pix-key-type { margin-bottom: 10px; }
+.perfil-pix-key-type button { padding: 6px 4px; font-size: 11px; white-space: nowrap; }
+
 .perfil-field-row input {
   flex: 1;
   min-width: 0;
