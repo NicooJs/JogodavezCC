@@ -266,6 +266,22 @@ painel da Efí ou pedir o link direto no mesmo canal de suporte). Até isso
 ser aprovado, `pix.send` em Produção continua bloqueado -- comportamento
 esperado agora, não é mais um mistério.
 
+**Atualização crítica (suporte Efí via Discord, resposta em 2026-08-02,
+"Marcelo Efí"): a liberação do limite operacional de `pix.send` em
+Produção só está disponível pra conta PJ.** Resposta literal: "Em contas
+PF, você até consegue testar esse envio, mas a liberação de um limite
+operacional está disponível somente para contas PJ." Isso refina (não
+contradiz) a descoberta anterior: não é só "preencher formulário e
+esperar aprovação" -- se a conta usada pra chamar a API hoje for **PF**,
+não tem formulário que libere, o requisito é a conta ser PJ. **Confirmado com o cliente (2026-08-02): a conta conectada já é PJ**
+(CNPJ da empresa, como o modelo sempre previu -- ver seção "Se importa
+mais que tudo" abaixo). Isso descarta "conta errada" como explicação dos
+3 `NAO_REALIZADO`. A causa raiz continua sendo a hipótese original:
+formulário de solicitação + análise + aditivo contratual, ainda pendente
+de ser preenchido/aprovado do lado do cliente. A resposta do Marcelo
+serve como confirmação adicional de que PJ é (e sempre foi) o requisito
+certo, não como uma pista nova sobre o motivo do bloqueio atual.
+
 **Não trocar `EFI_ENV` pra `producao` até isso se resolver.** Acionar
 doação real sem saber se o saque funciona de verdade recria o problema
 que motivou sair do Mercado Pago.
@@ -311,6 +327,9 @@ bloqueio individual).
 
 ## Pendências externas
 
+- Preencher o formulário de solicitação de liberação de `pix.send` em
+  Produção (a conta já é PJ, confirmado -- esse não é mais um pré-requisito
+  em aberto, só falta o formulário/aditivo em si).
 - Resposta do comercial da Efí sobre taxa negociada de saque.
 - Confirmar se `pix.send` em **Produção** exige aditivo separado (em
   Homologação já testamos e não exige — ver seção de progresso). Enquanto
