@@ -100,8 +100,8 @@ compartilhados. Ao adicionar CSS novo, seguir a convenção visual existente
 
 - **`.btn-mini`**: botão base (`.primary`, `.danger`), usado em quase todo modal admin.
 - **`.copy-btn`**: ícone copiar→check com cross-fade, lógica em `public/js/copy-button.js` (`wireCopyButton(btn, inputEl)`), tooltip via `[data-tooltip]::after`.
-- **`promptDialog`/`confirmDialog`**: **duas implementações separadas, não compartilham módulo** — uma em `public/js/settings.js` (board), outra em `public/js/meus-leiloes.js`. Ambas retornam Promise, mesmo padrão de overlay (`z-index: 70`, acima do `.settings-overlay`).
-- **Abas com indicador deslizante**: `positionPill()`/`snapPillTo()` em `settings.js`, span absoluto que acompanha `offsetWidth`/`offsetLeft` do botão ativo.
+- **`promptDialog`/`confirmDialog`**: **duas implementações separadas, não compartilham módulo** — uma em `public/js/settings.js` (board), outra em `public/js/meus-leiloes.js`. Ambas retornam Promise, mesmo padrão de overlay (`.dialog-overlay`, `z-index: 70`, regra em `style.css` já que várias páginas usam).
+- **Sidebar de navegação com ícone + label dentro de modal**: `.settings-nav`/`.settings-nav-item` em `settings.css`, mesmo visual (ícone + label, estado ativo com fundo sólido na cor de destaque) do padrão `.perfil-nav-item` do Perfil, mas é uma implementação própria escopada ao modal, não reuso direto da classe.
 - **`.seg`** (segmented control): Apoiar/Sabotar, Sem voz/Com voz.
 - **`.game-shelf`**: carrossel horizontal de capas com `scroll-snap` + máscara de fade nas bordas, populado por catálogo local + busca RAWG/TMDB debounced.
 - **`.modal`/`.modal-overlay`**: base de todos os diálogos, todos com grain.
@@ -168,12 +168,19 @@ automático ~2.4s depois.
 de animações) + compartilhar no X. Histórico de recaps acessível via modal e
 na aba Avançado das Configurações.
 
-**Configurações** (4 abas com indicador deslizante): Geral (título, links de
+**Configurações** continua sendo modal (`.settings-overlay`/`.settings-modal`
+em `board.html`, lógica em `settings.js`), não página própria — decisão
+deliberada, ver seção de componentes reutilizáveis acima. Por dentro, a
+antiga barra de abas horizontal com pílula deslizante virou uma **sidebar
+vertical de ícones** (`.settings-nav`/`.settings-nav-item`, mesmo visual do
+`.perfil-nav-item` do Perfil, mas implementação própria), pra dar uma
+identidade mais de "painel" e menos de "mais um modal igual aos outros".
+4 seções na sidebar (`data-tab`/`data-tab-panel`): Geral (título, links de
 doação/alerta, abrir/encerrar, qualifyCount), Aparência (tema, imagem de
 fundo), Jogos/Filmes (lançamento manual, tabela com editar/excluir/mesclar
 duplicados), Avançado (histórico de leilões, revogar acesso de moderadores,
-zerar leilão). Chave Pix, saldo, saque e "sair da conta" **não** ficam mais
-aqui, ver Perfil abaixo.
+zerar leilão). Chave Pix, saldo, saque e "sair da conta" **não** ficam aqui,
+ver Perfil abaixo.
 
 Toggle de modalidade Jogos↔Filmes fica na `presenter-bar` (não dentro de
 Configurações) e troca todos os textos da UI via sistema de labels dinâmicos

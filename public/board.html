@@ -515,12 +515,24 @@
         </div>
       </div>
 
-      <div class="settings-tabs" id="settings-tabs" role="tablist">
-        <span class="settings-tab-pill" id="settings-tab-pill" aria-hidden="true"></span>
-        <button class="settings-tab active" data-tab="geral" type="button" role="tab" aria-selected="true">Geral</button>
-        <button class="settings-tab" data-tab="aparencia" type="button" role="tab" aria-selected="false">Aparência</button>
-        <button class="settings-tab" data-tab="jogos" type="button" role="tab" aria-selected="false" data-label-text="{Media}s">Jogos</button>
-        <button class="settings-tab" data-tab="avancado" type="button" role="tab" aria-selected="false">Avançado</button>
+      <div class="settings-shell">
+      <div class="settings-nav" id="settings-tabs" role="tablist">
+        <button class="settings-nav-item active" data-tab="geral" type="button" role="tab" aria-selected="true">
+          <svg class="icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="10" cy="10" r="2.6"/><path d="M10 3.2v1.8M10 15v1.8M16.8 10h-1.8M5 10H3.2M14.9 5.1l-1.3 1.3M6.4 13.6l-1.3 1.3M14.9 14.9l-1.3-1.3M6.4 6.4L5.1 5.1"/></svg>
+          <span>Geral</span>
+        </button>
+        <button class="settings-nav-item" data-tab="aparencia" type="button" role="tab" aria-selected="false">
+          <svg class="icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 3.3a6.7 6.7 0 1 0 0 13.4c.9 0 1.6-.7 1.6-1.6 0-.4-.2-.7-.4-1-.2-.3-.4-.6-.4-1 0-.7.6-1.3 1.3-1.3h1.6a3.3 3.3 0 0 0 3.3-3.3A6.7 6.7 0 0 0 10 3.3z"/><circle cx="6.8" cy="8.3" r=".9" fill="currentColor" stroke="none"/><circle cx="9.7" cy="6.5" r=".9" fill="currentColor" stroke="none"/><circle cx="12.8" cy="8" r=".9" fill="currentColor" stroke="none"/></svg>
+          <span>Aparência</span>
+        </button>
+        <button class="settings-nav-item" data-tab="jogos" type="button" role="tab" aria-selected="false">
+          <svg class="icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3.3" y="3.3" width="5.5" height="5.5" rx="1.2"/><rect x="11.2" y="3.3" width="5.5" height="5.5" rx="1.2"/><rect x="3.3" y="11.2" width="5.5" height="5.5" rx="1.2"/><rect x="11.2" y="11.2" width="5.5" height="5.5" rx="1.2"/></svg>
+          <span data-label-text="{Media}s">Jogos</span>
+        </button>
+        <button class="settings-nav-item" data-tab="avancado" type="button" role="tab" aria-selected="false">
+          <svg class="icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 2.8l6 2.2v4.3c0 4-2.5 6.9-6 8.2-3.5-1.3-6-4.2-6-8.2V5l6-2.2z"/><path d="M7.2 10l1.8 1.8 3.8-3.8"/></svg>
+          <span>Avançado</span>
+        </button>
       </div>
 
       <div class="settings-body" id="settings-body">
@@ -689,6 +701,7 @@
           <h2 class="panel-title">Zona de risco</h2>
           <button class="btn-mini danger" id="reset-btn">Zerar leilão inteiro</button>
         </div>
+      </div>
       </div>
       </div>
     </div>

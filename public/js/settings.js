@@ -7,27 +7,14 @@ const promptDialogOverlayEl = document.getElementById("prompt-dialog-overlay");
 const confirmDialogOverlayEl = document.getElementById("confirm-dialog-overlay");
 
 const settingsBodyEl = document.getElementById("settings-body");
-const settingsTabPillEl = document.getElementById("settings-tab-pill");
-const settingsTabButtons = [...document.querySelectorAll(".settings-tab")];
+const settingsTabButtons = [...document.querySelectorAll(".settings-nav-item")];
 const settingsPanelGroups = {};
 document.querySelectorAll(".settings-panel-group").forEach((el) => { settingsPanelGroups[el.dataset.tabPanel] = el; });
 
 let settingsGames = [];
 let settingsLeaderboard = null;
 
-function positionPill(tabButton) {
-  settingsTabPillEl.style.width = `${tabButton.offsetWidth}px`;
-  settingsTabPillEl.style.transform = `translateX(${tabButton.offsetLeft}px)`;
-}
-
-function snapPillTo(tabButton) {
-  settingsTabPillEl.classList.add("no-transition");
-  positionPill(tabButton);
-  void settingsTabPillEl.offsetWidth;
-  settingsTabPillEl.classList.remove("no-transition");
-}
-
-function activateSettingsTab(tabName, { instant = false } = {}) {
+function activateSettingsTab(tabName) {
   settingsTabButtons.forEach((btn) => {
     const isActive = btn.dataset.tab === tabName;
     btn.classList.toggle("active", isActive);
@@ -35,23 +22,15 @@ function activateSettingsTab(tabName, { instant = false } = {}) {
   });
   Object.entries(settingsPanelGroups).forEach(([name, el]) => { el.hidden = name !== tabName; });
   settingsBodyEl.scrollTop = 0;
-  const activeBtn = settingsTabButtons.find((b) => b.dataset.tab === tabName);
-  if (activeBtn) instant ? snapPillTo(activeBtn) : positionPill(activeBtn);
 }
 
 settingsTabButtons.forEach((btn) => {
   btn.addEventListener("click", () => activateSettingsTab(btn.dataset.tab));
 });
 
-window.addEventListener("resize", () => {
-  if (settingsOverlayEl.hidden) return;
-  const activeBtn = settingsTabButtons.find((b) => b.classList.contains("active"));
-  if (activeBtn) snapPillTo(activeBtn);
-});
-
 function openSettingsModal() {
   settingsOverlayEl.hidden = false;
-  activateSettingsTab("geral", { instant: true });
+  activateSettingsTab("geral");
   if (settingsLeaderboard) renderSettingsFromLeaderboard(settingsLeaderboard);
   loadSettingsHistory();
 }

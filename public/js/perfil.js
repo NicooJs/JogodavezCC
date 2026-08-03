@@ -191,12 +191,51 @@ const navItems = [...document.querySelectorAll(".perfil-nav-item[data-section]")
 const sectionPanels = {};
 document.querySelectorAll(".perfil-section[data-section-panel]").forEach((el) => { sectionPanels[el.dataset.sectionPanel] = el; });
 
+const sectionHeaderIconEl = document.getElementById("perfil-section-icon");
+const sectionHeaderTitleEl = document.getElementById("perfil-section-title");
+const sectionHeaderSubtitleEl = document.getElementById("perfil-section-subtitle");
+
+const SECTION_META = {
+  geral: {
+    title: "Visão geral",
+    subtitle: "Suas doações dos últimos 30 dias.",
+    icon: '<svg class="icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10L10 4l7 6"/><path d="M5 8.7V16h10V8.7"/></svg>',
+  },
+  financeiro: {
+    title: "Financeiro",
+    subtitle: "Saldo, chave Pix e histórico de saques.",
+    icon: '<svg class="icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="6" width="14" height="10" rx="1.5"/><path d="M3 9h14"/><circle cx="14" cy="12.5" r="0.7" fill="currentColor" stroke="none"/></svg>',
+  },
+  obs: {
+    title: "Widget OBS",
+    subtitle: "Link do overlay de alertas pra colar no OBS.",
+    icon: '<svg class="icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="14" height="9.5" rx="1.3"/><path d="M7 17h6M10 13.5V17"/></svg>',
+  },
+  alerta: {
+    title: "Alerta",
+    subtitle: "Som do alerta de doação, vale pra todos os seus leilões.",
+    icon: '<svg class="icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M10 3.3a4 4 0 0 0-4 4v2.1c0 .8-.3 1.5-.8 2.1L4 13h12l-1.2-1.5a3.3 3.3 0 0 1-.8-2.1V7.3a4 4 0 0 0-4-4z"/><path d="M8.3 15.2a1.8 1.8 0 0 0 3.4 0"/></svg>',
+  },
+  doacoes: {
+    title: "Doações",
+    subtitle: "Histórico de doações recebidas e bloqueio de doador.",
+    icon: '<svg class="icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="10" cy="10" r="6.7"/><path d="M10 6.8v6.4M7.8 8.3c0-.9.9-1.5 2.2-1.5s2.2.6 2.2 1.4-.9 1.2-2.2 1.4c-1.3.2-2.2.6-2.2 1.4s.9 1.5 2.2 1.5 2.2-.6 2.2-1.5"/></svg>',
+  },
+};
+
 function activateSection(name) {
   navItems.forEach((btn) => btn.classList.toggle("active", btn.dataset.section === name));
   Object.entries(sectionPanels).forEach(([key, el]) => { el.hidden = key !== name; });
+  const meta = SECTION_META[name];
+  if (meta) {
+    sectionHeaderIconEl.innerHTML = meta.icon;
+    sectionHeaderTitleEl.textContent = meta.title;
+    sectionHeaderSubtitleEl.textContent = meta.subtitle;
+  }
 }
 
 navItems.forEach((btn) => btn.addEventListener("click", () => activateSection(btn.dataset.section)));
+activateSection("geral");
 
 const subtabButtons = [...document.querySelectorAll(".perfil-subtab[data-subtab]")];
 const subtabPanels = {};
