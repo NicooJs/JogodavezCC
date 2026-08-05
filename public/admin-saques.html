@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="pt-BR" data-theme="ametista">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Saques pendentes</title>
+<meta name="robots" content="noindex, nofollow" />
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Abril+Fatface&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/css/style.css" />
+<link rel="stylesheet" href="/css/create.css" />
+<style>
+  .saques-page { max-width: 720px; }
+  .saques-page h1 { margin: 0 0 6px; font-family: var(--font-title); font-size: 26px; }
+  .saques-auth { display: flex; gap: 8px; margin: 20px 0 24px; }
+  .saques-auth input {
+    flex: 1; height: 40px; padding: 0 12px; background: var(--surface-2); border: 1px solid var(--border);
+    border-radius: var(--radius); color: var(--text); font-family: var(--font-body); font-size: 13px;
+  }
+  .saque-row {
+    background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
+    padding: 14px 16px; margin-bottom: 10px; display: flex; justify-content: space-between;
+    align-items: center; gap: 14px; flex-wrap: wrap;
+  }
+  .saque-info p { margin: 2px 0; font-size: 12.5px; color: var(--muted); }
+  .saque-value { font-family: var(--font-mono); font-size: 17px; font-weight: 600; color: var(--text); }
+  .saque-pixkey { font-family: var(--font-mono); color: var(--text); }
+  .saque-reason { color: var(--danger); }
+  .saque-status { font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.04em; font-family: var(--font-mono); }
+  .saques-empty, .saques-feedback { color: var(--muted); text-align: center; padding: 30px 0; font-size: 13px; }
+  .saques-feedback.error { color: var(--danger); }
+</style>
+</head>
+<body class="create-body">
+  <div class="create-page saques-page">
+    <h1>Saques pendentes</h1>
+    <p class="create-hint">
+      Ferramenta interna. Só clique em "Confirmar" depois de já ter mandado
+      o Pix manualmente pelo app/site da Efí pro streamer.
+    </p>
+
+    <div class="saques-auth">
+      <input type="password" id="secret-input" placeholder="Segredo de super-admin" autocomplete="off" />
+      <button class="btn-mini primary" id="load-btn" type="button">Carregar</button>
+    </div>
+
+    <p class="saques-feedback" id="feedback" hidden></p>
+    <div id="saques-list"></div>
+    <p class="saques-empty" id="saques-empty" hidden>Nenhum saque pendente agora.</p>
+  </div>
+
+  <div class="modal-overlay dialog-overlay" id="confirm-dialog-overlay" hidden>
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="confirm-dialog-title">
+      <button class="modal-close" id="confirm-dialog-close" type="button" aria-label="Fechar">✕</button>
+      <div class="modal-head">
+        <div class="modal-head-text">
+          <h2 class="modal-title" id="confirm-dialog-title">Título</h2>
+        </div>
+      </div>
+      <p class="modal-message" id="confirm-dialog-message">Mensagem</p>
+      <div class="modal-actions">
+        <button class="btn-mini" id="confirm-dialog-cancel" type="button">Cancelar</button>
+        <button class="btn-mini primary" id="confirm-dialog-confirm" type="button">Confirmar</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const secretInput = document.getElementById("secret-input");
+    const loadBtn = document.getElementById("load-btn");
+    const listEl = document.getElementById("saques-list");
+    const emptyEl = document.getElementById("saques-empty");
+    const feedbackEl = document.getElementById("feedback");
+
+    const STATUS_LABELS = { pending: "processando", failed: "falhou" };
+
+    function escapeHtml(str) {
+      return String(str).replace(/[&<>"']/g, (c) => ({
+        "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;",
+      }[c]));
+    }
+
+    function formatBRL(cents) {
+      return (cents / 100).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+    }
+
+    const confirmDialogOverlayEl = document.getElementById("confirm-dialog-overlay");
+    let confirmDialogResolve = null;
+    function settleConfirmDialog(result) {
+      confirmDialogOverlayEl.hidden = true;
+      const resolve = confirmDialogResolve;
+      confirmDialogResolve = null;
+      if (resolve) resolve(result);
+    }
+    function confirmDialog({ title, message, confirmLabel = "Confirmar" }) {
+      return new Promise((resolve) => {
+        confirmDialogResolve = resolve;
+        document.getElementById("confirm-dialog-title").textContent = title;
+        document.getElementById("confirm-dialog-message").textContent = message;
+        document.getElementById("confirm-dialog-confirm").textContent = confirmLabel;
+        confirmDialogOverlayEl.hidden = false;
+      });
+    }
+    document.getElementById("confirm-dialog-cancel").addEventListener("click", () => settleConfirmDialog(false));
+    document.getElementById("confirm-dialog-close").addEventListener("click", () => settleConfirmDialog(false));
+    document.getElementById("confirm-dialog-confirm").addEventListener("click", () => settleConfirmDialog(true));
+    confirmDialogOverlayEl.addEventListener("click", (e) => { if (e.target === confirmDialogOverlayEl) settleConfirmDialog(false); });
+    document.addEventListener("keydown", (e) => {
+      if (e.key === "Escape" && !confirmDialogOverlayEl.hidden) settleConfirmDialog(false);
+    });
+
+    function getSecret() {
+      return sessionStorage.getItem("saques-admin-secret") || "";
+    }
+
+    async function apiFetch(path, options = {}) {
+      const res = await fetch(path, {
+        ...options,
+        headers: { ...(options.headers || {}), "x-super-admin-secret": getSecret() },
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || `Erro ${res.status}`);
+      return data;
+    }
+
+    function renderSaques(saques) {
+      if (saques.length === 0) {
+        listEl.innerHTML = "";
+        emptyEl.hidden = false;
+        return;
+      }
+      emptyEl.hidden = true;
+      listEl.innerHTML = saques.map((s) => `
+        <div class="saque-row" data-id="${s.id}">
+          <div class="saque-info">
+            <p class="saque-value">${formatBRL(s.sentCents)}</p>
+            <p>${escapeHtml(s.leilaoTitle || `Twitch ID: ${s.twitchUserId}`)}</p>
+            <p>chave pix: <span class="saque-pixkey">${escapeHtml(s.pixKey || "(sem chave cadastrada)")}</span></p>
+            <p class="saque-status">status: ${STATUS_LABELS[s.status] || s.status}</p>
+            ${s.failureReason ? `<p class="saque-reason">${escapeHtml(s.failureReason)}</p>` : ""}
+          </div>
+          <button class="btn-mini primary" data-action="confirmar" data-id="${s.id}" data-value="${formatBRL(s.sentCents)}" data-pixkey="${escapeHtml(s.pixKey || "")}" type="button">Confirmar</button>
+        </div>
+      `).join("");
+    }
+
+    async function loadSaques() {
+      feedbackEl.hidden = true;
+      try {
+        const data = await apiFetch("/api/admin/saques-pendentes");
+        renderSaques(data.saques || []);
+      } catch (err) {
+        feedbackEl.textContent = "Erro: " + err.message;
+        feedbackEl.className = "saques-feedback error";
+        feedbackEl.hidden = false;
+      }
+    }
+
+    loadBtn.addEventListener("click", () => {
+      sessionStorage.setItem("saques-admin-secret", secretInput.value.trim());
+      loadSaques();
+    });
+    secretInput.addEventListener("keydown", (e) => { if (e.key === "Enter") loadBtn.click(); });
+
+    listEl.addEventListener("click", async (e) => {
+      const btn = e.target.closest('[data-action="confirmar"]');
+      if (!btn) return;
+      const id = btn.dataset.id;
+      const ok = await confirmDialog({
+        title: "Confirmar saque manual",
+        message: `Você já mandou ${btn.dataset.value} de verdade pra chave "${btn.dataset.pixkey}" pelo app da Efí? Essa ação não pode ser desfeita.`,
+        confirmLabel: "Já mandei, confirmar",
+      });
+      if (!ok) return;
+      btn.disabled = true;
+      try {
+        await apiFetch(`/api/admin/saques/${id}/confirmar-manual`, { method: "POST" });
+        loadSaques();
+      } catch (err) {
+        feedbackEl.textContent = "Erro: " + err.message;
+        feedbackEl.className = "saques-feedback error";
+        feedbackEl.hidden = false;
+        btn.disabled = false;
+      }
+    });
+
+    if (getSecret()) {
+      secretInput.value = getSecret();
+      loadSaques();
+    }
+  </script>
+</body>
+</html>
