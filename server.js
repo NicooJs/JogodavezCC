@@ -1165,6 +1165,70 @@ app.delete("/api/admin/leiloes", (req, res) => {
   res.json({ ok: true, deletedCount: ids.length, deletedIds: ids });
 });
 
+// rede de segurança pro dono da plataforma resolver saque preso quando o
+// limite diário de pix.send da API não cobre o valor (ver docs/STATUS-EFI.md):
+// manda o Pix manualmente pelo próprio app/site da Efí, por fora da nossa
+// integração, e confirma aqui pra manter saldo/histórico corretos
+app.get("/api/admin/saques-pendentes", (req, res) => {
+  if (superAdminRateLimiter.isLimited(req.ip)) {
+    return res.status(429).json({ error: "Muitas tentativas. Aguarde alguns minutos e tente de novo." });
+  }
+  const secret = process.env.SUPER_ADMIN_SECRET || "";
+  const supplied = req.header("x-super-admin-secret") || "";
+  if (!secret || !timingSafeEqualString(supplied, secret)) {
+    superAdminRateLimiter.record(req.ip);
+    return res.status(401).json({ error: "Segredo de super-admin inválido ou não configurado" });
+  }
+  ledgerStore
+    .getPendingOrFailedWithdrawals()
+    .then((withdrawals) => {
+      const enriched = withdrawals.map((w) => {
+        const leiloes = registry.listLeiloesByOwner(w.twitchUserId) || [];
+        return {
+          id: w.id,
+          status: w.status,
+          sentCents: w.sentCents,
+          feeCents: w.feeCents,
+          pixKey: w.pixKey,
+          twitchUserId: w.twitchUserId,
+          leilaoTitle: leiloes[0] ? leiloes[0].title : null,
+          failureReason: w.failureReason,
+          createdAt: w.createdAt,
+        };
+      });
+      res.json({ saques: enriched });
+    })
+    .catch((err) => {
+      console.error("[admin] erro ao listar saques pendentes:", err.message);
+      res.status(502).json({ error: "Não foi possível listar os saques agora." });
+    });
+});
+
+app.post("/api/admin/saques/:id/confirmar-manual", async (req, res) => {
+  if (superAdminRateLimiter.isLimited(req.ip)) {
+    return res.status(429).json({ error: "Muitas tentativas. Aguarde alguns minutos e tente de novo." });
+  }
+  const secret = process.env.SUPER_ADMIN_SECRET || "";
+  const supplied = req.header("x-super-admin-secret") || "";
+  if (!secret || !timingSafeEqualString(supplied, secret)) {
+    superAdminRateLimiter.record(req.ip);
+    return res.status(401).json({ error: "Segredo de super-admin inválido ou não configurado" });
+  }
+  const withdrawalId = Number(req.params.id);
+  if (!Number.isInteger(withdrawalId) || withdrawalId <= 0) {
+    return res.status(400).json({ error: "id de saque inválido" });
+  }
+  try {
+    const result = await ledgerStore.markWithdrawalSentManually(withdrawalId);
+    if (result.error) return res.status(400).json({ error: result.error });
+    console.log(`[admin] saque ${withdrawalId} confirmado manualmente (fora da API).`);
+    res.json({ ok: true, withdrawal: result.withdrawal });
+  } catch (err) {
+    console.error(`[admin] erro ao confirmar saque manual ${withdrawalId}:`, err.message);
+    res.status(502).json({ error: "Não foi possível confirmar o saque agora." });
+  }
+});
+
 // ---------- board e painel por leilão ----------
 
 app.get("/l/:id", (req, res) => {

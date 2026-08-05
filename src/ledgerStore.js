@@ -1,3 +1,4 @@
+const crypto = require("crypto");
 const { query, withTransaction } = require("./pg");
 
 function rowToFeeConfig(row) {
@@ -338,6 +339,70 @@ async function resolveEnvioStatus(idEnvio, status, detalhe) {
   }
 }
 
+// lista saques travados (pending ou failed) com a chave Pix de destino --
+// rede de segurança pro dono da plataforma conseguir enviar manualmente
+// (fora da API) quando o limite diário da Efí não cobre, e depois confirmar
+// aqui. streamer_id/twitch_user_id ficam expostos pra quem chamar (server.js)
+// cruzar com o registry e achar o título do leilão daquele streamer.
+async function getPendingOrFailedWithdrawals() {
+  const res = await query(
+    `SELECT w.*, s.twitch_user_id, pk.pix_key
+     FROM withdrawals w
+     JOIN streamers s ON s.id = w.streamer_id
+     LEFT JOIN streamer_pix_keys pk ON pk.streamer_id = w.streamer_id
+     WHERE w.status IN ('pending', 'failed')
+     ORDER BY w.created_at ASC`
+  );
+  return res.rows.map((row) => ({
+    ...rowToWithdrawal(row),
+    twitchUserId: row.twitch_user_id,
+    pixKey: row.pix_key,
+  }));
+}
+
+// confirma que um saque saiu de verdade por fora da API (o dono mandou o
+// Pix manualmente, pelo próprio app/site da Efí, quando o limite diário da
+// API não cobria o valor). Se o saque já tinha sido estornado (failed), o
+// débito é reaplicado agora -- é agora que o dinheiro sai de verdade. Se
+// ainda pending, o saldo já estava debitado desde o pedido original.
+async function markWithdrawalSentManually(withdrawalId) {
+  return withTransaction(async (client) => {
+    const res = await client.query(`SELECT * FROM withdrawals WHERE id = $1 FOR UPDATE`, [withdrawalId]);
+    const withdrawal = res.rows[0];
+    if (!withdrawal) return { error: "Saque não encontrado." };
+    if (withdrawal.status === "sent") return { error: "Esse saque já está marcado como enviado." };
+    if (withdrawal.status !== "pending" && withdrawal.status !== "failed") {
+      return { error: `Status atual ("${withdrawal.status}") não permite confirmação manual.` };
+    }
+
+    if (withdrawal.status === "failed") {
+      const balanceRes = await client.query(
+        `SELECT balance_cents FROM streamer_balances WHERE streamer_id = $1 FOR UPDATE`,
+        [withdrawal.streamer_id]
+      );
+      const balanceCents = balanceRes.rows[0] ? Number(balanceRes.rows[0].balance_cents) : 0;
+      if (balanceCents < Number(withdrawal.requested_cents)) {
+        return { error: "Saldo atual insuficiente pra reaplicar o débito (talvez já tenha sido usado noutro saque)." };
+      }
+      await client.query(
+        `UPDATE streamer_balances SET balance_cents = balance_cents - $1, updated_at = now() WHERE streamer_id = $2`,
+        [withdrawal.requested_cents, withdrawal.streamer_id]
+      );
+      await client.query(
+        `INSERT INTO ledger_entries (streamer_id, kind, amount_cents, withdrawal_id) VALUES ($1, 'withdrawal_debit', $2, $3)`,
+        [withdrawal.streamer_id, withdrawal.requested_cents, withdrawalId]
+      );
+    }
+
+    const manualId = `manual-${Date.now()}-${crypto.randomBytes(3).toString("hex")}`;
+    const updateRes = await client.query(
+      `UPDATE withdrawals SET status = 'sent', efi_envio_id = $2, failure_reason = NULL, completed_at = now() WHERE id = $1 RETURNING *`,
+      [withdrawalId, manualId]
+    );
+    return { withdrawal: rowToWithdrawal(updateRes.rows[0]) };
+  });
+}
+
 module.exports = {
   getFeeConfig,
   computeDonationSplit,
@@ -356,4 +421,6 @@ module.exports = {
   markWithdrawalSent,
   markWithdrawalFailed,
   resolveEnvioStatus,
+  getPendingOrFailedWithdrawals,
+  markWithdrawalSentManually,
 };
