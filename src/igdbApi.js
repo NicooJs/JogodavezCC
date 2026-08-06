@@ -127,25 +127,65 @@ async function searchGames(query) {
   }));
 }
 
+function nameAppearsInText(name, normalizedText) {
+  const normalizedCandidate = normalizeKey(name);
+  if (!normalizedCandidate) return false;
+  const escapedRe = normalizedCandidate.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const re = new RegExp(`(^|\\s)${escapedRe}(\\s|$)`);
+  return re.test(normalizedText);
+}
+
+// jogo obscuro sem avaliação nenhuma pode ter um apelido cadastrado na IGDB
+// que colide por coincidência com uma sigla comum (ex: "CoD" já é apelido de
+// uma DLC de Five Nights at Freddy's) -- só confia em apelido pra jogo com
+// avaliação suficiente pra ser algo que a audiência plausivelmente conhece
+// pela sigla; nome oficial continua sem essa exigência (já era seguro antes)
+const MIN_RATING_COUNT_FOR_ALIAS_MATCH = 10;
+
+async function searchGamesRaw(query) {
+  const escaped = query.replace(/"/g, '\\"');
+  return igdbQuery(
+    "games",
+    `search "${escaped}"; fields name,alternative_names.name,total_rating_count,cover.image_id; limit 8;`
+  );
+}
+
+// além do nome oficial, confere os apelidos/siglas que a própria IGDB já
+// cataloga (alternative_names -- ex: "GTA 5" pra "Grand Theft Auto V") antes
+// de aceitar um match automático, sem precisar manter lista própria de sigla.
+//
+// a busca da IGDB devolve vazio assim que sobra qualquer palavra de ruído
+// depois do nome do jogo (confirmado testando contra a API real) -- por isso
+// tenta a frase inteira primeiro e vai cortando a última palavra até achar
+// candidatos. Isso NÃO afrouxa a segurança: o nome/apelido batido continua
+// precisando aparecer literalmente no texto ORIGINAL (não no texto cortado),
+// então um resultado tipo "Just Cause" pra "just dance 2024 top demais" ainda
+// é rejeitado -- só muda o que é mandado pra busca, não o que é aceito dela
 async function identifyGameFromNoisyText(text) {
   if (!text || !text.trim()) return null;
 
-  const escaped = text.replace(/"/g, '\\"');
-  const results = await igdbQuery(
-    "games",
-    `search "${escaped}"; fields name,cover.image_id; limit 1;`
-  );
-  const top = results && results[0];
-  if (!top || !top.name) return null;
-
-  const normalizedCandidate = normalizeKey(top.name);
   const normalizedText = normalizeKey(text);
-  if (!normalizedCandidate) return null;
-  const escapedRe = normalizedCandidate.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-  const re = new RegExp(`(^|\\s)${escapedRe}(\\s|$)`);
-  if (!re.test(normalizedText)) return null;
+  const words = text.trim().split(/\s+/);
 
-  return { name: top.name, image: coverUrl(top.cover && top.cover.image_id) };
+  let results = null;
+  for (let len = words.length; len >= 1 && !results; len--) {
+    const fetched = await searchGamesRaw(words.slice(0, len).join(" "));
+    if (fetched && fetched.length) results = fetched;
+  }
+  if (!results) return null;
+
+  for (const candidate of results) {
+    if (!candidate.name) continue;
+    if (nameAppearsInText(candidate.name, normalizedText)) {
+      return { name: candidate.name, image: coverUrl(candidate.cover && candidate.cover.image_id) };
+    }
+    const isPopularEnough = (candidate.total_rating_count || 0) >= MIN_RATING_COUNT_FOR_ALIAS_MATCH;
+    if (isPopularEnough && (candidate.alternative_names || []).some((a) => nameAppearsInText(a.name, normalizedText))) {
+      return { name: candidate.name, image: coverUrl(candidate.cover && candidate.cover.image_id) };
+    }
+  }
+
+  return null;
 }
 
 module.exports = { fetchGameImage, searchGames, identifyGameFromNoisyText, fetchPopularCovers };
