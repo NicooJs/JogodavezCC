@@ -13,17 +13,30 @@ no Railway) com cópia de segurança periódica no Postgres.
 
 ## Estado do pagamento (importante, muda com frequência)
 
-**Mercado Pago foi removido do código (2026-08-01)**. O pagamento agora é
-100% via **Efí Bank**, custódia numa Conta Master única + ledger interno no
-Postgres (`fee_config`, `streamer_balances`, `ledger_entries`, etc., ver
-`src/ledgerStore.js`). Não existe mais OAuth por streamer — a identidade do
-streamer vem só do vínculo com o Twitch (`streamersStore.ensureByTwitchUserId`),
-e ele cadastra uma chave Pix própria pra receber saque, não pra receber
-doação direto. **Antes de mexer em qualquer coisa relacionada a pagamento,
-leia [docs/STATUS-EFI.md](docs/STATUS-EFI.md)** — o ambiente ativo
-(`EFI_ENV`) por padrão é `homologacao` até a conta de Produção da Efí ser
-confirmada; não reviva ideias de integração com pix.gg (abandonado há
-tempos) nem assuma que o Mercado Pago ainda existe em algum lugar do código.
+**Mercado Pago foi removido do código (2026-08-01)**. A doação em si (o
+dinheiro entrando) hoje passa por uma **ponte via pixgg.com** (reativada em
+2026-08-06, `src/pixggApi.js`/`src/pixggClient.js`): o dinheiro cai **direto
+na conta do streamer no pixgg.com**, a JogodaVez só escuta o webhook
+(`POST /webhooks/pixgg/:secret`) pra atualizar o placar em tempo real —
+nunca custodia nem credita ledger nesse caminho. Streamer conecta a própria
+aplicação pixgg.com (Client ID/Secret) no Perfil → Financeiro
+(`streamerPixggStore`); `doar.html`/`doar.js` redireciona pra lá quando o
+streamer tem isso conectado. Isso é uma **ponte temporária** enquanto o
+cadastro na Efí como intermediador de pagamentos não é aprovado — não é uma
+volta definitiva ao pix.gg, é a Efí que segue sendo o destino final.
+
+A infraestrutura da **Efí Bank** (custódia numa Conta Master única + ledger
+interno no Postgres — `fee_config`, `streamer_balances`, `ledger_entries`,
+etc., ver `src/ledgerStore.js`) continua existindo no código e é o que
+processa **saldo e saque** do streamer (não a doação em si, enquanto a ponte
+via pixgg.com estiver ativa). Não existe mais OAuth por streamer — a
+identidade do streamer vem só do vínculo com o Twitch
+(`streamersStore.ensureByTwitchUserId`), e ele cadastra uma chave Pix própria
+pra receber saque, não pra receber doação direto. **Antes de mexer em
+qualquer coisa relacionada a pagamento, leia
+[docs/STATUS-EFI.md](docs/STATUS-EFI.md)** — o ambiente ativo (`EFI_ENV`)
+por padrão é `homologacao` até a conta de Produção da Efí ser confirmada; não
+assuma que o Mercado Pago ainda existe em algum lugar do código.
 
 **Regra permanente**: qualquer código que mexa com dinheiro precisa manter o
 mesmo padrão de segurança já usado no projeto — queries sempre parametrizadas
@@ -164,6 +177,14 @@ duelo (dois classificados com placar próximo), confete se > R$100, e no
 fechamento do leilão o "Vencedor!" (swirl canvas) seguido do recap
 automático ~2.4s depois.
 
+**Mesclar lotes por drag and drop**: arrastar um `.lot-card` sobre outro
+(mouse/desktop só, checado por `document.body.classList.contains
+("presenter-mode")`) mescla os dois via `confirmDialog` + a mesma rota
+`POST /admin/merge` que já existia pro fluxo manual — listeners de drag
+(`wireLotCardDrag` em `app.js`) são presos no card só na criação (elementos
+são reaproveitados entre re-renders via `data-key`, só o `innerHTML` muda),
+nunca a cada atualização do leaderboard.
+
 **Recap**: estatísticas + pódio + download de imagem (canvas 2D, ver seção
 de animações) + compartilhar no X. Histórico de recaps acessível via modal e
 na aba Avançado das Configurações.
@@ -265,6 +286,7 @@ pro preset `classic` sintetizado se o arquivo falhar ao carregar ou tocar.
 ## Convenções gerais do projeto
 
 - Sem comentários explicativos triviais no código — só quando o *porquê* não é óbvio (ver exemplos reais: `pool.on("error")` em `src/pg.js`, `z-index:0` proposital em `style.css`, mod code mascarado por padrão em `app.js`).
+- **Cuidado com closures passados como callback pra algo que dispara `broadcastUpdate`/`serializeLeaderboard` de novo** (`getDonorAvatar` em `server.js`): já derrubou produção inteira por OOM (heap de 11MB pra 1.7GB em ~20s) porque cada chamada criava um closure novo, e cada avatar resolvido disparava todos os closures acumulados no Set de espera, cascata exponencial. Fix foi um callback **estável** por `leilaoId` (`getAvatarResolvedCallback`), pra o Set deduplicar por referência. Qualquer novo callback nesse mesmo padrão (dispara em resposta assíncrona, dentro de algo chamado repetidamente) precisa da mesma cautela.
 - `promptDialog`/`confirmDialog` do site no lugar de `prompt()`/`confirm()` nativos do navegador — nunca usar os nativos em código novo.
 - Ícones sempre SVG inline, nunca emoji.
 - Todo texto em pt-BR, sem travessão (—) em prosa — preferir ponto, dois-pontos, vírgula ou parênteses (foi removido deliberadamente por parecer "gerado por IA"); `"—"` como placeholder de valor vazio (ex: `h.archivedAt ? ... : "—"`) não conta, isso pode ficar.

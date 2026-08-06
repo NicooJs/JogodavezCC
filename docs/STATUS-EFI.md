@@ -36,9 +36,16 @@ pixgg.com de forma rasa só por "usar a Efí por trás". Reinvestigado com
   split desde julho de 2026 (não confirmado ainda -- verificar antes de
   decidir reviver).
 
-**Não decidido ainda**: se vale a pena reintegrar como ponte até sexta. Fica
-pra próxima sessão continuar essa investigação (checar se pixgg.com hoje
-suporta split/taxa automática) antes de qualquer decisão de reviver código.
+**Decidido e implementado (2026-08-06, commit `91ba311`)**: reintegrado como
+ponte. `src/pixggApi.js`/`src/pixggClient.js` recriados, streamer conecta a
+própria aplicação pixgg.com (Client ID/Secret) no Perfil → Financeiro
+(`streamerPixggStore`), `doar.html`/`doar.js` redireciona pra lá quando
+conectado, webhook em `POST /webhooks/pixgg/:secret` só atualiza o placar
+(nunca custodia). Efí como opção de doação direta ficou visualmente
+desativada no Perfil enquanto essa ponte estiver ativa — Efí continua sendo
+o destino final (saldo/saque), só a doação em si passa pelo pixgg.com por
+enquanto. Split/taxa automática do pixgg.com não foi confirmado nem é
+necessário pra essa ponte (ela não coleta taxa da JogodaVez, é só passagem).
 
 ## Rede de segurança pro lançamento de sexta (2026-08-07) + KYC de intermediador em andamento (2026-08-05)
 
