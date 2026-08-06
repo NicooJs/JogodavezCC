@@ -5,6 +5,36 @@
 > real do projeto — não confie em ideias antigas de outra sessão que
 > contradigam o que está escrito aqui.
 
+## Pendente: aplicar migration 015 (webhook_secret UNIQUE) -- precisa ser do PC (2026-08-06)
+
+`src/migrations/015_streamer_pixgg_webhook_secret_unique.sql` foi commitada
+(`ALTER`/`CREATE UNIQUE INDEX` em `streamer_pixgg_credentials.webhook_secret`,
+mesmo padrão da migration 008 pra `ledger_entries`) mas **ainda não foi
+aplicada em produção**. Sessão do Claude Code aqui não tem acesso à
+`DATABASE_PUBLIC_URL` (Railway MCP devolve variáveis sempre ocultas,
+`valuesRedacted: true`, e esse ambiente sandboxed bloqueia conexão de saída
+direta pra internet -- tentei até instalar o Railway CLI, a própria
+autenticação foi rejeitada pela política de rede do ambiente). Cliente
+tentou colar o SQL pelo console do Postgres no Railway direto do celular
+(aba Database → terminal), mas colar texto num terminal embutido em
+navegador mobile não funcionou de forma confiável. Decidido continuar essa
+parte específica (rodar a migration) quando o cliente estiver no
+computador -- lá dá pra colar sem problema no mesmo console, ou rodar
+`node scripts/migrate.js` local com `DATABASE_PUBLIC_URL` configurada (setup
+já usado antes, ver seção "Progresso da implementação" mais abaixo).
+
+SQL pendente (idempotente, `IF NOT EXISTS`, seguro rodar mesmo se algo já
+tiver sido tentado antes):
+```sql
+CREATE UNIQUE INDEX IF NOT EXISTS streamer_pixgg_credentials_webhook_secret_unique
+  ON streamer_pixgg_credentials (webhook_secret);
+```
+Não é bloqueante pro fluxo de doação funcionar (o bug real do segredo
+dessincronizado já foi corrigido no código, testado ao vivo com sucesso
+2026-08-06) -- essa migration é só um reforço de integridade (constraint de
+banco em vez de só confiar na entropia do `crypto.randomBytes`), sem
+urgência de minutos.
+
 ## pixgg.com reconsiderado como ponte pra sexta (2026-08-05) -- investigado com evidência real, não suposição
 
 Cliente questionou (com razão) uma resposta minha anterior que descartou o
