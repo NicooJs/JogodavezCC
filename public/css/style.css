@@ -1985,6 +1985,17 @@ body.board-body.has-bg-image .board-cover-bg { display: none; }
   box-shadow: 0 0 0 1px var(--accent-soft), 0 0 26px 4px var(--accent-glow), 0 0 48px 12px var(--accent-glow);
 }
 
+.presenter-mode .lot-card { cursor: grab; }
+.presenter-mode .lot-card:active { cursor: grabbing; }
+
+.lot-card.dragging { opacity: 0.35; }
+
+.lot-card.drop-target {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px var(--accent), 0 0 0 6px var(--accent-bg);
+  transform: scale(1.02);
+}
+
 .lot-card-bg {
   position: absolute;
   inset: -14px;

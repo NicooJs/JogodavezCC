@@ -393,6 +393,66 @@ function lotCardInnerHtml(item, barPct, hitBadge, changed, streakBadge, duelGlow
   `;
 }
 
+let draggedLotKey = null;
+
+// listeners vão direto no elemento .lot-card, que é reaproveitado entre
+// renders (só o innerHTML troca) -- por isso só precisa ligar uma vez
+// quando o card é criado, não em todo update do placar
+function wireLotCardDrag(card) {
+  card.addEventListener("dragstart", (e) => {
+    if (!document.body.classList.contains("presenter-mode")) return e.preventDefault();
+    draggedLotKey = card.dataset.key;
+    e.dataTransfer.effectAllowed = "move";
+    e.dataTransfer.setData("text/plain", draggedLotKey);
+    requestAnimationFrame(() => card.classList.add("dragging"));
+  });
+
+  card.addEventListener("dragover", (e) => {
+    if (!draggedLotKey || draggedLotKey === card.dataset.key) return;
+    e.preventDefault();
+    e.dataTransfer.dropEffect = "move";
+    card.classList.add("drop-target");
+  });
+
+  card.addEventListener("dragleave", () => card.classList.remove("drop-target"));
+
+  card.addEventListener("drop", async (e) => {
+    e.preventDefault();
+    card.classList.remove("drop-target");
+    const fromKey = draggedLotKey;
+    const toKey = card.dataset.key;
+    draggedLotKey = null;
+    if (!fromKey || fromKey === toKey) return;
+    await confirmAndMergeLots(fromKey, toKey);
+  });
+
+  card.addEventListener("dragend", () => {
+    card.classList.remove("dragging");
+    lotListEl.querySelectorAll(".lot-card.drop-target").forEach((el) => el.classList.remove("drop-target"));
+    draggedLotKey = null;
+  });
+}
+
+async function confirmAndMergeLots(fromKey, toKey) {
+  const fromItem = currentItems.find((i) => i.key === fromKey);
+  const toItem = currentItems.find((i) => i.key === toKey);
+  if (!fromItem || !toItem) return;
+
+  const ok = await confirmDialog({
+    title: `Mesclar ${mediaLabel()}s`,
+    message: `Juntar "${fromItem.name}" (${formatBRL(fromItem.total)}) em "${toItem.name}"? O resultado fica com o nome "${toItem.name}" e total de ${formatBRL(fromItem.total + toItem.total)}. Essa ação não pode ser desfeita.`,
+    confirmLabel: "Mesclar",
+    danger: true,
+  });
+  if (!ok) return;
+
+  try {
+    await presenterFetch("/admin/merge", { method: "POST", body: JSON.stringify({ fromKey, toKey }) });
+  } catch (err) {
+    alert(err.message);
+  }
+}
+
 function triggerBigWinCelebration(key, type) {
   const card = lotListEl.querySelector(`.lot-card[data-key="${CSS.escape(key)}"]`);
   if (!card) return;
@@ -613,6 +673,8 @@ function renderLots(items, flashKey, flashType, lastSabotagedKey, qualifyCount) 
     if (!card) {
       card = document.createElement("div");
       card.dataset.key = item.key;
+      card.draggable = true;
+      wireLotCardDrag(card);
     }
     card.className = `lot-card rank-${item.rank}${flashClass}${streakClass}${duelClass}`;
     if (streakActive) card.dataset.streakTier = String(tier);
