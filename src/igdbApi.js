@@ -34,6 +34,41 @@ function coverUrl(imageId) {
   return imageId ? `https://images.igdb.com/igdb/image/upload/t_cover_big/${imageId}.jpg` : null;
 }
 
+// uma rajada de doações (várias pessoas doando junto, ex: disputa por um
+// jogo popular) pode disparar dezenas de identifyGameFromNoisyText ao mesmo
+// tempo -- sem isso, cada uma delas soltava sua chamada pra IGDB em paralelo
+// sem limite nenhum, o que já derrubou o servidor de produção uma vez (ver
+// docs/STATUS-EFI.md).
+//
+// só limitar CONCORRÊNCIA não bastou: testado ao vivo, a própria IGDB já
+// devolve 429 (limite de taxa) numa rajada de só 15 doações mesmo com no
+// máximo 4 chamadas simultâneas -- o limite deles é por REQUISIÇÕES POR
+// SEGUNDO, não por quantas rodam ao mesmo tempo. Por isso isso aqui espaça o
+// INÍCIO de cada chamada em vez de só limitar quantas ficam abertas.
+const IGDB_MIN_DISPATCH_INTERVAL_MS = 260; // ~3.8 req/s, folga sobre o limite documentado de 4/s
+let lastIgdbDispatchAt = 0;
+const igdbRequestQueue = [];
+let igdbQueueTimer = null;
+
+function processIgdbQueue() {
+  if (igdbQueueTimer || !igdbRequestQueue.length) return;
+  const wait = Math.max(0, lastIgdbDispatchAt + IGDB_MIN_DISPATCH_INTERVAL_MS - Date.now());
+  igdbQueueTimer = setTimeout(() => {
+    igdbQueueTimer = null;
+    lastIgdbDispatchAt = Date.now();
+    const job = igdbRequestQueue.shift();
+    if (job) job();
+    processIgdbQueue();
+  }, wait);
+}
+
+function runQueuedIgdbRequest(task) {
+  return new Promise((resolve) => {
+    igdbRequestQueue.push(() => resolve(task()));
+    processIgdbQueue();
+  });
+}
+
 // timeout curto em toda chamada -- sem isso, se a IGDB ficar lenta/fora do
 // ar, nossas rotas (busca de jogo, mosaico de fundo) ficam penduradas em vez
 // de cair rápido no modo sem busca (jogo digitado manualmente continua
@@ -49,26 +84,28 @@ async function igdbQuery(endpoint, body) {
   }
   if (!clientId || !accessToken) return null;
 
-  try {
-    const res = await fetch(`https://api.igdb.com/v4/${endpoint}`, {
-      method: "POST",
-      headers: {
-        "Client-ID": clientId,
-        Authorization: `Bearer ${accessToken}`,
-        "Content-Type": "text/plain",
-      },
-      body,
-      signal: AbortSignal.timeout(6000),
-    });
-    if (!res.ok) {
-      console.error("IGDB respondeu", res.status, "em", endpoint);
+  return runQueuedIgdbRequest(async () => {
+    try {
+      const res = await fetch(`https://api.igdb.com/v4/${endpoint}`, {
+        method: "POST",
+        headers: {
+          "Client-ID": clientId,
+          Authorization: `Bearer ${accessToken}`,
+          "Content-Type": "text/plain",
+        },
+        body,
+        signal: AbortSignal.timeout(6000),
+      });
+      if (!res.ok) {
+        console.error("IGDB respondeu", res.status, "em", endpoint);
+        return null;
+      }
+      return await res.json();
+    } catch (err) {
+      console.error(`Erro ao consultar IGDB (${endpoint}):`, err.message);
       return null;
     }
-    return await res.json();
-  } catch (err) {
-    console.error(`Erro ao consultar IGDB (${endpoint}):`, err.message);
-    return null;
-  }
+  });
 }
 
 const cache = new Map();
@@ -168,7 +205,13 @@ async function searchGamesRaw(query) {
 // candidatos. Isso NÃO afrouxa a segurança: o nome/apelido batido continua
 // precisando aparecer literalmente no texto ORIGINAL (não no texto cortado),
 // então um resultado tipo "Just Cause" pra "just dance 2024 top demais" ainda
-// é rejeitado -- só muda o que é mandado pra busca, não o que é aceito dela
+// é rejeitado -- só muda o que é mandado pra busca, não o que é aceito dela.
+//
+// no máximo MAX_PREFIX_ATTEMPTS chamadas por doação, mesmo pra mensagem bem
+// longa/ruidosa -- sem isso, uma rajada de doações de jogos novos multiplica
+// rápido demais o número de chamadas simultâneas à IGDB (ver runQueuedIgdbRequest)
+const MAX_PREFIX_ATTEMPTS = 6;
+
 async function identifyGameFromNoisyText(text) {
   if (!text || !text.trim()) return null;
 
@@ -176,7 +219,9 @@ async function identifyGameFromNoisyText(text) {
   const words = text.trim().split(/\s+/);
 
   let results = null;
-  for (let len = words.length; len >= 1 && !results; len--) {
+  let attempts = 0;
+  for (let len = words.length; len >= 1 && !results && attempts < MAX_PREFIX_ATTEMPTS; len--) {
+    attempts++;
     const fetched = await searchGamesRaw(words.slice(0, len).join(" "));
     if (fetched && fetched.length) results = fetched;
   }
