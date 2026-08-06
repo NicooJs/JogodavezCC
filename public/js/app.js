@@ -230,6 +230,12 @@ function flashTotalBeam() {
   topbarTotalEl.classList.add("beam");
 }
 
+function triggerTick(el) {
+  el.classList.remove("tick");
+  void el.offsetWidth;
+  el.classList.add("tick");
+}
+
 function setStatus(online) {
   statusEl.classList.toggle("online", online);
   statusTextEl.textContent = online ? "ao vivo" : "reconectando…";
@@ -1774,6 +1780,7 @@ socket.on("update", ({ leaderboard, lastEvent }) => {
     if (lastTotalRaised !== null && totalValue !== lastTotalRaised) {
       animateCountUp(statTotalEl, lastTotalRaised, totalValue);
       flashTotalBeam();
+      triggerTick(statTotalEl);
     } else if (lastTotalRaised === null) {
       statTotalEl.textContent = Math.round(totalValue).toLocaleString("pt-BR");
     }

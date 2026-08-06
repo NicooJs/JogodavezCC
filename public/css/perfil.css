@@ -293,7 +293,7 @@
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 20px;
-  align-items: start;
+  align-items: stretch;
 }
 
 .perfil-card {
@@ -388,6 +388,7 @@
 .perfil-saque-btn:disabled { opacity: 0.5; cursor: not-allowed; }
 
 .perfil-history-card { min-width: 0; }
+.perfil-history-card:has(.perfil-empty:not([hidden])) { justify-content: center; }
 
 .perfil-history-list {
   display: flex;
@@ -397,7 +398,7 @@
   overflow-y: auto;
 }
 
-.perfil-empty { margin: 0; font-size: 13px; color: var(--muted); }
+.perfil-empty { margin: 0; font-size: 13px; color: var(--muted); text-align: center; }
 
 .perfil-saque-row {
   display: flex;

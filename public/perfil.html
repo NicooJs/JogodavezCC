@@ -112,7 +112,7 @@
                   <a href="https://dashboard.pixgg.com/aplicacoes" target="_blank" rel="noopener">dashboard.pixgg.com/aplicacoes</a>.
                 </p>
                 <div class="perfil-field-row">
-                  <input type="text" id="pixgg-slug-input" placeholder="seu nome de usuário no pixgg.com (ex: sabrinoca)" autocomplete="off" />
+                  <input type="text" id="pixgg-slug-input" placeholder="seu nome de usuário no pixgg.com" autocomplete="off" />
                 </div>
                 <div class="perfil-field-row">
                   <input type="text" id="pixgg-client-id-input" placeholder="Client ID" autocomplete="off" />
@@ -129,8 +129,7 @@
               <div class="perfil-disabled-wrap">
                 <p class="perfil-disabled-banner">
                   <span class="perfil-soon-badge">Em breve</span>
-                  Saldo, chave Pix e saque pela Efí voltam assim que o
-                  cadastro de intermediador de pagamentos for aprovado.
+                  Saldo, chave Pix e saque direto por aqui estão a caminho.
                 </p>
                 <div class="perfil-disabled">
                   <section class="perfil-hero">
@@ -268,22 +267,30 @@
                 <button class="perfil-subtab" data-subtab="bloqueados" type="button">Bloqueados</button>
               </div>
 
-              <section class="perfil-donations-panel" data-subtab-panel="lista">
-                <div class="perfil-donations-summary">
-                  <p class="perfil-donations-summary-value" id="donations-summary-value">R$ 0,00</p>
-                  <p class="perfil-donations-summary-label" id="donations-summary-label">0 doações</p>
-                </div>
-                <div class="perfil-field-row">
-                  <input type="text" id="donations-search" placeholder="Buscar por nome" autocomplete="off" />
-                </div>
-                <div class="perfil-donation-list" id="donation-list"></div>
-                <p class="perfil-empty" id="donation-empty" hidden>Nenhuma doação ainda.</p>
-              </section>
+              <div class="perfil-disabled-wrap">
+                <p class="perfil-disabled-banner">
+                  <span class="perfil-soon-badge">Em breve</span>
+                  Histórico de doações e bloqueio de doador direto por aqui estão a caminho.
+                </p>
+                <div class="perfil-disabled">
+                  <section class="perfil-donations-panel" data-subtab-panel="lista">
+                    <div class="perfil-donations-summary">
+                      <p class="perfil-donations-summary-value" id="donations-summary-value">R$ 0,00</p>
+                      <p class="perfil-donations-summary-label" id="donations-summary-label">0 doações</p>
+                    </div>
+                    <div class="perfil-field-row">
+                      <input type="text" id="donations-search" placeholder="Buscar por nome" autocomplete="off" />
+                    </div>
+                    <div class="perfil-donation-list" id="donation-list"></div>
+                    <p class="perfil-empty" id="donation-empty" hidden>Nenhuma doação ainda.</p>
+                  </section>
 
-              <section class="perfil-card" data-subtab-panel="bloqueados" hidden>
-                <div class="perfil-blocked-list" id="blocked-list"></div>
-                <p class="perfil-empty" id="blocked-empty" hidden>Ninguém bloqueado.</p>
-              </section>
+                  <section class="perfil-card" data-subtab-panel="bloqueados" hidden>
+                    <div class="perfil-blocked-list" id="blocked-list"></div>
+                    <p class="perfil-empty" id="blocked-empty" hidden>Ninguém bloqueado.</p>
+                  </section>
+                </div>
+              </div>
             </section>
           </div>
         </div>
