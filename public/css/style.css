@@ -504,6 +504,7 @@ body.board-body.has-bg-image .board-cover-bg { display: none; }
   50% { box-shadow: 0 0 14px 1px var(--accent-glow); }
 }
 
+.donate-open-btn[hidden] { display: none; }
 .donate-open-btn {
   display: inline-flex;
   align-items: center;
@@ -618,6 +619,7 @@ body.board-body.has-bg-image .board-cover-bg { display: none; }
 .presenter-bar-icon-link .icon { width: 17px; height: 17px; }
 .presenter-bar-link:hover { color: var(--accent-text); }
 
+.theme-dots[hidden] { display: none; }
 .theme-dots { display: flex; align-items: center; gap: 7px; margin-left: auto; }
 
 /* switch de modalidade (jogos/filmes) direto na barra do apresentador --
