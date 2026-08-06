@@ -5,6 +5,41 @@
 > real do projeto — não confie em ideias antigas de outra sessão que
 > contradigam o que está escrito aqui.
 
+## pixgg.com reconsiderado como ponte pra sexta (2026-08-05) -- investigado com evidência real, não suposição
+
+Cliente questionou (com razão) uma resposta minha anterior que descartou o
+pixgg.com de forma rasa só por "usar a Efí por trás". Reinvestigado com
+`git log`/`git show` no código já deletado (`src/pixggApi.js`,
+`src/pixggClient.js`, removidos no commit `993e533`), não por suposição:
+
+- **`pix.gg` no texto do projeto e `pixgg.com` são o mesmo serviço** (URL
+  base do client era `https://app.pixgg.com`, contato documentado era "Cris,
+  do pix.gg"). Não são coisas diferentes.
+- **Modelo do pixgg.com (como era em 2026-07)**: cada streamer cria a
+  própria aplicação lá, com `clientId`/`clientSecret` próprios. A doação cai
+  **direto na conta do streamer** -- a JogodaVez só recebia um webhook
+  avisando (`streamerUsername`, valor, mensagem), nunca custodiava o
+  dinheiro.
+- **Por que foi abandonado (confirmado pelo commit `e5d31d1`, mensagem
+  literal): "sair do pix.gg pra um sistema de split de pagamento nativo via
+  Mercado Pago (OAuth + application_fee)"** -- ou seja, foi decisão de
+  **modelo de negócio** (pix.gg não permitia a JogodaVez cobrar a taxa de
+  3,9% automaticamente), **não** decisão de segurança/bloqueio. Não há
+  nenhum registro de bloqueio de conta usando pix.gg -- o bloqueio real
+  (streamer, minutos, ao vivo) aconteceu especificamente na fase do
+  **Mercado Pago**, depois.
+- **Implicação pra sexta**: como o dinheiro nunca passaria pela conta da
+  JogodaVez nesse modelo, a arquitetura em si provavelmente não carrega o
+  mesmo risco de bloqueio por "intermediação de pagamentos" que motivou o
+  KYC da Efí -- mas também significa abrir mão (temporariamente) da taxa
+  automática da plataforma, a não ser que o pixgg.com tenha adicionado
+  split desde julho de 2026 (não confirmado ainda -- verificar antes de
+  decidir reviver).
+
+**Não decidido ainda**: se vale a pena reintegrar como ponte até sexta. Fica
+pra próxima sessão continuar essa investigação (checar se pixgg.com hoje
+suporta split/taxa automática) antes de qualquer decisão de reviver código.
+
 ## Rede de segurança pro lançamento de sexta (2026-08-07) + KYC de intermediador em andamento (2026-08-05)
 
 Prazo real: site precisa estar funcionando (doação + saque) até sexta-feira
