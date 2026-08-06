@@ -1683,7 +1683,17 @@ app.post("/webhooks/pixgg/:secret", async (req, res) => {
     }
 
     const donation = pixggClient.parseDonation(req.body);
-    if (!pixggClient.isPaid(donation.status)) return; // ignora "created", só processa "paid"
+    if (!pixggClient.isPaid(donation.status)) {
+      // "created" é esperado e ignorado de propósito; qualquer outro valor
+      // (ou payload em formato diferente do documentado) precisa aparecer no
+      // log, senão a doação some sem nenhum rastro -- diagnóstico temporário
+      // enquanto o formato real do payload do pixgg.com ainda não foi
+      // confirmado ao vivo (ver docs/STATUS-EFI.md)
+      if (donation.status !== "created") {
+        console.warn(`[webhook pixgg] status inesperado ou payload não reconhecido, body="${JSON.stringify(req.body).slice(0, 500)}"`);
+      }
+      return;
+    }
     if (!donation.id) {
       console.warn("[webhook pixgg] evento pago sem transactionPublicId, ignorado.");
       return;
@@ -1703,6 +1713,8 @@ app.post("/webhooks/pixgg/:secret", async (req, res) => {
       );
       return;
     }
+
+    console.log(`[webhook pixgg] creditando leilaoId="${leilaoMeta.id}" amountCents=${donation.amountCents} username="${donation.username}" message="${donation.message}"`);
 
     const store = getStore(leilaoMeta.id);
     await processDonationMessage(leilaoMeta.id, store, {
