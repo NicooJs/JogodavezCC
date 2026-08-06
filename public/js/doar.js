@@ -87,6 +87,8 @@ const pixggMessageEl = document.getElementById("doar-pixgg-message");
 const pixggCopyBtnEl = document.getElementById("doar-pixgg-copy-btn");
 const pixggLinkEl = document.getElementById("doar-pixgg-link");
 const pixggBackBtn = document.getElementById("doar-pixgg-back-btn");
+const pixggConfirmHintEl = document.getElementById("doar-pixgg-confirm-hint");
+const pixggBoardLinkEl = document.getElementById("doar-pixgg-board-link");
 let pixggSlug = null;
 
 const timerEl = document.getElementById("doar-timer");
@@ -364,6 +366,9 @@ async function submitDonation(e) {
     const prefix = getAction() === "remove" ? "sabotar" : "apoiar";
     pixggMessageEl.value = `${prefix} ${game}`;
     pixggLinkEl.href = `https://pixgg.com/${pixggSlug}`;
+    pixggBoardLinkEl.href = `/l/${LEILAO_ID}`;
+    pixggConfirmHintEl.hidden = true;
+    pixggBoardLinkEl.hidden = true;
     showStep("pixgg");
     return;
   }
@@ -390,6 +395,17 @@ againBtn.addEventListener("click", () => {
 
 wireCopyButton(copyBtnEl, copyInputEl);
 wireCopyButton(pixggCopyBtnEl, pixggMessageEl);
+
+// não dá pra saber quando essa doação específica foi confirmada (o pixgg.com
+// não devolve o controle pra essa aba, e o webhook não carrega nenhum id que
+// a gente tenha gerado antes -- ver findOpenLeilaoForStreamer em server.js).
+// Em vez de fingir uma confirmação automática que nunca chega, assim que a
+// pessoa sai pra confirmar lá a gente já mostra o caminho honesto: o placar
+// ao vivo, que reflete a doação em segundos reais assim que o webhook chega.
+pixggLinkEl.addEventListener("click", () => {
+  pixggConfirmHintEl.hidden = false;
+  pixggBoardLinkEl.hidden = false;
+});
 
 pixggBackBtn.addEventListener("click", () => {
   showStep("form");

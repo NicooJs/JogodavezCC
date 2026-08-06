@@ -1698,6 +1698,15 @@ app.post("/webhooks/pixgg/:secret", async (req, res) => {
       console.warn("[webhook pixgg] evento pago sem transactionPublicId, ignorado.");
       return;
     }
+    if (!(donation.amountCents > 0)) {
+      // diferente do caminho Efí (valor sempre validado antes na nossa
+      // própria rota /api/l/:id/doacao), aqui o valor vem direto do corpo
+      // do webhook do pixgg.com, sem nenhuma validação nossa antes -- um
+      // TotalAmount ausente/zero/negativo não pode virar evento "pago" de
+      // verdade no placar público
+      console.warn(`[webhook pixgg] evento pago com valor inválido (amountCents=${donation.amountCents}), ignorado, transactionPublicId="${donation.id}".`);
+      return;
+    }
 
     const streamer = await streamersStore.findById(credentials.streamerId);
     if (!streamer) {
