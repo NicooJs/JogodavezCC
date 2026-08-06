@@ -77,6 +77,14 @@ const lotModalClose = document.getElementById("lot-modal-close");
 const donorInputEl = document.getElementById("lot-modal-donor");
 const donorSuggestionsEl = document.getElementById("donor-suggestions");
 
+const lotModalTitleEditBtn = document.getElementById("lot-modal-title-edit");
+const lotModalAmountFieldsEl = document.getElementById("lot-modal-amount-fields");
+const lotModalRenameFieldEl = document.getElementById("lot-modal-rename-field");
+const lotModalRenameInputEl = document.getElementById("lot-modal-rename-input");
+const lotModalRenameShelfEl = document.getElementById("lot-modal-rename-shelf");
+const lotModalRenameCancelBtn = document.getElementById("lot-modal-rename-cancel");
+const lotModalRenameSaveBtn = document.getElementById("lot-modal-rename-save");
+
 const TIMER_RING_CIRCUMFERENCE = 2 * Math.PI * 28;
 
 let timerEndsAt = null;
@@ -2393,6 +2401,9 @@ function openLotModal(game) {
     lotModalCurrent.hidden = true;
   }
 
+  lotModalTitleEditBtn.hidden = !existing;
+  hideLotModalRename();
+
   setModalAction("add");
   lotModalAmount.value = "";
   lotModalDonor.value = "";
@@ -2407,6 +2418,109 @@ function closeLotModal() {
   hideDonorSuggestions();
   modalGame = null;
 }
+
+let lotModalRenameImage; // undefined = não mexe na capa atual; só vira string/null ao escolher um card da busca
+let lotModalRenameDebounce = null;
+let lotModalRenameAbort = null;
+
+function hideLotModalRename() {
+  clearTimeout(lotModalRenameDebounce);
+  if (lotModalRenameAbort) lotModalRenameAbort.abort();
+  lotModalRenameFieldEl.hidden = true;
+  lotModalAmountFieldsEl.hidden = false;
+}
+
+function showLotModalRename() {
+  lotModalRenameImage = undefined;
+  lotModalRenameInputEl.value = modalGame.name;
+  lotModalRenameShelfEl.hidden = true;
+  lotModalRenameShelfEl.innerHTML = "";
+  lotModalAmountFieldsEl.hidden = true;
+  lotModalRenameFieldEl.hidden = false;
+  setTimeout(() => { lotModalRenameInputEl.focus(); lotModalRenameInputEl.select(); }, 40);
+}
+
+function lotModalRenameShelfCardHtml(item) {
+  const thumb = item.image
+    ? `<img class="game-shelf-cover" src="${escapeHtml(item.image)}" alt="" loading="lazy" />`
+    : `<div class="game-shelf-cover game-shelf-cover-placeholder">${escapeHtml((item.name[0] || "?").toUpperCase())}</div>`;
+  return `
+    <div class="game-shelf-card" data-name="${escapeHtml(item.name)}" data-image="${escapeHtml(item.image || "")}">
+      ${thumb}
+      <span class="game-shelf-name">${escapeHtml(item.name)}</span>
+    </div>
+  `;
+}
+
+function updateLotModalRenameShelf() {
+  const query = lotModalRenameInputEl.value.trim();
+  clearTimeout(lotModalRenameDebounce);
+  if (lotModalRenameAbort) lotModalRenameAbort.abort();
+  if (query.length < 2) {
+    lotModalRenameShelfEl.hidden = true;
+    lotModalRenameShelfEl.innerHTML = "";
+    return;
+  }
+  lotModalRenameDebounce = setTimeout(() => {
+    lotModalRenameAbort = new AbortController();
+    presenterFetch(`/admin/game-search?q=${encodeURIComponent(query)}`, { signal: lotModalRenameAbort.signal })
+      .then((data) => {
+        if (lotModalRenameInputEl.value.trim() !== query) return;
+        const results = (data && data.results) || [];
+        lotModalRenameShelfEl.innerHTML = results.length
+          ? results.map(lotModalRenameShelfCardHtml).join("")
+          : `<p class="game-shelf-empty">nenhum resultado, o nome digitado será usado do jeito que está</p>`;
+        lotModalRenameShelfEl.hidden = false;
+        lotModalRenameShelfEl.querySelectorAll(".game-shelf-card").forEach((el) => {
+          el.addEventListener("click", () => {
+            lotModalRenameInputEl.value = el.dataset.name;
+            lotModalRenameImage = el.dataset.image || null;
+            lotModalRenameShelfEl.querySelectorAll(".game-shelf-card.selected").forEach((c) => c.classList.remove("selected"));
+            el.classList.add("selected");
+          });
+        });
+      })
+      .catch((err) => { if (err.name !== "AbortError") console.error("Erro ao buscar sugestões:", err.message); });
+  }, 200);
+}
+
+async function saveLotModalRename() {
+  if (!modalGame) return;
+  const name = lotModalRenameInputEl.value.trim();
+  if (!name) return lotModalRenameInputEl.focus();
+  lotModalRenameSaveBtn.disabled = true;
+  try {
+    const { game } = await presenterFetch("/admin/rename", {
+      method: "POST",
+      body: JSON.stringify({ key: modalGame.key, newName: name, image: lotModalRenameImage }),
+    });
+    modalGame = { ...modalGame, name: game.name, image: game.image_url || null };
+    lotModalTitle.textContent = modalGame.name;
+    if (modalGame.image) {
+      lotModalThumb.src = modalGame.image;
+      lotModalThumb.hidden = false;
+    } else {
+      lotModalThumb.hidden = true;
+      lotModalThumb.removeAttribute("src");
+    }
+    hideLotModalRename();
+  } catch (err) {
+    alert(err.message);
+  } finally {
+    lotModalRenameSaveBtn.disabled = false;
+  }
+}
+
+lotModalTitleEditBtn.addEventListener("click", showLotModalRename);
+lotModalRenameCancelBtn.addEventListener("click", hideLotModalRename);
+lotModalRenameSaveBtn.addEventListener("click", saveLotModalRename);
+lotModalRenameInputEl.addEventListener("input", () => {
+  lotModalRenameImage = undefined;
+  updateLotModalRenameShelf();
+});
+lotModalRenameInputEl.addEventListener("keydown", (e) => {
+  if (e.key === "Enter") { e.preventDefault(); saveLotModalRename(); }
+});
 
 async function submitLotModal() {
   if (!modalGame || lotModalSubmit.disabled) return;
@@ -2439,7 +2553,11 @@ lotModalCancel.addEventListener("click", closeLotModal);
 lotModalClose.addEventListener("click", closeLotModal);
 lotModalEl.addEventListener("click", (e) => { if (e.target === lotModalEl) closeLotModal(); });
 lotModalAmount.addEventListener("keydown", (e) => { if (e.key === "Enter") submitLotModal(); });
-document.addEventListener("keydown", (e) => { if (e.key === "Escape" && !lotModalEl.hidden) closeLotModal(); });
+document.addEventListener("keydown", (e) => {
+  if (e.key !== "Escape" || lotModalEl.hidden) return;
+  if (!lotModalRenameFieldEl.hidden) return hideLotModalRename();
+  closeLotModal();
+});
 
 function hideDonorSuggestions() {
   donorSuggestionsEl.hidden = true;

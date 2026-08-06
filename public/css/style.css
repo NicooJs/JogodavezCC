@@ -2919,6 +2919,24 @@ body.board-body.has-bg-image .board-cover-bg { display: none; }
 .modal-current { margin: 3px 0 0; font-family: var(--font-mono); font-size: 12px; color: var(--muted); }
 .modal-current[hidden] { display: none; }
 
+.modal-title-edit {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  flex-shrink: 0;
+  background: none;
+  border: 1px solid var(--border);
+  color: var(--muted);
+  border-radius: 50%;
+  cursor: pointer;
+  transition: border-color 0.15s ease, color 0.15s ease;
+}
+.modal-title-edit .icon { width: 13px; height: 13px; }
+.modal-title-edit:hover { border-color: var(--accent); color: var(--accent-text); }
+.modal-title-edit[hidden] { display: none; }
+
 .modal-error {
   margin: -4px 0 14px;
   font-size: 12.5px;

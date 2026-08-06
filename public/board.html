@@ -349,35 +349,50 @@
           <h2 class="modal-title" id="lot-modal-title">Jogo</h2>
           <p class="modal-current" id="lot-modal-current" hidden></p>
         </div>
+        <button class="modal-title-edit" id="lot-modal-title-edit" type="button" aria-label="Renomear" title="Renomear" hidden>
+          <svg class="icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M13 3.5l3.5 3.5L6.5 17 2.5 17.5 3 13.5 13 3.5z"/><path d="M11.3 5.2l3.5 3.5"/></svg>
+        </button>
       </div>
 
-      <div class="modal-field">
-        <span class="modal-label">ação</span>
-        <div class="seg" id="lot-modal-action">
-          <button type="button" data-action="add" class="active">Apoiar (+)</button>
-          <button type="button" data-action="remove">Sabotar (−)</button>
+      <div class="modal-field" id="lot-modal-rename-field" hidden>
+        <label class="modal-label" for="lot-modal-rename-input">Renomear</label>
+        <input type="text" id="lot-modal-rename-input" class="modal-input" autocomplete="off" />
+        <div class="game-shelf" id="lot-modal-rename-shelf" hidden></div>
+        <div class="modal-actions">
+          <button class="btn-mini" id="lot-modal-rename-cancel" type="button">Cancelar</button>
+          <button class="btn-mini primary" id="lot-modal-rename-save" type="button">Salvar nome</button>
         </div>
       </div>
 
-      <div class="modal-field">
-        <label class="modal-label" for="lot-modal-amount">valor</label>
-        <div class="amount-wrap modal-amount">
-          <span class="amount-prefix">R$</span>
-          <input type="number" id="lot-modal-amount" placeholder="0,00" step="0.01" min="0" inputmode="decimal" />
+      <div id="lot-modal-amount-fields">
+        <div class="modal-field">
+          <span class="modal-label">ação</span>
+          <div class="seg" id="lot-modal-action">
+            <button type="button" data-action="add" class="active">Apoiar (+)</button>
+            <button type="button" data-action="remove">Sabotar (−)</button>
+          </div>
         </div>
-      </div>
 
-      <div class="modal-field">
-        <label class="modal-label" for="lot-modal-donor">doador <span class="modal-opt">(opcional)</span></label>
-        <div class="field-wrap">
-          <input type="text" id="lot-modal-donor" class="modal-input" placeholder="nome de quem doou" autocomplete="off" />
-          <div class="suggestions donor-suggestions" id="donor-suggestions" hidden></div>
+        <div class="modal-field">
+          <label class="modal-label" for="lot-modal-amount">valor</label>
+          <div class="amount-wrap modal-amount">
+            <span class="amount-prefix">R$</span>
+            <input type="number" id="lot-modal-amount" placeholder="0,00" step="0.01" min="0" inputmode="decimal" />
+          </div>
         </div>
-      </div>
 
-      <div class="modal-actions">
-        <button class="btn-mini" id="lot-modal-cancel" type="button">Cancelar</button>
-        <button class="btn-mini primary" id="lot-modal-submit" type="button">Lançar</button>
+        <div class="modal-field">
+          <label class="modal-label" for="lot-modal-donor">doador <span class="modal-opt">(opcional)</span></label>
+          <div class="field-wrap">
+            <input type="text" id="lot-modal-donor" class="modal-input" placeholder="nome de quem doou" autocomplete="off" />
+            <div class="suggestions donor-suggestions" id="donor-suggestions" hidden></div>
+          </div>
+        </div>
+
+        <div class="modal-actions">
+          <button class="btn-mini" id="lot-modal-cancel" type="button">Cancelar</button>
+          <button class="btn-mini primary" id="lot-modal-submit" type="button">Lançar</button>
+        </div>
       </div>
     </div>
   </div>
