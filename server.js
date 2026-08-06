@@ -1990,20 +1990,20 @@ app.post("/api/l/:id/admin/pause", loadLeilao, requireLeilaoAdmin, (req, res) =>
   res.json({ ok: true, paused: !!paused });
 });
 
-// não usa touchActivity aqui: isso resetaria lastActivityAt pra agora em vez de somar
+// botão manual do apresentador -- reinicia pra duração cheia configurada
+// (mesmo efeito de uma doação chegando), não soma tempo em cima do que já
+// está rodando. Não olha timerLocked de propósito: a trava é só pra impedir
+// doação de estender o tempo, o apresentador sempre pode resetar na mão.
 app.post("/api/l/:id/admin/reset-timer", loadLeilao, requireLeilaoAdmin, (req, res) => {
   const { store, leilaoId } = req;
   const isOpen = store.getState("open", "true") === "true";
   if (!isOpen) return res.status(400).json({ error: "O leilão está encerrado" });
 
-  const EXTEND_MS = 5 * 60 * 1000;
   const isPaused = store.getState("paused", "false") === "true";
   if (isPaused) {
-    const remaining = Number(store.getState("pausedRemainingMs", getAutoCloseMs(store)));
-    store.setState("pausedRemainingMs", Math.round(remaining + EXTEND_MS));
+    store.setState("pausedRemainingMs", getAutoCloseMs(store));
   } else {
-    const lastActivityAt = Number(store.getState("lastActivityAt", Date.now()));
-    store.setState("lastActivityAt", String(lastActivityAt + EXTEND_MS));
+    store.setState("lastActivityAt", String(Date.now()));
   }
   broadcastUpdate(leilaoId, store, { type: "timer-reset" });
   res.json({ ok: true });
