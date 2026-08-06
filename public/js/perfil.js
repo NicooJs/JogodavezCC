@@ -21,6 +21,14 @@ const donationCountEl = document.getElementById("perfil-donation-count");
 const periodTotalEl = document.getElementById("perfil-period-total");
 const chartWrapEl = document.getElementById("perfil-chart-wrap");
 
+const pixggSlugInputEl = document.getElementById("pixgg-slug-input");
+const pixggClientIdInputEl = document.getElementById("pixgg-client-id-input");
+const pixggClientSecretInputEl = document.getElementById("pixgg-client-secret-input");
+const pixggSaveBtn = document.getElementById("pixgg-save");
+const pixggDisconnectBtn = document.getElementById("pixgg-disconnect");
+const pixggFeedbackEl = document.getElementById("pixgg-feedback");
+const pixggStatusEl = document.getElementById("pixgg-status");
+
 const obsEmptyEl = document.getElementById("obs-empty");
 const obsLinkBlockEl = document.getElementById("obs-link-block");
 const obsLinkInputEl = document.getElementById("obs-link-input");
@@ -321,6 +329,17 @@ async function loadPerfil() {
     saqueBtn.disabled = !data.pixKey || currentBalanceCents <= 0;
   }
 
+  if (data.pixggConnected) {
+    pixggStatusEl.textContent = `Conectado como pixgg.com/${data.pixggSlug}`;
+    pixggStatusEl.hidden = false;
+    pixggDisconnectBtn.hidden = false;
+    pixggSaveBtn.textContent = "Atualizar";
+  } else {
+    pixggStatusEl.hidden = true;
+    pixggDisconnectBtn.hidden = true;
+    pixggSaveBtn.textContent = "Conectar";
+  }
+
   if (data.latestLeilao) {
     obsEmptyEl.hidden = true;
     obsLinkBlockEl.hidden = false;
@@ -609,6 +628,54 @@ document.getElementById("pix-key-save").addEventListener("click", async () => {
     pixKeyFeedbackEl.textContent = "Erro: " + err.message;
     pixKeyFeedbackEl.className = "perfil-feedback error";
     pixKeyFeedbackEl.hidden = false;
+  }
+});
+
+pixggSaveBtn.addEventListener("click", async () => {
+  const pixggSlug = pixggSlugInputEl.value.trim();
+  const clientId = pixggClientIdInputEl.value.trim();
+  const clientSecret = pixggClientSecretInputEl.value.trim();
+  pixggFeedbackEl.hidden = true;
+  if (!pixggSlug || !clientId || !clientSecret) {
+    pixggFeedbackEl.textContent = "Preencha usuário, Client ID e Client Secret.";
+    pixggFeedbackEl.className = "perfil-feedback error";
+    pixggFeedbackEl.hidden = false;
+    return;
+  }
+
+  pixggSaveBtn.disabled = true;
+  try {
+    await perfilFetch("/pixgg", { method: "POST", body: JSON.stringify({ pixggSlug, clientId, clientSecret }) });
+    pixggClientSecretInputEl.value = "";
+    pixggFeedbackEl.textContent = "pixgg.com conectado! O webhook já foi vinculado.";
+    pixggFeedbackEl.className = "perfil-feedback ok";
+    pixggFeedbackEl.hidden = false;
+    loadPerfil();
+  } catch (err) {
+    pixggFeedbackEl.textContent = "Erro: " + err.message;
+    pixggFeedbackEl.className = "perfil-feedback error";
+    pixggFeedbackEl.hidden = false;
+  } finally {
+    pixggSaveBtn.disabled = false;
+  }
+});
+
+pixggDisconnectBtn.addEventListener("click", async () => {
+  const ok = await confirmDialog({
+    title: "Desconectar pixgg.com",
+    message: "As doações vão parar de atualizar o placar automaticamente até você conectar de novo. Confirma?",
+    confirmLabel: "Desconectar",
+  });
+  if (!ok) return;
+  try {
+    await perfilFetch("/pixgg/desconectar", { method: "POST" });
+    pixggSlugInputEl.value = "";
+    pixggClientIdInputEl.value = "";
+    loadPerfil();
+  } catch (err) {
+    pixggFeedbackEl.textContent = "Erro: " + err.message;
+    pixggFeedbackEl.className = "perfil-feedback error";
+    pixggFeedbackEl.hidden = false;
   }
 });
 

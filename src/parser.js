@@ -7,7 +7,7 @@ function removeAccents(str) {
 
 const REMOVE_PATTERNS = [/^-\s*/, /^tirar\s+/i, /^remover\s+/i, /^sabotar\s+/i, /^remove\s+/i];
 
-const ADD_PATTERNS = [/^\+\s*/, /^colocar\s+/i, /^por\s+/i, /^adicionar\s+/i, /^apostar\s+/i, /^add\s+/i];
+const ADD_PATTERNS = [/^\+\s*/, /^colocar\s+/i, /^por\s+/i, /^adicionar\s+/i, /^apostar\s+/i, /^add\s+/i, /^apoiar\s+/i, /^apoio\s+/i];
 
 function normalizeKey(name) {
   return removeAccents(name)

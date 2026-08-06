@@ -760,3 +760,44 @@
   .perfil-nav { flex-direction: column; }
   .perfil-chime-row { flex-wrap: wrap; }
 }
+
+.perfil-pixgg-card { margin-bottom: 20px; border-color: var(--accent); }
+
+.perfil-disabled-wrap { position: relative; }
+
+.perfil-disabled-banner {
+  margin: 0 0 14px;
+  padding: 10px 14px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: var(--surface-2);
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius);
+  font-size: 12.5px;
+  color: var(--muted);
+  line-height: 1.5;
+}
+
+.perfil-soon-badge {
+  flex-shrink: 0;
+  padding: 3px 9px;
+  border-radius: 999px;
+  background: var(--accent-soft);
+  color: var(--accent-ink);
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+/* continua travado (nada de saque/chave Pix real ainda) -- só não fica mais
+   ilegível como um card "quebrado", pointer-events:none segue impedindo clique */
+.perfil-disabled {
+  pointer-events: none;
+}
+.perfil-disabled .perfil-saque-btn,
+.perfil-disabled #pix-key-save {
+  opacity: 0.5;
+}

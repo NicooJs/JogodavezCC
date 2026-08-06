@@ -6,6 +6,27 @@ if (!LEILAO_ID) {
 
 const socket = io({ query: { leilaoId: LEILAO_ID } });
 
+// ponte temporária pra doação via pixgg.com (ver docs/STATUS-EFI.md) --
+// busca uma vez só no load, não vem no payload do socket (mesmo motivo do
+// alert-config: não colocar consulta ao Postgres no caminho quente do
+// broadcastUpdate, que dispara a cada doação)
+fetch(`/api/l/${LEILAO_ID}/pixgg-config`)
+  .then((res) => (res.ok ? res.json() : { pixggSlug: null }))
+  .then((data) => {
+    pixggSlug = data.pixggSlug || null;
+    submitBtn.textContent = pixggSlug ? "Continuar →" : "Gerar Pix →";
+    // desligado enquanto DONATIONS_VIA_EFI_ENABLED estiver falso -- essa
+    // frase é sobre custódia na Efí, nunca se aplica agora (ver docs/STATUS-EFI.md)
+    document.getElementById("doar-footnote-payment").hidden = true;
+  })
+  .catch(() => {
+    pixggSlug = null; // se a checagem falhar, trata como indisponível -- nunca assume Efí por omissão
+  })
+  .finally(() => {
+    pixggConfigLoaded = true;
+    decideGateStep();
+  });
+
 function escapeHtml(str) {
   return String(str).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 }
@@ -31,8 +52,10 @@ function applyMediaLabels(mode) {
 
 const loadingEl = document.getElementById("doar-loading");
 const closedEl = document.getElementById("doar-closed");
+const unavailableEl = document.getElementById("doar-unavailable");
 const stepFormEl = document.getElementById("doar-step-form");
 const stepPixEl = document.getElementById("doar-step-pix");
+const stepPixggEl = document.getElementById("doar-step-pixgg");
 const stepSuccessEl = document.getElementById("doar-step-success");
 
 const avatarEl = document.getElementById("doar-avatar");
@@ -59,6 +82,12 @@ const copyInputEl = document.getElementById("doar-copy-input");
 const copyBtnEl = document.getElementById("doar-copy-btn");
 const backBtn = document.getElementById("doar-back-btn");
 const againBtn = document.getElementById("doar-again-btn");
+
+const pixggMessageEl = document.getElementById("doar-pixgg-message");
+const pixggCopyBtnEl = document.getElementById("doar-pixgg-copy-btn");
+const pixggLinkEl = document.getElementById("doar-pixgg-link");
+const pixggBackBtn = document.getElementById("doar-pixgg-back-btn");
+let pixggSlug = null;
 
 const timerEl = document.getElementById("doar-timer");
 const timerLabelEl = document.getElementById("doar-timer-label");
@@ -114,9 +143,25 @@ function showStep(step) {
   currentStep = step;
   loadingEl.hidden = step !== "loading";
   closedEl.hidden = step !== "closed";
+  unavailableEl.hidden = step !== "unavailable";
   stepFormEl.hidden = step !== "form";
   stepPixEl.hidden = step !== "pix";
+  stepPixggEl.hidden = step !== "pixgg";
   stepSuccessEl.hidden = step !== "success";
+}
+
+// desligado enquanto o KYC de intermediador da Efí está em análise (ver
+// docs/STATUS-EFI.md) -- nunca deve cair silenciosamente na Efí. Só mostra
+// o formulário quando o leilão está aberto E o streamer já conectou o
+// pixgg.com; precisa aguardar os dois sinais (socket + fetch) antes de
+// decidir, senão um chega antes do outro e mostra o passo errado por um instante.
+let pixggConfigLoaded = false;
+
+function decideGateStep() {
+  if (!receivedFirstUpdate || !pixggConfigLoaded) return;
+  if (!isOpenState) return showStep("closed");
+  if (!pixggSlug) return showStep("unavailable");
+  if (currentStep === "loading" || currentStep === "closed" || currentStep === "unavailable") showStep("form");
 }
 
 function getAction() {
@@ -139,7 +184,7 @@ function resetForm() {
   selectedVoiceId = "";
   voiceSegEl.querySelectorAll("button").forEach((b) => b.classList.toggle("active", b.dataset.voice === ""));
   submitBtn.disabled = false;
-  submitBtn.textContent = "Gerar Pix →";
+  submitBtn.textContent = pixggSlug ? "Continuar →" : "Gerar Pix →";
   unconfirmGame();
   closeGameShelf();
 }
@@ -315,35 +360,20 @@ async function submitDonation(e) {
     return amountEl.focus();
   }
 
-  submitBtn.disabled = true;
-  submitBtn.textContent = "Gerando…";
-  try {
-    const res = await fetch(`/api/l/${LEILAO_ID}/doacao`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        name: game,
-        amount,
-        action: getAction(),
-        donorUsername: nameEl.value.trim(),
-        donorNote: noteEl.value.trim(),
-        donorVoiceId: selectedVoiceId,
-      }),
-    });
-    const data = await res.json().catch(() => ({}));
-    if (!res.ok) throw new Error(data.error || `Erro ${res.status}`);
-
-    pendingPaymentId = String(data.paymentId);
-    qrImgEl.src = `data:image/png;base64,${data.qrCodeBase64}`;
-    copyInputEl.value = data.copyPaste;
-    showStep("pix");
-  } catch (err) {
-    errorEl.textContent = err.message;
-    errorEl.hidden = false;
-  } finally {
-    submitBtn.disabled = false;
-    submitBtn.textContent = "Gerar Pix →";
+  if (pixggSlug) {
+    const prefix = getAction() === "remove" ? "sabotar" : "apoiar";
+    pixggMessageEl.value = `${prefix} ${game}`;
+    pixggLinkEl.href = `https://pixgg.com/${pixggSlug}`;
+    showStep("pixgg");
+    return;
   }
+
+  // não deveria ser alcançável (o passo "form" só aparece com pixgg
+  // conectado, ver decideGateStep) -- mantido como rede de segurança pra
+  // nunca tentar gerar uma cobrança na Efí enquanto DONATIONS_VIA_EFI_ENABLED
+  // estiver desligado (ver docs/STATUS-EFI.md)
+  errorEl.textContent = "Doação temporariamente indisponível. Atualize a página e tente de novo.";
+  errorEl.hidden = false;
 }
 
 stepFormEl.addEventListener("submit", submitDonation);
@@ -359,6 +389,11 @@ againBtn.addEventListener("click", () => {
 });
 
 wireCopyButton(copyBtnEl, copyInputEl);
+wireCopyButton(pixggCopyBtnEl, pixggMessageEl);
+
+pixggBackBtn.addEventListener("click", () => {
+  showStep("form");
+});
 
 socket.on("update", ({ leaderboard, lastEvent }) => {
   applyMediaLabels(leaderboard.mode);
@@ -389,10 +424,10 @@ socket.on("update", ({ leaderboard, lastEvent }) => {
     }
 
     resetForm();
-    showStep(leaderboard.open ? "form" : "closed");
-  } else if (currentStep === "form" || currentStep === "closed") {
+    decideGateStep();
+  } else if (currentStep === "form" || currentStep === "closed" || currentStep === "unavailable") {
     // não troca de tela se a pessoa já gerou ou confirmou o Pix
-    showStep(leaderboard.open ? "form" : "closed");
+    decideGateStep();
   }
 
   if (lastEvent && lastEvent.paymentId != null && pendingPaymentId && String(lastEvent.paymentId) === pendingPaymentId) {

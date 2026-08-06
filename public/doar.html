@@ -42,6 +42,11 @@
           <p>Esse leilão não está recebendo doações no momento.</p>
         </div>
 
+        <div class="doar-state doar-closed" id="doar-unavailable" hidden>
+          <svg class="icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 3.5l7.5 13h-15l7.5-13z"/><path d="M10 8.5v3.2"/><circle cx="10" cy="14.2" r="0.9" fill="currentColor" stroke="none"/></svg>
+          <p>Esse streamer ainda não configurou como receber doações. Volte daqui a pouco.</p>
+        </div>
+
         <form class="doar-step" id="doar-step-form" hidden autocomplete="off">
           <div class="modal-field">
             <span class="modal-label">ação</span>
@@ -128,6 +133,21 @@
           <button class="doar-again" id="doar-back-btn" type="button">← Mudar valor</button>
         </div>
 
+        <div class="doar-step" id="doar-step-pixgg" hidden>
+          <p class="donate-waiting" style="margin-bottom:4px;">Copie a mensagem abaixo e continue no pixgg.com pra confirmar o Pix:</p>
+          <div class="donate-copy-wrap">
+            <input type="text" id="doar-pixgg-message" class="modal-input" readonly />
+            <button class="copy-btn" id="doar-pixgg-copy-btn" type="button" data-tooltip="Copiar">
+              <span class="copy-btn-icon copy-btn-icon-copy" aria-hidden="true"><svg class="icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="7" y="7" width="9" height="9" rx="1.5"/><path d="M13 7V5.5A1.5 1.5 0 0 0 11.5 4h-6A1.5 1.5 0 0 0 4 5.5v6A1.5 1.5 0 0 0 5.5 13H7"/></svg></span>
+              <span class="copy-btn-icon copy-btn-icon-check" aria-hidden="true"><svg class="icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 10.5l4 4 8-9"/></svg></span>
+              <span class="copy-btn-sr">Copiar</span>
+            </button>
+          </div>
+          <a class="doar-submit" id="doar-pixgg-link" href="#" target="_blank" rel="noopener" style="display:block;text-align:center;text-decoration:none;">Continuar no pixgg.com →</a>
+          <p class="doar-footnote" style="margin-top:10px;">Cole a mensagem no campo de recado da página do pixgg.com antes de confirmar o valor.</p>
+          <button class="doar-again" id="doar-pixgg-back-btn" type="button">← Mudar valor</button>
+        </div>
+
         <div class="doar-step donate-step-success" id="doar-step-success" hidden>
           <div class="donate-success-icon" aria-hidden="true">✓</div>
           <p class="donate-success-text">Pagamento confirmado, obrigado!</p>
@@ -135,7 +155,7 @@
         </div>
       </div>
 
-      <p class="doar-footnote">Pagamento processado via Pix: o valor fica reservado pra <strong id="doar-footnote-host">streamer</strong> sacar.</p>
+      <p class="doar-footnote" id="doar-footnote-payment">Pagamento processado via Pix: o valor fica reservado pra <strong id="doar-footnote-host">streamer</strong> sacar.</p>
     </main>
   </div>
 

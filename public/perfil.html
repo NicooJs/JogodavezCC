@@ -105,43 +105,75 @@
             </section>
 
             <section class="perfil-section" data-section-panel="financeiro" hidden>
-              <section class="perfil-hero">
-                <p class="perfil-card-label">saldo disponível</p>
-                <p class="perfil-balance-value" id="perfil-balance">R$ 0,00</p>
-                <div class="perfil-hero-footer">
-                  <p class="perfil-card-footnote" id="perfil-lifetime">já arrecadou R$ 0,00 no total</p>
-                  <button class="btn-mini primary perfil-saque-btn" id="saque-submit" disabled>Solicitar saque</button>
+              <section class="perfil-card perfil-pixgg-card">
+                <p class="perfil-card-label">doação via pixgg.com</p>
+                <p class="perfil-card-hint">
+                  Enquanto o cadastro na Efí como intermediador de pagamentos
+                  não é aprovado, as doações passam pelo pixgg.com -- o valor
+                  vai direto pra sua conta lá, a JogodaVez só atualiza o
+                  placar. Pegue o Client ID/Secret em pixgg.com &gt; Aplicações.
+                </p>
+                <div class="perfil-field-row">
+                  <input type="text" id="pixgg-slug-input" placeholder="seu nome de usuário no pixgg.com (ex: sabrinoca)" autocomplete="off" />
                 </div>
-                <p class="perfil-feedback" id="saque-feedback" hidden></p>
+                <div class="perfil-field-row">
+                  <input type="text" id="pixgg-client-id-input" placeholder="Client ID" autocomplete="off" />
+                </div>
+                <div class="perfil-field-row">
+                  <input type="password" id="pixgg-client-secret-input" placeholder="Client Secret" autocomplete="off" />
+                  <button class="btn-mini primary" id="pixgg-save">Conectar</button>
+                </div>
+                <p class="perfil-feedback" id="pixgg-feedback" hidden></p>
+                <p class="perfil-card-footnote" id="pixgg-status" hidden></p>
+                <button class="btn-mini" id="pixgg-disconnect" hidden>Desconectar</button>
               </section>
 
-              <div class="perfil-grid">
-                <section class="perfil-card">
-                  <p class="perfil-card-label">chave pix</p>
-                  <p class="perfil-card-hint">
-                    As doações caem numa conta única da plataforma e ficam
-                    guardadas pra você até pedir o saque. Cadastre sua chave
-                    Pix pra poder sacar.
-                  </p>
-                  <div class="seg perfil-pix-key-type" id="pix-key-type">
-                    <button type="button" data-type="aleatoria" class="active">Aleatória</button>
-                    <button type="button" data-type="documento">CPF/CNPJ</button>
-                    <button type="button" data-type="celular">Celular</button>
-                    <button type="button" data-type="email">Email</button>
-                  </div>
-                  <div class="perfil-field-row">
-                    <input type="text" id="pix-key-input" placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx" autocomplete="off" />
-                    <button class="btn-mini primary" id="pix-key-save">Salvar</button>
-                  </div>
-                  <p class="perfil-feedback" id="pix-key-feedback" hidden></p>
-                  <p class="perfil-card-footnote" id="pix-key-updated" hidden></p>
-                </section>
+              <div class="perfil-disabled-wrap">
+                <p class="perfil-disabled-banner">
+                  <span class="perfil-soon-badge">Em breve</span>
+                  Saldo, chave Pix e saque pela Efí voltam assim que o
+                  cadastro de intermediador de pagamentos for aprovado.
+                </p>
+                <div class="perfil-disabled">
+                  <section class="perfil-hero">
+                    <p class="perfil-card-label">saldo disponível</p>
+                    <p class="perfil-balance-value" id="perfil-balance">R$ 0,00</p>
+                    <div class="perfil-hero-footer">
+                      <p class="perfil-card-footnote" id="perfil-lifetime">já arrecadou R$ 0,00 no total</p>
+                      <button class="btn-mini primary perfil-saque-btn" id="saque-submit" disabled>Solicitar saque</button>
+                    </div>
+                    <p class="perfil-feedback" id="saque-feedback" hidden></p>
+                  </section>
 
-                <section class="perfil-card perfil-history-card">
-                  <p class="perfil-card-label">histórico de saques</p>
-                  <div class="perfil-history-list" id="saque-history-list"></div>
-                  <p class="perfil-empty" id="saque-history-empty">Nenhum saque pedido ainda.</p>
-                </section>
+                  <div class="perfil-grid">
+                    <section class="perfil-card">
+                      <p class="perfil-card-label">chave pix</p>
+                      <p class="perfil-card-hint">
+                        As doações caem numa conta única da plataforma e ficam
+                        guardadas pra você até pedir o saque. Cadastre sua chave
+                        Pix pra poder sacar.
+                      </p>
+                      <div class="seg perfil-pix-key-type" id="pix-key-type">
+                        <button type="button" data-type="aleatoria" class="active">Aleatória</button>
+                        <button type="button" data-type="documento">CPF/CNPJ</button>
+                        <button type="button" data-type="celular">Celular</button>
+                        <button type="button" data-type="email">Email</button>
+                      </div>
+                      <div class="perfil-field-row">
+                        <input type="text" id="pix-key-input" placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx" autocomplete="off" />
+                        <button class="btn-mini primary" id="pix-key-save">Salvar</button>
+                      </div>
+                      <p class="perfil-feedback" id="pix-key-feedback" hidden></p>
+                      <p class="perfil-card-footnote" id="pix-key-updated" hidden></p>
+                    </section>
+
+                    <section class="perfil-card perfil-history-card">
+                      <p class="perfil-card-label">histórico de saques</p>
+                      <div class="perfil-history-list" id="saque-history-list"></div>
+                      <p class="perfil-empty" id="saque-history-empty">Nenhum saque pedido ainda.</p>
+                    </section>
+                  </div>
+                </div>
               </div>
             </section>
 

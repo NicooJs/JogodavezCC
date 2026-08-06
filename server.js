@@ -34,6 +34,15 @@ const streamerAlertPrefsStore = require("./src/streamerAlertPrefsStore");
 const paymentsStore = require("./src/paymentsStore");
 const blockedDonorsStore = require("./src/blockedDonorsStore");
 const freeTts = require("./src/freeTts");
+const streamerPixggStore = require("./src/streamerPixggStore");
+const pixggApi = require("./src/pixggApi");
+const pixggClient = require("./src/pixggClient");
+
+// desligado de propósito enquanto o KYC de intermediador da Efí está em
+// análise (ver docs/STATUS-EFI.md) -- ponte pra sexta é via pixgg.com. Setar
+// DONATIONS_VIA_EFI_ENABLED=true (sem redeploy de código) religa a doação
+// via Efí quando o cadastro for aprovado.
+const DONATIONS_VIA_EFI_ENABLED = process.env.DONATIONS_VIA_EFI_ENABLED === "true";
 
 // homologacao até confirmar a conta de Produção da Efí de verdade -- trocar
 // via variável de ambiente, sem precisar redeploy de código
@@ -468,7 +477,14 @@ function requireLeilaoAdmin(req, res, next) {
   return res.status(401).json({ error: "Sessão de admin inválida ou expirada" });
 }
 
-async function processDonationMessage(leilaoId, store, { id, fallbackUsername, fallbackMessage, fallbackAmount, fallbackNote, fallbackVoiceId }) {
+// curingaOnUnparsed: usado só pelo caminho do pixgg.com, onde a mensagem é
+// texto livre digitado pelo doador direto na página deles (sem validação
+// nossa antes de enviar) -- em vez de perder o valor arrecadado quando o
+// parser não reconhece a mensagem, credita num item genérico "Não
+// identificado" pro apresentador ajustar manualmente depois se quiser.
+// Efí/Mercado Pago continuam com o comportamento antigo (só loga e ignora),
+// porque lá o formulário já valida o jogo antes de gerar a cobrança.
+async function processDonationMessage(leilaoId, store, { id, fallbackUsername, fallbackMessage, fallbackAmount, fallbackNote, fallbackVoiceId, curingaOnUnparsed }) {
   if (store.isAlreadyProcessed(id)) return;
   // reserva o id antes do await abaixo, senão um retry do webhook chegando
   // nesse meio tempo passa pela checagem acima e conta a doação 2x
@@ -487,6 +503,11 @@ async function processDonationMessage(leilaoId, store, { id, fallbackUsername, f
   }
 
   let parsed = parseMessage(message);
+  let isCuringa = false;
+  if (!parsed && curingaOnUnparsed) {
+    parsed = { action: "add", name: "Não identificado", key: "nao-identificado" };
+    isCuringa = true;
+  }
   if (!parsed) {
     store.logUnparsedEvent({ amountCents, username, rawMessage: message, providerId: id });
     broadcastUpdate(leilaoId, store, {
@@ -497,7 +518,9 @@ async function processDonationMessage(leilaoId, store, { id, fallbackUsername, f
     });
     return;
   }
-  parsed = await resolveParsedGame(store, parsed);
+  // não roda fuzzy-match/busca de capa pro item curinga -- "Não identificado"
+  // não é um nome de jogo de verdade, ia só confundir a identificação
+  if (!isCuringa) parsed = await resolveParsedGame(store, parsed);
 
   const needsImage = !store.hasGame(parsed.key) || !store.hasGameImage(parsed.key);
 
@@ -641,12 +664,13 @@ app.get("/api/perfil", async (req, res) => {
   if (!twitchSession) return res.status(401).json({ error: "Faça login com a Twitch" });
   try {
     const streamer = await streamersStore.ensureByTwitchUserId(twitchSession.twitchUserId);
-    const [balanceCents, lifetimeEarnedCents, pixKeyInfo, donationStats, alertPrefs] = await Promise.all([
+    const [balanceCents, lifetimeEarnedCents, pixKeyInfo, donationStats, alertPrefs, pixggCredentials] = await Promise.all([
       ledgerStore.getBalance(streamer.id),
       ledgerStore.getLifetimeEarnedCents(streamer.id),
       streamerPixKeysStore.getPixKeyInfo(streamer.id),
       ledgerStore.getDonationSeries(streamer.id, 30),
       streamerAlertPrefsStore.getPrefs(streamer.id),
+      streamerPixggStore.getCredentials(streamer.id),
     ]);
 
     // widget OBS referencia um leilão específico por natureza (a URL carrega
@@ -676,6 +700,8 @@ app.get("/api/perfil", async (req, res) => {
       alertCustomSoundUrl: alertPrefs.customSoundUrl,
       latestLeilao,
       leilaoCount: ownedLeiloes.length,
+      pixggConnected: !!pixggCredentials,
+      pixggSlug: pixggCredentials ? pixggCredentials.pixggSlug : null,
     });
   } catch (err) {
     console.error(`[perfil] erro ao carregar (twitchUserId="${twitchSession.twitchUserId}"):`, err.message);
@@ -697,6 +723,53 @@ app.post("/api/perfil/pix-key", async (req, res) => {
   } catch (err) {
     console.error(`[perfil] erro ao salvar chave Pix (twitchUserId="${twitchSession.twitchUserId}"):`, err.message);
     res.status(502).json({ error: "Não foi possível salvar a chave Pix agora." });
+  }
+});
+
+// ponte temporária pra doação via pixgg.com enquanto o KYC de intermediador
+// da Efí não é aprovado (ver docs/STATUS-EFI.md) -- o dinheiro vai direto
+// pro streamer, a gente só escuta o webhook pra atualizar o placar
+app.post("/api/perfil/pixgg", async (req, res) => {
+  const twitchSession = getTwitchSession(req);
+  if (!twitchSession) return res.status(401).json({ error: "Faça login com a Twitch" });
+
+  const clientId = String((req.body && req.body.clientId) || "").trim();
+  const clientSecret = String((req.body && req.body.clientSecret) || "").trim();
+  const pixggSlug = String((req.body && req.body.pixggSlug) || "").trim().toLowerCase();
+
+  if (!clientId || !clientSecret) {
+    return res.status(400).json({ error: "Preencha o Client ID e o Client Secret do pixgg.com." });
+  }
+  if (!pixggSlug || !/^[a-z0-9_-]+$/.test(pixggSlug)) {
+    return res.status(400).json({ error: "Informe o nome de usuário público do pixgg.com (a parte final do link, ex: \"sabrinoca\")." });
+  }
+
+  try {
+    const streamer = await currentStreamer(req);
+    const existing = await streamerPixggStore.getCredentials(streamer.id);
+    const webhookSecret = existing ? existing.webhookSecret : crypto.randomBytes(24).toString("hex");
+    const webhookUrl = `${req.protocol}://${req.get("host")}/webhooks/pixgg/${webhookSecret}`;
+
+    await pixggApi.setWebhookUrl(clientId, clientSecret, webhookUrl);
+    await streamerPixggStore.setCredentials(streamer.id, { clientId, clientSecret, pixggSlug });
+
+    res.json({ ok: true, pixggSlug });
+  } catch (err) {
+    console.error(`[perfil] erro ao conectar pixgg.com (twitchUserId="${twitchSession.twitchUserId}"):`, err.message);
+    res.status(502).json({ error: err.message || "Não foi possível conectar ao pixgg.com agora." });
+  }
+});
+
+app.post("/api/perfil/pixgg/desconectar", async (req, res) => {
+  const twitchSession = getTwitchSession(req);
+  if (!twitchSession) return res.status(401).json({ error: "Faça login com a Twitch" });
+  try {
+    const streamer = await currentStreamer(req);
+    await streamerPixggStore.disconnect(streamer.id);
+    res.json({ ok: true });
+  } catch (err) {
+    console.error(`[perfil] erro ao desconectar pixgg.com (twitchUserId="${twitchSession.twitchUserId}"):`, err.message);
+    res.status(502).json({ error: "Não foi possível desconectar agora." });
   }
 });
 
@@ -1276,6 +1349,14 @@ const MIN_DONATION_CENTS = 500; // R$5 -- mesmo valor em public/js/doar.js, mant
 
 // não aplica a contribuição aqui -- só quando o webhook confirmar o pagamento
 app.post("/api/l/:id/doacao", loadLeilao, async (req, res) => {
+  // desligado enquanto o KYC de intermediador da Efí está em análise (ver
+  // docs/STATUS-EFI.md) -- nunca deve gerar uma cobrança real na Efí
+  // silenciosamente. doar.js só chama essa rota se pixgg não estiver
+  // configurado, e nesse caso a doação deveria estar indisponível, não cair
+  // aqui -- isso é a trava de segurança dupla, caso algo escape no frontend.
+  if (!DONATIONS_VIA_EFI_ENABLED) {
+    return res.status(503).json({ error: "Doação via Pix direto temporariamente indisponível. Tente de novo mais tarde." });
+  }
   if (donationRateLimiter.isLimited(req.ip)) {
     return res.status(429).json({ error: "Muitas tentativas. Aguarde um minuto e tente de novo." });
   }
@@ -1402,6 +1483,26 @@ app.get("/api/l/:id/alert-config", loadLeilao, async (req, res) => {
   }
 });
 
+// público (doar.html não tem sessão) -- resolve leilão -> dono -> conta ->
+// slug público do pixgg.com, se conectado. Só o slug, nunca clientId/secret.
+// Ponte temporária (ver docs/STATUS-EFI.md); buscado uma vez no load da
+// página de doação, não no payload do socket (mesmo motivo do alert-config:
+// fora do caminho quente do broadcastUpdate).
+app.get("/api/l/:id/pixgg-config", loadLeilao, async (req, res) => {
+  try {
+    const meta = registry.getLeilaoMeta(req.leilaoId);
+    const ownerTwitchUserId = meta && meta.ownerTwitchUserId;
+    if (!ownerTwitchUserId) return res.json({ pixggSlug: null });
+
+    const streamer = await streamersStore.findByTwitchUserId(ownerTwitchUserId);
+    const credentials = streamer ? await streamerPixggStore.getCredentials(streamer.id) : null;
+    res.json({ pixggSlug: credentials ? credentials.pixggSlug : null });
+  } catch (err) {
+    console.error(`[pixgg-config] erro (leilaoId="${req.leilaoId}"):`, err.message);
+    res.json({ pixggSlug: null });
+  }
+});
+
 app.get("/api/l/:id/game-search", loadLeilao, async (req, res) => {
   const q = String(req.query.q || "").trim();
   if (!q) return res.json({ results: [] });
@@ -1514,6 +1615,66 @@ async function processarStatusEnvioPix(evento) {
   const detalhe = erro ? `${erro.codigo || ""} ${erro.motivo || ""}`.trim() : null;
   await ledgerStore.resolveEnvioStatus(idEnvio, evento.status, detalhe);
 }
+
+// leilão mais recente do streamer que ainda está aberto -- pixgg.com manda
+// o webhook só com streamerUsername, não com leilaoId (o dinheiro vai
+// direto pro streamer, não passa pela nossa custódia, então não existe um
+// registro de "cobrança" nosso pra achar o leilão como no fluxo da Efí)
+async function findOpenLeilaoForStreamer(twitchUserId) {
+  const leiloes = registry.listLeiloesByOwner(twitchUserId);
+  const open = leiloes
+    .filter((meta) => getStore(meta.id).getState("open", "true") === "true")
+    .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+  return open[0] || null;
+}
+
+// pixgg.com não assina o webhook -- autenticidade é só pelo segredo
+// imprevisível na própria URL (mesmo padrão do webhook da Efí), resolvido
+// pra um streamer específico via streamerPixggStore.findByWebhookSecret.
+// Ponte temporária pra sexta-feira (ver docs/STATUS-EFI.md): o dinheiro cai
+// direto na conta do streamer no pixgg.com, a gente só escuta esse evento
+// pra atualizar o placar do leilão -- nunca custodia nem credita saldo/ledger.
+app.post("/webhooks/pixgg/:secret", async (req, res) => {
+  res.sendStatus(200); // não deixa o webhook deles esperar ou falhar por nossa causa
+
+  try {
+    const credentials = await streamerPixggStore.findByWebhookSecret(req.params.secret);
+    if (!credentials) {
+      console.warn(`[webhook pixgg] segredo desconhecido na URL, ip="${req.ip}", rejeitado.`);
+      return;
+    }
+
+    const donation = pixggClient.parseDonation(req.body);
+    if (!pixggClient.isPaid(donation.status)) return; // ignora "created", só processa "paid"
+    if (!donation.id) {
+      console.warn("[webhook pixgg] evento pago sem transactionPublicId, ignorado.");
+      return;
+    }
+
+    const streamer = await streamersStore.findById(credentials.streamerId);
+    if (!streamer) {
+      console.warn(`[webhook pixgg] streamerId="${credentials.streamerId}" não encontrado.`);
+      return;
+    }
+
+    const leilaoMeta = await findOpenLeilaoForStreamer(streamer.twitchUserId);
+    if (!leilaoMeta) {
+      console.warn(`[webhook pixgg] streamer="${credentials.pixggSlug}" sem leilão aberto pra creditar a doação (transactionPublicId="${donation.id}").`);
+      return;
+    }
+
+    const store = getStore(leilaoMeta.id);
+    await processDonationMessage(leilaoMeta.id, store, {
+      id: donation.id,
+      fallbackUsername: donation.username,
+      fallbackMessage: donation.message,
+      fallbackAmount: donation.amountCents,
+      curingaOnUnparsed: true,
+    });
+  } catch (err) {
+    console.error("[webhook pixgg] erro ao processar evento:", err.message);
+  }
+});
 
 // ---------- rotas de admin (id-scoped) ----------
 
