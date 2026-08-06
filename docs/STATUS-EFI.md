@@ -5,6 +5,81 @@
 > real do projeto — não confie em ideias antigas de outra sessão que
 > contradigam o que está escrito aqui.
 
+## Rede de segurança pro lançamento de sexta (2026-08-07) + KYC de intermediador em andamento (2026-08-05)
+
+Prazo real: site precisa estar funcionando (doação + saque) até sexta-feira
+08/08. `pix.send` em Produção segue sem limite diário configurado o
+suficiente e o pedido de aumento (ver seção "Causa raiz real" abaixo) já
+foi rejeitado uma vez pedindo R$20.000/dia sem documentação. Como rede de
+segurança que **não depende de nenhuma aprovação da Efí**, foi construído:
+
+- **`public/admin-saques.html`** (rota estática, sem link no site público,
+  só quem tem a URL + o `SUPER_ADMIN_SECRET` acessa): lista saques presos
+  (`pending`/`failed`) via `GET /api/admin/saques-pendentes` e confirma
+  manualmente via `POST /api/admin/saques/:id/confirmar-manual` depois que
+  o dono já mandou o Pix de verdade pelo app/site da própria Efí (canal
+  "Plataforma", não API). **Uso**: o dono manda o Pix manualmente pela Efí
+  primeiro, só depois clica "Confirmar" na página -- nunca o contrário.
+  `ledgerStore.markWithdrawalSentManually()` reaplica o débito só se o saque
+  estava `failed` (já tinha sido estornado); se ainda `pending`, o saldo já
+  estava debitado, não redebita.
+- Isso não é ilegal (mesma conta, mesma chave, só muda o canal de envio) e
+  não substitui resolver o `pix.send` de verdade -- é só pra garantir que
+  sexta acontece independente do resultado do que vem a seguir.
+
+**Efí abriu KYC completo de "intermediador de pagamentos" (2026-08-05)**,
+depois que o cliente perguntou proativamente pro suporte (Sergio, contato
+direto) sobre risco de bloqueio de conta por padrão de "Pix picotado de
+muitos desconhecidos" -- pergunta que já era prevista dado o histórico real
+com o Mercado Pago (conta bloqueada em minutos, recebimento **e**
+envio parados, ao vivo, sem aviso prévio -- é por isso que o modelo mudou
+pra custódia PJ na Efí, não é hipotético). Sergio confirmou que **qualquer
+conta pode sofrer bloqueio preventivo a qualquer momento** (não é ameaça
+específica, é política geral deles) e, ao saber que o modelo é
+custódia + repasse a terceiros, iniciou o processo formal de KYC pra esse
+tipo de operação (formulário longo: modelo operacional, rastreabilidade de
+transação, PLD/FT, compliance, anexos).
+
+**Avaliação de risco pro cash-in (recebimento de doação) -- corrigida**:
+inicialmente eu (Claude) disse que o recebimento via API era "mais seguro,
+padrão testado" e separei esse risco do risco de saque. **Isso estava
+incompleto** -- o precedente do Mercado Pago prova que o recebimento
+também pode ser bloqueado, não só o envio. Não existe garantia de que não
+aconteça de novo. Mitigação combinada (nenhuma delas zera o risco):
+conta PJ em vez de CPF, contato humano proativo com a Efí (Sergio) em vez
+de operar no escuro, KYC formal em andamento, documentação de compliance
+já preparada (ver abaixo), aviso prévio à Efí sobre o volume esperado de
+sexta (a ser enviado), e teste de doação real de baixo valor antes de
+sexta pra confirmar que o recebimento segue funcionando.
+
+**KYC preenchido (formulário Salesforce, URL enviada por e-mail, campo de
+texto tem limite de 255 caracteres em vários campos -- já causou erro
+`STRING_TOO_LONG` uma vez e resetou o formulário inteiro, todos os textos
+precisam ser curtos)**. Documentos preparados como PDF (gerados via
+`msedge --headless --print-to-pdf`, não há ferramenta de PDF dedicada no
+projeto, é ad-hoc):
+- Política de Cadastro, Política de Compliance e PLD/FT, Organograma
+  Acionário (Empresário Individual, sócio único), Mapa da Operação
+  (diagrama SVG do fluxo doador → Efí cobrança → custódia → ledger →
+  saque → Efí envio → streamer, com o job de reconciliação).
+- **Comprovante de faturamento**: sem DECORE (empresa aberta há ~1 semana,
+  sem contador, sem faturamento ainda) -- gerada uma **Declaração de
+  Faturamento autodeclarada** (assinatura em fonte cursiva, não é
+  documento oficial de contador, é transparência sobre a real situação da
+  empresa) como tentativa de anexo provisório. **Não confirmado se a Efí
+  aceita isso no lugar do DECORE** -- pergunta foi feita direto pro Sergio,
+  resposta ainda pendente.
+- Reenvio do pedido de limite ajustado pra **R$12.000,00/dia** (em vez dos
+  R$20.000 rejeitados antes), com justificativa + Cartão CNPJ como
+  comprovante de atividade (não está na lista oficial de documentos
+  aceitos pra isso, mas é o mais próximo disponível).
+
+**Pendente**: resposta da Efí sobre a declaração de faturamento provisória,
+conseguir o DECORE de verdade (contador ainda não contratado), enviar o
+aviso prévio de volume pro Sergio antes da live de sexta, testar uma
+doação real pequena antes de sexta pra confirmar que o cash-in não foi
+afetado por nada disso.
+
 ## Perfil (conta) -- chave Pix/saldo/saque saíram do escopo do leilão (2026-08-01)
 
 `streamerId` sempre foi por conta (`streamersStore.ensureByTwitchUserId`
