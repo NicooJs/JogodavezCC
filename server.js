@@ -315,7 +315,7 @@ async function resolveParsedGame(store, parsed) {
       if (match) {
         const matchKey = normalizeKey(match.name);
         if (matchKey !== matchedKey) {
-          return { ...parsed, key: matchKey, name: match.name };
+          return { ...parsed, key: matchKey, name: match.name, image: match.image };
         }
       }
     }
@@ -325,7 +325,7 @@ async function resolveParsedGame(store, parsed) {
 
   const match = await media.identifyGameFromNoisyText(parsed.name);
   if (match) {
-    return { ...parsed, key: normalizeKey(match.name), name: match.name };
+    return { ...parsed, key: normalizeKey(match.name), name: match.name, image: match.image };
   }
 
   return parsed;
@@ -535,6 +535,12 @@ async function processDonationMessage(leilaoId, store, { id, fallbackUsername, f
   });
   if (parsed.action === "remove") store.setState("lastSabotagedKey", game.key);
 
+  // já veio com capa conferida do match (nome bate literalmente no texto
+  // original, ver identifyGameFromNoisyText) -- usa direto em vez de arriscar
+  // maybeFetchGameImage, que faz busca solta sem essa checagem e já causou
+  // capa errada em jogo com nome certo (nome bate, capa da IGDB não confere)
+  if (needsImage && parsed.image) store.setGameImage(game.key, parsed.image);
+
   // precisa rodar antes do broadcast, senão o timer só aparece esticado no próximo evento
   touchActivity(store);
   const combo = store.registerGameCombo(game.key, COMBO_WINDOW_MS);
@@ -551,7 +557,7 @@ async function processDonationMessage(leilaoId, store, { id, fallbackUsername, f
     comboCount: combo.count,
   });
 
-  maybeFetchGameImage(leilaoId, store, game.key, game.name, needsImage);
+  if (needsImage && !parsed.image) maybeFetchGameImage(leilaoId, store, game.key, game.name, needsImage);
 }
 
 // ---------- login com a Twitch ----------

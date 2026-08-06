@@ -92,6 +92,11 @@ async function fetchPopularCovers(count = 30) {
   return covers;
 }
 
+// resultado mais "relevante" da IGDB pra um nome de jogo nem sempre é o
+// próprio jogo -- "Valorant" já devolveu "Grit & Valor: 1949" em primeiro
+// (confirmado testando ao vivo, capa errada foi parar no board de verdade).
+// name aqui já é um nome limpo e resolvido, então prioriza um candidato cujo
+// nome bate exatamente antes de aceitar só o mais "relevante" pra IGDB
 async function fetchGameImage(name) {
   const cacheKey = name.trim().toLowerCase();
   if (cache.has(cacheKey)) return cache.get(cacheKey);
@@ -99,9 +104,12 @@ async function fetchGameImage(name) {
   const escaped = name.replace(/"/g, '\\"');
   const results = await igdbQuery(
     "games",
-    `search "${escaped}"; fields cover.image_id; limit 1;`
+    `search "${escaped}"; fields name,cover.image_id; limit 8;`
   );
-  const image = coverUrl(results && results[0] && results[0].cover && results[0].cover.image_id);
+
+  const normalizedName = normalizeKey(name);
+  const best = (results || []).find((g) => normalizeKey(g.name) === normalizedName) || (results && results[0]);
+  const image = coverUrl(best && best.cover && best.cover.image_id);
   cache.set(cacheKey, image);
   return image;
 }
