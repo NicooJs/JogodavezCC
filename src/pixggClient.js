@@ -1,36 +1,39 @@
 // Recebe e interpreta os webhooks de doação do pixgg.com.
 //
-// Formato do payload (POST no /webhooks/pixgg/:secret):
+// Formato real do payload (POST no /webhooks/pixgg/:secret), confirmado ao
+// vivo em produção em 2026-08-06 -- as chaves vêm em PascalCase (diferente
+// do que a doc de exemplo antiga sugeria em camelCase, nunca confirmado
+// contra um evento real até então):
 // {
-//   "event": "donation.created" | "donation.paid",
-//   "timestamp": "2026-07-08T18:15:08Z",
-//   "data": {
-//     "transactionPublicId": "trn_3fca9dada3be4a5098f7a24b91c9cfe9",
-//     "streamerUsername": "sabrinoca",
-//     "donatorUsername": "Cristian",
-//     "message": "apoiar Elden Ring",
-//     "audioLink": "https://...",
-//     "totalAmount": 5,
-//     "status": "created" | "paid"
+//   "Event": "donation.created" | "donation.paid",
+//   "Timestamp": "2026-08-06T12:14:11Z",
+//   "Data": {
+//     "TransactionPublicId": "trn_2ec8fcce0c224e52b919261d10933ef5",
+//     "StreamerUsername": "sabrinoca",
+//     "DonatorUsername": "nicolas",
+//     "Message": "+gta 5",
+//     "AudioLink": null,
+//     "TotalAmount": 5,
+//     "Status": "created" | "paid"
 //   }
 // }
 //
 // Cada transação manda DOIS webhooks (created, depois paid) -- só contamos
-// quando status === "paid". Ignorar o "created" sem marcar como processado,
+// quando Status === "paid". Ignorar o "created" sem marcar como processado,
 // pra o "paid" que vem em seguida ainda ser aceito.
 function isPaid(status) {
   return status === "paid";
 }
 
 function parseDonation(body = {}) {
-  const data = body.data || {};
+  const data = body.Data || {};
   return {
-    id: data.transactionPublicId || null,
-    username: data.donatorUsername || null,
-    amountCents: toCents(data.totalAmount),
-    message: data.message || "",
-    status: data.status || null,
-    streamerUsername: data.streamerUsername || null,
+    id: data.TransactionPublicId || null,
+    username: data.DonatorUsername || null,
+    amountCents: toCents(data.TotalAmount),
+    message: data.Message || "",
+    status: data.Status || null,
+    streamerUsername: data.StreamerUsername || null,
   };
 }
 
