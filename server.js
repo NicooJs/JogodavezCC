@@ -308,6 +308,24 @@ function archiveOpenRoundSnapshot(store) {
 const donorAvatarCache = new Map();
 const donorAvatarFetching = new Map();
 
+// precisa ser a MESMA referência de função a cada chamada pro mesmo leilão --
+// serializeLeaderboard roda de novo toda vez que qualquer avatar resolve
+// (via broadcastUpdate), e se cada chamada criasse um closure novo pra
+// passar como onResolved, o Set de waiters de cada avatar ainda pendente
+// cresceria sem limite a cada rodada (Set só dedupa por referência igual).
+// Com um leilão de vários doadores nunca vistos antes (cache de avatar
+// vazio), isso vira uma bola de neve combinatória -- já derrubou o servidor
+// inteiro por estouro de memória em produção (heap OOM em segundos).
+const avatarResolvedCallbacks = new Map();
+function getAvatarResolvedCallback(leilaoId) {
+  let cb = avatarResolvedCallbacks.get(leilaoId);
+  if (!cb) {
+    cb = () => broadcastUpdate(leilaoId, getStore(leilaoId), null);
+    avatarResolvedCallbacks.set(leilaoId, cb);
+  }
+  return cb;
+}
+
 function getDonorAvatar(username, onResolved) {
   if (!username) return null;
   const key = username.trim().toLowerCase();
@@ -358,7 +376,7 @@ async function resolveParsedGame(store, parsed) {
 }
 
 function serializeLeaderboard(store, leilaoId) {
-  const onAvatarResolved = leilaoId ? () => broadcastUpdate(leilaoId, store, null) : undefined;
+  const onAvatarResolved = leilaoId ? getAvatarResolvedCallback(leilaoId) : undefined;
   const rows = store.getLeaderboard();
   const isOpen = store.getState("open", "true") === "true";
   const isPaused = isOpen && store.getState("paused", "false") === "true";
