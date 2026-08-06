@@ -13,6 +13,18 @@ process.on("unhandledRejection", (reason) => {
   console.error("[fatal] promise rejeitada sem .catch:", reason);
 });
 
+// diagnóstico temporário -- produção crashando com "JavaScript heap out of
+// memory" sem causa óbvia identificada por revisão de código; isso loga o
+// uso de memória a cada 10s pra correlacionar o crescimento com o que mais
+// aparece no log no mesmo intervalo. Remover depois que a causa for achada.
+setInterval(() => {
+  const m = process.memoryUsage();
+  const mb = (n) => (n / 1048576).toFixed(1);
+  console.log(
+    `[mem] rss=${mb(m.rss)}MB heapUsed=${mb(m.heapUsed)}MB heapTotal=${mb(m.heapTotal)}MB external=${mb(m.external)}MB arrayBuffers=${mb(m.arrayBuffers)}MB`
+  );
+}, 10000);
+
 const fs = require("fs");
 const path = require("path");
 const crypto = require("crypto");
