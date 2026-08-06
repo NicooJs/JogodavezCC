@@ -1824,8 +1824,9 @@ app.post("/api/l/:id/admin/set-total", loadLeilao, requireLeilaoAdmin, (req, res
 });
 
 app.post("/api/l/:id/admin/rename", loadLeilao, requireLeilaoAdmin, (req, res) => {
-  const { key, newName } = req.body || {};
-  const game = req.store.renameGame(key, newName);
+  const { key, newName, image } = req.body || {};
+  let game = req.store.renameGame(key, newName);
+  if (game && image !== undefined) game = req.store.setGameImage(key, image);
   broadcastUpdate(req.leilaoId, req.store, { type: "rename" });
   res.json({ ok: true, game });
 });

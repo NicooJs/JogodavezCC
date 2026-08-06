@@ -745,6 +745,26 @@
     </div>
   </div>
 
+  <div class="modal-overlay dialog-overlay" id="rename-dialog-overlay" hidden>
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="rename-dialog-title">
+      <button class="modal-close" id="rename-dialog-close" type="button" aria-label="Fechar">✕</button>
+      <div class="modal-head">
+        <div class="modal-head-text">
+          <h2 class="modal-title" id="rename-dialog-title">Renomear jogo</h2>
+        </div>
+      </div>
+      <div class="modal-field">
+        <label class="modal-label" for="rename-dialog-input">Nome</label>
+        <input type="text" id="rename-dialog-input" class="modal-input" autocomplete="off" />
+      </div>
+      <div class="game-shelf" id="rename-dialog-shelf" hidden></div>
+      <div class="modal-actions">
+        <button class="btn-mini" id="rename-dialog-cancel" type="button">Cancelar</button>
+        <button class="btn-mini primary" id="rename-dialog-confirm" type="button">Salvar</button>
+      </div>
+    </div>
+  </div>
+
   <script type="module" src="/js/board-bg.js"></script>
   <script src="/js/board-cover-bg.js"></script>
   <script src="/js/copy-button.js"></script>

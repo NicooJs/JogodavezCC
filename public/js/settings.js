@@ -131,6 +131,96 @@ promptDialogOverlayEl.addEventListener("click", (e) => { if (e.target === prompt
 
 document.getElementById("confirm-dialog-confirm").addEventListener("click", () => settleConfirmDialog(true));
 document.getElementById("confirm-dialog-cancel").addEventListener("click", () => settleConfirmDialog(false));
+
+const renameDialogOverlayEl = document.getElementById("rename-dialog-overlay");
+const renameDialogInputEl = document.getElementById("rename-dialog-input");
+const renameDialogShelfEl = document.getElementById("rename-dialog-shelf");
+
+let renameDialogResolve = null;
+let renameDialogImage; // undefined = não mexe na capa atual; só vira string/null quando o streamer escolhe um card da busca
+let renameDialogDebounce = null;
+let renameDialogAbort = null;
+
+function settleRenameDialog(result) {
+  clearTimeout(renameDialogDebounce);
+  if (renameDialogAbort) renameDialogAbort.abort();
+  renameDialogOverlayEl.hidden = true;
+  const resolve = renameDialogResolve;
+  renameDialogResolve = null;
+  if (resolve) resolve(result);
+}
+
+function renameShelfCardHtml(item) {
+  const thumb = item.image
+    ? `<img class="game-shelf-cover" src="${escapeHtml(item.image)}" alt="" loading="lazy" />`
+    : `<div class="game-shelf-cover game-shelf-cover-placeholder">${escapeHtml((item.name[0] || "?").toUpperCase())}</div>`;
+  return `
+    <div class="game-shelf-card" data-name="${escapeHtml(item.name)}" data-image="${escapeHtml(item.image || "")}">
+      ${thumb}
+      <span class="game-shelf-name">${escapeHtml(item.name)}</span>
+    </div>
+  `;
+}
+
+function updateRenameShelf() {
+  const query = renameDialogInputEl.value.trim();
+  clearTimeout(renameDialogDebounce);
+  if (renameDialogAbort) renameDialogAbort.abort();
+  if (query.length < 2) {
+    renameDialogShelfEl.hidden = true;
+    renameDialogShelfEl.innerHTML = "";
+    return;
+  }
+  renameDialogDebounce = setTimeout(() => {
+    renameDialogAbort = new AbortController();
+    presenterFetch(`/admin/game-search?q=${encodeURIComponent(query)}`, { signal: renameDialogAbort.signal })
+      .then((data) => {
+        if (renameDialogInputEl.value.trim() !== query) return;
+        const results = (data && data.results) || [];
+        renameDialogShelfEl.innerHTML = results.length
+          ? results.map(renameShelfCardHtml).join("")
+          : `<p class="game-shelf-empty">nenhum resultado, o nome digitado será usado do jeito que está</p>`;
+        renameDialogShelfEl.hidden = false;
+        renameDialogShelfEl.querySelectorAll(".game-shelf-card").forEach((el) => {
+          el.addEventListener("click", () => {
+            renameDialogInputEl.value = el.dataset.name;
+            renameDialogImage = el.dataset.image || null;
+            renameDialogShelfEl.querySelectorAll(".game-shelf-card.selected").forEach((c) => c.classList.remove("selected"));
+            el.classList.add("selected");
+          });
+        });
+      })
+      .catch((err) => { if (err.name !== "AbortError") console.error("Erro ao buscar sugestões:", err.message); });
+  }, 200);
+}
+
+renameDialogInputEl.addEventListener("input", () => {
+  renameDialogImage = undefined;
+  updateRenameShelf();
+});
+renameDialogInputEl.addEventListener("keydown", (e) => {
+  if (e.key === "Enter") { e.preventDefault(); document.getElementById("rename-dialog-confirm").click(); }
+});
+document.getElementById("rename-dialog-confirm").addEventListener("click", () => {
+  const name = renameDialogInputEl.value.trim();
+  if (!name) return;
+  settleRenameDialog({ name, image: renameDialogImage });
+});
+document.getElementById("rename-dialog-cancel").addEventListener("click", () => settleRenameDialog(null));
+document.getElementById("rename-dialog-close").addEventListener("click", () => settleRenameDialog(null));
+renameDialogOverlayEl.addEventListener("click", (e) => { if (e.target === renameDialogOverlayEl) settleRenameDialog(null); });
+
+function renameGameDialog(initialName) {
+  return new Promise((resolve) => {
+    renameDialogResolve = resolve;
+    renameDialogImage = undefined;
+    renameDialogInputEl.value = initialName;
+    renameDialogShelfEl.hidden = true;
+    renameDialogShelfEl.innerHTML = "";
+    renameDialogOverlayEl.hidden = false;
+    setTimeout(() => { renameDialogInputEl.focus(); renameDialogInputEl.select(); updateRenameShelf(); }, 40);
+  });
+}
 document.getElementById("confirm-dialog-close").addEventListener("click", () => settleConfirmDialog(false));
 confirmDialogOverlayEl.addEventListener("click", (e) => { if (e.target === confirmDialogOverlayEl) settleConfirmDialog(false); });
 
@@ -138,6 +228,7 @@ document.addEventListener("keydown", (e) => {
   if (e.key !== "Escape") return;
   if (!promptDialogOverlayEl.hidden) return settlePromptDialog(null);
   if (!confirmDialogOverlayEl.hidden) return settleConfirmDialog(false);
+  if (!renameDialogOverlayEl.hidden) return settleRenameDialog(null);
   if (!settingsOverlayEl.hidden) closeSettingsModal();
 });
 
@@ -289,9 +380,9 @@ function renderGamesTable() {
       presenterFetch("/admin/set-total", { method: "POST", body: JSON.stringify({ key: game.key, total: value }) });
     });
     tr.querySelector('[data-act="rename"]').addEventListener("click", async () => {
-      const value = await promptDialog({ title: "Renomear jogo", label: "Novo nome", initialValue: game.name, confirmLabel: "Salvar" });
-      if (value === null) return;
-      presenterFetch("/admin/rename", { method: "POST", body: JSON.stringify({ key: game.key, newName: value }) });
+      const result = await renameGameDialog(game.name);
+      if (!result) return;
+      presenterFetch("/admin/rename", { method: "POST", body: JSON.stringify({ key: game.key, newName: result.name, image: result.image }) });
     });
     tr.querySelector('[data-act="delete"]').addEventListener("click", async () => {
       const ok = await confirmDialog({ title: "Excluir jogo", message: `Excluir "${game.name}"?`, confirmLabel: "Excluir", danger: true });
