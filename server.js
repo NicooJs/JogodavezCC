@@ -1659,7 +1659,10 @@ app.post("/webhooks/pixgg/:secret", async (req, res) => {
 
     const leilaoMeta = await findOpenLeilaoForStreamer(streamer.twitchUserId);
     if (!leilaoMeta) {
-      console.warn(`[webhook pixgg] streamer="${credentials.pixggSlug}" sem leilão aberto pra creditar a doação (transactionPublicId="${donation.id}").`);
+      const todosDoDono = registry.listLeiloesByOwner(streamer.twitchUserId).map((m) => ({ id: m.id, ownerTwitchUserId: m.ownerTwitchUserId }));
+      console.warn(
+        `[webhook pixgg] streamer="${credentials.pixggSlug}" sem leilão aberto pra creditar a doação (transactionPublicId="${donation.id}"), streamerId=${streamer.id}, twitchUserId="${streamer.twitchUserId}", leiloesDoDono=${JSON.stringify(todosDoDono)}.`
+      );
       return;
     }
 
