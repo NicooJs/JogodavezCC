@@ -789,7 +789,7 @@ app.post("/api/perfil/pixgg", async (req, res) => {
     const webhookUrl = `${req.protocol}://${req.get("host")}/webhooks/pixgg/${webhookSecret}`;
 
     await pixggApi.setWebhookUrl(clientId, clientSecret, webhookUrl);
-    await streamerPixggStore.setCredentials(streamer.id, { clientId, clientSecret, pixggSlug });
+    await streamerPixggStore.setCredentials(streamer.id, { clientId, clientSecret, pixggSlug, webhookSecret });
 
     res.json({ ok: true, pixggSlug });
   } catch (err) {

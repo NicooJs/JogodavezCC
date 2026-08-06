@@ -1,10 +1,5 @@
-const crypto = require("crypto");
 const { query } = require("./pg");
 const { encryptToken, decryptToken } = require("./tokenCrypto");
-
-function generateWebhookSecret() {
-  return crypto.randomBytes(24).toString("hex");
-}
 
 function rowToCredentials(row) {
   if (!row) return null;
@@ -24,11 +19,12 @@ async function getCredentials(streamerId) {
   return rowToCredentials(res.rows[0]);
 }
 
-// reaproveita o webhook_secret já existente (não muda a URL cadastrada no
-// pixgg.com toda vez que o streamer reconecta/atualiza clientId/secret)
-async function setCredentials(streamerId, { clientId, clientSecret, pixggSlug }) {
-  const existing = await getCredentials(streamerId);
-  const webhookSecret = existing ? existing.webhookSecret : generateWebhookSecret();
+// webhookSecret é sempre o mesmo que a rota já usou pra montar a URL
+// registrada via pixggApi.setWebhookUrl -- gerar de novo aqui (como antes)
+// cria um segredo diferente do que foi de fato cadastrado no pixgg.com,
+// deixando o webhook deles apontado pra um segredo que não existe no nosso
+// banco (bug real, causava "segredo desconhecido" em todo webhook)
+async function setCredentials(streamerId, { clientId, clientSecret, pixggSlug, webhookSecret }) {
   const res = await query(
     `INSERT INTO streamer_pixgg_credentials (streamer_id, client_id, client_secret, pixgg_slug, webhook_secret)
      VALUES ($1, $2, $3, $4, $5)
