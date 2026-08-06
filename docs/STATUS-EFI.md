@@ -5,35 +5,25 @@
 > real do projeto — não confie em ideias antigas de outra sessão que
 > contradigam o que está escrito aqui.
 
-## Pendente: aplicar migration 015 (webhook_secret UNIQUE) -- precisa ser do PC (2026-08-06)
+## Resolvido: migration 015 (webhook_secret UNIQUE) aplicada em produção (2026-08-06)
 
-`src/migrations/015_streamer_pixgg_webhook_secret_unique.sql` foi commitada
-(`ALTER`/`CREATE UNIQUE INDEX` em `streamer_pixgg_credentials.webhook_secret`,
-mesmo padrão da migration 008 pra `ledger_entries`) mas **ainda não foi
-aplicada em produção**. Sessão do Claude Code aqui não tem acesso à
-`DATABASE_PUBLIC_URL` (Railway MCP devolve variáveis sempre ocultas,
-`valuesRedacted: true`, e esse ambiente sandboxed bloqueia conexão de saída
-direta pra internet -- tentei até instalar o Railway CLI, a própria
-autenticação foi rejeitada pela política de rede do ambiente). Cliente
-tentou colar o SQL pelo console do Postgres no Railway direto do celular
-(aba Database → terminal), mas colar texto num terminal embutido em
-navegador mobile não funcionou de forma confiável. Decidido continuar essa
-parte específica (rodar a migration) quando o cliente estiver no
-computador -- lá dá pra colar sem problema no mesmo console, ou rodar
-`node scripts/migrate.js` local com `DATABASE_PUBLIC_URL` configurada (setup
-já usado antes, ver seção "Progresso da implementação" mais abaixo).
+`src/migrations/015_streamer_pixgg_webhook_secret_unique.sql` (`CREATE UNIQUE
+INDEX IF NOT EXISTS streamer_pixgg_credentials_webhook_secret_unique ON
+streamer_pixgg_credentials (webhook_secret)`, mesmo padrão da migration 008
+pra `ledger_entries`) foi aplicada direto no console do Postgres do Railway
+(aba **Console**, que é um shell bash dentro do container -- precisa
+`psql $DATABASE_URL -c "..."`, não aceita SQL puro direto no prompt bash).
+Sessão anterior do Claude Code não tinha acesso à credencial (Railway MCP
+devolve variáveis ocultas, sandbox sem rede de saída; e depois, `railway run`
+via CLI também foi bloqueado pelo classificador de permissões do harness por
+envolver segredo) -- resolvido com o cliente rodando o `psql` manualmente.
 
-SQL pendente (idempotente, `IF NOT EXISTS`, seguro rodar mesmo se algo já
-tiver sido tentado antes):
-```sql
-CREATE UNIQUE INDEX IF NOT EXISTS streamer_pixgg_credentials_webhook_secret_unique
-  ON streamer_pixgg_credentials (webhook_secret);
-```
-Não é bloqueante pro fluxo de doação funcionar (o bug real do segredo
-dessincronizado já foi corrigido no código, testado ao vivo com sucesso
-2026-08-06) -- essa migration é só um reforço de integridade (constraint de
-banco em vez de só confiar na entropia do `crypto.randomBytes`), sem
-urgência de minutos.
+**Nota pra quem for rodar `node scripts/migrate.js` no futuro**: como essa
+migration foi aplicada via `psql` direto (não pelo script), a tabela
+`schema_migrations` não tem o registro de "015 já aplicada" -- não é
+problema, o `CREATE UNIQUE INDEX IF NOT EXISTS` é idempotente, então rodar o
+script vai só inserir esse registro retroativamente na próxima vez, sem
+erro nem duplicação.
 
 ## pixgg.com reconsiderado como ponte pra sexta (2026-08-05) -- investigado com evidência real, não suposição
 
