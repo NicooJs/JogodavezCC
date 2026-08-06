@@ -1,4 +1,18 @@
 require("dotenv").config();
+
+// sem isso, UM erro não tratado em qualquer lugar (promise sem .catch, erro
+// assíncrono numa rotina de fundo tipo backup/reconciliação/timer) derruba o
+// processo inteiro na hora, pra todo mundo, mesmo quem não tem nada a ver com
+// a causa -- confirmado em produção: site inteiro parava de responder e
+// reiniciar não resolvia porque o mesmo gatilho acontecia nos primeiros
+// segundos de novo. Loga e segue vivo em vez de matar o processo.
+process.on("uncaughtException", (err) => {
+  console.error("[fatal] exceção não tratada:", err);
+});
+process.on("unhandledRejection", (reason) => {
+  console.error("[fatal] promise rejeitada sem .catch:", reason);
+});
+
 const fs = require("fs");
 const path = require("path");
 const crypto = require("crypto");
