@@ -1765,7 +1765,11 @@ socket.on("update", ({ leaderboard, lastEvent }) => {
     setTimeout(showRecap, 2400);
   }
 
-  timerEndsAt = leaderboard.timerEndsAt;
+  // deadline calculado com o relógio do próprio cliente (Date.now() local +
+  // duração restante mandada pelo servidor) -- nunca compara timestamp
+  // absoluto do servidor contra o relógio do cliente, pra não vazar
+  // dessincronia de horário do PC do usuário pro cronômetro exibido
+  timerEndsAt = leaderboard.timerRemainingMs != null ? Date.now() + leaderboard.timerRemainingMs : null;
   isPausedState = !!leaderboard.paused;
   pausedRemainingMs = leaderboard.timerRemainingMs;
   if (leaderboard.timerDurationMs) timerDurationMs = leaderboard.timerDurationMs;

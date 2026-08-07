@@ -418,7 +418,11 @@ function serializeLeaderboard(store, leilaoId) {
     totalRaised: getHideTotalRaised(store) ? null : centsToNumber(store.getTotalRaised()),
     hideTotalRaised: getHideTotalRaised(store),
     timerEndsAt: isOpen && !isPaused ? lastActivityAt + autoCloseMs : null,
-    timerRemainingMs: isPaused ? Number(store.getState("pausedRemainingMs", autoCloseMs)) : null,
+    timerRemainingMs: isOpen
+      ? (isPaused
+          ? Number(store.getState("pausedRemainingMs", autoCloseMs))
+          : Math.max(0, lastActivityAt + autoCloseMs - Date.now()))
+      : null,
     timerDurationMs: autoCloseMs,
     timerLocked: store.getState("timerLocked", "false") === "true",
   };

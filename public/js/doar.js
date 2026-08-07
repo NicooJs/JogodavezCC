@@ -418,7 +418,9 @@ socket.on("update", ({ leaderboard, lastEvent }) => {
 
   isOpenState = !!leaderboard.open;
   isPausedState = !!leaderboard.paused;
-  timerEndsAt = leaderboard.timerEndsAt;
+  // deadline no relógio do próprio cliente, não compara timestamp absoluto
+  // do servidor contra Date.now() local (vazava dessincronia de horário)
+  timerEndsAt = leaderboard.timerRemainingMs != null ? Date.now() + leaderboard.timerRemainingMs : null;
   pausedRemainingMs = leaderboard.timerRemainingMs;
   tickDoarTimer();
 
