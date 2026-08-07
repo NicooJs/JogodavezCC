@@ -418,7 +418,33 @@ body.board-body.has-bg-image .board-cover-bg { display: none; }
 
 .tick { animation: tick 0.4s ease; }
 
-#stat-total { font-family: var(--font-mono); }
+#stat-total {
+  font-family: var(--font-mono);
+  display: inline-flex;
+  align-items: flex-start;
+  line-height: 1;
+}
+
+.odometer-digit {
+  position: relative;
+  display: inline-block;
+  height: 1em;
+  width: 0.62em;
+  overflow: hidden;
+  line-height: 1;
+}
+.odometer-strip {
+  display: flex;
+  flex-direction: column;
+}
+.odometer-num {
+  height: 1em;
+  line-height: 1;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+}
+.odometer-sep { display: inline-block; }
 
 @keyframes tick {
   0% { transform: translateY(0); }

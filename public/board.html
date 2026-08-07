@@ -603,9 +603,15 @@
             <button class="btn-mini" id="toggle-open">Encerrar leilão</button>
           </div>
           <div class="panel-row">
-            <div>
-              <label>Quantos lotes contam como classificados</label>
-              <input type="number" id="qualify-count-input" min="1" max="20" style="width: 70px;" />
+            <div class="qualify-slider-field">
+              <label>Quantos lotes contam como classificados <span id="qualify-count-value" class="qualify-slider-value">3</span></label>
+              <div class="qualify-slider-track-wrap">
+                <input type="range" id="qualify-count-input" class="qualify-slider" min="1" max="10" step="1" value="3" />
+                <div class="qualify-slider-ticks" aria-hidden="true">
+                  <span></span><span></span><span></span><span></span><span></span>
+                  <span></span><span></span><span></span><span></span><span></span>
+                </div>
+              </div>
             </div>
             <button class="btn-mini" id="qualify-count-save">Salvar</button>
           </div>

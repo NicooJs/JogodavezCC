@@ -210,16 +210,71 @@ function bumpValue(el, text) {
   el.classList.add("tick");
 }
 
+function buildOdometerDigit() {
+  const wrap = document.createElement("span");
+  wrap.className = "odometer-digit";
+  const strip = document.createElement("span");
+  strip.className = "odometer-strip";
+  for (let i = 0; i <= 9; i++) {
+    const num = document.createElement("span");
+    num.className = "odometer-num";
+    num.textContent = String(i);
+    strip.appendChild(num);
+  }
+  wrap.appendChild(strip);
+  return wrap;
+}
+
+// dígitos de verdade (não texto plano) pra cada posição poder "girar" na
+// própria coluna de 0 a 9 -- é isso que da o efeito de caça-níquel durante
+// o count-up, sem precisar de nenhuma lib externa
+function renderOdometer(el, formattedStr) {
+  const chars = formattedStr.split("");
+  const existing = Array.from(el.children);
+  const needsRebuild = existing.length !== chars.length || existing.some((node, i) => {
+    const isDigitChar = /\d/.test(chars[i]);
+    const isDigitNode = node.classList.contains("odometer-digit");
+    return isDigitChar !== isDigitNode || (!isDigitChar && node.textContent !== chars[i]);
+  });
+
+  if (needsRebuild) {
+    el.innerHTML = "";
+    chars.forEach((ch) => {
+      if (/\d/.test(ch)) {
+        const digit = buildOdometerDigit();
+        digit.querySelector(".odometer-strip").style.transform = `translateY(-${ch}em)`;
+        el.appendChild(digit);
+      } else {
+        const sep = document.createElement("span");
+        sep.className = "odometer-sep";
+        sep.textContent = ch;
+        el.appendChild(sep);
+      }
+    });
+    return;
+  }
+
+  chars.forEach((ch, i) => {
+    if (!/\d/.test(ch)) return;
+    existing[i].querySelector(".odometer-strip").style.transform = `translateY(-${ch}em)`;
+  });
+}
+
 let totalCountUpFrame = null;
-function animateCountUp(el, from, to, duration = 700) {
+function animateCountUp(el, from, to, duration = 700, onDone) {
   if (totalCountUpFrame) cancelAnimationFrame(totalCountUpFrame);
   const start = performance.now();
   const diff = to - from;
   function step(now) {
     const t = Math.min((now - start) / duration, 1);
     const eased = 1 - Math.pow(1 - t, 3);
-    el.textContent = Math.round(from + diff * eased).toLocaleString("pt-BR");
-    totalCountUpFrame = t < 1 ? requestAnimationFrame(step) : null;
+    renderOdometer(el, Math.round(from + diff * eased).toLocaleString("pt-BR"));
+    if (t < 1) {
+      totalCountUpFrame = requestAnimationFrame(step);
+    } else {
+      totalCountUpFrame = null;
+      if (onDone) onDone();
+    }
   }
   totalCountUpFrame = requestAnimationFrame(step);
 }
@@ -1782,11 +1837,10 @@ socket.on("update", ({ leaderboard, lastEvent }) => {
     const totalValue = leaderboard.totalRaised || 0;
     // lastTotalRaised !== null exclui o carregamento inicial da página.
     if (lastTotalRaised !== null && totalValue !== lastTotalRaised) {
-      animateCountUp(statTotalEl, lastTotalRaised, totalValue);
       flashTotalBeam();
-      triggerTick(statTotalEl);
+      animateCountUp(statTotalEl, lastTotalRaised, totalValue, 700, () => triggerTick(statTotalEl));
     } else if (lastTotalRaised === null) {
-      statTotalEl.textContent = Math.round(totalValue).toLocaleString("pt-BR");
+      renderOdometer(statTotalEl, Math.round(totalValue).toLocaleString("pt-BR"));
     }
     lastTotalRaised = totalValue;
   }

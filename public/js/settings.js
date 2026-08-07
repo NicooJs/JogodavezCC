@@ -246,7 +246,10 @@ function renderSettingsFromLeaderboard(leaderboard) {
   const bgInput = document.getElementById("bg-image-url");
   if (document.activeElement !== bgInput) bgInput.value = leaderboard.backgroundImageUrl || "";
   const qualifyInput = document.getElementById("qualify-count-input");
-  if (document.activeElement !== qualifyInput) qualifyInput.value = leaderboard.qualifyCount || 3;
+  if (document.activeElement !== qualifyInput) {
+    qualifyInput.value = leaderboard.qualifyCount || 3;
+    syncQualifySlider();
+  }
   renderGamesTable();
   renderMergeOptions();
 }
@@ -323,8 +326,21 @@ document.getElementById("bg-image-upload").addEventListener("click", async () =>
   }
 });
 
+const qualifySliderEl = document.getElementById("qualify-count-input");
+const qualifyValueEl = document.getElementById("qualify-count-value");
+
+function syncQualifySlider() {
+  const min = Number(qualifySliderEl.min) || 1;
+  const max = Number(qualifySliderEl.max) || 10;
+  const value = Number(qualifySliderEl.value) || min;
+  const pct = ((value - min) / (max - min)) * 100;
+  qualifySliderEl.style.setProperty("--qualify-pct", `${pct}%`);
+  qualifyValueEl.textContent = String(value);
+}
+qualifySliderEl.addEventListener("input", syncQualifySlider);
+
 document.getElementById("qualify-count-save").addEventListener("click", async () => {
-  const count = Number(document.getElementById("qualify-count-input").value);
+  const count = Number(qualifySliderEl.value);
   try {
     await presenterFetch("/admin/qualify-count", { method: "POST", body: JSON.stringify({ count }) });
   } catch (err) {
