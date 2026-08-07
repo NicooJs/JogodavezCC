@@ -74,13 +74,13 @@
         <svg class="icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M10 4.5v11M4.5 10h11"/></svg>
         Adicionar lote
       </button>
-      <button class="pbar-btn pbar-btn-danger" id="p-reset-btn" type="button" title="Apaga todos os jogos e o histórico (mantém título e host)">
+      <button class="pbar-btn pbar-btn-danger pbar-btn-icon-only" id="p-reset-btn" type="button" title="Apaga todos os jogos e o histórico (mantém título e host)" aria-label="Zerar leilão">
         <svg class="icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 6h10M8.5 6V4.5h3V6M6.5 6l.6 9a1 1 0 0 0 1 .9h3.8a1 1 0 0 0 1-.9l.6-9"/></svg>
-        Zerar leilão
+        <span class="sr-only">Zerar leilão</span>
       </button>
-      <button class="pbar-btn pbar-btn-ghost" id="history-open-btn" type="button" title="Ver rounds anteriores">
+      <button class="pbar-btn pbar-btn-ghost pbar-btn-icon-only" id="history-open-btn" type="button" title="Ver rounds anteriores" aria-label="Histórico">
         <svg class="icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 5.5V10l3 2"/><circle cx="10" cy="10" r="7"/></svg>
-        Histórico
+        <span class="sr-only">Histórico</span>
       </button>
       <!-- troca de tema centralizada em Configurações → Aparência (.theme-swatch
            logo abaixo) -- os dots daqui saíram da presenter-bar, mas o
@@ -172,16 +172,16 @@
             </div>
           </div>
           <div class="timer-toolbar timer-toolbar-state">
-            <button class="tbar-btn tbar-btn-wide" id="p-pause-toggle" type="button" title="Pausar timer" aria-label="Pausar timer">
+            <button class="tbar-btn" id="p-pause-toggle" type="button" title="Pausar timer" aria-label="Pausar timer">
               <svg class="icon icon-pause" viewBox="0 0 20 20" fill="currentColor"><rect x="5.5" y="4" width="3.2" height="12" rx="1"/><rect x="11.3" y="4" width="3.2" height="12" rx="1"/></svg>
               <svg class="icon icon-play" viewBox="0 0 20 20" fill="currentColor"><path d="M6 4.2c0-.9 1-1.5 1.8-1l8 5.8c.7.5.7 1.5 0 2l-8 5.8c-.8.5-1.8-.1-1.8-1V4.2z"/></svg>
-              <span id="p-pause-label">Pausar</span>
+              <span id="p-pause-label" class="sr-only">Pausar</span>
             </button>
             <span class="tbar-divider" aria-hidden="true"></span>
-            <button class="tbar-btn tbar-btn-wide tbar-btn-danger" id="p-toggle-open" type="button" title="Encerrar leilão" aria-label="Encerrar leilão">
+            <button class="tbar-btn tbar-btn-danger" id="p-toggle-open" type="button" title="Encerrar leilão" aria-label="Encerrar leilão">
               <svg class="icon icon-stop" viewBox="0 0 20 20" fill="currentColor"><rect x="5" y="5" width="10" height="10" rx="1.5"/></svg>
               <svg class="icon icon-reopen" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4.5 9.5a5.5 5.5 0 1 1 1.4 3.6"/><path d="M4.5 13.2v-3.7h3.7"/></svg>
-              <span id="p-open-label">Encerrar</span>
+              <span id="p-open-label" class="sr-only">Encerrar</span>
             </button>
           </div>
           <div class="timer-toolbar timer-toolbar-duration">
@@ -568,7 +568,9 @@
               <label>Título exibido no placar</label>
               <input type="text" id="title-input" autocomplete="off" />
             </div>
-            <button class="btn-mini" id="save-title">Salvar título</button>
+            <button class="tbar-icon-btn" id="save-title" type="button" title="Salvar título" aria-label="Salvar título">
+              <svg class="icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 10.5l4 4 8-9"/></svg>
+            </button>
           </div>
           <div class="panel-row">
             <div>
@@ -587,7 +589,10 @@
               <input type="text" id="alert-link-input" readonly />
             </div>
             <div class="panel-row-btns">
-              <button class="btn-mini" id="alert-link-test">Testar</button>
+              <button class="settings-icon-btn" id="alert-link-test" type="button" title="Testar alerta" aria-label="Testar alerta">
+                <span class="settings-icon-btn-icon settings-icon-btn-icon-play" aria-hidden="true"><svg class="icon" viewBox="0 0 20 20" fill="currentColor" stroke="none"><path d="M6 4.5v11l9-5.5-9-5.5z"/></svg></span>
+                <span class="settings-icon-btn-icon settings-icon-btn-icon-check" aria-hidden="true"><svg class="icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 10.5l4 4 8-9"/></svg></span>
+              </button>
               <button class="copy-btn" id="alert-link-copy" type="button" data-tooltip="Copiar">
                 <span class="copy-btn-icon copy-btn-icon-copy" aria-hidden="true"><svg class="icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="7" y="7" width="9" height="9" rx="1.5"/><path d="M13 7V5.5A1.5 1.5 0 0 0 11.5 4h-6A1.5 1.5 0 0 0 4 5.5v6A1.5 1.5 0 0 0 5.5 13H7"/></svg></span>
                 <span class="copy-btn-icon copy-btn-icon-check" aria-hidden="true"><svg class="icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 10.5l4 4 8-9"/></svg></span>
@@ -646,13 +651,19 @@
           </div>
           <div class="panel-row wrap settings-bg-row">
             <input type="text" id="bg-image-url" placeholder="URL de uma imagem (opcional)" autocomplete="off" />
-            <button class="btn-mini" id="bg-image-save">Salvar imagem</button>
-            <button class="btn-mini" id="bg-image-clear">Remover</button>
+            <button class="tbar-icon-btn" id="bg-image-save" type="button" title="Salvar imagem" aria-label="Salvar imagem">
+              <svg class="icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 10.5l4 4 8-9"/></svg>
+            </button>
+            <button class="settings-icon-btn" id="bg-image-clear" type="button" title="Remover imagem de fundo" aria-label="Remover imagem de fundo">
+              <svg class="icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="M5 5l10 10M15 5L5 15"/></svg>
+            </button>
           </div>
           <p class="hint">Some atrás do placar, escurecida. Cole o link de uma imagem publicada em algum lugar (Imgur, etc), ou envie um arquivo abaixo.</p>
           <div class="panel-row wrap settings-bg-row">
             <input type="file" id="bg-image-file" accept="image/png,image/jpeg,image/webp,image/gif" />
-            <button class="btn-mini" id="bg-image-upload">Enviar arquivo</button>
+            <button class="settings-icon-btn" id="bg-image-upload" type="button" title="Enviar arquivo" aria-label="Enviar arquivo">
+              <svg class="icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 13V4"/><path d="M6 7.5L10 4l4 3.5"/><path d="M4 15h12"/></svg>
+            </button>
           </div>
           <p class="hint" id="bg-image-upload-status"></p>
         </div>

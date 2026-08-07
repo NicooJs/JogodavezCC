@@ -736,6 +736,20 @@ body.board-body.has-bg-image .board-cover-bg { display: none; }
 .pbar-btn .icon { width: 14px; height: 14px; flex-shrink: 0; }
 .pbar-btn:active { transform: translateY(0) !important; }
 
+.pbar-btn-icon-only { width: 38px; padding: 0; gap: 0; justify-content: center; }
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
 .pbar-btn-primary {
   background: linear-gradient(180deg, var(--accent-text), var(--accent));
   color: var(--accent-ink);

@@ -67,11 +67,11 @@ document.getElementById("alert-link-test").addEventListener("click", async () =>
   btn.disabled = true;
   try {
     await presenterFetch("/admin/test-alert", { method: "POST" });
-    btn.textContent = "Enviado!";
+    btn.classList.add("is-done");
   } catch (err) {
     alert(err.message);
   } finally {
-    setTimeout(() => { btn.textContent = "Testar"; btn.disabled = false; }, 1500);
+    setTimeout(() => { btn.classList.remove("is-done"); btn.disabled = false; }, 1500);
   }
 });
 
