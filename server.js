@@ -406,7 +406,7 @@ function serializeLeaderboard(store, leilaoId) {
     hostAvatar: store.getState("hostAvatar", null),
     hostVerified: getHostVerified(store),
     hostTwitchLogin: store.getState("hostTwitchLogin", null),
-    theme: store.getState("theme", "ametista"),
+    theme: store.getState("theme", "cinza"),
     backgroundImageUrl: store.getState("backgroundImageUrl", null),
     qualifyCount,
     open: isOpen,
@@ -724,12 +724,14 @@ app.get("/api/perfil", async (req, res) => {
     const latestLeilao = latest
       ? { id: latest.id, title: getStore(latest.id).getState("title", latest.title || "JogodaVez"), alertUrl: `/l/${latest.id}/alerta` }
       : null;
+    const theme = latest ? getStore(latest.id).getState("theme", "cinza") : "cinza";
 
     res.json({
       twitchLogin: twitchSession.twitchLogin,
       displayName: twitchSession.displayName,
       avatarUrl: twitchSession.avatarUrl,
       connectedAt: streamer.connectedAt,
+      theme,
       balanceCents,
       lifetimeEarnedCents,
       pixKey: pixKeyInfo ? pixKeyInfo.pixKey : null,
@@ -2032,7 +2034,7 @@ app.post("/api/l/:id/admin/title", loadLeilao, requireLeilaoAdmin, (req, res) =>
   res.json({ ok: true });
 });
 
-const AVAILABLE_THEMES = ["nebulosa", "recife", "ametista", "safira", "grafite"];
+const AVAILABLE_THEMES = ["cinza", "roxo", "azul", "preto", "verde"];
 
 app.post("/api/l/:id/admin/theme", loadLeilao, requireLeilaoAdmin, (req, res) => {
   const { theme } = req.body || {};

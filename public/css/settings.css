@@ -304,11 +304,12 @@
   border: 1px solid rgba(255, 255, 255, 0.1);
 }
 
-.settings-modal .theme-preview-nebulosa { background: linear-gradient(135deg, #14141c 50%, #7089a0 50%); }
-.settings-modal .theme-preview-recife { background: linear-gradient(135deg, #101a1a 50%, #e0a955 50%); }
-.settings-modal .theme-preview-ametista { background: linear-gradient(135deg, #17131f 50%, #b98cf5 50%); }
-.settings-modal .theme-preview-safira { background: linear-gradient(135deg, #0f1420 50%, #4d80f5 50%); }
-.settings-modal .theme-preview-grafite { background: linear-gradient(135deg, #16171a 50%, #9fb0c2 50%); }
+.settings-modal .theme-preview-roxo { background: linear-gradient(135deg, #17131f 50%, #b98cf5 50%); }
+.settings-modal .theme-preview-azul { background: linear-gradient(135deg, #0f1420 50%, #4d80f5 50%); }
+.settings-modal .theme-preview-cinza { background: linear-gradient(135deg, #161616 50%, #b3b3ba 50%); }
+.settings-modal .theme-preview-preto { background: linear-gradient(135deg, #0a0a0b 50%, #f0f0f2 50%); }
+.settings-modal .theme-preview-verde { background: linear-gradient(135deg, #0f1a14 50%, #6fc794 50%); }
+.settings-modal .theme-preview-branco { background: linear-gradient(135deg, #f5f4f8 50%, #2a2432 50%); }
 
 .settings-modal .danger-zone { border-color: rgba(239, 68, 112, 0.35); }
 

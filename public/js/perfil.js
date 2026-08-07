@@ -286,6 +286,8 @@ async function loadPerfil() {
     return;
   }
 
+  document.documentElement.dataset.theme = data.theme || "cinza";
+
   avatarEl.src = data.avatarUrl || "";
   nameEl.textContent = data.displayName || data.twitchLogin || "";
   loginEl.textContent = data.twitchLogin ? `@${data.twitchLogin}` : "";

@@ -63,11 +63,18 @@ como concluído na resposta síncrona da chamada.
 
 ### Temas (cor)
 
-5 temas dark, todos em `public/css/style.css:1-96` via `:root[data-theme="..."]`.
-O `:root` puro (sem atributo) é o tema **"ametista"** (roxo, default) — não
-tem seletor próprio no CSS, é só o rótulo lógico usado no JS/servidor
-(`leaderboard.theme || "ametista"`). Os outros 4 (`nebulosa`, `safira`,
-`grafite`, `recife`) têm seletor explícito.
+5 temas dark, todos em `public/css/style.css:1-96` via `:root[data-theme="..."]`
+(2026-08: renomeados de nomes poéticos pra nomes de cor direto, ver
+`AVAILABLE_THEMES` em `server.js`). O `:root` puro (sem atributo) é o tema
+**"cinza"** (default) — não tem seletor próprio no CSS, é só o rótulo lógico
+usado no JS/servidor (`leaderboard.theme || "cinza"`). Os outros 4 (`roxo`,
+`azul`, `preto`, `verde`) têm seletor explícito. Existe também um
+`:root[data-theme="branco"]` já escrito no CSS (tema claro de verdade, fundo
+branco/texto escuro) mas **fora do seletor de temas de propósito** — vários
+efeitos "glass" hoje são hardcoded assumindo fundo escuro (ex:
+`rgba(255,255,255, baixa-opacidade)` no `.topbar-total`) e quebram sobre fundo
+claro; falta uma auditoria desses efeitos antes de reativar. Não usar/expor
+`branco` sem antes resolver isso.
 
 Variáveis principais por tema: `--bg`, `--surface`, `--surface-2`, `--border`,
 `--border-soft`, `--text`, `--muted`, `--accent`, `--accent-text`,
@@ -79,7 +86,17 @@ compartilhadas (não variam por tema): `--bronze`, `--danger`, `--danger-bg`,
 Tema é aplicado via `document.documentElement.dataset.theme = ...` em cada
 tela, sincronizado por Socket.IO (`update` → `leaderboard.theme`). Troca de
 tema é feita pelo apresentador (dots na presenter-bar ou swatches em
-Configurações → Aparência), `POST /admin/theme`.
+Configurações → Aparência), `POST /admin/theme`. É uma configuração por
+**leilão** (guardada no JSON do leilão), não por conta -- o Perfil (que é por
+conta) usa como representante o tema do leilão mais recente do streamer,
+mesmo critério já usado pro link do widget OBS (`GET /api/perfil` calcula
+isso e devolve `theme`, aplicado em `perfil.js`).
+
+Leilões criados antes dessa renomeação têm o tema salvo com as chaves
+antigas (`nebulosa`, `recife`, `ametista`, `safira`, `grafite`) -- como
+nenhuma delas bate com um `data-theme` válido hoje, o CSS cai pro `:root`
+puro (cinza) na próxima vez que carregar. É só estético, decisão consciente
+de não migrar automaticamente.
 
 ### Tipografia
 

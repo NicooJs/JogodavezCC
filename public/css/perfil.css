@@ -762,8 +762,6 @@
   .perfil-chime-row { flex-wrap: wrap; }
 }
 
-.perfil-pixgg-card { margin-bottom: 20px; border-color: var(--accent); }
-
 .perfil-disabled-wrap { position: relative; }
 
 .perfil-disabled-banner {
@@ -797,6 +795,9 @@
    ilegível como um card "quebrado", pointer-events:none segue impedindo clique */
 .perfil-disabled {
   pointer-events: none;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
 }
 .perfil-disabled .perfil-saque-btn,
 .perfil-disabled #pix-key-save {

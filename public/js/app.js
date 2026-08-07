@@ -1779,9 +1779,9 @@ function scheduleStreakExpiry(key, remainingMs) {
 
 socket.on("update", ({ leaderboard, lastEvent }) => {
   applyMediaLabels(leaderboard.mode);
-  document.documentElement.dataset.theme = leaderboard.theme || "ametista";
+  document.documentElement.dataset.theme = leaderboard.theme || "cinza";
   document.querySelectorAll(".theme-dot").forEach((dot) => {
-    dot.classList.toggle("active", dot.dataset.theme === (leaderboard.theme || "ametista"));
+    dot.classList.toggle("active", dot.dataset.theme === (leaderboard.theme || "cinza"));
   });
   if (leaderboard.backgroundImageUrl) {
     document.body.style.setProperty("--bg-image", `url("${leaderboard.backgroundImageUrl}")`);

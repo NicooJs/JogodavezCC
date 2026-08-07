@@ -413,7 +413,7 @@ pixggBackBtn.addEventListener("click", () => {
 
 socket.on("update", ({ leaderboard, lastEvent }) => {
   applyMediaLabels(leaderboard.mode);
-  document.documentElement.dataset.theme = leaderboard.theme || "ametista";
+  document.documentElement.dataset.theme = leaderboard.theme || "cinza";
   leaderboardItems = leaderboard.items || [];
 
   isOpenState = !!leaderboard.open;

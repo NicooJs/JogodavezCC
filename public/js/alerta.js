@@ -174,7 +174,7 @@ function scheduleHide(item) {
 }
 
 socket.on("update", ({ leaderboard, lastEvent }) => {
-  document.documentElement.dataset.theme = leaderboard.theme || "ametista";
+  document.documentElement.dataset.theme = leaderboard.theme || "cinza";
 
   if (!lastEvent || !lastEvent.game) return;
   if (lastEvent.type !== "add" && lastEvent.type !== "remove") return;
