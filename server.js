@@ -622,11 +622,21 @@ app.get("/auth/twitch/callback", async (req, res) => {
   // limpa antes de qualquer checagem: torna o cookie de uso único, fecha replay
   session.clearCookie(req, res, "leilao_oauth_state");
 
+  // Checa o erro reportado pela própria Twitch ANTES do cookie de estado --
+  // sem essa ordem, um erro real (ex: redirect_mismatch, redirect URL não
+  // cadastrada no app da Twitch) aparecia escondido atrás da mensagem
+  // genérica "sessão expirou" sempre que o cookie também não estava
+  // presente, dificultando diagnosticar o problema de verdade.
+  if (req.query.error) {
+    console.error(`Erro no login com a Twitch: ${req.query.error} - ${req.query.error_description || ""}`);
+    const returnTo = statePayload ? safeReturnTo(statePayload.returnTo) : "/";
+    return res.status(400).send(
+      `Não foi possível entrar com a Twitch: ${req.query.error_description || req.query.error}. ` +
+      `<a href="${returnTo}">Voltar</a>`
+    );
+  }
   if (!statePayload) {
     return res.status(400).send("Sessão de login expirou. Volte e tente de novo.");
-  }
-  if (req.query.error) {
-    return res.redirect(safeReturnTo(statePayload.returnTo));
   }
   if (!req.query.state || !timingSafeEqualString(req.query.state, statePayload.state)) {
     return res.status(400).send("Estado de login inválido. Tente de novo.");
