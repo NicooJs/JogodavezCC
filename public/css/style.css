@@ -2093,6 +2093,11 @@ body.board-body.has-bg-image .board-cover-bg { display: none; }
   flex: 1;
   min-height: 0;
   background: none;
+  /* backdrop-filter não é resetado por "background: none" (são
+     propriedades diferentes) -- sem isso aqui, o blur do .panel base
+     vazava pro catálogo, que não devia ter esse tratamento. */
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
   border: none;
   padding: 0;
 }
