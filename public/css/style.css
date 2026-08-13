@@ -1714,14 +1714,14 @@ body.board-body.has-bg-image .board-cover-bg { display: none; }
    os .lot-card individuais, não o painel inteiro. */
 .panel {
   padding: 22px 24px;
-  /* semi-transparente + desfoque em vez de cor sólida -- deixa o mosaico
-     de capas atrás (.board-cover-bg) aparecer por trás dos cartões, meio
-     "vidro fosco", em vez de esconder o fundo por completo. */
+  /* semi-transparente + desfoque puro, sem grain -- deixa o mosaico de
+     capas atrás (.board-cover-bg) aparecer por trás dos cartões, tipo
+     vidro fosco liso. O grain (ruído) que o resto do site usa deixava
+     isso com aparência "suja" em vez de transparente, então saiu só
+     daqui (continua no resto do site via body::before). */
   background-color: color-mix(in srgb, var(--surface) 80%, transparent);
   backdrop-filter: blur(14px);
   -webkit-backdrop-filter: blur(14px);
-  background-image: var(--grain);
-  background-blend-mode: overlay;
   border: 1px solid var(--border);
   border-radius: var(--radius);
   display: flex;
