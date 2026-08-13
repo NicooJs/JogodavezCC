@@ -572,6 +572,88 @@ body.board-body.has-bg-image .board-cover-bg { display: none; }
 .donate-open-btn:active { transform: translateY(0); }
 .donate-open-btn .icon { width: 15px; height: 15px; }
 
+/* ranking, status "ao vivo" e modo apresentador saíram soltos da topbar
+   (poluía) e viraram um menu atrás de uma bolinha com a foto do host +
+   setinha -- pedido do cliente. */
+.topbar-menu { position: relative; }
+
+.topbar-menu-trigger {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 4px 10px 4px 4px;
+  cursor: pointer;
+  transition: border-color 0.15s ease;
+}
+.topbar-menu-trigger:hover { border-color: var(--accent-soft); }
+.topbar-menu-trigger.active { border-color: var(--accent); }
+
+.topbar-menu-avatar,
+.topbar-menu-avatar-placeholder {
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  object-fit: cover;
+  background: var(--surface-2);
+  flex-shrink: 0;
+}
+.topbar-menu-avatar-placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-display);
+  font-style: italic;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.topbar-menu-chevron {
+  width: 13px;
+  height: 13px;
+  color: var(--muted);
+  transition: transform 0.15s ease;
+}
+.topbar-menu-trigger.active .topbar-menu-chevron { transform: rotate(180deg); }
+
+.topbar-menu-dropdown {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  z-index: 40;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+  min-width: 220px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 12px;
+  box-shadow: 0 16px 40px -12px rgba(0, 0, 0, 0.5);
+  animation: drop-in 0.15s var(--ease);
+}
+
+.topbar-menu-perfil-link {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 7px 9px;
+  border-radius: 8px;
+  color: var(--text);
+  font-size: 13px;
+  font-weight: 600;
+  text-decoration: none;
+  box-sizing: border-box;
+  transition: background 0.15s ease;
+}
+.topbar-menu-perfil-link:hover { background: var(--surface-2); }
+.topbar-menu-perfil-link .icon { width: 15px; height: 15px; color: var(--muted); flex-shrink: 0; }
+.topbar-menu-perfil-link[hidden] { display: none; }
+
 .presenter-toggle-wrap { display: inline-flex; align-items: center; gap: 4px; }
 
 .presenter-toggle-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--accent); display: none; }
@@ -1857,24 +1939,6 @@ body.board-body.has-bg-image .board-cover-bg { display: none; }
 }
 .host-twitch-link:hover { color: var(--accent); text-decoration: underline; }
 .host-twitch-link[hidden] { display: none; }
-
-.host-card-perfil-link {
-  position: absolute;
-  top: 8px;
-  right: 8px;
-  width: 26px;
-  height: 26px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 50%;
-  color: var(--muted);
-  background: transparent;
-  transition: color 0.15s ease, background 0.15s ease;
-}
-.host-card-perfil-link .icon { width: 15px; height: 15px; }
-.host-card-perfil-link:hover { color: var(--accent-text); background: var(--surface); }
-.host-card-perfil-link[hidden] { display: none; }
 
 .host-twitch-badge {
   position: absolute;

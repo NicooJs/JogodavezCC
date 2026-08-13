@@ -20,6 +20,10 @@ const hostAvatarEl = document.getElementById("host-avatar");
 const hostTwitchBadgeEl = document.getElementById("host-twitch-badge");
 const hostTwitchLinkEl = document.getElementById("host-twitch-link");
 const hostPerfilLinkEl = document.getElementById("host-perfil-link");
+const topbarMenuTriggerEl = document.getElementById("topbar-menu-trigger");
+const topbarMenuDropdownEl = document.getElementById("topbar-menu-dropdown");
+const topbarMenuAvatarEl = document.getElementById("topbar-menu-avatar");
+const topbarMenuAvatarPlaceholderEl = document.getElementById("topbar-menu-avatar-placeholder");
 const timerEl = document.getElementById("timer");
 const timerClockEl = document.getElementById("timer-clock");
 const timerLabelEl = document.getElementById("timer-label");
@@ -1829,9 +1833,16 @@ socket.on("update", ({ leaderboard, lastEvent }) => {
   if (leaderboard.hostAvatar) {
     hostAvatarEl.src = leaderboard.hostAvatar;
     hostAvatarEl.hidden = false;
+    topbarMenuAvatarEl.src = leaderboard.hostAvatar;
+    topbarMenuAvatarEl.hidden = false;
+    topbarMenuAvatarPlaceholderEl.hidden = true;
   } else {
     hostAvatarEl.hidden = true;
     hostAvatarEl.removeAttribute("src");
+    topbarMenuAvatarEl.hidden = true;
+    topbarMenuAvatarEl.removeAttribute("src");
+    topbarMenuAvatarPlaceholderEl.hidden = false;
+    topbarMenuAvatarPlaceholderEl.textContent = (leaderboard.host || "?")[0].toUpperCase();
   }
   // Usa hostTwitchLogin (login real), nunca o nome de exibição -- evita falsificar o link do canal.
   if (leaderboard.hostVerified && leaderboard.hostTwitchLogin) {
@@ -2336,6 +2347,20 @@ document.addEventListener("click", (e) => {
   if (presenterDrawerEl.hidden) return;
   if (presenterDrawerEl.contains(e.target) || presenterFabEl.contains(e.target)) return;
   setPresenterFabOpen(false);
+});
+
+// menu do topbar (ranking/status/modo apresentador/perfil, atrás da
+// bolinha com foto + setinha) -- mesmo padrão de popover do FAB acima.
+function setTopbarMenuOpen(open) {
+  topbarMenuDropdownEl.hidden = !open;
+  topbarMenuTriggerEl.classList.toggle("active", open);
+  topbarMenuTriggerEl.setAttribute("aria-expanded", open ? "true" : "false");
+}
+topbarMenuTriggerEl.addEventListener("click", () => setTopbarMenuOpen(topbarMenuDropdownEl.hidden));
+document.addEventListener("click", (e) => {
+  if (topbarMenuDropdownEl.hidden) return;
+  if (topbarMenuDropdownEl.contains(e.target) || topbarMenuTriggerEl.contains(e.target)) return;
+  setTopbarMenuOpen(false);
 });
 
 // Precisa ser um <form> real -- senão o Chrome tenta associar esse campo de código a outro texto da página.
