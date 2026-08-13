@@ -607,21 +607,56 @@ body.board-body.has-bg-image .board-cover-bg { display: none; }
   background: var(--danger-bg);
 }
 
-.presenter-bar {
+/* botão flutuante que abre as ferramentas do apresentador (busca, lançar
+   lote, zerar, histórico, modalidade, configurações) -- pedido do
+   cliente: cabeçalho mínimo, sem barra ocupando espaço fixo no topo. Só
+   existe em modo apresentador (fica [hidden] fora dele). */
+.presenter-fab {
+  position: fixed;
+  right: 26px;
+  bottom: 26px;
+  z-index: 40;
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
   display: flex;
   align-items: center;
-  gap: 12px;
+  justify-content: center;
+  background: linear-gradient(180deg, var(--accent-text), var(--accent));
+  color: var(--accent-ink);
+  border: none;
+  cursor: pointer;
+  box-shadow: 0 10px 26px -8px var(--accent-glow), 0 2px 10px rgba(0, 0, 0, 0.35);
+  transition: transform 0.15s ease, box-shadow 0.15s ease, background 0.15s ease, color 0.15s ease;
+}
+.presenter-fab:hover { transform: translateY(-2px); }
+.presenter-fab .icon { width: 22px; height: 22px; }
+.presenter-fab.active { background: var(--surface-2); color: var(--accent-text); box-shadow: 0 2px 10px rgba(0, 0, 0, 0.35); }
+.presenter-fab[hidden] { display: none; }
+
+/* o mesmo conteúdo de antes (.presenter-bar), agora dentro de um popover
+   flutuante que só existe quando o botão acima é clicado -- não empurra
+   mais nada do catálogo pra baixo, aberto ou fechado. */
+.presenter-popover {
+  position: fixed;
+  right: 26px;
+  bottom: 90px;
+  z-index: 40;
+  display: flex;
+  align-items: center;
+  gap: 10px;
   flex-wrap: wrap;
+  max-width: min(560px, calc(100vw - 52px));
   background: var(--surface);
   border: 1px solid var(--border);
-  border-radius: var(--radius);
-  padding: 12px 16px;
-  margin-bottom: 16px;
-  animation: drop-in 0.2s var(--ease);
+  border-radius: 12px;
+  padding: 14px 16px;
+  box-shadow: 0 16px 40px -12px rgba(0, 0, 0, 0.5);
+  animation: drop-in 0.15s var(--ease);
 }
 
 @keyframes drop-in {
-  from { opacity: 0; transform: translateY(-4px); }
+  from { opacity: 0; transform: translateY(6px); }
   to { opacity: 1; transform: translateY(0); }
 }
 
@@ -996,24 +1031,26 @@ body.board-body.has-bg-image .board-cover-bg { display: none; }
 .tag-add { background: var(--accent-bg); color: var(--accent-text); }
 .tag-remove { background: var(--danger-bg); color: var(--danger); }
 
+/* .board é só o esqueleto de 3 colunas agora -- sem fundo/borda própria.
+   Cada seção (.panel) é o cartão de verdade, solto, com o respiro do gap
+   fazendo a separação em vez de uma caixa única envolvendo tudo (pedido
+   explícito do cliente: nada de "elementos presos em containers gigantes"). */
 .board {
   position: relative;
   flex: 1;
   min-height: 0;
   display: grid;
-  grid-template-columns: 340px minmax(0, 1fr) 366px;
-  background-color: var(--surface);
-  background-image: var(--grain);
-  background-blend-mode: overlay;
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  overflow: hidden;
-  transition: border-color 0.3s ease, box-shadow 0.3s ease;
+  grid-template-columns: 300px minmax(0, 1fr) 320px;
+  gap: 22px;
 }
 
 @keyframes board-tension {
-  0%, 100% { box-shadow: 0 0 0 0 rgba(239, 68, 112, 0); border-color: var(--border); }
-  50% { box-shadow: 0 0 28px 1px rgba(239, 68, 112, 0.28); border-color: rgba(239, 68, 112, 0.55); }
+  /* inset, não borda -- .board não tem mais fundo/borda própria pra
+     "segurar" um contorno visível por fora; o aviso de tempo acabando
+     pulsa pra dentro da própria área das 3 colunas (JS continua marcando
+     a classe em .board, só o efeito visual mudou). */
+  0%, 100% { box-shadow: inset 0 0 0 0 rgba(239, 68, 112, 0); }
+  50% { box-shadow: inset 0 0 80px 8px rgba(239, 68, 112, 0.3); }
 }
 
 .board.final-countdown { animation: board-tension 1s ease-in-out infinite; }
@@ -1672,20 +1709,26 @@ body.board-body.has-bg-image .board-cover-bg { display: none; }
   display: flex;
   flex-direction: column;
   min-height: 0;
-  border-right: 1px solid var(--border-soft);
+  gap: 22px;
 }
 
-.col:last-child { border-right: none; }
-
+/* cartão solto de verdade: fundo, cantos e borda próprios, sem depender
+   de um .board/.col compartilhado pra dar identidade visual -- pedido
+   explícito do cliente ("cada item... deve ser um bloco visual separado
+   e independente"). .arena-panel (catálogo) sobrescreve pra ficar
+   transparente logo abaixo, já que quem representa "cartão solto" ali são
+   os .lot-card individuais, não o painel inteiro. */
 .panel {
-  padding: 20px 22px;
-  border-bottom: 1px solid var(--border-soft);
+  padding: 22px 24px;
+  background: var(--surface);
+  background-image: var(--grain);
+  background-blend-mode: overlay;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
   display: flex;
   flex-direction: column;
   min-height: 0;
 }
-
-.col > .panel:last-child { border-bottom: none; }
 
 .panel-label {
   margin: 0 0 12px;
@@ -1707,6 +1750,17 @@ body.board-body.has-bg-image .board-cover-bg { display: none; }
   font-weight: 400;
   font-size: 10.5px;
 }
+
+/* título de seção virou só ícone (pedido do cliente: cabeçalho mínimo,
+   sem texto ocupando espaço) -- o texto continua existindo pra leitor de
+   tela via .sr-only dentro do mesmo <p>, só não aparece visualmente. */
+.panel-label-icon {
+  margin-bottom: 14px;
+  color: var(--muted);
+}
+.panel-label-icon .icon { width: 17px; height: 17px; }
+.arena-panel > .panel-label-icon,
+.arena-panel > .panel-hint { padding: 0 2px; }
 
 .history-sort-btn {
   margin-left: auto;
@@ -1956,18 +2010,29 @@ body.board-body.has-bg-image .board-cover-bg { display: none; }
 
 .donor-row.rank-1 .donor-total { color: var(--accent-text); font-weight: 600; }
 
-.arena-panel { flex: 1; min-height: 0; }
+/* transparente de propósito: os .lot-card individuais dentro dela já são
+   os cartões soltos (fundo/borda/canto próprios) -- um fundo aqui também
+   voltaria a ser "uma caixa gigante envolvendo os itens do catálogo". */
+.arena-panel {
+  flex: 1;
+  min-height: 0;
+  background: none;
+  border: none;
+  padding: 0;
+}
 
 .arena-grid {
   overflow-y: auto;
   min-height: 0;
   flex: 1;
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(430px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(460px, 1fr));
   align-content: start;
-  gap: 10px;
-  margin: 0 -4px;
-  padding: 2px 4px 4px;
+  /* respiro bem maior entre os cards -- eles são cartões soltos agora,
+     não linhas de uma lista grudada. */
+  gap: 18px;
+  margin: 0 -2px;
+  padding: 2px 2px 4px;
 }
 
 .arena-grid > .lot-card:first-child {
@@ -2027,10 +2092,14 @@ body.board-body.has-bg-image .board-cover-bg { display: none; }
   border-radius: var(--radius);
   overflow: hidden;
   /* overflow != visible zera a altura mínima automática do item no Grid; sem isso o conteúdo cortava. */
-  min-height: 122px;
+  min-height: 148px;
   transition: border-color 0.2s ease, box-shadow 0.3s ease;
   animation: card-in 0.25s var(--ease);
 }
+
+/* líder da rodada em destaque de verdade -- maior, capa maior, valor em
+   tipografia grande, fica óbvio de longe qual jogo tá na frente. */
+.lot-card.rank-1 { min-height: 210px; }
 .arena-grid .lot-card:nth-of-type(3n+1) { border-radius: 8px 5px 8px 6px; }
 .arena-grid .lot-card:nth-of-type(3n+2) { border-radius: 5px 7px 5px 8px; }
 .arena-grid .lot-card:nth-of-type(3n+3) { border-radius: 7px 6px 9px 5px; }
@@ -2195,9 +2264,11 @@ body.board-body.has-bg-image .board-cover-bg { display: none; }
   position: relative;
   display: flex;
   align-items: center;
-  gap: 16px;
-  padding: 18px 22px;
+  gap: 18px;
+  padding: 20px 24px;
 }
+
+.lot-card.rank-1 .lot-card-content { padding: 28px 32px; gap: 24px; }
 
 .lot-rank {
   display: flex;
@@ -2214,6 +2285,8 @@ body.board-body.has-bg-image .board-cover-bg { display: none; }
 }
 
 .lot-rank .medal-icon { width: 34px; height: 34px; }
+.lot-card.rank-1 .lot-rank .medal-icon { width: 48px; height: 48px; }
+.lot-card.rank-1 .lot-rank { width: 52px; font-size: 14px; }
 
 .lot-card.rank-1 .lot-rank { color: var(--accent-text); }
 .lot-card.rank-2 .lot-rank { color: var(--silver); }
@@ -2224,13 +2297,16 @@ body.board-body.has-bg-image .board-cover-bg { display: none; }
 .lot-card.rank-3 .lot-rank .medal-icon { transform: rotate(-3deg); }
 
 .lot-thumb {
-  width: 92px;
-  height: 92px;
+  width: 112px;
+  height: 112px;
   border-radius: 8px;
   object-fit: cover;
   background: var(--surface);
   flex-shrink: 0;
 }
+
+.lot-card.rank-1 .lot-thumb,
+.lot-card.rank-1 .lot-thumb-placeholder { width: 178px; height: 178px; border-radius: 10px; }
 
 .lot-thumb-placeholder {
   display: flex;
@@ -2242,6 +2318,8 @@ body.board-body.has-bg-image .board-cover-bg { display: none; }
   font-size: 28px;
 }
 
+.lot-card.rank-1 .lot-thumb-placeholder { font-size: 48px; }
+
 .lot-info {
   display: flex;
   flex-direction: column;
@@ -2252,7 +2330,7 @@ body.board-body.has-bg-image .board-cover-bg { display: none; }
 
 .lot-name {
   font-family: var(--font-display);
-  font-size: 17px;
+  font-size: 18.5px;
   font-weight: 500;
   margin: 0;
   color: var(--text);
@@ -2261,7 +2339,7 @@ body.board-body.has-bg-image .board-cover-bg { display: none; }
   white-space: nowrap;
 }
 
-.lot-card.rank-1 .lot-name { color: var(--text); font-weight: 600; }
+.lot-card.rank-1 .lot-name { color: var(--text); font-weight: 600; font-size: 28px; white-space: normal; }
 
 .lot-funding {
   display: flex;
@@ -2332,9 +2410,15 @@ body.board-body.has-bg-image .board-cover-bg { display: none; }
   max-width: 150px;
 }
 
+.lot-card.rank-1 .lot-meta { max-width: 230px; gap: 12px; }
+.lot-card.rank-1 .lot-top-donor-name,
+.lot-card.rank-1 .lot-funding { font-size: 13px; }
+.lot-card.rank-1 .lot-top-donor-avatar,
+.lot-card.rank-1 .lot-top-donor-avatar-placeholder { width: 19px; height: 19px; }
+
 .lot-total {
   font-family: var(--font-mono);
-  font-size: 14.5px;
+  font-size: 16px;
   color: var(--muted);
   font-variant-numeric: tabular-nums;
 }
@@ -2344,6 +2428,8 @@ body.board-body.has-bg-image .board-cover-bg { display: none; }
 .lot-card.rank-1 .lot-total,
 .lot-card.rank-2 .lot-total,
 .lot-card.rank-3 .lot-total { color: var(--accent-text); font-weight: 600; }
+
+.lot-card.rank-1 .lot-total { font-size: 36px; }
 
 .badge-hit { font-size: 10.5px; padding: 2px 6px; border-radius: 3px; background: var(--danger-bg); color: var(--danger); }
 .arena-grid .lot-card:nth-of-type(3n+1) .badge-hit { border-radius: 4px 2px 4px 3px; }
@@ -2890,6 +2976,23 @@ body.board-body.has-bg-image .board-cover-bg { display: none; }
   .lot-info { min-width: 64px; }
   .lot-edit button { width: 22px; height: 22px; }
   .lot-edit button .icon { width: 11px; height: 11px; }
+
+  /* o card do líder tem seletores mais específicos (.lot-card.rank-1 ...)
+     que venceriam as regras acima por especificidade mesmo vindo depois
+     -- repete aqui pra ele encolher igual aos outros em telas pequenas. */
+  .lot-card.rank-1 { min-height: 90px; }
+  .lot-card.rank-1 .lot-card-content { gap: 10px; padding: 12px 14px; }
+  .lot-card.rank-1 .lot-thumb,
+  .lot-card.rank-1 .lot-thumb-placeholder { width: 46px; height: 46px; font-size: 28px; }
+  .lot-card.rank-1 .lot-rank { width: 32px; }
+  .lot-card.rank-1 .lot-rank .medal-icon { width: 27px; height: 27px; }
+  .lot-card.rank-1 .lot-name { font-size: 17px; white-space: nowrap; }
+  .lot-card.rank-1 .lot-total { font-size: 14.5px; }
+  .lot-card.rank-1 .lot-meta { gap: 6px; max-width: 112px; }
+  .lot-card.rank-1 .lot-top-donor-name,
+  .lot-card.rank-1 .lot-funding { font-size: 11px; }
+  .lot-card.rank-1 .lot-top-donor-avatar,
+  .lot-card.rank-1 .lot-top-donor-avatar-placeholder { width: 15px; height: 15px; }
 }
 
 

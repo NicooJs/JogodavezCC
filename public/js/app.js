@@ -31,6 +31,7 @@ const donorCountEl = document.getElementById("donor-count");
 const presenterToggleEl = document.getElementById("presenter-toggle");
 const presenterExitEl = document.getElementById("presenter-exit");
 const presenterDrawerEl = document.getElementById("presenter-drawer");
+const presenterFabEl = document.getElementById("presenter-fab");
 const modeToggleBoardEl = document.getElementById("mode-toggle-board");
 const timerRingFillEl = document.getElementById("timer-ring-fill");
 const donateModalTimerEl = document.getElementById("donate-modal-timer");
@@ -2145,6 +2146,12 @@ async function presenterFetch(path, options = {}) {
 
 let isPresenterOwner = false;
 
+function setPresenterFabOpen(open) {
+  presenterDrawerEl.hidden = !open;
+  presenterFabEl.classList.toggle("active", open);
+  presenterFabEl.setAttribute("aria-expanded", open ? "true" : "false");
+}
+
 function setPresenterMode(active) {
   document.body.classList.toggle("presenter-mode", active);
   presenterToggleEl.classList.toggle("active", active);
@@ -2152,7 +2159,11 @@ function setPresenterMode(active) {
   presenterToggleEl.title = active
     ? (isPresenterOwner ? "Gerar código para moderador" : "Modo apresentador ativo")
     : "Entrar no modo apresentador";
-  presenterDrawerEl.hidden = !active;
+  presenterFabEl.hidden = !active;
+  // fecha o popover de ferramentas sempre que o modo apresentador muda --
+  // entrar no modo apresentador não deve abrir a ferramenta sozinho,
+  // cabeçalho começa mínimo (ver instrução do cliente sobre isso).
+  setPresenterFabOpen(false);
   hostPerfilLinkEl.hidden = !(active && isPresenterOwner);
   updatePixWarning();
 }
@@ -2281,6 +2292,17 @@ presenterExitEl.addEventListener("click", async () => {
   await fetch(`/api/l/${LEILAO_ID}/admin/logout`, { method: "POST", credentials: "same-origin" }).catch(() => {});
   isPresenterOwner = false;
   setPresenterMode(false);
+});
+
+presenterFabEl.addEventListener("click", () => setPresenterFabOpen(presenterDrawerEl.hidden));
+
+// fecha o popover clicando fora dele (mas não ao clicar no próprio botão
+// flutuante, que já tem o próprio toggle acima) -- mesmo padrão informal
+// já usado pros overlays de modal (clique fora fecha).
+document.addEventListener("click", (e) => {
+  if (presenterDrawerEl.hidden) return;
+  if (presenterDrawerEl.contains(e.target) || presenterFabEl.contains(e.target)) return;
+  setPresenterFabOpen(false);
 });
 
 // Precisa ser um <form> real -- senão o Chrome tenta associar esse campo de código a outro texto da página.
