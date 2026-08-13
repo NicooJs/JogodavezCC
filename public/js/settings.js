@@ -210,7 +210,13 @@ document.getElementById("rename-dialog-cancel").addEventListener("click", () => 
 document.getElementById("rename-dialog-close").addEventListener("click", () => settleRenameDialog(null));
 renameDialogOverlayEl.addEventListener("click", (e) => { if (e.target === renameDialogOverlayEl) settleRenameDialog(null); });
 
-function renameGameDialog(initialName) {
+// reaproveitado pelo sino de notificações pra "identificar" uma doação
+// pendente -- mesmo componente de busca (game-shelf), só título/texto do
+// botão mudam pra deixar claro que não é renomear um jogo já existente.
+function renameGameDialog(initialName, options) {
+  const opts = options || {};
+  document.getElementById("rename-dialog-title").textContent = opts.title || "Renomear jogo";
+  document.getElementById("rename-dialog-confirm").textContent = opts.confirmLabel || "Salvar";
   return new Promise((resolve) => {
     renameDialogResolve = resolve;
     renameDialogImage = undefined;
@@ -398,7 +404,17 @@ function renderGamesTable() {
     tr.querySelector('[data-act="rename"]').addEventListener("click", async () => {
       const result = await renameGameDialog(game.name);
       if (!result) return;
-      presenterFetch("/admin/rename", { method: "POST", body: JSON.stringify({ key: game.key, newName: result.name, image: result.image }) });
+      try {
+        const { game: updated } = await presenterFetch("/admin/rename", { method: "POST", body: JSON.stringify({ key: game.key, newName: result.name, image: result.image }) });
+        // não espera o "update" do socket pra refletir na tabela -- numa
+        // conexão real esse aviso pode atrasar/se perder mesmo já tendo
+        // salvo certinho no servidor (mesmo motivo do fix em app.js).
+        const cached = settingsGames.find((g) => g.key === game.key);
+        if (cached) cached.name = updated.name;
+        renderGamesTable();
+      } catch (err) {
+        alert(err.message);
+      }
     });
     tr.querySelector('[data-act="delete"]').addEventListener("click", async () => {
       const ok = await confirmDialog({ title: "Excluir jogo", message: `Excluir "${game.name}"?`, confirmLabel: "Excluir", danger: true });

@@ -114,6 +114,56 @@ function createStore(filePath) {
     save();
   }
 
+  // doação real (conta em getTotalRaised, diferente de logUnparsedEvent)
+  // que não deu pra ligar a nenhum jogo do catálogo -- fica pendente até o
+  // apresentador atribuir a um jogo ou marcar como apoio geral, em vez de
+  // virar um card "Não identificado" no catálogo (misturava doação real
+  // sem jogo reconhecido com doação que nunca teve jogo nenhum em mente).
+  function logPendingDonation({ amountCents, username, rawMessage, providerId }) {
+    const event = {
+      id: data.nextEventId++,
+      game_key: null,
+      game_name: null,
+      action: "add",
+      amount_cents: amountCents,
+      username: username || null,
+      raw_message: rawMessage || null,
+      provider_id: providerId || null,
+      created_at: nowISO(),
+      pending: true,
+    };
+    data.events.push(event);
+    markProcessed(providerId);
+    save();
+    return { ...event };
+  }
+
+  function getPendingDonations() {
+    return data.events.filter((ev) => ev.pending).map((ev) => ({ ...ev }));
+  }
+
+  function resolvePendingDonationAssign(eventId, targetKey) {
+    const ev = data.events.find((e) => e.id === eventId && e.pending);
+    const game = data.games[targetKey];
+    if (!ev || !game) return null;
+    game.total_cents += ev.amount_cents;
+    game.updated_at = nowISO();
+    ev.game_key = targetKey;
+    ev.game_name = game.name;
+    ev.pending = false;
+    save();
+    return { ...game };
+  }
+
+  function resolvePendingDonationDismiss(eventId) {
+    const ev = data.events.find((e) => e.id === eventId && e.pending);
+    if (!ev) return false;
+    ev.pending = false;
+    ev.dismissed = true;
+    save();
+    return true;
+  }
+
   function hasGame(key) {
     return !!data.games[key];
   }
@@ -373,6 +423,10 @@ function createStore(filePath) {
     markProcessed,
     applyContribution,
     logUnparsedEvent,
+    logPendingDonation,
+    getPendingDonations,
+    resolvePendingDonationAssign,
+    resolvePendingDonationDismiss,
     getLeaderboard,
     getRecentEvents,
     getTopDonors,

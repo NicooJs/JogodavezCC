@@ -24,6 +24,12 @@ const topbarMenuTriggerEl = document.getElementById("topbar-menu-trigger");
 const topbarMenuDropdownEl = document.getElementById("topbar-menu-dropdown");
 const topbarMenuAvatarEl = document.getElementById("topbar-menu-avatar");
 const topbarMenuAvatarPlaceholderEl = document.getElementById("topbar-menu-avatar-placeholder");
+const notifBellTriggerEl = document.getElementById("notif-bell-trigger");
+const notifBellDropdownEl = document.getElementById("notif-bell-dropdown");
+const notifBellBadgeEl = document.getElementById("notif-bell-badge");
+const notifBellPendingEl = document.getElementById("notif-bell-pending");
+const notifBellListEl = document.getElementById("notif-bell-list");
+const notifBellEmptyEl = document.getElementById("notif-bell-empty");
 const timerEl = document.getElementById("timer");
 const timerClockEl = document.getElementById("timer-clock");
 const timerLabelEl = document.getElementById("timer-label");
@@ -906,6 +912,9 @@ function historyLabel(event) {
   if (event.type === "remove") {
     return { text: `<span class="who">${escapeHtml(event.username || "Anônimo")}</span> tirou pontos de <strong>${escapeHtml(event.game ? event.game.name : "")}</strong>`, dot: "dot-remove", amtClass: "amt-remove" };
   }
+  if (event.type === "pending") {
+    return { text: `<span class="who">${escapeHtml(event.username || "Anônimo")}</span> doou, aguardando identificação`, dot: "dot-pending", amtClass: "amt-pending" };
+  }
   if (event.type === "ignored") {
     return { text: `<span class="who">${escapeHtml(event.username || "Anônimo")}</span> doou sem indicar um lote`, dot: "", amtClass: "" };
   }
@@ -921,6 +930,9 @@ function historyBadgeHtml(dotClass) {
   }
   if (dotClass === "dot-remove") {
     return `<span class="history-badge badge-remove"><svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3v6M3 6l3 3 3-3"/></svg></span>`;
+  }
+  if (dotClass === "dot-pending") {
+    return `<span class="history-badge badge-pending"><svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3v3l2 2"/><circle cx="6" cy="6" r="4.3"/></svg></span>`;
   }
   return "";
 }
@@ -980,6 +992,7 @@ function pushHistory(event) {
   historyItems.unshift({ ...event, time: Date.now() });
   historyItems = historyItems.slice(0, 50);
   renderHistory();
+  renderNotifBell();
 }
 
 async function loadInitialHistory() {
@@ -989,18 +1002,159 @@ async function loadInitialHistory() {
     historyItems = data.events
       .filter((e) => e.action === "add" || e.action === "remove" || e.action === "ignored")
       .map((e) => ({
-        type: e.action,
+        type: e.pending ? "pending" : e.dismissed ? "ignored" : e.action,
         username: e.username,
         amount: e.amount,
         avatar: e.avatar,
+        message: e.raw_message,
+        eventId: e.id,
+        pending: !!e.pending,
         game: e.game_name ? { name: e.game_name } : null,
         time: e.created_at ? new Date(e.created_at).getTime() : Date.now(),
       }));
     renderHistory();
+    renderNotifBell();
   } catch (err) {
     console.error("Erro ao carregar histórico:", err);
   }
 }
+
+// fila de doações que não deram pra ligar a nenhum jogo (ver
+// findExistingGameInText/logPendingDonation no servidor) -- carregada à
+// parte de historyItems porque essa lista precisa ser completa (não só os
+// últimos 30 eventos), senão uma pendência antiga cairia fora do sino sem
+// ninguém notar.
+let pendingDonations = [];
+
+async function loadPendingDonations() {
+  try {
+    const { pending } = await presenterFetch("/admin/pending");
+    pendingDonations = pending || [];
+    renderNotifBell();
+  } catch (err) {
+    console.error("Erro ao carregar doações pendentes:", err);
+  }
+}
+
+function notifItemAvatarHtml(username, avatar) {
+  return avatar
+    ? `<img class="notif-item-avatar" src="${escapeHtml(avatar)}" alt="" loading="lazy" />`
+    : `<span class="notif-item-avatar">${escapeHtml((username || "?")[0].toUpperCase())}</span>`;
+}
+
+function notifPendingItemHtml(ev) {
+  const time = ev.created_at ? new Date(ev.created_at).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" }) : "";
+  const msg = (ev.raw_message || "").trim();
+  return `
+    <div class="notif-item is-pending" data-event-id="${ev.id}">
+      ${notifItemAvatarHtml(ev.username, ev.avatar)}
+      <div class="notif-item-body">
+        <div class="notif-item-meta">
+          <span class="notif-item-who">${escapeHtml(ev.username || "Anônimo")}</span>
+          <span class="notif-item-amt">${formatBRL(centsToNumberLocal(ev.amount_cents))}</span>
+          <span class="notif-item-time">${time}</span>
+        </div>
+        <p class="notif-item-msg${msg ? "" : " is-empty"}">${msg ? escapeHtml(msg) : "sem mensagem"}</p>
+        <div class="notif-item-actions">
+          <button class="btn-mini primary" data-act="notif-identify" data-event-id="${ev.id}" type="button">identificar</button>
+          <button class="btn-mini" data-act="notif-dismiss" data-event-id="${ev.id}" type="button">apoio geral</button>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+function notifFeedItemHtml(item) {
+  const info = historyLabel(item);
+  if (!info) return "";
+  const time = item.time ? new Date(item.time).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" }) : "";
+  const msg = (item.message || "").trim();
+  return `
+    <div class="notif-item">
+      ${notifItemAvatarHtml(item.username, item.avatar)}
+      <div class="notif-item-body">
+        <div class="notif-item-meta">
+          <span class="notif-item-who">${info.text}</span>
+          <span class="notif-item-time">${time}</span>
+        </div>
+        ${msg ? `<p class="notif-item-msg">${escapeHtml(msg)}</p>` : ""}
+      </div>
+    </div>
+  `;
+}
+
+// centsToNumber já existe (usado no resto do app.js) pra valores que chegam
+// prontos do servidor em reais -- doações pendentes trazem amount_cents cru
+// (mesmo formato bruto do banco), por isso a conversão separada aqui.
+function centsToNumberLocal(cents) {
+  return Math.round(Number(cents) || 0) / 100;
+}
+
+function renderNotifBell() {
+  const pendingIds = new Set(pendingDonations.map((p) => p.id));
+  notifBellPendingEl.innerHTML = pendingDonations.map(notifPendingItemHtml).join("");
+  notifBellListEl.innerHTML = historyItems
+    .filter((item) => !(item.eventId && pendingIds.has(item.eventId)))
+    .slice(0, 30)
+    .map(notifFeedItemHtml)
+    .join("");
+  const hasAnything = pendingDonations.length > 0 || notifBellListEl.children.length > 0;
+  notifBellEmptyEl.hidden = hasAnything;
+  notifBellBadgeEl.hidden = pendingDonations.length === 0;
+  notifBellBadgeEl.textContent = pendingDonations.length > 99 ? "99+" : String(pendingDonations.length);
+}
+
+function setNotifBellOpen(open) {
+  notifBellDropdownEl.hidden = !open;
+  notifBellTriggerEl.classList.toggle("active", open);
+  notifBellTriggerEl.setAttribute("aria-expanded", open ? "true" : "false");
+}
+notifBellTriggerEl.addEventListener("click", () => {
+  const opening = notifBellDropdownEl.hidden;
+  setNotifBellOpen(opening);
+  if (opening) loadPendingDonations();
+});
+document.addEventListener("click", (e) => {
+  if (notifBellDropdownEl.hidden) return;
+  if (notifBellDropdownEl.contains(e.target) || notifBellTriggerEl.contains(e.target)) return;
+  setNotifBellOpen(false);
+});
+
+notifBellPendingEl.addEventListener("click", async (e) => {
+  const btn = e.target.closest("button[data-act]");
+  if (!btn) return;
+  const eventId = Number(btn.dataset.eventId);
+  const ev = pendingDonations.find((p) => p.id === eventId);
+  if (!ev) return;
+
+  if (btn.dataset.act === "notif-dismiss") {
+    const ok = await confirmDialog({
+      title: "Marcar como apoio geral",
+      message: `Marcar a doação de ${ev.username || "anônimo"} como apoio geral? Ela continua contando no total arrecadado, só não vai pro catálogo.`,
+      confirmLabel: "Marcar",
+    });
+    if (!ok) return;
+    try {
+      await presenterFetch(`/admin/pending/${eventId}/dismiss`, { method: "POST" });
+    } catch (err) {
+      alert(err.message);
+    }
+    return;
+  }
+
+  if (btn.dataset.act === "notif-identify") {
+    const result = await renameGameDialog(ev.raw_message || "", { title: "Identificar doação", confirmLabel: "Atribuir" });
+    if (!result) return;
+    try {
+      await presenterFetch(`/admin/pending/${eventId}/assign`, {
+        method: "POST",
+        body: JSON.stringify({ gameName: result.name, gameImage: result.image }),
+      });
+    } catch (err) {
+      alert(err.message);
+    }
+  }
+});
 
 const soldSwirlCanvasEl = document.getElementById("sold-swirl-canvas");
 const soldSwirlCtx = soldSwirlCanvasEl.getContext("2d");
@@ -1906,8 +2060,23 @@ socket.on("update", ({ leaderboard, lastEvent }) => {
   if (lastEvent && lastEvent.type === "reset") {
     historyItems = [];
     renderHistory();
+  } else if (lastEvent && lastEvent.type === "pending-resolved") {
+    // não gera uma linha nova no histórico -- só corrige a que já existia
+    // (a doação em si já apareceu como "aguardando identificação" quando
+    // chegou) e atualiza a lista de pendências de quem tiver o sino aberto.
+    const item = historyItems.find((h) => h.eventId === lastEvent.eventId);
+    if (item) {
+      item.pending = false;
+      item.type = lastEvent.resolution === "assign" ? "add" : "ignored";
+      if (lastEvent.resolution === "assign" && lastEvent.game) item.game = { name: lastEvent.game.name };
+      renderHistory();
+    }
+    if (document.body.classList.contains("presenter-mode")) loadPendingDonations();
   } else {
     pushHistory(lastEvent);
+    if (lastEvent && lastEvent.type === "pending" && document.body.classList.contains("presenter-mode")) {
+      loadPendingDonations();
+    }
   }
 
   if (flashKey && lastEvent && (lastEvent.type === "add" || lastEvent.type === "remove") && (lastEvent.amount || 0) > 100) {
@@ -2212,6 +2381,10 @@ function setPresenterMode(active) {
     ? (isPresenterOwner ? "Gerar código para moderador" : "Modo apresentador ativo")
     : "Entrar no modo apresentador";
   presenterFabEl.hidden = !active;
+  notifBellTriggerEl.hidden = !active;
+  setNotifBellOpen(false);
+  if (active) loadPendingDonations();
+  else pendingDonations = [];
   // fecha o popover de ferramentas sempre que o modo apresentador muda --
   // entrar no modo apresentador não deve abrir a ferramenta sozinho,
   // cabeçalho começa mínimo (ver instrução do cliente sobre isso).
@@ -2707,6 +2880,29 @@ function updateLotModalRenameShelf() {
   }, 200);
 }
 
+// atualiza o card no catálogo na hora, sem esperar o próximo "update" do
+// socket -- numa conexão real (não local), esse aviso pode atrasar ou se
+// perder num pico de reconexão mesmo a gravação já tendo funcionado no
+// servidor, e o card por trás do modal ficava com o nome antigo até
+// qualquer outro evento forçar um re-render (o que parecia "só funciona se
+// eu clicar em outra coisa depois").
+function patchLotCardAfterRename(key, name, imageUrl) {
+  const item = currentItems.find((i) => i.key === key);
+  if (!item) return;
+  item.name = name;
+  if (imageUrl !== undefined) item.image = imageUrl;
+  const card = lotListEl.querySelector(`.lot-card[data-key="${CSS.escape(key)}"]`);
+  if (!card) return;
+  card.innerHTML = lotCardInnerHtml(item, 0, "", false, "", "", "");
+  const editBtn = card.querySelector(".lot-edit button");
+  if (editBtn) {
+    editBtn.addEventListener("click", () => {
+      const it = currentItems.find((i) => i.key === editBtn.dataset.key);
+      if (it) openLotModal(it);
+    });
+  }
+}
+
 async function saveLotModalRename() {
   if (!modalGame) return;
   const name = lotModalRenameInputEl.value.trim();
@@ -2726,6 +2922,7 @@ async function saveLotModalRename() {
       lotModalThumb.hidden = true;
       lotModalThumb.removeAttribute("src");
     }
+    patchLotCardAfterRename(modalGame.key, game.name, lotModalRenameImage !== undefined ? game.image_url || null : undefined);
     hideLotModalRename();
   } catch (err) {
     alert(err.message);

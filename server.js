@@ -33,7 +33,7 @@ function loadMusicMetadata() {
 const registry = require("./src/registry");
 const { getStore, deleteStore, DATA_DIR } = require("./src/stores");
 const { hashPassword, verifyPassword, timingSafeEqualString } = require("./src/passwords");
-const { parseMessage, normalizeKey, leftoverAfterMatch, looksLikeNoise } = require("./src/parser");
+const { parseMessage, normalizeKey, leftoverAfterMatch, looksLikeNoise, findExistingGameInText } = require("./src/parser");
 const igdbApi = require("./src/igdbApi");
 const { getMediaAdapter, mediaLabel, normalizeMode, MODES: LEILAO_MODES } = require("./src/mediaAdapter");
 const { fetchTwitchAvatar } = require("./src/twitchClient");
@@ -515,10 +515,13 @@ function requireLeilaoAdmin(req, res, next) {
 
 // curingaOnUnparsed: usado só pelo caminho do pixgg.com, onde a mensagem é
 // texto livre digitado pelo doador direto na página deles (sem validação
-// nossa antes de enviar) -- em vez de perder o valor arrecadado quando o
-// parser não reconhece a mensagem, credita num item genérico "Não
-// identificado" pro apresentador ajustar manualmente depois se quiser.
-// Efí/Mercado Pago continuam com o comportamento antigo (só loga e ignora),
+// nossa antes de enviar, e sem a convenção "+Jogo" pensada pro chat). Antes
+// de desistir: tenta achar um jogo JÁ no catálogo em qualquer trecho da
+// mensagem (findExistingGameInText, tolera erro de digitação por palavra).
+// Se não achar, vira uma doação pendente (fila de identificação) em vez de
+// um card "Não identificado" no catálogo -- dinheiro conta no total
+// arrecadado igual, só não vira um item de jogo até alguém decidir. Efí/
+// Mercado Pago continuam com o comportamento antigo (só loga e ignora),
 // porque lá o formulário já valida o jogo antes de gerar a cobrança.
 async function processDonationMessage(leilaoId, store, { id, fallbackUsername, fallbackMessage, fallbackAmount, fallbackNote, fallbackVoiceId, curingaOnUnparsed }) {
   if (store.isAlreadyProcessed(id)) return;
@@ -539,10 +542,23 @@ async function processDonationMessage(leilaoId, store, { id, fallbackUsername, f
   }
 
   let parsed = parseMessage(message);
-  let isCuringa = false;
   if (!parsed && curingaOnUnparsed) {
-    parsed = { action: "add", name: "Não identificado", key: "nao-identificado" };
-    isCuringa = true;
+    const existingGames = store.getLeaderboard().map((g) => ({ key: g.key, name: g.name }));
+    const matched = findExistingGameInText(message, existingGames);
+    if (matched) parsed = { action: "add", name: matched.name, key: matched.key };
+  }
+  if (!parsed && curingaOnUnparsed) {
+    const pendingEvent = store.logPendingDonation({ amountCents, username, rawMessage: message, providerId: id });
+    touchActivity(store);
+    broadcastUpdate(leilaoId, store, {
+      type: "pending",
+      username,
+      amount: centsToNumber(amountCents),
+      message,
+      eventId: pendingEvent.id,
+      avatar: getDonorAvatar(username),
+    });
+    return;
   }
   if (!parsed) {
     store.logUnparsedEvent({ amountCents, username, rawMessage: message, providerId: id });
@@ -554,9 +570,7 @@ async function processDonationMessage(leilaoId, store, { id, fallbackUsername, f
     });
     return;
   }
-  // não roda fuzzy-match/busca de capa pro item curinga -- "Não identificado"
-  // não é um nome de jogo de verdade, ia só confundir a identificação
-  if (!isCuringa) parsed = await resolveParsedGame(store, parsed);
+  parsed = await resolveParsedGame(store, parsed);
 
   const needsImage = !store.hasGame(parsed.key) || !store.hasGameImage(parsed.key);
 
@@ -1915,6 +1929,48 @@ app.post("/api/l/:id/admin/merge", loadLeilao, requireLeilaoAdmin, (req, res) =>
   if (!game) return res.status(404).json({ error: "Jogo(s) não encontrado(s)" });
   broadcastUpdate(req.leilaoId, req.store, { type: "merge" });
   res.json({ ok: true, game });
+});
+
+// doações que caíram na fila de pendência (ver processDonationMessage) --
+// sino de notificações lista com GET, resolve com um dos dois POST abaixo.
+app.get("/api/l/:id/admin/pending", loadLeilao, requireLeilaoAdmin, (req, res) => {
+  const pending = req.store.getPendingDonations().map((ev) => ({ ...ev, avatar: getDonorAvatar(ev.username) }));
+  res.json({ pending });
+});
+
+// gameKey+gameName+gameImage vêm do mesmo componente de busca (game-shelf)
+// que o diálogo de renomear já usa -- se o jogo ainda não existe no
+// catálogo, cria na hora (0 arrecadado até esse momento) e já atribui.
+app.post("/api/l/:id/admin/pending/:eventId/assign", loadLeilao, requireLeilaoAdmin, (req, res) => {
+  const eventId = Number(req.params.eventId);
+  if (!Number.isFinite(eventId)) return res.status(400).json({ error: "eventId inválido" });
+  const { gameName, gameImage } = req.body || {};
+  if (!gameName || !gameName.trim()) return res.status(400).json({ error: "Informe um jogo" });
+  const { store, leilaoId } = req;
+  const key = normalizeKey(gameName);
+  if (!key) return res.status(400).json({ error: "Nome de jogo inválido" });
+  if (!store.hasGame(key)) {
+    store.addManualGame(gameName.trim(), key, 0);
+    if (gameImage) store.setGameImage(key, gameImage);
+  }
+  const game = store.resolvePendingDonationAssign(eventId, key);
+  if (!game) return res.status(404).json({ error: "Doação pendente não encontrada" });
+  broadcastUpdate(leilaoId, store, {
+    type: "pending-resolved",
+    eventId,
+    resolution: "assign",
+    game: { key: game.key, name: game.name, total: centsToNumber(game.total_cents) },
+  });
+  res.json({ ok: true, game });
+});
+
+app.post("/api/l/:id/admin/pending/:eventId/dismiss", loadLeilao, requireLeilaoAdmin, (req, res) => {
+  const eventId = Number(req.params.eventId);
+  if (!Number.isFinite(eventId)) return res.status(400).json({ error: "eventId inválido" });
+  const ok = req.store.resolvePendingDonationDismiss(eventId);
+  if (!ok) return res.status(404).json({ error: "Doação pendente não encontrada" });
+  broadcastUpdate(req.leilaoId, req.store, { type: "pending-resolved", eventId, resolution: "dismiss" });
+  res.json({ ok: true });
 });
 
 app.post("/api/l/:id/admin/add-game", loadLeilao, requireLeilaoAdmin, (req, res) => {
