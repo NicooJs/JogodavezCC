@@ -285,6 +285,14 @@ body.board-body.has-bg-image .board-cover-bg { display: none; }
   margin-bottom: 16px;
 }
 
+.topbar-left {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  flex-wrap: wrap;
+  min-width: 0;
+}
+
 .topbar-mark {
   display: flex;
   align-items: baseline;
@@ -356,10 +364,18 @@ body.board-body.has-bg-image .board-cover-bg { display: none; }
   backdrop-filter: blur(10px);
   -webkit-backdrop-filter: blur(10px);
   border: 1px solid color-mix(in srgb, var(--positive) 32%, transparent);
-  border-radius: 999px;
+  border-radius: 0;
   padding: 7px 18px 7px 15px;
   box-shadow: 0 4px 16px -6px color-mix(in srgb, var(--positive) 40%, transparent);
+  transition: border-color 0.15s ease, transform 0.15s ease;
 }
+
+/* clicável só faz sentido pro apresentador (abre o extrato do leilão) --
+   pro público é só um indicador, sem affordance de clique nenhuma. */
+.presenter-mode .topbar-total { cursor: pointer; }
+.presenter-mode .topbar-total:hover { border-color: color-mix(in srgb, var(--positive) 60%, transparent); }
+.presenter-mode .topbar-total:active { transform: scale(0.98); }
+.topbar-total:focus-visible { outline: 2px solid var(--positive); outline-offset: 2px; }
 
 .topbar-total::before {
   content: "";
@@ -2031,14 +2047,14 @@ body.board-body.has-bg-image .board-cover-bg { display: none; }
   pointer-events: none;
 }
 
-.host-panel { flex-shrink: 0; padding: 28px 16px; }
+.host-panel { flex-shrink: 0; padding: 20px 16px; }
 
 .host-card {
   position: relative;
   background: var(--surface-2);
   border: 1px solid var(--border);
   border-radius: 12px;
-  padding: 26px 16px;
+  padding: 16px;
   animation: host-card-in 0.5s var(--ease);
 }
 
@@ -2050,18 +2066,21 @@ body.board-body.has-bg-image .board-cover-bg { display: none; }
   .host-card { animation: none; }
 }
 
-.host-row { display: flex; flex-direction: column; align-items: center; gap: 16px; text-align: center; }
+/* achatado de propósito: avatar ao lado do nome em vez de empilhado, pra
+   ocupar bem menos altura na coluna esquerda (pedido explícito). */
+.host-row { display: flex; flex-direction: row; align-items: center; gap: 14px; text-align: left; }
+
+.host-info { display: flex; flex-direction: column; gap: 2px; min-width: 0; flex: 1; }
 
 .host-name {
   font-family: var(--font-display);
   font-style: italic;
   font-weight: 700;
-  font-size: 32px;
+  font-size: 22px;
   letter-spacing: 0.01em;
-  line-height: 1.15;
+  line-height: 1.2;
   margin: 0;
   color: var(--text);
-  width: 100%;
   min-width: 0;
   overflow: hidden;
   overflow-wrap: break-word;
@@ -2075,12 +2094,12 @@ body.board-body.has-bg-image .board-cover-bg { display: none; }
 .host-avatar-wrap { position: relative; flex-shrink: 0; }
 
 .host-avatar {
-  width: 88px;
-  height: 88px;
+  width: 56px;
+  height: 56px;
   border-radius: 50%;
   object-fit: cover;
-  border: 3px solid var(--accent);
-  box-shadow: 0 0 0 5px var(--accent-bg);
+  border: 2px solid var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-bg);
   flex-shrink: 0;
 }
 
@@ -2088,10 +2107,9 @@ body.board-body.has-bg-image .board-cover-bg { display: none; }
 
 .host-twitch-link {
   display: block;
-  text-align: center;
-  margin-top: 10px;
+  margin-top: 1px;
   font-family: var(--font-mono);
-  font-size: 12.5px;
+  font-size: 12px;
   letter-spacing: 0.02em;
   color: var(--accent-text);
   overflow: hidden;
@@ -2103,10 +2121,10 @@ body.board-body.has-bg-image .board-cover-bg { display: none; }
 
 .host-twitch-badge {
   position: absolute;
-  bottom: -1px;
-  right: -1px;
-  width: 26px;
-  height: 26px;
+  bottom: -2px;
+  right: -2px;
+  width: 20px;
+  height: 20px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -2116,7 +2134,7 @@ body.board-body.has-bg-image .board-cover-bg { display: none; }
   color: #fff;
   transition: transform 0.15s ease;
 }
-.host-twitch-badge .icon { width: 13px; height: 13px; }
+.host-twitch-badge .icon { width: 10px; height: 10px; }
 .host-twitch-badge:hover { transform: scale(1.1); }
 .host-twitch-badge[hidden] { display: none; }
 
@@ -3824,6 +3842,63 @@ body.board-body.has-bg-image .board-cover-bg { display: none; }
 }
 
 .donate-modal { max-width: 400px; }
+
+.extrato-modal-box { max-width: 640px; }
+
+.extrato-summary {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  padding: 10px 12px;
+  margin-bottom: 14px;
+  background: color-mix(in srgb, var(--positive) 10%, var(--surface-2));
+  border: 1px solid color-mix(in srgb, var(--positive) 28%, transparent);
+  border-radius: var(--radius);
+  font-family: var(--font-mono);
+}
+.extrato-summary-label { font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); }
+.extrato-summary-value { font-size: 19px; font-weight: 700; color: var(--positive); font-variant-numeric: tabular-nums; }
+.extrato-summary-count { margin-left: auto; font-size: 11.5px; color: var(--muted); }
+
+.extrato-table-wrap { max-height: 55vh; overflow-y: auto; overflow-x: auto; }
+
+.extrato-table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+
+.extrato-table th {
+  position: sticky;
+  top: 0;
+  background: var(--surface);
+  text-align: left;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--muted);
+  font-weight: 600;
+  padding: 6px 8px;
+  border-bottom: 1px solid var(--border);
+  white-space: nowrap;
+}
+.extrato-table th:last-child, .extrato-table td:last-child,
+.extrato-table th:nth-child(4), .extrato-table td:nth-child(4) { text-align: right; }
+
+.extrato-table td {
+  padding: 7px 8px;
+  border-bottom: 1px solid var(--border-soft);
+  vertical-align: top;
+}
+.extrato-table tr:hover td { background: var(--surface-2); }
+
+.extrato-time { font-family: var(--font-mono); font-size: 11px; color: var(--muted); white-space: nowrap; }
+.extrato-who { font-weight: 600; color: var(--text); }
+.extrato-game { color: var(--muted); }
+.extrato-game.is-pending { color: var(--gold); font-style: italic; }
+.extrato-amt { font-family: var(--font-mono); font-variant-numeric: tabular-nums; white-space: nowrap; font-weight: 600; }
+.extrato-amt.is-negative { color: var(--danger); }
+.extrato-amt.is-positive { color: var(--positive); }
+.extrato-balance { font-family: var(--font-mono); font-variant-numeric: tabular-nums; white-space: nowrap; color: var(--muted); }
+
+.extrato-empty { color: var(--muted); font-size: 13px; text-align: center; padding: 20px 0; margin: 0; }
 
 .donate-step-success { text-align: center; padding: 12px 0 4px; }
 

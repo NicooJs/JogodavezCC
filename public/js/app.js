@@ -1156,6 +1156,76 @@ notifBellPendingEl.addEventListener("click", async (e) => {
   }
 });
 
+// extrato do leilão: histórico completo (não só os últimos ~30 do sino)
+// com saldo acumulado, tipo extrato bancário -- abre clicando no total
+// arrecadado, só disponível em modo apresentador.
+const extratoModalEl = document.getElementById("extrato-modal");
+const extratoModalCloseEl = document.getElementById("extrato-modal-close");
+const extratoSummaryEl = document.getElementById("extrato-summary");
+const extratoBodyEl = document.getElementById("extrato-body");
+const extratoEmptyEl = document.getElementById("extrato-empty");
+
+function extratoRowHtml(row) {
+  const time = row.time
+    ? new Date(row.time).toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" })
+    : "";
+  const isNegative = row.action === "remove";
+  const gameLabel = row.pending ? "aguardando identificação" : row.dismissed ? "apoio geral" : (row.game || "—");
+  const gameClass = row.pending || row.dismissed ? " is-pending" : "";
+  return `
+    <tr>
+      <td class="extrato-time">${time}</td>
+      <td class="extrato-who">${escapeHtml(row.username || "Anônimo")}</td>
+      <td class="extrato-game${gameClass}">${escapeHtml(gameLabel)}</td>
+      <td class="extrato-amt ${isNegative ? "is-negative" : "is-positive"}">${isNegative ? "−" : "+"}${formatBRL(row.amount)}</td>
+      <td class="extrato-balance">${formatBRL(row.balance)}</td>
+    </tr>
+  `;
+}
+
+async function openExtratoModal() {
+  extratoModalEl.hidden = false;
+  extratoBodyEl.innerHTML = "";
+  extratoEmptyEl.hidden = true;
+  extratoSummaryEl.innerHTML = `<span class="extrato-summary-label">carregando…</span>`;
+  try {
+    const { rows, totalRaised } = await presenterFetch("/extrato");
+    extratoSummaryEl.innerHTML = `
+      <span class="extrato-summary-label">total arrecadado</span>
+      <span class="extrato-summary-value">${formatBRL(totalRaised)}</span>
+      <span class="extrato-summary-count">${rows.length} doaç${rows.length === 1 ? "ão" : "ões"}</span>
+    `;
+    if (!rows.length) {
+      extratoEmptyEl.hidden = false;
+    } else {
+      extratoBodyEl.innerHTML = rows.map(extratoRowHtml).join("");
+    }
+  } catch (err) {
+    extratoSummaryEl.innerHTML = "";
+    extratoEmptyEl.hidden = false;
+    extratoEmptyEl.textContent = `Erro ao carregar o extrato: ${err.message}`;
+  }
+}
+
+function closeExtratoModal() {
+  extratoModalEl.hidden = true;
+}
+
+function handleTopbarTotalActivate(e) {
+  if (e.target.closest("#total-hide-toggle")) return;
+  if (!document.body.classList.contains("presenter-mode")) return;
+  openExtratoModal();
+}
+topbarTotalEl.addEventListener("click", handleTopbarTotalActivate);
+topbarTotalEl.addEventListener("keydown", (e) => {
+  if (e.key !== "Enter" && e.key !== " ") return;
+  e.preventDefault();
+  handleTopbarTotalActivate(e);
+});
+extratoModalCloseEl.addEventListener("click", closeExtratoModal);
+extratoModalEl.addEventListener("click", (e) => { if (e.target === extratoModalEl) closeExtratoModal(); });
+document.addEventListener("keydown", (e) => { if (e.key === "Escape" && !extratoModalEl.hidden) closeExtratoModal(); });
+
 const soldSwirlCanvasEl = document.getElementById("sold-swirl-canvas");
 const soldSwirlCtx = soldSwirlCanvasEl.getContext("2d");
 let soldSwirlRaf = null;

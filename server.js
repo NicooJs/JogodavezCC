@@ -1415,6 +1415,40 @@ app.get("/api/l/:id/events/recent", loadLeilao, (req, res) => {
   res.json({ events });
 });
 
+// extrato completo do leilão (não só os últimos N como /events/recent) --
+// pedido do streamer pra ver o histórico detalhado com saldo acumulado,
+// tipo extrato bancário. Só pro apresentador: mesmo dado bruto de doador
+// que o /events/recent já expõe publicamente, mas aqui é a lista inteira,
+// não só uma amostra recente.
+app.get("/api/l/:id/extrato", loadLeilao, requireLeilaoAdmin, (req, res) => {
+  const chronological = req.store.getRecentEvents(100000).slice().reverse();
+  let balance = 0;
+  const rows = [];
+  for (const e of chronological) {
+    if (e.action !== "add" && e.action !== "remove") continue;
+    // saldo é o quanto o streamer recebeu de verdade, sempre soma -- uma
+    // sabotagem também é Pix de verdade caindo na conta, só derruba o
+    // placar do jogo, não o dinheiro (mesma regra de getTotalRaised()).
+    // A coluna "valor" continua com sinal, pra mostrar o que foi apoio vs
+    // sabotagem -- só o saldo acumulado que precisa bater com o total.
+    const amount = centsToNumber(e.amount_cents);
+    balance = Math.round((balance + amount) * 100) / 100;
+    rows.push({
+      id: e.id,
+      time: e.created_at,
+      username: e.username,
+      game: e.game_name,
+      pending: !!e.pending,
+      dismissed: !!e.dismissed,
+      action: e.action,
+      amount,
+      balance,
+    });
+  }
+  rows.reverse();
+  res.json({ rows, totalRaised: centsToNumber(req.store.getTotalRaised()) });
+});
+
 const MIN_DONATION_CENTS = 500; // R$5 -- mesmo valor em public/js/doar.js, mantenha os dois em sincronia
 
 // não aplica a contribuição aqui -- só quando o webhook confirmar o pagamento
