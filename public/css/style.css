@@ -610,13 +610,16 @@ body.board-body.has-bg-image .board-cover-bg { display: none; }
 .presenter-bar {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 8px;
   flex-wrap: wrap;
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: var(--radius);
-  padding: 12px 16px;
-  margin-bottom: 16px;
+  /* compacta de propósito: essa barra é ferramenta, não conteúdo -- toda
+     altura que ela ocupa é altura que sai do catálogo, que é o que
+     importa de verdade pro apresentador e pro público. */
+  padding: 7px 12px;
+  margin-bottom: 10px;
   animation: drop-in 0.2s var(--ease);
 }
 
@@ -631,11 +634,11 @@ body.board-body.has-bg-image .board-cover-bg { display: none; }
   background: var(--surface-2);
   border: 1px solid var(--border);
   color: var(--text);
-  padding: 8px 12px;
+  padding: 7px 12px;
   border-radius: var(--radius);
   font-family: var(--font-body);
-  font-size: 13.5px;
-  height: 36px;
+  font-size: 13px;
+  height: 32px;
   transition: border-color 0.15s ease, box-shadow 0.15s ease;
 }
 
@@ -650,16 +653,16 @@ body.board-body.has-bg-image .board-cover-bg { display: none; }
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 36px;
-  height: 36px;
-  border-radius: 9px;
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
   background: none;
   border: none;
   color: var(--muted);
   cursor: pointer;
 }
 .presenter-bar-icon-link:hover { background: var(--surface-2); }
-.presenter-bar-icon-link .icon { width: 17px; height: 17px; }
+.presenter-bar-icon-link .icon { width: 16px; height: 16px; }
 .presenter-bar-link:hover { color: var(--accent-text); }
 
 .theme-dots[hidden] { display: none; }
@@ -737,24 +740,24 @@ body.board-body.has-bg-image .board-cover-bg { display: none; }
 .theme-dot-branco { background: linear-gradient(135deg, #f5f4f8 50%, #2a2432 50%); }
 
 .pbar-btn {
-  height: 38px;
-  padding: 0 16px;
+  height: 32px;
+  padding: 0 13px;
   display: inline-flex;
   align-items: center;
-  gap: 7px;
-  border-radius: 9px;
+  gap: 6px;
+  border-radius: 8px;
   border: 1px solid transparent;
   font-family: var(--font-body);
-  font-size: 13px;
+  font-size: 12.5px;
   font-weight: 600;
   white-space: nowrap;
   cursor: pointer;
   transition: transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease, background 0.15s ease, color 0.15s ease;
 }
-.pbar-btn .icon { width: 14px; height: 14px; flex-shrink: 0; }
+.pbar-btn .icon { width: 13px; height: 13px; flex-shrink: 0; }
 .pbar-btn:active { transform: translateY(0) !important; }
 
-.pbar-btn-icon-only { width: 38px; padding: 0; gap: 0; justify-content: center; }
+.pbar-btn-icon-only { width: 32px; padding: 0; gap: 0; justify-content: center; }
 
 .sr-only {
   position: absolute;
@@ -1963,9 +1966,9 @@ body.board-body.has-bg-image .board-cover-bg { display: none; }
   min-height: 0;
   flex: 1;
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(430px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(460px, 1fr));
   align-content: start;
-  gap: 10px;
+  gap: 14px;
   margin: 0 -4px;
   padding: 2px 4px 4px;
 }
@@ -2027,9 +2030,16 @@ body.board-body.has-bg-image .board-cover-bg { display: none; }
   border-radius: var(--radius);
   overflow: hidden;
   /* overflow != visible zera a altura mínima automática do item no Grid; sem isso o conteúdo cortava. */
-  min-height: 122px;
+  min-height: 148px;
   transition: border-color 0.2s ease, box-shadow 0.3s ease;
   animation: card-in 0.25s var(--ease);
+}
+
+/* líder da rodada: card em destaque de verdade, não só "mais largo" --
+   maior, com capa maior e valor em tipografia grande, pra ficar óbvio de
+   longe (streamer capturando a tela) qual jogo tá na frente agora. */
+.lot-card.rank-1 {
+  min-height: 200px;
 }
 .arena-grid .lot-card:nth-of-type(3n+1) { border-radius: 8px 5px 8px 6px; }
 .arena-grid .lot-card:nth-of-type(3n+2) { border-radius: 5px 7px 5px 8px; }
@@ -2195,9 +2205,11 @@ body.board-body.has-bg-image .board-cover-bg { display: none; }
   position: relative;
   display: flex;
   align-items: center;
-  gap: 16px;
-  padding: 18px 22px;
+  gap: 18px;
+  padding: 20px 24px;
 }
+
+.lot-card.rank-1 .lot-card-content { padding: 26px 30px; gap: 24px; }
 
 .lot-rank {
   display: flex;
@@ -2214,6 +2226,8 @@ body.board-body.has-bg-image .board-cover-bg { display: none; }
 }
 
 .lot-rank .medal-icon { width: 34px; height: 34px; }
+.lot-card.rank-1 .lot-rank .medal-icon { width: 46px; height: 46px; }
+.lot-card.rank-1 .lot-rank { width: 50px; font-size: 14px; }
 
 .lot-card.rank-1 .lot-rank { color: var(--accent-text); }
 .lot-card.rank-2 .lot-rank { color: var(--silver); }
@@ -2224,13 +2238,16 @@ body.board-body.has-bg-image .board-cover-bg { display: none; }
 .lot-card.rank-3 .lot-rank .medal-icon { transform: rotate(-3deg); }
 
 .lot-thumb {
-  width: 92px;
-  height: 92px;
+  width: 112px;
+  height: 112px;
   border-radius: 8px;
   object-fit: cover;
   background: var(--surface);
   flex-shrink: 0;
 }
+
+.lot-card.rank-1 .lot-thumb,
+.lot-card.rank-1 .lot-thumb-placeholder { width: 172px; height: 172px; border-radius: 10px; }
 
 .lot-thumb-placeholder {
   display: flex;
@@ -2242,6 +2259,8 @@ body.board-body.has-bg-image .board-cover-bg { display: none; }
   font-size: 28px;
 }
 
+.lot-card.rank-1 .lot-thumb-placeholder { font-size: 46px; }
+
 .lot-info {
   display: flex;
   flex-direction: column;
@@ -2252,7 +2271,7 @@ body.board-body.has-bg-image .board-cover-bg { display: none; }
 
 .lot-name {
   font-family: var(--font-display);
-  font-size: 17px;
+  font-size: 18.5px;
   font-weight: 500;
   margin: 0;
   color: var(--text);
@@ -2261,7 +2280,7 @@ body.board-body.has-bg-image .board-cover-bg { display: none; }
   white-space: nowrap;
 }
 
-.lot-card.rank-1 .lot-name { color: var(--text); font-weight: 600; }
+.lot-card.rank-1 .lot-name { color: var(--text); font-weight: 600; font-size: 27px; white-space: normal; }
 
 .lot-funding {
   display: flex;
@@ -2332,9 +2351,15 @@ body.board-body.has-bg-image .board-cover-bg { display: none; }
   max-width: 150px;
 }
 
+.lot-card.rank-1 .lot-meta { max-width: 220px; gap: 12px; }
+.lot-card.rank-1 .lot-top-donor-name,
+.lot-card.rank-1 .lot-funding { font-size: 13px; }
+.lot-card.rank-1 .lot-top-donor-avatar,
+.lot-card.rank-1 .lot-top-donor-avatar-placeholder { width: 19px; height: 19px; }
+
 .lot-total {
   font-family: var(--font-mono);
-  font-size: 14.5px;
+  font-size: 16px;
   color: var(--muted);
   font-variant-numeric: tabular-nums;
 }
@@ -2344,6 +2369,8 @@ body.board-body.has-bg-image .board-cover-bg { display: none; }
 .lot-card.rank-1 .lot-total,
 .lot-card.rank-2 .lot-total,
 .lot-card.rank-3 .lot-total { color: var(--accent-text); font-weight: 600; }
+
+.lot-card.rank-1 .lot-total { font-size: 34px; }
 
 .badge-hit { font-size: 10.5px; padding: 2px 6px; border-radius: 3px; background: var(--danger-bg); color: var(--danger); }
 .arena-grid .lot-card:nth-of-type(3n+1) .badge-hit { border-radius: 4px 2px 4px 3px; }
@@ -2890,6 +2917,23 @@ body.board-body.has-bg-image .board-cover-bg { display: none; }
   .lot-info { min-width: 64px; }
   .lot-edit button { width: 22px; height: 22px; }
   .lot-edit button .icon { width: 11px; height: 11px; }
+
+  /* o card do líder tem seletores mais específicos (.lot-card.rank-1 ...)
+     que venceriam as regras acima por especificidade mesmo vindo depois
+     -- repete aqui pra ele encolher igual aos outros em telas pequenas. */
+  .lot-card.rank-1 { min-height: 90px; }
+  .lot-card.rank-1 .lot-card-content { gap: 10px; padding: 12px 14px; }
+  .lot-card.rank-1 .lot-thumb,
+  .lot-card.rank-1 .lot-thumb-placeholder { width: 46px; height: 46px; font-size: 28px; }
+  .lot-card.rank-1 .lot-rank { width: 32px; }
+  .lot-card.rank-1 .lot-rank .medal-icon { width: 27px; height: 27px; }
+  .lot-card.rank-1 .lot-name { font-size: 17px; white-space: nowrap; }
+  .lot-card.rank-1 .lot-total { font-size: 14.5px; }
+  .lot-card.rank-1 .lot-meta { gap: 6px; max-width: 112px; }
+  .lot-card.rank-1 .lot-top-donor-name,
+  .lot-card.rank-1 .lot-funding { font-size: 11px; }
+  .lot-card.rank-1 .lot-top-donor-avatar,
+  .lot-card.rank-1 .lot-top-donor-avatar-placeholder { width: 15px; height: 15px; }
 }
 
 
