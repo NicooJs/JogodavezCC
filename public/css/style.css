@@ -573,23 +573,19 @@ body.board-body.has-bg-image .board-cover-bg { display: none; }
 .donate-open-btn .icon { width: 15px; height: 15px; }
 
 /* ranking, status "ao vivo" e modo apresentador saíram soltos da topbar
-   (poluía) e viraram um menu atrás de uma bolinha com a foto do host +
-   setinha -- pedido do cliente. */
-.topbar-menu { position: relative; }
+   (poluía) e viraram um dropdown atrás de uma setinha. A foto do host é um
+   elemento separado -- link direto pro /perfil (só ativo pro dono em modo
+   apresentador, ver setPresenterMode em app.js), não abre o dropdown. */
+.topbar-menu { position: relative; display: flex; align-items: center; gap: 6px; }
 
-.topbar-menu-trigger {
+.topbar-menu-avatar-link {
   display: flex;
-  align-items: center;
-  gap: 6px;
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: 999px;
-  padding: 4px 10px 4px 4px;
-  cursor: pointer;
-  transition: border-color 0.15s ease;
+  border-radius: 50%;
+  cursor: default;
+  transition: box-shadow 0.15s ease;
 }
-.topbar-menu-trigger:hover { border-color: var(--accent-soft); }
-.topbar-menu-trigger.active { border-color: var(--accent); }
+.topbar-menu-avatar-link[href] { cursor: pointer; }
+.topbar-menu-avatar-link[href]:hover { box-shadow: 0 0 0 2px var(--accent); }
 
 .topbar-menu-avatar,
 .topbar-menu-avatar-placeholder {
@@ -616,6 +612,22 @@ body.board-body.has-bg-image .board-cover-bg { display: none; }
 .topbar-menu-avatar[hidden],
 .topbar-menu-avatar-placeholder[hidden] { display: none; }
 
+.topbar-menu-trigger {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  flex-shrink: 0;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 50%;
+  cursor: pointer;
+  transition: border-color 0.15s ease;
+}
+.topbar-menu-trigger:hover { border-color: var(--accent-soft); }
+.topbar-menu-trigger.active { border-color: var(--accent); }
+
 .topbar-menu-chevron {
   width: 13px;
   height: 13px;
@@ -641,24 +653,9 @@ body.board-body.has-bg-image .board-cover-bg { display: none; }
   box-shadow: 0 16px 40px -12px rgba(0, 0, 0, 0.5);
   animation: drop-in 0.15s var(--ease);
 }
-
-.topbar-menu-perfil-link {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  width: 100%;
-  padding: 7px 9px;
-  border-radius: 8px;
-  color: var(--text);
-  font-size: 13px;
-  font-weight: 600;
-  text-decoration: none;
-  box-sizing: border-box;
-  transition: background 0.15s ease;
-}
-.topbar-menu-perfil-link:hover { background: var(--surface-2); }
-.topbar-menu-perfil-link .icon { width: 15px; height: 15px; color: var(--muted); flex-shrink: 0; }
-.topbar-menu-perfil-link[hidden] { display: none; }
+/* mesmo bug do avatar (ver acima): display:flex fixo vencia o [hidden] --
+   o menu literalmente nunca fechava, não importava o que o JS fizesse. */
+.topbar-menu-dropdown[hidden] { display: none; }
 
 .presenter-toggle-wrap { display: inline-flex; align-items: center; gap: 4px; }
 
@@ -1889,23 +1886,33 @@ body.board-body.has-bg-image .board-cover-bg { display: none; }
   pointer-events: none;
 }
 
-.host-panel { flex-shrink: 0; padding: 20px 10px; }
+.host-panel { flex-shrink: 0; padding: 28px 16px; }
 
 .host-card {
   position: relative;
   background: var(--surface-2);
   border: 1px solid var(--border);
-  border-radius: 10px;
-  padding: 18px 10px;
+  border-radius: 12px;
+  padding: 26px 16px;
+  animation: host-card-in 0.5s var(--ease);
 }
 
-.host-row { display: flex; flex-direction: column; align-items: center; gap: 12px; text-align: center; }
+@keyframes host-card-in {
+  from { opacity: 0; transform: translateY(-6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .host-card { animation: none; }
+}
+
+.host-row { display: flex; flex-direction: column; align-items: center; gap: 16px; text-align: center; }
 
 .host-name {
   font-family: var(--font-display);
   font-style: italic;
   font-weight: 700;
-  font-size: 34px;
+  font-size: 32px;
+  letter-spacing: 0.01em;
   line-height: 1.15;
   margin: 0;
   color: var(--text);
@@ -1917,16 +1924,18 @@ body.board-body.has-bg-image .board-cover-bg { display: none; }
   display: -webkit-box;
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
+  text-shadow: 0 2px 16px var(--accent-glow);
 }
 
 .host-avatar-wrap { position: relative; flex-shrink: 0; }
 
 .host-avatar {
-  width: 76px;
-  height: 76px;
+  width: 88px;
+  height: 88px;
   border-radius: 50%;
   object-fit: cover;
-  border: 2px solid var(--accent);
+  border: 3px solid var(--accent);
+  box-shadow: 0 0 0 5px var(--accent-bg);
   flex-shrink: 0;
 }
 
@@ -1935,9 +1944,10 @@ body.board-body.has-bg-image .board-cover-bg { display: none; }
 .host-twitch-link {
   display: block;
   text-align: center;
-  margin-top: 8px;
+  margin-top: 10px;
   font-family: var(--font-mono);
-  font-size: 12px;
+  font-size: 12.5px;
+  letter-spacing: 0.02em;
   color: var(--accent-text);
   overflow: hidden;
   text-overflow: ellipsis;
@@ -1948,10 +1958,10 @@ body.board-body.has-bg-image .board-cover-bg { display: none; }
 
 .host-twitch-badge {
   position: absolute;
-  bottom: -2px;
-  right: -2px;
-  width: 24px;
-  height: 24px;
+  bottom: -1px;
+  right: -1px;
+  width: 26px;
+  height: 26px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1961,7 +1971,7 @@ body.board-body.has-bg-image .board-cover-bg { display: none; }
   color: #fff;
   transition: transform 0.15s ease;
 }
-.host-twitch-badge .icon { width: 12px; height: 12px; }
+.host-twitch-badge .icon { width: 13px; height: 13px; }
 .host-twitch-badge:hover { transform: scale(1.1); }
 .host-twitch-badge[hidden] { display: none; }
 
@@ -2330,21 +2340,23 @@ body.board-body.has-bg-image .board-cover-bg { display: none; }
 
 .lot-card-bg {
   position: absolute;
-  inset: -6px;
+  inset: -10px;
   background-size: cover;
   background-position: center 30%;
-  filter: blur(2px) saturate(1.1) brightness(0.92);
-  transform: scale(1.02);
+  filter: blur(5px) saturate(1.1) brightness(0.78);
+  transform: scale(1.04);
 }
 
-/* capa quase à mostra agora -- só uma sombra bem leve pra dar profundidade;
-   quem garante leitura de nome/valor por cima é o text-shadow deles, não
-   mais escurecer a capa (ver .lot-name/.lot-total). */
+/* meio-termo depois de duas tentativas erradas: nem o blur pesado/escurecido
+   de sempre (escondia a capa quase toda) nem o quase cru de antes (deixava
+   qualquer corte/zoom esquisito da capa aparente) -- isso ainda esconde
+   recortes ruins mas deixa a arte reconhecível. Texto continua com
+   text-shadow como reforço (ver .lot-name/.lot-total). */
 .lot-card-bg::after {
   content: "";
   position: absolute;
   inset: 0;
-  background: linear-gradient(100deg, rgba(10, 10, 12, 0.38), rgba(10, 10, 12, 0.14) 55%, rgba(10, 10, 12, 0.4));
+  background: linear-gradient(100deg, rgba(10, 10, 12, 0.62), rgba(10, 10, 12, 0.38) 55%, rgba(10, 10, 12, 0.64));
 }
 
 .lot-card-fill {
@@ -2611,18 +2623,25 @@ body.board-body.has-bg-image .board-cover-bg { display: none; }
   white-space: nowrap;
 }
 
-.lot-meta {
+/* selos (streak/duelo/sabotado) + editar saíram da coluna direita e viram
+   um grupinho flutuante no canto superior direito do card, sobre a capa --
+   pai é .lot-card (position:relative), não .lot-card-content, pra não
+   competir com o padding/flex dele. */
+.lot-corner {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  z-index: 2;
   display: flex;
   align-items: center;
   flex-wrap: wrap;
   justify-content: flex-end;
-  row-gap: 4px;
-  gap: 10px;
-  flex-shrink: 0;
-  max-width: 150px;
+  gap: 6px;
+  max-width: 55%;
 }
 
-.lot-card.rank-1 .lot-meta { max-width: 230px; gap: 12px; }
+.lot-card.rank-1 .lot-corner { top: 16px; right: 16px; gap: 8px; }
+
 .lot-card.rank-1 .lot-top-donor-name,
 .lot-card.rank-1 .lot-funding { font-size: 13px; }
 .lot-card.rank-1 .lot-top-donor-avatar,
@@ -2632,10 +2651,12 @@ body.board-body.has-bg-image .board-cover-bg { display: none; }
    lote), vermelho quando a sabotagem já derrubou o total abaixo de zero
    (.lot-total-negative, calculado em app.js). Cor de rank saiu daqui: quem
    lidera já fica óbvio pelo tamanho/medalha, a cor do valor agora só fala
-   sobre o dinheiro em si. */
+   sobre o dinheiro em si. Fica abaixo do nome (não mais do lado), pedido
+   explícito -- por isso ganhou mais peso visual que um chip lateral tinha. */
 .lot-total {
   font-family: var(--font-mono);
-  font-size: 16px;
+  font-size: 20px;
+  font-weight: 600;
   color: var(--positive);
   font-variant-numeric: tabular-nums;
   text-shadow: 0 1px 3px rgba(0, 0, 0, 0.85), 0 0 10px rgba(0, 0, 0, 0.45);
@@ -2644,10 +2665,6 @@ body.board-body.has-bg-image .board-cover-bg { display: none; }
 .lot-total-negative { color: var(--danger); }
 
 .lot-total.tick { animation: tick 0.4s ease; }
-
-.lot-card.rank-1 .lot-total,
-.lot-card.rank-2 .lot-total,
-.lot-card.rank-3 .lot-total { font-weight: 600; }
 
 .lot-card.rank-1 .lot-total { font-size: 36px; text-shadow: 0 2px 6px rgba(0, 0, 0, 0.85), 0 0 18px rgba(0, 0, 0, 0.5); }
 
@@ -3212,7 +3229,8 @@ body.board-body.has-bg-image .board-cover-bg { display: none; }
   .lot-thumb, .lot-thumb-placeholder { width: 46px; height: 46px; }
   .lot-rank { width: 32px; }
   .lot-rank .medal-icon { width: 27px; height: 27px; }
-  .lot-meta { gap: 6px; max-width: 112px; }
+  .lot-total { font-size: 15px; }
+  .lot-corner { top: 6px; right: 6px; gap: 4px; }
   .lot-info { min-width: 64px; }
   .lot-edit button { width: 22px; height: 22px; }
   .lot-edit button .icon { width: 11px; height: 11px; }
@@ -3228,7 +3246,7 @@ body.board-body.has-bg-image .board-cover-bg { display: none; }
   .lot-card.rank-1 .lot-rank .medal-icon { width: 27px; height: 27px; }
   .lot-card.rank-1 .lot-name { font-size: 17px; white-space: nowrap; }
   .lot-card.rank-1 .lot-total { font-size: 14.5px; }
-  .lot-card.rank-1 .lot-meta { gap: 6px; max-width: 112px; }
+  .lot-card.rank-1 .lot-corner { top: 6px; right: 6px; gap: 4px; }
   .lot-card.rank-1 .lot-top-donor-name,
   .lot-card.rank-1 .lot-funding { font-size: 11px; }
   .lot-card.rank-1 .lot-top-donor-avatar,

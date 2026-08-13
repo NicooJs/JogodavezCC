@@ -48,12 +48,16 @@
         </button>
 
         <!-- ranking, status "ao vivo" e modo apresentador viviam soltos aqui
-             na topbar, poluindo -- agora moram dentro desse menu, atrás de
-             uma bolinha (foto do host) + setinha, canto superior direito. -->
+             na topbar, poluindo -- agora moram atrás de uma setinha. A foto
+             do host virou o link direto pro /perfil (só clicável pro dono
+             em modo apresentador, mesma regra que "Ver perfil" tinha antes
+             -- ver setPresenterMode em app.js), a setinha só abre o resto. -->
         <div class="topbar-menu">
-          <button class="topbar-menu-trigger" id="topbar-menu-trigger" type="button" aria-haspopup="true" aria-expanded="false" aria-label="Menu">
+          <a class="topbar-menu-avatar-link" id="topbar-menu-avatar-link" target="_blank" rel="noopener" aria-label="Ver perfil">
             <img class="topbar-menu-avatar" id="topbar-menu-avatar" alt="" hidden />
             <span class="topbar-menu-avatar-placeholder" id="topbar-menu-avatar-placeholder">?</span>
+          </a>
+          <button class="topbar-menu-trigger" id="topbar-menu-trigger" type="button" aria-haspopup="true" aria-expanded="false" aria-label="Menu">
             <svg class="icon topbar-menu-chevron" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 8 5 5 5-5"/></svg>
           </button>
           <div class="topbar-menu-dropdown" id="topbar-menu-dropdown" hidden>
@@ -72,10 +76,6 @@
               </button>
               <button class="presenter-toggle-exit" id="presenter-exit" type="button" title="Sair do modo apresentador" aria-label="Sair do modo apresentador" hidden>✕</button>
             </div>
-            <a class="topbar-menu-perfil-link" id="host-perfil-link" href="/perfil" hidden>
-              <svg class="icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="10" cy="6.6" r="3.1"/><path d="M4 16.5c0-3.3 2.7-5.5 6-5.5s6 2.2 6 5.5"/></svg>
-              Ver perfil
-            </a>
           </div>
         </div>
       </div>

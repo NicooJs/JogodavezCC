@@ -19,7 +19,7 @@ const hostNameEl = document.getElementById("host-name");
 const hostAvatarEl = document.getElementById("host-avatar");
 const hostTwitchBadgeEl = document.getElementById("host-twitch-badge");
 const hostTwitchLinkEl = document.getElementById("host-twitch-link");
-const hostPerfilLinkEl = document.getElementById("host-perfil-link");
+const topbarMenuAvatarLinkEl = document.getElementById("topbar-menu-avatar-link");
 const topbarMenuTriggerEl = document.getElementById("topbar-menu-trigger");
 const topbarMenuDropdownEl = document.getElementById("topbar-menu-dropdown");
 const topbarMenuAvatarEl = document.getElementById("topbar-menu-avatar");
@@ -441,19 +441,19 @@ function lotCardInnerHtml(item, barPct, hitBadge, changed, streakBadge, duelGlow
       ${thumb}
       <div class="lot-info">
         <p class="lot-name">${escapeHtml(item.name)}</p>
+        <span class="lot-total${changed ? " tick" : ""}${item.total < 0 ? " lot-total-negative" : ""}">${formatBRL(item.total)}</span>
         ${lotFundingHtml(item)}
         ${lotTopDonorHtml(item)}
       </div>
-      <div class="lot-meta">
-        <span class="lot-total${changed ? " tick" : ""}${item.total < 0 ? " lot-total-negative" : ""}">${formatBRL(item.total)}</span>
-        ${streakBadge}
-        ${duelBadge}
-        ${hitBadge}
-        <div class="lot-edit">
-          <button data-key="${item.key}" type="button" aria-label="Editar ${escapeHtml(item.name)}" title="Editar">
-            <svg class="icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M13 3.5l3.5 3.5L6.5 17 2.5 17.5 3 13.5 13 3.5z"/><path d="M11.3 5.2l3.5 3.5"/></svg>
-          </button>
-        </div>
+    </div>
+    <div class="lot-corner">
+      ${streakBadge}
+      ${duelBadge}
+      ${hitBadge}
+      <div class="lot-edit">
+        <button data-key="${item.key}" type="button" aria-label="Editar ${escapeHtml(item.name)}" title="Editar">
+          <svg class="icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M13 3.5l3.5 3.5L6.5 17 2.5 17.5 3 13.5 13 3.5z"/><path d="M11.3 5.2l3.5 3.5"/></svg>
+        </button>
       </div>
     </div>
   `;
@@ -2216,7 +2216,15 @@ function setPresenterMode(active) {
   // entrar no modo apresentador não deve abrir a ferramenta sozinho,
   // cabeçalho começa mínimo (ver instrução do cliente sobre isso).
   setPresenterFabOpen(false);
-  hostPerfilLinkEl.hidden = !(active && isPresenterOwner);
+  // a foto no topo só vira link pro /perfil pra quem pode acessá-lo (dono,
+  // em modo apresentador) -- sem isso um espectador clicando na foto do
+  // host cairia no PRÓPRIO perfil dele (se logado) ou numa tela de login,
+  // o que não faz sentido nenhum pra quem só tá assistindo.
+  if (active && isPresenterOwner) {
+    topbarMenuAvatarLinkEl.href = "/perfil";
+  } else {
+    topbarMenuAvatarLinkEl.removeAttribute("href");
+  }
   updatePixWarning();
 }
 
