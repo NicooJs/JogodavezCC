@@ -397,7 +397,7 @@ body.board-body.has-bg-image .board-cover-bg { display: none; }
   font-weight: 600;
   letter-spacing: 0;
   text-transform: none;
-  color: var(--accent-text);
+  color: var(--positive);
   font-variant-numeric: tabular-nums;
   transition: transform 0.15s ease;
 }
@@ -1020,17 +1020,6 @@ body.board-body.has-bg-image .board-cover-bg { display: none; }
   font-family: var(--font-mono);
 }
 
-.tag {
-  display: inline-block;
-  font-family: var(--font-mono);
-  font-size: 11.5px;
-  padding: 1px 6px;
-  border-radius: 3px;
-}
-
-.tag-add { background: var(--accent-bg); color: var(--accent-text); }
-.tag-remove { background: var(--danger-bg); color: var(--danger); }
-
 /* .board é só o esqueleto de 3 colunas agora -- sem fundo/borda própria.
    Cada seção (.panel) é o cartão de verdade, solto, com o respiro do gap
    fazendo a separação em vez de uma caixa única envolvendo tudo (pedido
@@ -1213,6 +1202,11 @@ body.board-body.has-bg-image .board-cover-bg { display: none; }
   font-variant-numeric: tabular-nums;
 }
 
+/* só o valor em dinheiro (arrecadado) vira verde -- duração/apoiadores/
+   lotes ao lado continuam na cor de destaque do tema, não são valores
+   monetários. */
+#recap-total { color: var(--positive); }
+
 .recap-stat-label {
   font-family: var(--font-mono);
   font-size: 10px;
@@ -1365,7 +1359,7 @@ body.board-body.has-bg-image .board-cover-bg { display: none; }
   font-family: var(--font-mono);
   font-size: 15px;
   font-weight: 600;
-  color: var(--accent-text);
+  color: var(--positive);
   font-variant-numeric: tabular-nums;
 }
 
@@ -1560,7 +1554,7 @@ body.board-body.has-bg-image .board-cover-bg { display: none; }
 .recap-donor-total {
   font-family: var(--font-mono);
   font-size: 12.5px;
-  color: var(--muted);
+  color: var(--positive);
   font-variant-numeric: tabular-nums;
 }
 
@@ -1720,7 +1714,12 @@ body.board-body.has-bg-image .board-cover-bg { display: none; }
    os .lot-card individuais, não o painel inteiro. */
 .panel {
   padding: 22px 24px;
-  background: var(--surface);
+  /* semi-transparente + desfoque em vez de cor sólida -- deixa o mosaico
+     de capas atrás (.board-cover-bg) aparecer por trás dos cartões, meio
+     "vidro fosco", em vez de esconder o fundo por completo. */
+  background-color: color-mix(in srgb, var(--surface) 80%, transparent);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
   background-image: var(--grain);
   background-blend-mode: overlay;
   border: 1px solid var(--border);
@@ -1759,8 +1758,7 @@ body.board-body.has-bg-image .board-cover-bg { display: none; }
   color: var(--muted);
 }
 .panel-label-icon .icon { width: 17px; height: 17px; }
-.arena-panel > .panel-label-icon,
-.arena-panel > .panel-hint { padding: 0 2px; }
+.arena-panel > .panel-label-icon { padding: 0 2px; margin-bottom: 10px; }
 
 .history-sort-btn {
   margin-left: auto;
@@ -1783,16 +1781,6 @@ body.board-body.has-bg-image .board-cover-bg { display: none; }
 .history-sort-btn:hover { color: var(--text); background: var(--surface-2); }
 .history-sort-btn .icon { width: 13px; height: 13px; }
 .history-sort-btn.active { color: var(--accent-text); }
-
-.panel-hint {
-  margin: -6px 0 12px;
-  font-size: 12px;
-  color: var(--muted);
-  line-height: 1.55;
-  flex-shrink: 0;
-}
-
-.panel-hint strong { color: var(--text); }
 
 /* z-index 0, não -1: negativo já causou bug de empilhamento aqui. */
 .host-panel, .timer-panel { position: relative; }
@@ -2004,11 +1992,99 @@ body.board-body.has-bg-image .board-cover-bg { display: none; }
 .donor-total {
   font-family: var(--font-mono);
   font-size: 12.5px;
-  color: var(--muted);
+  color: var(--positive);
   font-variant-numeric: tabular-nums;
 }
 
-.donor-row.rank-1 .donor-total { color: var(--accent-text); font-weight: 600; }
+/* 1º colocado do quadro de honra vira um card de líder à parte -- avatar
+   maior com selo "01" sobreposto, valor em destaque e uma barra de
+   "domínio" (% do total arrecadado que essa pessoa representa sozinha). */
+.donor-leader {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 4px 4px 16px;
+  margin-bottom: 10px;
+  border-bottom: 1px dashed var(--border-soft);
+}
+
+.donor-leader-avatar-wrap { position: relative; flex-shrink: 0; }
+
+.donor-leader-avatar {
+  width: 54px;
+  height: 54px;
+  border-radius: 50%;
+  object-fit: cover;
+  background: var(--surface);
+  border: 2px solid var(--accent);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 20px;
+}
+
+.donor-leader-badge {
+  position: absolute;
+  bottom: -2px;
+  right: -2px;
+  background: var(--accent);
+  color: var(--accent-ink);
+  font-family: var(--font-mono);
+  font-size: 9px;
+  font-weight: 700;
+  width: 19px;
+  height: 19px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 2px solid var(--surface);
+}
+
+.donor-leader-data { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 5px; }
+
+.donor-leader-name {
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 15px;
+  color: var(--text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.donor-leader-total {
+  font-family: var(--font-mono);
+  font-size: 19px;
+  font-weight: 700;
+  color: var(--positive);
+  font-variant-numeric: tabular-nums;
+}
+
+.donor-dominance { display: flex; flex-direction: column; gap: 3px; margin-top: 1px; }
+
+.donor-dominance-label {
+  font-family: var(--font-mono);
+  font-size: 9.5px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--muted);
+}
+.donor-dominance-label b { color: var(--accent-text); font-weight: 700; }
+
+.donor-dominance-bar {
+  height: 4px;
+  border-radius: 999px;
+  background: var(--surface-2);
+  overflow: hidden;
+}
+.donor-dominance-bar i {
+  display: block;
+  height: 100%;
+  background: linear-gradient(90deg, var(--accent-soft), var(--accent));
+  border-radius: 999px;
+  transition: width 0.6s var(--ease);
+}
 
 /* transparente de propósito: os .lot-card individuais dentro dela já são
    os cartões soltos (fundo/borda/canto próprios) -- um fundo aqui também
@@ -2416,18 +2492,25 @@ body.board-body.has-bg-image .board-cover-bg { display: none; }
 .lot-card.rank-1 .lot-top-donor-avatar,
 .lot-card.rank-1 .lot-top-donor-avatar-placeholder { width: 19px; height: 19px; }
 
+/* valor é dinheiro de verdade -- verde por padrão (saldo positivo pro
+   lote), vermelho quando a sabotagem já derrubou o total abaixo de zero
+   (.lot-total-negative, calculado em app.js). Cor de rank saiu daqui: quem
+   lidera já fica óbvio pelo tamanho/medalha, a cor do valor agora só fala
+   sobre o dinheiro em si. */
 .lot-total {
   font-family: var(--font-mono);
   font-size: 16px;
-  color: var(--muted);
+  color: var(--positive);
   font-variant-numeric: tabular-nums;
 }
+
+.lot-total-negative { color: var(--danger); }
 
 .lot-total.tick { animation: tick 0.4s ease; }
 
 .lot-card.rank-1 .lot-total,
 .lot-card.rank-2 .lot-total,
-.lot-card.rank-3 .lot-total { color: var(--accent-text); font-weight: 600; }
+.lot-card.rank-3 .lot-total { font-weight: 600; }
 
 .lot-card.rank-1 .lot-total { font-size: 36px; }
 
@@ -2936,7 +3019,7 @@ body.board-body.has-bg-image .board-cover-bg { display: none; }
   background: var(--surface-2);
   color: var(--muted);
 }
-.history-amt.amt-add { color: var(--accent-text); background: var(--accent-bg); }
+.history-amt.amt-add { color: var(--positive); background: rgba(70, 177, 127, 0.14); }
 .history-amt.amt-remove { color: var(--danger); background: var(--danger-bg); }
 
 .footer {

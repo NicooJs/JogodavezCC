@@ -441,7 +441,7 @@ function lotCardInnerHtml(item, barPct, hitBadge, changed, streakBadge, duelGlow
         ${lotTopDonorHtml(item)}
       </div>
       <div class="lot-meta">
-        <span class="lot-total${changed ? " tick" : ""}">${formatBRL(item.total)}</span>
+        <span class="lot-total${changed ? " tick" : ""}${item.total < 0 ? " lot-total-negative" : ""}">${formatBRL(item.total)}</span>
         ${streakBadge}
         ${duelBadge}
         ${hitBadge}
@@ -840,10 +840,41 @@ function renderLots(items, flashKey, flashType, lastSabotagedKey, qualifyCount) 
   currentLeaderKey = newLeaderKey;
 }
 
-function renderDonors(donors) {
+// totalRaised (bruto do leilão inteiro) só pra calcular a % de "domínio" do
+// 1º colocado -- null quando o streamer oculta o total (getHideTotalRaised
+// no server): sem isso, a barra de domínio vazaria o total pela % + valor
+// do próprio doador, que continua público mesmo com o total oculto.
+function renderDonors(donors, totalRaised) {
   donorEmptyEl.style.display = donors.length === 0 ? "flex" : "none";
-  const maxTotal = Math.max(...donors.map((d) => d.total), 1);
-  const rows = donors.map((d) => {
+  const [leader, ...rest] = donors;
+  const maxTotal = Math.max(...rest.map((d) => d.total), 1);
+
+  let leaderHtml = "";
+  if (leader) {
+    const avatar = leader.avatar
+      ? `<img class="donor-leader-avatar" src="${escapeHtml(leader.avatar)}" alt="" loading="lazy" />`
+      : `<span class="donor-leader-avatar donor-avatar-placeholder">${escapeHtml((leader.username || "?")[0].toUpperCase())}</span>`;
+    const dominance = totalRaised > 0 ? Math.max(2, Math.min(100, Math.round((leader.total / totalRaised) * 100))) : null;
+    leaderHtml = `
+    <div class="donor-leader">
+      <div class="donor-leader-avatar-wrap">
+        ${avatar}
+        <span class="donor-leader-badge">01</span>
+      </div>
+      <div class="donor-leader-data">
+        <span class="donor-leader-name">${escapeHtml(leader.username || "Anônimo")}</span>
+        <span class="donor-leader-total">${formatBRL(leader.total)}</span>
+        ${dominance !== null ? `
+        <div class="donor-dominance">
+          <span class="donor-dominance-label">domínio <b>${dominance}%</b></span>
+          <div class="donor-dominance-bar"><i style="width:${dominance}%"></i></div>
+        </div>` : ""}
+      </div>
+    </div>
+  `;
+  }
+
+  const rows = rest.map((d) => {
     const pct = d.total > 0 ? Math.max(4, Math.round((d.total / maxTotal) * 100)) : 0;
     const avatar = d.avatar
       ? `<img class="donor-avatar" src="${escapeHtml(d.avatar)}" alt="" loading="lazy" />`
@@ -858,7 +889,7 @@ function renderDonors(donors) {
     </div>
   `;
   });
-  donorListEl.innerHTML = (donors.length === 0 ? donorEmptyEl.outerHTML : "") + rows.join("");
+  donorListEl.innerHTML = (donors.length === 0 ? donorEmptyEl.outerHTML : "") + leaderHtml + rows.join("");
   donorCountEl.textContent = String(donors.length);
 }
 
@@ -1850,7 +1881,7 @@ socket.on("update", ({ leaderboard, lastEvent }) => {
   donorNames = leaderboard.donorNames || [];
   const flashKey = lastEvent && lastEvent.game ? lastEvent.game.key : null;
   renderLots(leaderboard.items, flashKey, lastEvent ? lastEvent.type : null, leaderboard.lastSabotagedKey, leaderboard.qualifyCount || 3);
-  renderDonors(leaderboard.donors || []);
+  renderDonors(leaderboard.donors || [], leaderboard.hideTotalRaised ? null : leaderboard.totalRaised);
   if (lastEvent && lastEvent.type === "reset") {
     historyItems = [];
     renderHistory();
