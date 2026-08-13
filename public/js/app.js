@@ -862,7 +862,9 @@ function renderDonors(donors, totalRaised) {
         <span class="donor-leader-badge">01</span>
       </div>
       <div class="donor-leader-data">
-        <span class="donor-leader-name">${escapeHtml(leader.username || "Anônimo")}</span>
+        <span class="donor-leader-name">${escapeHtml(leader.username || "Anônimo")}
+          <svg class="donor-leader-star" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 2.5l2.9 6.6 7.1.6-5.4 4.7 1.7 6.9L12 17.3l-6.3 3.9 1.7-6.9L2 9.7l7.1-.6L12 2.5z"/></svg>
+        </span>
         <span class="donor-leader-total">${formatBRL(leader.total)}</span>
         ${dominance !== null ? `
         <div class="donor-dominance">

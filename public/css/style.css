@@ -15,6 +15,8 @@
   --accent-ink: #18181a;
   --silver: #d6d6da;
   --bronze: #c99a6c;
+  --gold: #e8b85b;
+  --gold-bg: rgba(232, 184, 91, 0.14);
   --danger: #ef4470;
   --danger-bg: rgba(239, 68, 112, 0.14);
   --positive: #46b17f;
@@ -1996,16 +1998,21 @@ body.board-body.has-bg-image .board-cover-bg { display: none; }
   font-variant-numeric: tabular-nums;
 }
 
-/* 1º colocado do quadro de honra vira um card de líder à parte -- avatar
-   maior com selo "01" sobreposto, valor em destaque e uma barra de
-   "domínio" (% do total arrecadado que essa pessoa representa sozinha). */
+/* 1º colocado do quadro de honra vira um card de líder à parte -- dourado
+   fixo (não a cor do tema): é sinal semântico de "topo do pódio", igual
+   --bronze já é fixo pro 3º lugar, não identidade visual que muda com o
+   tema escolhido. Avatar maior com selo "01" sobreposto, valor em
+   destaque e uma barra de "domínio" (% do total que essa pessoa
+   representa sozinha). */
 .donor-leader {
   display: flex;
   align-items: center;
   gap: 14px;
-  padding: 4px 4px 16px;
-  margin-bottom: 10px;
-  border-bottom: 1px dashed var(--border-soft);
+  padding: 14px;
+  margin-bottom: 12px;
+  background: linear-gradient(135deg, var(--gold-bg), transparent 70%);
+  border: 1px solid rgba(232, 184, 91, 0.35);
+  border-radius: var(--radius);
 }
 
 .donor-leader-avatar-wrap { position: relative; flex-shrink: 0; }
@@ -2016,7 +2023,7 @@ body.board-body.has-bg-image .board-cover-bg { display: none; }
   border-radius: 50%;
   object-fit: cover;
   background: var(--surface);
-  border: 2px solid var(--accent);
+  border: 2px solid var(--gold);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -2027,8 +2034,8 @@ body.board-body.has-bg-image .board-cover-bg { display: none; }
   position: absolute;
   bottom: -2px;
   right: -2px;
-  background: var(--accent);
-  color: var(--accent-ink);
+  background: var(--gold);
+  color: #2b1d05;
   font-family: var(--font-mono);
   font-size: 9px;
   font-weight: 700;
@@ -2044,6 +2051,9 @@ body.board-body.has-bg-image .board-cover-bg { display: none; }
 .donor-leader-data { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 5px; }
 
 .donor-leader-name {
+  display: flex;
+  align-items: center;
+  gap: 5px;
   font-family: var(--font-display);
   font-weight: 600;
   font-size: 15px;
@@ -2051,6 +2061,13 @@ body.board-body.has-bg-image .board-cover-bg { display: none; }
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.donor-leader-star {
+  flex-shrink: 0;
+  width: 13px;
+  height: 13px;
+  color: var(--gold);
 }
 
 .donor-leader-total {
@@ -2070,7 +2087,7 @@ body.board-body.has-bg-image .board-cover-bg { display: none; }
   letter-spacing: 0.06em;
   color: var(--muted);
 }
-.donor-dominance-label b { color: var(--accent-text); font-weight: 700; }
+.donor-dominance-label b { color: var(--gold); font-weight: 700; }
 
 .donor-dominance-bar {
   height: 4px;
@@ -2081,7 +2098,7 @@ body.board-body.has-bg-image .board-cover-bg { display: none; }
 .donor-dominance-bar i {
   display: block;
   height: 100%;
-  background: linear-gradient(90deg, var(--accent-soft), var(--accent));
+  background: linear-gradient(90deg, rgba(232, 184, 91, 0.6), var(--gold));
   border-radius: 999px;
   transition: width 0.6s var(--ease);
 }
