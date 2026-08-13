@@ -593,8 +593,8 @@ body.board-body.has-bg-image .board-cover-bg { display: none; }
 
 .topbar-menu-avatar,
 .topbar-menu-avatar-placeholder {
-  width: 26px;
-  height: 26px;
+  width: 32px;
+  height: 32px;
   border-radius: 50%;
   object-fit: cover;
   background: var(--surface-2);
@@ -606,9 +606,15 @@ body.board-body.has-bg-image .board-cover-bg { display: none; }
   justify-content: center;
   font-family: var(--font-display);
   font-style: italic;
-  font-size: 12px;
+  font-size: 13px;
   color: var(--muted);
 }
+/* .topbar-menu-avatar-placeholder tem display:flex fixo, que teria
+   precedência sobre o display:none do atributo [hidden] (regra de UA tem
+   especificidade baixíssima) -- sem isso os dois círculos (foto + "?")
+   ficavam sobrepostos o tempo todo, mesmo com a foto carregada. */
+.topbar-menu-avatar[hidden],
+.topbar-menu-avatar-placeholder[hidden] { display: none; }
 
 .topbar-menu-chevron {
   width: 13px;
@@ -1982,12 +1988,47 @@ body.board-body.has-bg-image .board-cover-bg { display: none; }
   gap: 10px;
   padding: 8px 8px;
   margin: 0 -8px;
+  border: 1px solid transparent;
   border-radius: var(--radius);
   overflow: hidden;
-  transition: background 0.15s ease;
+  transition: background 0.15s ease, border-color 0.15s ease, transform 0.15s var(--ease);
 }
 
-.donor-row:hover { background: var(--surface-2); }
+.donor-row:hover { background: var(--surface-2); transform: translateX(2px); }
+
+/* 2º e 3º lugar ganham um tom de medalha (prata/bronze) igual o líder já
+   tem em dourado, pra não ficar tudo igual abaixo do card do 1º -- brilho
+   ambiente bem lento pra tirar o aspecto parado da lista sem virar poluição
+   visual (mesmo espírito do --gold no .donor-leader, ver CLAUDE.md). */
+.donor-row.rank-2 {
+  background: linear-gradient(135deg, color-mix(in srgb, var(--silver) 16%, transparent), transparent 70%);
+  border-color: color-mix(in srgb, var(--silver) 30%, transparent);
+  animation: donor-row-glow-silver 3.6s ease-in-out infinite;
+}
+.donor-row.rank-2:hover { background: color-mix(in srgb, var(--silver) 14%, var(--surface-2)); }
+.donor-row.rank-2 .donor-avatar,
+.donor-row.rank-2 .donor-avatar-placeholder { border: 2px solid var(--silver); }
+
+.donor-row.rank-3 {
+  background: linear-gradient(135deg, color-mix(in srgb, var(--bronze) 14%, transparent), transparent 70%);
+  border-color: color-mix(in srgb, var(--bronze) 26%, transparent);
+  animation: donor-row-glow-bronze 4.2s ease-in-out infinite;
+}
+.donor-row.rank-3:hover { background: color-mix(in srgb, var(--bronze) 12%, var(--surface-2)); }
+.donor-row.rank-3 .donor-avatar,
+.donor-row.rank-3 .donor-avatar-placeholder { border: 2px solid var(--bronze); }
+
+@keyframes donor-row-glow-silver {
+  0%, 100% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--silver) 0%, transparent); }
+  50% { box-shadow: 0 0 14px 1px color-mix(in srgb, var(--silver) 35%, transparent); }
+}
+@keyframes donor-row-glow-bronze {
+  0%, 100% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--bronze) 0%, transparent); }
+  50% { box-shadow: 0 0 12px 1px color-mix(in srgb, var(--bronze) 30%, transparent); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .donor-row.rank-2, .donor-row.rank-3 { animation: none; }
+}
 
 .donor-row-fill {
   position: absolute;
@@ -2289,18 +2330,21 @@ body.board-body.has-bg-image .board-cover-bg { display: none; }
 
 .lot-card-bg {
   position: absolute;
-  inset: -14px;
+  inset: -6px;
   background-size: cover;
   background-position: center 30%;
-  filter: blur(9px) saturate(1.15) brightness(0.65);
-  transform: scale(1.06);
+  filter: blur(2px) saturate(1.1) brightness(0.92);
+  transform: scale(1.02);
 }
 
+/* capa quase à mostra agora -- só uma sombra bem leve pra dar profundidade;
+   quem garante leitura de nome/valor por cima é o text-shadow deles, não
+   mais escurecer a capa (ver .lot-name/.lot-total). */
 .lot-card-bg::after {
   content: "";
   position: absolute;
   inset: 0;
-  background: linear-gradient(100deg, rgba(16, 16, 18, 0.86), rgba(16, 16, 18, 0.68) 55%, rgba(16, 16, 18, 0.88));
+  background: linear-gradient(100deg, rgba(10, 10, 12, 0.38), rgba(10, 10, 12, 0.14) 55%, rgba(10, 10, 12, 0.4));
 }
 
 .lot-card-fill {
@@ -2499,9 +2543,10 @@ body.board-body.has-bg-image .board-cover-bg { display: none; }
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.85), 0 0 14px rgba(0, 0, 0, 0.45);
 }
 
-.lot-card.rank-1 .lot-name { color: var(--text); font-weight: 600; font-size: 28px; white-space: normal; }
+.lot-card.rank-1 .lot-name { color: var(--text); font-weight: 600; font-size: 28px; white-space: normal; text-shadow: 0 2px 5px rgba(0, 0, 0, 0.85), 0 0 20px rgba(0, 0, 0, 0.5); }
 
 .lot-funding {
   display: flex;
@@ -2523,6 +2568,11 @@ body.board-body.has-bg-image .board-cover-bg { display: none; }
   max-width: 100%;
 }
 
+.lot-funding-add,
+.lot-funding-remove,
+.lot-top-donor-name {
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.85), 0 0 8px rgba(0, 0, 0, 0.4);
+}
 .lot-funding-add { color: var(--positive); }
 .lot-funding-remove { color: var(--danger); }
 
@@ -2588,6 +2638,7 @@ body.board-body.has-bg-image .board-cover-bg { display: none; }
   font-size: 16px;
   color: var(--positive);
   font-variant-numeric: tabular-nums;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.85), 0 0 10px rgba(0, 0, 0, 0.45);
 }
 
 .lot-total-negative { color: var(--danger); }
@@ -2598,7 +2649,7 @@ body.board-body.has-bg-image .board-cover-bg { display: none; }
 .lot-card.rank-2 .lot-total,
 .lot-card.rank-3 .lot-total { font-weight: 600; }
 
-.lot-card.rank-1 .lot-total { font-size: 36px; }
+.lot-card.rank-1 .lot-total { font-size: 36px; text-shadow: 0 2px 6px rgba(0, 0, 0, 0.85), 0 0 18px rgba(0, 0, 0, 0.5); }
 
 .badge-hit { font-size: 10.5px; padding: 2px 6px; border-radius: 3px; background: var(--danger-bg); color: var(--danger); }
 .arena-grid .lot-card:nth-of-type(3n+1) .badge-hit { border-radius: 4px 2px 4px 3px; }
@@ -3061,20 +3112,40 @@ body.board-body.has-bg-image .board-cover-bg { display: none; }
   to { opacity: 1; transform: translateY(0); }
 }
 
-.history-icon {
-  width: 20px;
-  height: 20px;
+.history-avatar-wrap { position: relative; flex-shrink: 0; }
+
+.history-avatar {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  object-fit: cover;
+  background: var(--surface-2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.history-avatar-placeholder {
+  font-family: var(--font-display);
+  font-style: italic;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.history-badge {
+  position: absolute;
+  bottom: -2px;
+  right: -2px;
+  width: 14px;
+  height: 14px;
   border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
-  flex-shrink: 0;
-  background: var(--surface-2);
-  color: var(--muted);
+  border: 2px solid var(--surface);
 }
-.history-icon svg { width: 10px; height: 10px; }
-.history-icon.icon-add { background: var(--accent-bg); color: var(--accent-text); }
-.history-icon.icon-remove { background: var(--danger-bg); color: var(--danger); }
+.history-badge svg { width: 8px; height: 8px; }
+.history-badge.badge-add { background: var(--positive); color: #0d2016; }
+.history-badge.badge-remove { background: var(--danger); color: #2b0810; }
 
 .history-body {
   flex: 1;

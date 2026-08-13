@@ -915,14 +915,21 @@ function historyLabel(event) {
   return null;
 }
 
-function historyIconHtml(dotClass) {
+function historyBadgeHtml(dotClass) {
   if (dotClass === "dot-add") {
-    return `<span class="history-icon icon-add"><svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9V3M3 6l3-3 3 3"/></svg></span>`;
+    return `<span class="history-badge badge-add"><svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9V3M3 6l3-3 3 3"/></svg></span>`;
   }
   if (dotClass === "dot-remove") {
-    return `<span class="history-icon icon-remove"><svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3v6M3 6l3 3 3-3"/></svg></span>`;
+    return `<span class="history-badge badge-remove"><svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3v6M3 6l3 3 3-3"/></svg></span>`;
   }
-  return `<span class="history-icon icon-neutral"></span>`;
+  return "";
+}
+
+function historyAvatarHtml(event, dotClass) {
+  const avatar = event.avatar
+    ? `<img class="history-avatar" src="${escapeHtml(event.avatar)}" alt="" loading="lazy" />`
+    : `<span class="history-avatar history-avatar-placeholder">${escapeHtml((event.username || "?")[0].toUpperCase())}</span>`;
+  return `<div class="history-avatar-wrap">${avatar}${historyBadgeHtml(dotClass)}</div>`;
 }
 
 let historySortMode = "recent";
@@ -942,7 +949,7 @@ function renderHistory() {
     const amount = info.amtClass ? `<span class="history-amt ${info.amtClass}">${formatBRL(event.amount || 0)}</span>` : "";
     return `
       <li>
-        ${historyIconHtml(info.dot)}
+        ${historyAvatarHtml(event, info.dot)}
         <div class="history-body">
           <span class="history-text">${info.text}</span>
           <div class="history-meta">
@@ -985,6 +992,7 @@ async function loadInitialHistory() {
         type: e.action,
         username: e.username,
         amount: e.amount,
+        avatar: e.avatar,
         game: e.game_name ? { name: e.game_name } : null,
         time: e.created_at ? new Date(e.created_at).getTime() : Date.now(),
       }));

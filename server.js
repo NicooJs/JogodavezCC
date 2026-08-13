@@ -591,6 +591,7 @@ async function processDonationMessage(leilaoId, store, { id, fallbackUsername, f
     game: { key: game.key, name: game.name, total: centsToNumber(game.total_cents) },
     paymentId: id,
     comboCount: combo.count,
+    avatar: getDonorAvatar(username),
   });
 
   if (needsImage && !parsed.image) maybeFetchGameImage(leilaoId, store, game.key, game.name, needsImage);
@@ -1395,6 +1396,7 @@ app.get("/api/l/:id/events/recent", loadLeilao, (req, res) => {
   const events = req.store.getRecentEvents(limit).map((e) => ({
     ...e,
     amount: centsToNumber(e.amount_cents),
+    avatar: getDonorAvatar(e.username),
   }));
   res.json({ events });
 });
@@ -1865,6 +1867,7 @@ app.post("/api/l/:id/admin/manual-entry", loadLeilao, requireLeilaoAdmin, async 
     username: username || "admin",
     amount: Number(amount),
     game: { key: game.key, name: game.name, total: centsToNumber(game.total_cents) },
+    avatar: getDonorAvatar(username || "admin"),
   });
   maybeFetchGameImage(leilaoId, store, game.key, game.name, needsImage);
   res.json({ ok: true, game });
