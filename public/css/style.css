@@ -895,86 +895,71 @@ body.board-body.has-bg-image .board-cover-bg { display: none; }
 .presenter-fab.active { background: var(--surface-2); color: var(--accent-text); box-shadow: 0 2px 10px rgba(0, 0, 0, 0.35); }
 .presenter-fab[hidden] { display: none; }
 
-/* trilha que troca entre leilão e reacts -- inspirada numa sidebar
-   retrátil de referência (colada na borda da tela, marca no topo, nav de
-   ícones, avatar de perfil embaixo; vidro fosco translúcido em vez de
-   cartão opaco). Só 2 destinos fixos, então em vez do botão de expandir/
-   recolher da referência, ela expande sozinha no :hover revelando o
-   rótulo -- não precisa de um clique extra pra um menu tão curto.
-   position:fixed encostada na borda esquerda DA TELA de verdade (não só
-   da coluna do grid, que ainda sobrava o padding do .page) -- por isso
-   NÃO é filha do grid do .board, .page ganha o padding correspondente
-   em compensação (ver body.presenter-mode .page mais abaixo). */
+/* trilha que troca entre leilão e reacts -- estática (sem expandir),
+   colada na borda esquerda DA TELA de verdade via position:fixed (não só
+   da coluna do grid, que sobrava o padding do .page) -- por isso NÃO é
+   filha do grid do .board, .page ganha o padding correspondente em
+   compensação (ver body.presenter-mode .page mais abaixo). Fundo com um
+   leve tingimento na cor de destaque do tema (não cinza neutro puro) pra
+   ter identidade própria mesmo no tema "cinza" -- só fica de fato cinza
+   se o tema escolhido for esse (o próprio destaque do tema cinza é
+   cinza, é a natureza do tema, não um bug daqui). */
 .system-switch {
   position: fixed;
   left: 0;
   top: 0;
   bottom: 0;
   z-index: 40;
-  width: 64px;
+  width: 68px;
   display: flex;
   flex-direction: column;
-  align-items: stretch;
-  gap: 3px;
+  align-items: center;
+  gap: 6px;
   padding: 18px 10px;
-  background-color: color-mix(in srgb, var(--surface) 82%, transparent);
-  background-image: var(--grain);
-  background-blend-mode: overlay;
-  backdrop-filter: blur(14px);
-  -webkit-backdrop-filter: blur(14px);
-  border-right: 1px solid var(--border);
-  overflow: hidden;
-  transition: width 0.22s var(--ease), box-shadow 0.22s var(--ease);
-}
-.system-switch:hover {
-  width: 208px;
-  box-shadow: 8px 0 28px -10px rgba(0, 0, 0, 0.55);
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--accent) 10%, transparent), transparent 40%),
+    color-mix(in srgb, var(--surface) 88%, transparent);
+  background-blend-mode: normal, normal;
+  box-shadow: inset -1px 0 0 var(--border), 4px 0 24px -10px rgba(0, 0, 0, 0.5);
 }
 .system-switch[hidden] { display: none; }
 
-/* mesmo losango que já é a marca do JogodaVez no topbar (.topbar-mark::before),
-   só maior -- não é o logo da referência, é o nosso próprio. */
 .system-switch-brand {
   flex-shrink: 0;
-  width: 20px;
-  height: 20px;
-  margin: 0 0 22px 4px;
-  background: var(--accent);
-  transform: rotate(45deg);
+  width: 30px;
+  height: 30px;
+  margin: 0 0 14px;
+  border-radius: 8px;
 }
 
 .system-switch-nav {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 6px;
+  width: 100%;
 }
 
 .system-switch-item {
   display: flex;
   align-items: center;
-  gap: 13px;
-  width: 100%;
-  height: 44px;
-  padding: 0 11px;
+  justify-content: center;
+  width: 46px;
+  height: 46px;
+  margin: 0 auto;
   flex-shrink: 0;
-  border-radius: 9px;
+  border-radius: 11px;
   border: none;
   background: none;
   color: var(--muted);
   cursor: pointer;
-  transition: background 0.15s ease, color 0.15s ease;
+  transition: background 0.15s ease, color 0.15s ease, transform 0.15s ease;
 }
-.system-switch-item .icon { width: 20px; height: 20px; flex-shrink: 0; }
-.system-switch-item:hover { color: var(--text); background: var(--surface-2); }
-.system-switch-item.active { color: var(--accent-ink); background: var(--accent); }
-
-.system-switch-label {
-  font-family: var(--font-body);
-  font-size: 13.5px;
-  font-weight: 600;
-  white-space: nowrap;
-  opacity: 0;
-  transition: opacity 0.15s ease;
+.system-switch-item .icon { width: 21px; height: 21px; flex-shrink: 0; }
+.system-switch-item:hover { color: var(--text); background: var(--surface-2); transform: translateY(-1px); }
+.system-switch-item.active {
+  color: var(--accent-ink);
+  background: var(--accent);
+  box-shadow: 0 4px 14px -4px var(--accent-glow);
 }
 
 /* avatar de perfil embutido embaixo da trilha -- mesmo link/lógica do
@@ -984,9 +969,8 @@ body.board-body.has-bg-image .board-cover-bg { display: none; }
 .system-switch-profile {
   margin-top: auto;
   flex-shrink: 0;
-  align-self: flex-start;
-  width: 40px;
-  height: 40px;
+  width: 42px;
+  height: 42px;
   border-radius: 50%;
   overflow: hidden;
   display: flex;
@@ -1004,7 +988,6 @@ body.board-body.has-bg-image .board-cover-bg { display: none; }
 }
 .system-switch-profile[href]:hover { border-color: var(--accent); cursor: pointer; }
 .system-switch-profile-avatar { width: 100%; height: 100%; object-fit: cover; }
-.system-switch:hover .system-switch-label { opacity: 1; }
 
 /* o mesmo conteúdo de antes (.presenter-bar), agora dentro de um popover
    flutuante que só existe quando o botão acima é clicado -- não empurra
@@ -1411,7 +1394,7 @@ body.board-body.has-bg-image .board-cover-bg { display: none; }
    Sempre presente independente de qual sistema tá ativo (é o seletor
    entre os dois). */
 body.presenter-mode .page {
-  padding-left: 88px;
+  padding-left: 92px;
 }
 
 @keyframes board-tension {
@@ -3969,8 +3952,7 @@ body.presenter-mode .page {
 
   /* rail vira barra horizontal presa no topo aqui em vez de vertical na
      borda esquerda -- não sobra espaço lateral pra uma coluna a mais
-     nesse ponto. Já é larga o bastante pra não precisar do truque de
-     expandir no hover, fica sempre com o rótulo à mostra. */
+     nesse ponto. */
   body.presenter-mode .page { padding-left: 24px; padding-top: 62px; }
   #system-switch {
     left: 0;
@@ -3982,14 +3964,11 @@ body.presenter-mode .page {
     flex-direction: row;
     align-items: center;
     padding: 0 14px;
-    border-right: none;
-    border-bottom: 1px solid var(--border);
+    box-shadow: inset 0 -1px 0 var(--border);
   }
-  #system-switch:hover { width: auto; box-shadow: none; }
-  .system-switch-brand { display: none; }
-  .system-switch-nav { flex-direction: row; gap: 8px; }
-  .system-switch-item { width: auto; height: 32px; }
-  .system-switch-label { opacity: 1; }
+  .system-switch-brand { display: none; margin: 0 6px 0 0; }
+  .system-switch-nav { flex-direction: row; gap: 8px; width: auto; }
+  .system-switch-item { width: 34px; height: 34px; margin: 0; }
   .system-switch-profile { margin-top: 0; margin-left: auto; width: 32px; height: 32px; }
 }
 
