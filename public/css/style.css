@@ -2833,13 +2833,30 @@ body.board-body.has-bg-image .board-cover-bg { display: none; }
 
 /* modo corrida: meta manual definida pelo apresentador (botão direito no
    card) -- vale pro público ver também, é feito pra criar hype ("faltam
-   R$20 pra garantir vaga!"). Cor muda de accent pra dourado quando bate. */
-.lot-race { display: flex; flex-direction: column; gap: 3px; max-width: 240px; margin: 1px 0; }
+   R$20 pra garantir vaga!"). Cor muda de accent pra dourado quando bate.
+   Fundo próprio (chip), não só a barra solta -- flutuando direto em cima
+   da capa do jogo ela se perdia visualmente, sem contorno nenhum. */
+.lot-race {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  max-width: 230px;
+  margin: 2px 0;
+  padding: 7px 9px;
+  background: rgba(10, 10, 14, 0.5);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 7px;
+  backdrop-filter: blur(3px);
+}
+.lot-race.is-reached {
+  background: color-mix(in srgb, var(--gold) 20%, rgba(10, 10, 14, 0.5));
+  border-color: color-mix(in srgb, var(--gold) 50%, transparent);
+}
 
 .lot-race-track {
   height: 6px;
   border-radius: 999px;
-  background: rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.14);
   overflow: hidden;
 }
 
@@ -2869,16 +2886,22 @@ body.board-body.has-bg-image .board-cover-bg { display: none; }
 }
 
 .lot-race-label {
+  display: flex;
+  align-items: center;
+  gap: 5px;
   font-family: var(--font-mono);
   font-size: 10.5px;
-  color: var(--muted);
-  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.85), 0 0 8px rgba(0, 0, 0, 0.4);
+  font-weight: 600;
+  color: var(--text);
 }
-.lot-race.is-reached .lot-race-label { color: var(--gold); font-weight: 700; }
+.lot-race-label .icon { width: 11px; height: 11px; color: var(--accent-text); flex-shrink: 0; }
+.lot-race.is-reached .lot-race-label { color: var(--gold); }
+.lot-race.is-reached .lot-race-label .icon { color: var(--gold); }
 
-.lot-card.rank-1 .lot-race { max-width: 320px; }
+.lot-card.rank-1 .lot-race { max-width: 320px; padding: 9px 12px; }
 .lot-card.rank-1 .lot-race-track { height: 8px; }
-.lot-card.rank-1 .lot-race-label { font-size: 12px; }
+.lot-card.rank-1 .lot-race-label { font-size: 12.5px; }
+.lot-card.rank-1 .lot-race-label .icon { width: 13px; height: 13px; }
 
 .badge-race-qualified {
   display: inline-flex;
@@ -2895,12 +2918,15 @@ body.board-body.has-bg-image .board-cover-bg { display: none; }
 }
 .badge-race-qualified .icon { width: 10px; height: 10px; }
 
-/* menu de botão direito nos cards do catálogo (modo corrida) */
+/* menu de botão direito nos cards do catálogo (modo corrida) -- cabeçalho
+   mostra pra qual jogo é o menu, não só uma lista de botões solta. */
 .lot-context-menu {
   position: fixed;
   z-index: 60;
-  min-width: 210px;
-  background: var(--surface);
+  min-width: 220px;
+  background-color: var(--surface);
+  background-image: var(--grain);
+  background-blend-mode: overlay;
   border: 1px solid var(--border);
   border-radius: 10px;
   padding: 6px;
@@ -2908,6 +2934,37 @@ body.board-body.has-bg-image .board-cover-bg { display: none; }
   animation: drop-in 0.12s var(--ease);
 }
 .lot-context-menu[hidden] { display: none; }
+
+.lot-context-menu-head {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 7px 9px 8px;
+  margin-bottom: 4px;
+  border-bottom: 1px solid var(--border-soft);
+}
+.lot-context-menu-eyebrow {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-family: var(--font-mono);
+  font-size: 9.5px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: var(--gold);
+}
+.lot-context-menu-eyebrow .icon { width: 11px; height: 11px; }
+.lot-context-menu-game {
+  font-family: var(--font-display);
+  font-style: italic;
+  font-weight: 600;
+  font-size: 14px;
+  color: var(--text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
 
 .lot-context-menu-item {
   display: flex;
@@ -2928,6 +2985,53 @@ body.board-body.has-bg-image .board-cover-bg { display: none; }
 .lot-context-menu-item .icon { width: 15px; height: 15px; color: var(--muted); flex-shrink: 0; }
 .lot-context-menu-item.danger { color: var(--danger); }
 .lot-context-menu-item.danger .icon { color: var(--danger); }
+
+/* modal de definir a meta -- mostra capa+nome do jogo (mesmo padrão do
+   modal de editar lote), valor atual arrecadado, e uma prévia ao vivo da
+   mesma barra que vai aparecer no card, pra ver o resultado antes de
+   confirmar. */
+.race-modal-box { max-width: 380px; }
+
+.race-modal-eyebrow { display: flex; align-items: center; gap: 5px; color: var(--gold); }
+.race-modal-eyebrow .icon { width: 12px; height: 12px; }
+
+.race-modal-current {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 9px 12px;
+  margin-bottom: 16px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+.race-modal-current-label {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: var(--muted);
+}
+.race-modal-current-value {
+  font-family: var(--font-mono);
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--positive);
+  font-variant-numeric: tabular-nums;
+}
+
+.race-modal-preview {
+  max-width: none;
+  margin: 18px 0 16px;
+  padding: 0;
+  background: none;
+  border: none;
+  backdrop-filter: none;
+}
+.race-modal-preview .lot-race-track { height: 8px; }
+.race-modal-preview .lot-race-label { font-size: 12px; color: var(--muted); }
+.race-modal-preview.is-reached .lot-race-label { color: var(--gold); font-weight: 700; }
 
 .badge-hit { font-size: 10.5px; padding: 2px 6px; border-radius: 3px; background: var(--danger-bg); color: var(--danger); }
 .arena-grid .lot-card:nth-of-type(3n+1) .badge-hit { border-radius: 4px 2px 4px 3px; }

@@ -446,7 +446,7 @@ function lotRaceHtml(item) {
   return `
     <div class="lot-race${item.raceGoalReached ? " is-reached" : ""}">
       <div class="lot-race-track"><div class="lot-race-fill" style="width:${pct}%"></div></div>
-      <span class="lot-race-label">${label}</span>
+      <span class="lot-race-label">${FLAG_ICON_SVG}${label}</span>
     </div>
   `;
 }
@@ -564,12 +564,19 @@ function closeLotContextMenu() {
 
 function openLotContextMenu(x, y, item) {
   contextMenuTargetKey = item.key;
-  lotContextMenuEl.innerHTML = item.raceGoal
+  const head = `
+    <div class="lot-context-menu-head">
+      <span class="lot-context-menu-eyebrow">${FLAG_ICON_SVG}modo corrida</span>
+      <span class="lot-context-menu-game">${escapeHtml(item.name)}</span>
+    </div>
+  `;
+  const actions = item.raceGoal
     ? `
       <button class="lot-context-menu-item" type="button" data-act="race-edit">${FLAG_ICON_SVG}Editar meta da corrida</button>
       <button class="lot-context-menu-item danger" type="button" data-act="race-deactivate">${STOP_ICON_SVG}Desativar modo corrida</button>
     `
     : `<button class="lot-context-menu-item" type="button" data-act="race-activate">${FLAG_ICON_SVG}Ativar modo corrida</button>`;
+  lotContextMenuEl.innerHTML = head + actions;
   lotContextMenuEl.hidden = false;
   lotContextMenuEl.style.left = "0px";
   lotContextMenuEl.style.top = "0px";
@@ -606,28 +613,17 @@ lotContextMenuEl.addEventListener("click", async (e) => {
   closeLotContextMenu();
   if (!key) return;
   const item = currentItems.find((i) => i.key === key);
+  if (!item) return;
 
   if (act === "race-activate" || act === "race-edit") {
-    const value = await promptDialog({
-      title: act === "race-edit" ? "Editar meta da corrida" : "Ativar modo corrida",
-      label: `Valor pra "${item ? item.name : ""}" garantir vaga entre os classificados (R$)`,
-      initialValue: item && item.raceGoal ? item.raceGoal.toFixed(2) : "",
-      inputType: "number",
-      confirmLabel: "Salvar",
-    });
-    if (value === null) return;
-    try {
-      await presenterFetch("/admin/race-goal", { method: "POST", body: JSON.stringify({ key, amount: value }) });
-    } catch (err) {
-      alert(err.message);
-    }
+    openRaceModal(item);
     return;
   }
 
   if (act === "race-deactivate") {
     const ok = await confirmDialog({
       title: "Desativar modo corrida",
-      message: `Remover a meta de "${item ? item.name : "esse jogo"}"? A barra de progresso some do card.`,
+      message: `Remover a meta de "${item.name}"? A barra de progresso some do card.`,
       confirmLabel: "Desativar",
       danger: true,
     });
@@ -637,6 +633,105 @@ lotContextMenuEl.addEventListener("click", async (e) => {
     } catch (err) {
       alert(err.message);
     }
+  }
+});
+
+// modal de definir/editar a meta da corrida -- mostra capa+nome do jogo e
+// uma prévia ao vivo da mesma barra que aparece no card (mesmas classes
+// .lot-race/.lot-race-track/.lot-race-fill, só sem o fundo em chip).
+const raceModalEl = document.getElementById("race-modal");
+const raceModalCloseEl = document.getElementById("race-modal-close");
+const raceModalThumbEl = document.getElementById("race-modal-thumb");
+const raceModalTitleEl = document.getElementById("race-modal-title");
+const raceModalCurrentValueEl = document.getElementById("race-modal-current-value");
+const raceModalInputEl = document.getElementById("race-modal-input");
+const raceModalPreviewEl = document.getElementById("race-modal-preview");
+const raceModalPreviewFillEl = document.getElementById("race-modal-preview-fill");
+const raceModalPreviewLabelEl = document.getElementById("race-modal-preview-label");
+const raceModalConfirmEl = document.getElementById("race-modal-confirm");
+const raceModalCancelEl = document.getElementById("race-modal-cancel");
+const raceModalDeactivateEl = document.getElementById("race-modal-deactivate");
+
+let raceModalItem = null;
+
+function updateRaceModalPreview() {
+  const goal = Number(raceModalInputEl.value);
+  const total = raceModalItem ? raceModalItem.total : 0;
+  if (!goal || goal <= 0) {
+    raceModalPreviewEl.classList.remove("is-reached");
+    raceModalPreviewFillEl.style.width = "0%";
+    raceModalPreviewLabelEl.innerHTML = "defina um valor acima do já arrecadado";
+    return;
+  }
+  const reached = total >= goal;
+  const pct = Math.max(0, Math.min(100, Math.round((total / goal) * 100)));
+  raceModalPreviewEl.classList.toggle("is-reached", reached);
+  raceModalPreviewFillEl.style.width = `${pct}%`;
+  raceModalPreviewLabelEl.innerHTML = reached
+    ? `${FLAG_ICON_SVG}já bateria a meta, classificado na hora`
+    : `${FLAG_ICON_SVG}faltariam ${formatBRL(Math.max(0, goal - total))} pra classificar`;
+}
+
+function openRaceModal(item) {
+  raceModalItem = item;
+  raceModalTitleEl.textContent = item.name;
+  if (item.image) {
+    raceModalThumbEl.src = item.image;
+    raceModalThumbEl.hidden = false;
+  } else {
+    raceModalThumbEl.hidden = true;
+    raceModalThumbEl.removeAttribute("src");
+  }
+  raceModalCurrentValueEl.textContent = formatBRL(item.total);
+  raceModalInputEl.value = item.raceGoal ? item.raceGoal.toFixed(2) : "";
+  raceModalConfirmEl.textContent = item.raceGoal ? "Salvar meta" : "Ativar corrida";
+  raceModalDeactivateEl.hidden = !item.raceGoal;
+  updateRaceModalPreview();
+  raceModalEl.hidden = false;
+  setTimeout(() => { raceModalInputEl.focus(); raceModalInputEl.select(); }, 40);
+}
+
+function closeRaceModal() {
+  raceModalEl.hidden = true;
+  raceModalItem = null;
+}
+
+raceModalInputEl.addEventListener("input", updateRaceModalPreview);
+raceModalInputEl.addEventListener("keydown", (e) => { if (e.key === "Enter") raceModalConfirmEl.click(); });
+raceModalCloseEl.addEventListener("click", closeRaceModal);
+raceModalCancelEl.addEventListener("click", closeRaceModal);
+raceModalEl.addEventListener("click", (e) => { if (e.target === raceModalEl) closeRaceModal(); });
+document.addEventListener("keydown", (e) => { if (e.key === "Escape" && !raceModalEl.hidden) closeRaceModal(); });
+
+raceModalConfirmEl.addEventListener("click", async () => {
+  if (!raceModalItem) return;
+  const value = raceModalInputEl.value;
+  if (!value || Number(value) <= 0) return raceModalInputEl.focus();
+  raceModalConfirmEl.disabled = true;
+  try {
+    await presenterFetch("/admin/race-goal", { method: "POST", body: JSON.stringify({ key: raceModalItem.key, amount: value }) });
+    closeRaceModal();
+  } catch (err) {
+    alert(err.message);
+  } finally {
+    raceModalConfirmEl.disabled = false;
+  }
+});
+
+raceModalDeactivateEl.addEventListener("click", async () => {
+  if (!raceModalItem) return;
+  const ok = await confirmDialog({
+    title: "Desativar modo corrida",
+    message: `Remover a meta de "${raceModalItem.name}"? A barra de progresso some do card.`,
+    confirmLabel: "Desativar",
+    danger: true,
+  });
+  if (!ok) return;
+  try {
+    await presenterFetch(`/admin/race-goal/${encodeURIComponent(raceModalItem.key)}`, { method: "DELETE" });
+    closeRaceModal();
+  } catch (err) {
+    alert(err.message);
   }
 });
 
