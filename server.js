@@ -1963,7 +1963,10 @@ app.post("/api/l/:id/admin/set-total", loadLeilao, requireLeilaoAdmin, (req, res
 app.post("/api/l/:id/admin/rename", loadLeilao, requireLeilaoAdmin, (req, res) => {
   const { key, newName, image } = req.body || {};
   let game = req.store.renameGame(key, newName);
-  if (game && image !== undefined) game = req.store.setGameImage(key, image);
+  // usa game.key (não o "key" da requisição) -- renameGame pode ter migrado
+  // pra uma chave nova, ou mesclado com um jogo que já existia com esse
+  // nome, então a chave final pode não ser mais a que veio no corpo.
+  if (game && image !== undefined) game = req.store.setGameImage(game.key, image);
   broadcastUpdate(req.leilaoId, req.store, { type: "rename" });
   res.json({ ok: true, game });
 });

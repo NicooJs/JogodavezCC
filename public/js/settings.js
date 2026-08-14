@@ -409,8 +409,16 @@ function renderGamesTable() {
         // não espera o "update" do socket pra refletir na tabela -- numa
         // conexão real esse aviso pode atrasar/se perder mesmo já tendo
         // salvo certinho no servidor (mesmo motivo do fix em app.js).
-        const cached = settingsGames.find((g) => g.key === game.key);
-        if (cached) cached.name = updated.name;
+        // renameGame pode ter migrado a chave (nome livre) ou mesclado com
+        // um jogo que já existia com esse nome (colisão) -- nesse segundo
+        // caso a linha renomeada some da tabela em vez de virar duplicata.
+        const mergedIntoExisting = updated.key !== game.key && settingsGames.some((g) => g.key === updated.key);
+        if (mergedIntoExisting) {
+          settingsGames = settingsGames.filter((g) => g.key !== game.key);
+        } else {
+          const cached = settingsGames.find((g) => g.key === game.key);
+          if (cached) { cached.key = updated.key; cached.name = updated.name; }
+        }
         renderGamesTable();
       } catch (err) {
         alert(err.message);

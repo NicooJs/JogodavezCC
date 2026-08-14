@@ -1,4 +1,5 @@
 const fs = require("fs");
+const { normalizeKey } = require("./parser");
 
 function emptyData() {
   return {
@@ -346,11 +347,34 @@ function createStore(filePath) {
     return { ...data.games[key] };
   }
 
+  // a chave interna (derivada do nome original) é o que toda doação nova
+  // casa por baixo dos panos -- se o rename só trocasse o texto exibido e
+  // deixasse a chave velha intacta, uma doação futura mencionando o nome
+  // ANTIGO continuaria caindo nesse mesmo jogo (agora com nome novo) pra
+  // sempre, em vez de virar (ou achar) um jogo separado. Por isso o rename
+  // migra a chave junto, levando o histórico de eventos (senão "quem mais
+  // apoiou"/breakdown desse jogo zerava do nada).
   function renameGame(key, newName) {
     if (!data.games[key]) return null;
-    data.games[key].name = newName;
+    const newKey = normalizeKey(newName);
+    if (!newKey || newKey === key) {
+      data.games[key].name = newName;
+      save();
+      return { ...data.games[key] };
+    }
+    if (data.games[newKey]) {
+      // já existe outro jogo com esse nome/chave -- em vez de duplicar,
+      // mescla o renomeado pra dentro do jogo que já existe (mesma lógica
+      // do botão manual de mesclar duplicados)
+      return mergeGames(key, newKey, false);
+    }
+    data.games[newKey] = { ...data.games[key], key: newKey, name: newName };
+    delete data.games[key];
+    data.events.forEach((ev) => {
+      if (ev.game_key === key) ev.game_key = newKey;
+    });
     save();
-    return { ...data.games[key] };
+    return { ...data.games[newKey] };
   }
 
   function deleteGame(key) {

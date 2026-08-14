@@ -3166,15 +3166,34 @@ function updateLotModalRenameShelf() {
 // servidor, e o card por trás do modal ficava com o nome antigo até
 // qualquer outro evento forçar um re-render (o que parecia "só funciona se
 // eu clicar em outra coisa depois").
-function patchLotCardAfterRename(key, name, imageUrl) {
-  const item = currentItems.find((i) => i.key === key);
-  if (!item) return;
-  item.name = name;
-  if (imageUrl !== undefined) item.image = imageUrl;
-  const card = lotListEl.querySelector(`.lot-card[data-key="${CSS.escape(key)}"]`);
-  if (!card) return;
-  card.innerHTML = lotCardInnerHtml(item, 0, "", false, "", "", "");
-  const editBtn = card.querySelector(".lot-edit button");
+//
+// renameGame no servidor pode migrar a chave interna (nome livre) ou
+// mesclar com um jogo que já existia com esse nome (colisão) -- por isso
+// recebe a chave ANTIGA (pra achar o card certo na tela) e o objeto `game`
+// inteiro que o servidor devolveu (fonte da verdade sobre o que aconteceu).
+function patchLotCardAfterRename(oldKey, game) {
+  const oldIndex = currentItems.findIndex((i) => i.key === oldKey);
+  if (oldIndex === -1) return;
+  const oldCard = lotListEl.querySelector(`.lot-card[data-key="${CSS.escape(oldKey)}"]`);
+  const mergedIntoExisting = game.key !== oldKey && currentItems.some((i, idx) => idx !== oldIndex && i.key === game.key);
+
+  if (mergedIntoExisting) {
+    // o jogo renomeado foi absorvido por outro que já tinha esse nome --
+    // esse card some, o outro reflete o valor somado quando o "update" do
+    // socket chegar (evita recalcular rank/barra dos dois cards na mão).
+    currentItems.splice(oldIndex, 1);
+    if (oldCard) oldCard.remove();
+    return;
+  }
+
+  const item = currentItems[oldIndex];
+  item.key = game.key;
+  item.name = game.name;
+  item.image = game.image_url || null;
+  if (!oldCard) return;
+  oldCard.dataset.key = game.key;
+  oldCard.innerHTML = lotCardInnerHtml(item, 0, "", false, "", "", "");
+  const editBtn = oldCard.querySelector(".lot-edit button");
   if (editBtn) {
     editBtn.addEventListener("click", () => {
       const it = currentItems.find((i) => i.key === editBtn.dataset.key);
@@ -3189,11 +3208,12 @@ async function saveLotModalRename() {
   if (!name) return lotModalRenameInputEl.focus();
   lotModalRenameSaveBtn.disabled = true;
   try {
+    const oldKey = modalGame.key;
     const { game } = await presenterFetch("/admin/rename", {
       method: "POST",
       body: JSON.stringify({ key: modalGame.key, newName: name, image: lotModalRenameImage }),
     });
-    modalGame = { ...modalGame, name: game.name, image: game.image_url || null };
+    modalGame = { ...modalGame, key: game.key, name: game.name, image: game.image_url || null };
     lotModalTitle.textContent = modalGame.name;
     if (modalGame.image) {
       lotModalThumb.src = modalGame.image;
@@ -3202,7 +3222,7 @@ async function saveLotModalRename() {
       lotModalThumb.hidden = true;
       lotModalThumb.removeAttribute("src");
     }
-    patchLotCardAfterRename(modalGame.key, game.name, lotModalRenameImage !== undefined ? game.image_url || null : undefined);
+    patchLotCardAfterRename(oldKey, game);
     hideLotModalRename();
   } catch (err) {
     alert(err.message);
