@@ -52,6 +52,13 @@ const arenaPanelLabelEl = document.getElementById("arena-panel-label");
 const arenaPanelIconLeilaoEl = document.getElementById("arena-panel-icon-leilao");
 const arenaPanelIconReactsEl = document.getElementById("arena-panel-icon-reacts");
 const arenaPanelTitleEl = document.getElementById("arena-panel-title");
+const timerPanelEl = document.getElementById("timer-panel");
+const historyPanelEl = document.getElementById("history-panel");
+const reactPlaylistPanelEl = document.getElementById("react-playlist-panel");
+const reactQueueCountEl = document.getElementById("react-queue-count");
+const reactQueueListEl = document.getElementById("react-queue-list");
+const reactHistorySectionEl = document.getElementById("react-history-section");
+const reactHistoryListEl = document.getElementById("react-history-list");
 const modeToggleBoardEl = document.getElementById("mode-toggle-board");
 const timerRingFillEl = document.getElementById("timer-ring-fill");
 const donateModalTimerEl = document.getElementById("donate-modal-timer");
@@ -565,6 +572,7 @@ async function confirmAndMergeLots(fromKey, toKey) {
 const FLAG_ICON_SVG = `<svg class="icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 2.5v15"/><path d="M4 3.5c2-1 3.5 1 5.5 0s3.5-1 5.5 0v6c-2-1-3.5 1-5.5 0s-3.5-1-5.5 0z"/></svg>`;
 const STOP_ICON_SVG = `<svg class="icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="10" cy="10" r="7"/><path d="M7 7l6 6M13 7l-6 6"/></svg>`;
 const REACT_ICON_SVG = `<svg class="icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2.5" y="3.5" width="15" height="10.5" rx="1.5"/><path d="M8.2 8.1l4 2.1-4 2.1V8.1z" fill="currentColor" stroke="none"/><path d="M6 17h8"/></svg>`;
+const PLAY_ICON_SVG = `<svg class="icon" viewBox="0 0 20 20" fill="none" stroke="none" aria-hidden="true"><path d="M6 4.5v11l8-5.5-8-5.5z" fill="currentColor"/></svg>`;
 
 let contextMenuTargetKey = null;
 let contextMenuTargetVideoId = null;
@@ -626,20 +634,25 @@ function openReactContextMenu(x, y, video) {
 
 lotListEl.addEventListener("contextmenu", (e) => {
   if (!document.body.classList.contains("presenter-mode")) return;
-  const reactCard = e.target.closest(".react-card");
-  if (reactCard) {
-    const video = currentReactVideos.find((v) => v.id === reactCard.dataset.videoId);
-    if (!video || video.status !== "unlocked") return;
-    e.preventDefault();
-    openReactContextMenu(e.clientX, e.clientY, video);
-    return;
-  }
   const card = e.target.closest(".lot-card");
   if (!card) return;
   const item = currentItems.find((i) => i.key === card.dataset.key);
   if (!item) return;
   e.preventDefault();
   openLotContextMenu(e.clientX, e.clientY, item);
+});
+
+// "marcar como reagido" só faz sentido pra vídeo já liberado, que agora
+// mora na fila da playlist (coluna direita) -- não mais no painel central
+// (lá só tem vídeo "active", ainda não bateu a meta).
+reactQueueListEl.addEventListener("contextmenu", (e) => {
+  if (!document.body.classList.contains("presenter-mode")) return;
+  const row = e.target.closest(".react-queue-row");
+  if (!row) return;
+  const video = currentReactVideos.find((v) => v.id === row.dataset.videoId && v.status === "unlocked");
+  if (!video) return;
+  e.preventDefault();
+  openReactContextMenu(e.clientX, e.clientY, video);
 });
 
 document.addEventListener("click", (e) => {
@@ -1140,6 +1153,16 @@ function setActiveSystemUI(system) {
   arenaPanelIconReactsEl.hidden = !isReacts;
   arenaPanelLabelEl.title = isReacts ? "Vídeos pra reagir" : "Catálogo do leilão";
   if (isReacts) arenaPanelTitleEl.textContent = "Vídeos pra reagir";
+  // timer+histórico só fazem sentido pro leilão (countdown de round, feed
+  // de doação) -- reacts troca pela playlist (fila de liberados + já
+  // reagidos). Os três ficam sempre no DOM, só alterna hidden -- evita
+  // destruir/reconstruir a lógica do timer, que roda independente disso.
+  timerPanelEl.hidden = isReacts;
+  historyPanelEl.hidden = isReacts;
+  reactPlaylistPanelEl.hidden = !isReacts;
+  // "total arrecadado" é uma métrica do leilão (proceeds do round) -- não
+  // faz sentido nesse contexto, então some do topbar durante o reacts.
+  topbarTotalEl.hidden = isReacts;
 }
 
 async function setActiveSystem(system) {
@@ -1152,59 +1175,114 @@ async function setActiveSystem(system) {
 systemSwitchLeilaoBtn.addEventListener("click", () => setActiveSystem("leilao"));
 systemSwitchReactsBtn.addEventListener("click", () => setActiveSystem("reacts"));
 
-function reactThumbHtml(video) {
+function reactThumbHtml(video, baseClass) {
   const letter = escapeHtml(((video.title || "?")[0] || "?").toUpperCase());
   if (video.thumbnail) {
-    return `<img class="react-card-thumb" src="${escapeHtml(video.thumbnail)}" alt="" loading="lazy" onerror="this.replaceWith(Object.assign(document.createElement('div'),{className:'react-card-thumb-placeholder',textContent:'${letter}'}))" />`;
+    return `<img class="${baseClass}" src="${escapeHtml(video.thumbnail)}" alt="" loading="lazy" onerror="this.replaceWith(Object.assign(document.createElement('div'),{className:'${baseClass}-placeholder',textContent:'${letter}'}))" />`;
   }
-  return `<div class="react-card-thumb-placeholder">${letter}</div>`;
+  return `<div class="${baseClass}-placeholder">${letter}</div>`;
 }
 
-// meta de cada vídeo é fixa desde a aprovação (duração×multiplicador no
-// momento -- não recalcula se o streamer mudar o multiplicador depois),
-// reaproveita a mesma barra .lot-race do modo corrida, só sem corte de
-// classificados: todo vídeo que bate a própria meta libera.
-function reactCardHtml(video) {
+// barra de progresso de meta do reacts -- classe própria (não reaproveita
+// .lot-race do modo corrida): mecânica parecida (barra + label), mas é
+// outro domínio (corrida compete contra outros itens, reacts só acumula
+// pra uma meta própria), o cliente pediu design separado dos dois.
+function reactGoalHtml(video) {
   const goal = video.goal || 0;
   const total = video.total || 0;
-  const unlocked = video.status === "unlocked";
   const pct = goal > 0 ? Math.max(0, Math.min(100, Math.round((total / goal) * 100))) : 0;
-  const label = unlocked
-    ? "liberado, entrou na fila!"
-    : goal > 0
-      ? `faltam ${formatBRL(Math.max(0, goal - total))} pra liberar`
-      : "aguardando meta";
+  const label = goal > 0 ? `faltam ${formatBRL(Math.max(0, goal - total))} pra liberar` : "aguardando meta";
   return `
-    <div class="react-card${unlocked ? " is-unlocked" : ""}" data-video-id="${escapeHtml(video.id)}">
-      ${reactThumbHtml(video)}
-      <div class="react-card-body">
-        <p class="react-card-title" title="${escapeHtml(video.title || "")}">${escapeHtml(video.title || "Vídeo sem título")}</p>
-        <span class="react-card-submitter">sugerido por ${escapeHtml(video.submittedBy || "Anônimo")}</span>
-        <div class="lot-race${unlocked ? " is-reached" : ""}">
-          <div class="lot-race-track"><div class="lot-race-fill" style="width:${pct}%"></div></div>
-          <span class="lot-race-label">${FLAG_ICON_SVG}${label}</span>
-        </div>
-      </div>
-      ${unlocked ? '<span class="react-unlocked-badge">liberado</span>' : ""}
+    <div class="react-goal">
+      <div class="react-goal-track"><div class="react-goal-fill" style="width:${pct}%"></div></div>
+      <span class="react-goal-label">${PLAY_ICON_SVG}${label}</span>
     </div>
   `;
 }
 
-// modo reacts reaproveita o mesmo #lot-list do catálogo do leilão (só um
-// dos dois sistemas fica ativo por vez) -- card deliberadamente mais
-// simples que o .lot-card (sem rank, sem drag-and-drop, sem breakdown).
+// vídeo mais perto de bater a meta ganha destaque grande no painel
+// central -- os liberados não aparecem mais aqui (viram fila na playlist,
+// coluna direita), então tudo que passa por aqui é sempre "active".
+function reactFeaturedHtml(video) {
+  return `
+    <div class="react-featured" data-video-id="${escapeHtml(video.id)}">
+      ${reactThumbHtml(video, "react-featured-thumb")}
+      <div class="react-featured-body">
+        <p class="react-featured-title" title="${escapeHtml(video.title || "")}">${escapeHtml(video.title || "Vídeo sem título")}</p>
+        <span class="react-featured-submitter">sugerido por ${escapeHtml(video.submittedBy || "Anônimo")}</span>
+        ${reactGoalHtml(video)}
+      </div>
+    </div>
+  `;
+}
+
+function reactCardHtml(video) {
+  return `
+    <div class="react-card" data-video-id="${escapeHtml(video.id)}">
+      ${reactThumbHtml(video, "react-card-thumb")}
+      <div class="react-card-body">
+        <p class="react-card-title" title="${escapeHtml(video.title || "")}">${escapeHtml(video.title || "Vídeo sem título")}</p>
+        <span class="react-card-submitter">sugerido por ${escapeHtml(video.submittedBy || "Anônimo")}</span>
+        ${reactGoalHtml(video)}
+      </div>
+    </div>
+  `;
+}
+
+// painel central do reacts: 1 vídeo em destaque (o mais perto de liberar)
+// + o resto dos vídeos em andamento numa grade compacta. Vídeos já
+// liberados saem daqui de vez -- não fazem mais parte do funil de
+// arrecadação, viram fila de reação na playlist (coluna direita).
 function renderReactVideos(videos) {
-  lotCountEl.textContent = String(videos.length);
-  if (videos.length === 0) {
+  const inProgress = videos.filter((v) => v.status === "active");
+  lotCountEl.textContent = String(inProgress.length);
+  if (inProgress.length === 0) {
     lotListEl.innerHTML = `
       <p class="empty-state arena-empty">
-        <span class="arena-empty-title">Fila de reacts vazia</span>
-        Assim que um vídeo bater a meta, ele aparece aqui.
+        <span class="arena-empty-title">Nenhum vídeo em andamento</span>
+        Assim que um vídeo aprovado receber doação, ele aparece aqui.
       </p>
     `;
     return;
   }
-  lotListEl.innerHTML = videos.map(reactCardHtml).join("");
+  const sorted = [...inProgress].sort((a, b) => {
+    const pctA = a.goal > 0 ? a.total / a.goal : 0;
+    const pctB = b.goal > 0 ? b.total / b.goal : 0;
+    return pctB - pctA;
+  });
+  const [featured, ...rest] = sorted;
+  const restHtml = rest.length ? `<div class="react-grid">${rest.map(reactCardHtml).join("")}</div>` : "";
+  lotListEl.innerHTML = reactFeaturedHtml(featured) + restHtml;
+}
+
+function reactQueueRowHtml(video, isHistory) {
+  const meta = isHistory && video.updatedAt
+    ? `${escapeHtml(video.submittedBy || "Anônimo")} · ${new Date(video.updatedAt).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}`
+    : `sugerido por ${escapeHtml(video.submittedBy || "Anônimo")}`;
+  return `
+    <div class="react-queue-row${isHistory ? " is-history" : ""}" data-video-id="${escapeHtml(video.id)}">
+      ${reactThumbHtml(video, "react-queue-thumb")}
+      <div class="react-queue-body">
+        <p class="react-queue-title" title="${escapeHtml(video.title || "")}">${escapeHtml(video.title || "Vídeo sem título")}</p>
+        <span class="react-queue-submitter">${meta}</span>
+      </div>
+    </div>
+  `;
+}
+
+// playlist (coluna direita, substitui timer+histórico no reacts): fila
+// dos liberados esperando reação (mais antigo primeiro -- é o próximo da
+// vez) + histórico dos já reagidos abaixo (mais recente primeiro).
+function renderReactPlaylist(queue, history) {
+  const sortedQueue = [...queue].sort((a, b) => new Date(a.updatedAt || 0) - new Date(b.updatedAt || 0));
+  reactQueueCountEl.textContent = String(sortedQueue.length);
+  reactQueueListEl.innerHTML = sortedQueue.length
+    ? sortedQueue.map((v) => reactQueueRowHtml(v, false)).join("")
+    : '<p class="empty-state" id="react-queue-empty">Nenhum vídeo esperando reação ainda.</p>';
+
+  const sortedHistory = [...history].sort((a, b) => new Date(b.updatedAt || 0) - new Date(a.updatedAt || 0));
+  reactHistorySectionEl.hidden = sortedHistory.length === 0;
+  reactHistoryListEl.innerHTML = sortedHistory.map((v) => reactQueueRowHtml(v, true)).join("");
 }
 
 // totalRaised (bruto do leilão inteiro) só pra calcular a % de "domínio" do
@@ -2582,6 +2660,7 @@ socket.on("update", ({ leaderboard, lastEvent }) => {
   if (currentActiveSystem === "reacts") {
     currentReactVideos = leaderboard.reactVideos || [];
     renderReactVideos(currentReactVideos);
+    renderReactPlaylist(currentReactVideos.filter((v) => v.status === "unlocked"), leaderboard.reactedVideos || []);
   } else {
     renderLots(leaderboard.items, flashKey, lastEvent ? lastEvent.type : null, leaderboard.lastSabotagedKey, leaderboard.qualifyCount || 3);
   }

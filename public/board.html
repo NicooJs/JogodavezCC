@@ -165,6 +165,25 @@
     </section>
 
     <main class="board">
+      <!-- troca entre o leilão de jogos/filmes e o modo reacts (disputa de
+           vídeo por tempo de reação) -- os dois são exclusivos, só um
+           catálogo fica ativo por vez (ver getActiveSystem em server.js).
+           Coluna própria do grid (não flutuante, não espremida dentro de
+           outra coluna -- já tentei os dois e deu problema de sobreposição/
+           aperto, ver histórico do arquivo), sempre no mesmo lugar
+           independente de qual sistema tá ativo. Só existe em modo
+           apresentador, igual o resto das ferramentas por aqui -- o board
+           reserva a coluna extra pra ela só com body.presenter-mode (ver
+           style.css), senão o público veria um espaço vazio à toa. -->
+      <div class="system-switch" id="system-switch" hidden>
+        <button class="system-switch-item active" id="system-switch-leilao" type="button" data-system="leilao" title="Modo leilão" aria-label="Modo leilão" aria-pressed="true">
+          <svg class="icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2.5" y="4" width="6" height="6" rx="1"/><rect x="11.5" y="4" width="6" height="6" rx="1"/><rect x="2.5" y="12" width="6" height="4" rx="1"/><rect x="11.5" y="12" width="6" height="4" rx="1"/></svg>
+        </button>
+        <button class="system-switch-item" id="system-switch-reacts" type="button" data-system="reacts" title="Modo reacts" aria-label="Modo reacts" aria-pressed="false">
+          <svg class="icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2.5" y="3.5" width="15" height="10.5" rx="1.5"/><path d="M8.2 8.1l4 2.1-4 2.1V8.1z" fill="currentColor" stroke="none"/><path d="M6 17h8"/></svg>
+        </button>
+      </div>
+
       <div class="col col-left">
         <section class="panel host-panel">
           <p class="panel-label panel-label-icon" title="Host do leilão">
@@ -200,20 +219,6 @@
       </div>
 
       <div class="col col-center">
-        <!-- troca entre o leilão de jogos/filmes e o modo reacts (disputa
-             de vídeo por tempo de reação) -- os dois são exclusivos, só um
-             catálogo fica ativo por vez (ver getActiveSystem em server.js).
-             Presa ao lado do painel que ela controla (não flutuante), pra
-             não sobrepor os outros painéis da coluna esquerda. Só existe em
-             modo apresentador, igual o resto das ferramentas por aqui. -->
-        <div class="system-switch" id="system-switch" hidden>
-          <button class="system-switch-item active" id="system-switch-leilao" type="button" data-system="leilao" title="Modo leilão" aria-label="Modo leilão" aria-pressed="true">
-            <svg class="icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2.5" y="4" width="6" height="6" rx="1"/><rect x="11.5" y="4" width="6" height="6" rx="1"/><rect x="2.5" y="12" width="6" height="4" rx="1"/><rect x="11.5" y="12" width="6" height="4" rx="1"/></svg>
-          </button>
-          <button class="system-switch-item" id="system-switch-reacts" type="button" data-system="reacts" title="Modo reacts" aria-label="Modo reacts" aria-pressed="false">
-            <svg class="icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2.5" y="3.5" width="15" height="10.5" rx="1.5"/><path d="M8.2 8.1l4 2.1-4 2.1V8.1z" fill="currentColor" stroke="none"/><path d="M6 17h8"/></svg>
-          </button>
-        </div>
         <section class="panel arena-panel">
           <p class="panel-label panel-label-icon" title="Catálogo do leilão" id="arena-panel-label">
             <svg class="icon" id="arena-panel-icon-leilao" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2.5" y="4" width="6" height="6" rx="1"/><rect x="11.5" y="4" width="6" height="6" rx="1"/><rect x="2.5" y="12" width="6" height="4" rx="1"/><rect x="11.5" y="12" width="6" height="4" rx="1"/></svg>
@@ -231,7 +236,7 @@
       </div>
 
       <div class="col col-right">
-        <section class="panel timer-panel">
+        <section class="panel timer-panel" id="timer-panel">
           <p class="panel-label panel-label-icon" title="Timer">
             <svg class="icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="10" cy="11" r="7"/><path d="M10 7.5V11l2.5 1.5"/><path d="M7.5 2.5h5"/></svg>
             <span class="sr-only">Timer</span>
@@ -280,7 +285,7 @@
           </div>
         </section>
 
-        <section class="panel history-panel">
+        <section class="panel history-panel" id="history-panel">
           <p class="panel-label panel-label-icon" title="Histórico">
             <svg class="icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 5.5V10l3 2"/><circle cx="10" cy="10" r="7"/></svg>
             <span class="sr-only">Histórico</span>
@@ -292,6 +297,26 @@
           <ul class="history-list" id="history-list">
             <li class="empty-state" id="history-empty">Ainda não teve nenhum lance.</li>
           </ul>
+        </section>
+
+        <!-- substitui timer+histórico no modo reacts -- não tem countdown
+             de round nem feed de doação por aqui, o que importa é a fila
+             de vídeos já liberados esperando reação. Fica sempre no DOM,
+             só alterna hidden com os dois painéis acima (evita destruir/
+             reconstruir a lógica do timer, que roda independente disso). -->
+        <section class="panel react-playlist-panel" id="react-playlist-panel" hidden>
+          <p class="panel-label panel-label-icon" title="Fila de reação">
+            <svg class="icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2.5" y="3.5" width="15" height="10.5" rx="1.5"/><path d="M8.2 8.1l4 2.1-4 2.1V8.1z" fill="currentColor" stroke="none"/><path d="M6 17h8"/></svg>
+            <span class="sr-only">Fila de reação</span>
+            <span class="panel-count" id="react-queue-count">0</span>
+          </p>
+          <div class="react-queue-list" id="react-queue-list">
+            <p class="empty-state" id="react-queue-empty">Nenhum vídeo esperando reação ainda.</p>
+          </div>
+          <div class="react-history-section" id="react-history-section" hidden>
+            <p class="react-history-label">já reagidos</p>
+            <div class="react-history-list" id="react-history-list"></div>
+          </div>
         </section>
       </div>
     </main>

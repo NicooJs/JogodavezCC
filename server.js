@@ -436,6 +436,17 @@ function serializeLeaderboard(store, leilaoId) {
     total: centsToNumber(v.totalCents),
     status: v.status,
     submittedBy: v.submittedBy,
+    updatedAt: v.updatedAt,
+  }));
+
+  // playlist do modo reacts (board) mostra isso como histórico simples de
+  // vídeos já arquivados -- não precisa de mais campo que esses.
+  const reactedVideos = store.getReactedVideos().map((v) => ({
+    id: v.id,
+    title: v.title,
+    thumbnail: v.thumbnail,
+    submittedBy: v.submittedBy,
+    updatedAt: v.updatedAt,
   }));
 
   return {
@@ -454,6 +465,7 @@ function serializeLeaderboard(store, leilaoId) {
     activeSystem: getActiveSystem(store),
     reactMultiplier: centsToNumber(getReactMultiplierCents(store)),
     reactVideos,
+    reactedVideos,
     lastSabotagedKey: store.getState("lastSabotagedKey", null),
     donors,
     donorNames: store.getDonorNames(),

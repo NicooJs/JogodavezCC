@@ -355,6 +355,7 @@ body.board-body.has-bg-image .board-cover-bg { display: none; }
   font-size: 12.5px;
 }
 
+.topbar-total[hidden] { display: none; }
 .topbar-total {
   display: inline-flex;
   align-items: center;
@@ -896,21 +897,22 @@ body.board-body.has-bg-image .board-cover-bg { display: none; }
 
 /* trilha que troca entre leilão e reacts -- só 2 ícones, mesma linguagem
    visual do .settings-nav-item (fundo sólido na cor de destaque pro item
-   ativo). Presa ao lado do .arena-panel (não flutuante) -- uma versão
-   fixed/flutuante sobrepunha o quadro de honra na coluna esquerda em telas
-   largas, já que o board não tem margem sobrando na borda esquerda. */
+   ativo). Coluna própria do grid do .board (ver body.presenter-mode .board
+   acima), estica pra altura inteira -- nem flutuante nem espremida dentro
+   de outra coluna, já tentei os dois e deu sobreposição/aperto. */
 .system-switch {
-  flex-shrink: 0;
-  align-self: flex-start;
+  grid-row: 1 / -1;
   display: flex;
   flex-direction: column;
-  gap: 4px;
-  padding: 6px;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 10px 4px;
   background: var(--surface);
   background-image: var(--grain);
   background-blend-mode: overlay;
   border: 1px solid var(--border);
-  border-radius: 14px;
+  border-radius: 12px;
   box-shadow: 0 2px 10px rgba(0, 0, 0, 0.35);
 }
 .system-switch[hidden] { display: none; }
@@ -921,6 +923,7 @@ body.board-body.has-bg-image .board-cover-bg { display: none; }
   justify-content: center;
   width: 38px;
   height: 38px;
+  flex-shrink: 0;
   border-radius: 9px;
   border: none;
   background: none;
@@ -1329,6 +1332,13 @@ body.board-body.has-bg-image .board-cover-bg { display: none; }
   display: grid;
   grid-template-columns: 300px minmax(0, 1fr) 320px;
   gap: 22px;
+}
+/* coluna extra pro rail de troca leilão/reacts (#system-switch, primeiro
+   filho de .board) -- só reservada em modo apresentador, senão o público
+   veria um espaço vazio à toa. Sempre presente independente de qual
+   sistema tá ativo (é o seletor entre os dois). */
+body.presenter-mode .board {
+  grid-template-columns: 52px 300px minmax(0, 1fr) 320px;
 }
 
 @keyframes board-tension {
@@ -2004,12 +2014,6 @@ body.board-body.has-bg-image .board-cover-bg { display: none; }
   gap: 22px;
 }
 
-/* col-center é a única em linha (rail do modo reacts ao lado do catálogo,
-   não empilhada em cima dele) -- precisa vir depois de .col nessa cascata
-   pra sobrescrever o column de lá. */
-.col-center { flex-direction: row; align-items: stretch; }
-.col-center .arena-panel { flex: 1; min-width: 0; }
-
 /* cartão solto de verdade: fundo, cantos e borda próprios, sem depender
    de um .board/.col compartilhado pra dar identidade visual -- pedido
    explícito do cliente ("cada item... deve ser um bloco visual separado
@@ -2032,6 +2036,12 @@ body.board-body.has-bg-image .board-cover-bg { display: none; }
   flex-direction: column;
   min-height: 0;
 }
+/* .panel sempre define display:flex acima -- sem isso aqui, o atributo
+   hidden não escondia nada (author CSS ganha do default do navegador pro
+   [hidden], mesmo bug já visto no .topbar-total). Cobre qualquer painel
+   que troque de visibilidade por hidden (timer/histórico vs playlist do
+   reacts, por exemplo), não só um caso específico. */
+.panel[hidden] { display: none; }
 
 .panel-label {
   margin: 0 0 12px;
@@ -2974,13 +2984,112 @@ body.board-body.has-bg-image .board-cover-bg { display: none; }
 }
 .badge-race-qualified .icon { width: 10px; height: 10px; }
 
-/* modo reacts: card de vídeo, deliberadamente mais simples que o .lot-card
-   (sem rank/medalha, sem breakdown de doação, sem drag-and-drop, sem
-   cantos assimétricos) -- reaproveita só a barra de progresso do modo
-   corrida (.lot-race) pra meta de duração×multiplicador. */
-.react-card {
+/* barra de progresso própria do reacts (não reaproveita .lot-race do modo
+   corrida -- cliente pediu design separado pros dois sistemas). Só
+   aparece em vídeo ainda "active" (nem o featured nem o .react-card
+   mostram vídeo já liberado, esses viram fila na playlist), por isso não
+   tem variante "meta batida" aqui. */
+.react-goal { display: flex; flex-direction: column; gap: 5px; }
+
+.react-goal-track {
+  height: 6px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.14);
+  overflow: hidden;
+}
+
+.react-goal-fill {
   position: relative;
-  width: 100%;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, var(--accent), color-mix(in srgb, var(--accent) 55%, var(--gold)));
+  overflow: hidden;
+  transition: width 0.6s var(--ease);
+}
+.react-goal-fill::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background-image: linear-gradient(120deg, transparent 0%, rgba(255, 255, 255, 0.4) 45%, transparent 60%);
+  background-size: 200% 100%;
+  animation: lot-race-shimmer 1.6s linear infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .react-goal-fill::after { animation: none; }
+}
+
+.react-goal-label {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  font-weight: 600;
+  color: var(--text);
+}
+.react-goal-label .icon { width: 11px; height: 11px; color: var(--accent-text); flex-shrink: 0; }
+
+/* vídeo em destaque (o mais perto de liberar) -- banner horizontal grande
+   no topo do painel central, thumbnail e tipografia bem maiores que o
+   .react-card compacto abaixo. */
+.react-featured {
+  display: flex;
+  gap: 20px;
+  align-items: center;
+  padding: 20px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  margin-bottom: 18px;
+  animation: card-in 0.25s var(--ease);
+}
+
+.react-featured-thumb, .react-featured-thumb-placeholder {
+  flex-shrink: 0;
+  width: 220px;
+  height: 140px;
+  border-radius: 8px;
+  object-fit: cover;
+  background: var(--surface);
+}
+.react-featured-thumb-placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--muted);
+  font-family: var(--font-display);
+  font-style: italic;
+  font-size: 44px;
+}
+
+.react-featured-body { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 9px; }
+
+.react-featured-title {
+  font-family: var(--font-display);
+  font-style: italic;
+  font-size: 24px;
+  color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.react-featured-submitter { font-family: var(--font-mono); font-size: 11.5px; color: var(--muted); }
+
+.react-featured .react-goal-track { height: 8px; }
+.react-featured .react-goal-label { font-size: 12.5px; }
+.react-featured .react-goal-label .icon { width: 13px; height: 13px; }
+
+/* resto dos vídeos em andamento (sem o destaque) -- grade compacta,
+   deliberadamente mais simples que o .lot-card do leilão (sem rank, sem
+   breakdown, sem drag-and-drop, sem cantos assimétricos). */
+.react-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 14px;
+}
+
+.react-card {
   display: flex;
   gap: 14px;
   align-items: center;
@@ -2991,9 +3100,8 @@ body.board-body.has-bg-image .board-cover-bg { display: none; }
   overflow: hidden;
   animation: card-in 0.25s var(--ease);
 }
-.react-card.is-unlocked { border-color: color-mix(in srgb, var(--gold) 50%, var(--border)); }
 
-.react-card-thumb {
+.react-card-thumb, .react-card-thumb-placeholder {
   flex-shrink: 0;
   width: 96px;
   height: 64px;
@@ -3002,14 +3110,9 @@ body.board-body.has-bg-image .board-cover-bg { display: none; }
   background: var(--surface);
 }
 .react-card-thumb-placeholder {
-  flex-shrink: 0;
-  width: 96px;
-  height: 64px;
-  border-radius: 6px;
   display: flex;
   align-items: center;
   justify-content: center;
-  background: var(--surface);
   color: var(--muted);
   font-family: var(--font-display);
   font-style: italic;
@@ -3040,23 +3143,93 @@ body.board-body.has-bg-image .board-cover-bg { display: none; }
   color: var(--muted);
 }
 
-.react-card .lot-race { max-width: none; margin: 0; }
+/* playlist: substitui timer+histórico no modo reacts (coluna direita) --
+   fila dos vídeos liberados esperando reação + histórico dos já reagidos
+   embaixo, separador tracejado igual o padrão já usado no sino de
+   notificações (.notif-bell-pending/.notif-bell-list). */
+.react-playlist-panel { flex: 1; min-height: 160px; display: flex; flex-direction: column; }
 
-.react-unlocked-badge {
-  position: absolute;
-  top: 10px;
-  right: 10px;
-  display: inline-flex;
+.react-queue-list {
+  flex: 1;
+  overflow-y: auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.react-queue-row {
+  display: flex;
   align-items: center;
-  gap: 3px;
+  gap: 10px;
+  padding: 8px;
+  border-radius: 8px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+}
+.react-queue-row:hover { border-color: var(--accent-soft); }
+.react-queue-row.is-history { opacity: 0.65; }
+
+.react-queue-thumb, .react-queue-thumb-placeholder {
+  flex-shrink: 0;
+  width: 52px;
+  height: 34px;
+  border-radius: 5px;
+  object-fit: cover;
+  background: var(--surface);
+}
+.react-queue-thumb-placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--muted);
+  font-family: var(--font-display);
+  font-style: italic;
+  font-size: 14px;
+}
+
+.react-queue-body { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+
+.react-queue-title {
+  font-family: var(--font-body);
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.react-queue-submitter { font-family: var(--font-mono); font-size: 10px; color: var(--muted); }
+
+.react-history-section {
+  flex-shrink: 0;
+  max-height: 35%;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px dashed var(--border);
+}
+.react-history-section[hidden] { display: none; }
+
+.react-history-label {
   font-family: var(--font-mono);
-  font-size: 10px;
+  font-size: 9.5px;
   font-weight: 700;
-  padding: 2px 7px;
-  border-radius: 3px;
-  background: var(--gold-bg);
-  color: var(--gold);
-  border: 1px solid color-mix(in srgb, var(--gold) 45%, transparent);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--muted);
+  margin: 0 0 6px;
+}
+
+.react-history-list {
+  overflow-y: auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
 }
 
 /* menu de botão direito nos cards do catálogo (modo corrida) -- cabeçalho
@@ -3715,10 +3888,15 @@ body.board-body.has-bg-image .board-cover-bg { display: none; }
 .footer a { color: var(--muted); }
 
 @media (max-width: 1100px) {
-  .board { grid-template-columns: 1fr 1fr; grid-template-rows: auto auto auto; }
-  .col-left { grid-column: 1; grid-row: 1; }
-  .col-right { grid-column: 2; grid-row: 1; }
-  .col-center { grid-column: 1 / -1; grid-row: 2; }
+  .board, body.presenter-mode .board { grid-template-columns: 1fr 1fr; grid-template-rows: auto auto auto; }
+  /* rail vira barra horizontal aqui em vez de coluna -- 3 colunas lado a
+     lado não cabe mais nesse ponto, e a coluna do rail sobrepunha
+     .col-left sem uma posição explícita (auto-flow dos dois no mesmo
+     canto). */
+  #system-switch { grid-column: 1 / -1; grid-row: 1; flex-direction: row; padding: 6px 10px; }
+  .col-left { grid-column: 1; grid-row: 2; }
+  .col-right { grid-column: 2; grid-row: 2; }
+  .col-center { grid-column: 1 / -1; grid-row: 3; }
   .arena-panel { min-height: 420px; }
 }
 
