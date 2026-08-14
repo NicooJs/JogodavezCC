@@ -168,19 +168,20 @@
       <!-- troca entre o leilão de jogos/filmes e o modo reacts (disputa de
            vídeo por tempo de reação) -- os dois são exclusivos, só um
            catálogo fica ativo por vez (ver getActiveSystem em server.js).
-           Coluna própria do grid (não flutuante, não espremida dentro de
-           outra coluna -- já tentei os dois e deu problema de sobreposição/
-           aperto, ver histórico do arquivo), sempre no mesmo lugar
-           independente de qual sistema tá ativo. Só existe em modo
-           apresentador, igual o resto das ferramentas por aqui -- o board
-           reserva a coluna extra pra ela só com body.presenter-mode (ver
-           style.css), senão o público veria um espaço vazio à toa. -->
+           position:fixed encostada na borda esquerda DA TELA de verdade
+           (não só da coluna do grid -- isso ainda sobrava o padding do
+           .page, ficava com respiro ao invés de colada no canto, ver
+           style.css); por isso não é filha do grid, o .page que ganha o
+           padding-left correspondente em compensação, só em modo
+           apresentador (senão o público veria um respiro vazio à toa). -->
       <div class="system-switch" id="system-switch" hidden>
         <button class="system-switch-item active" id="system-switch-leilao" type="button" data-system="leilao" title="Modo leilão" aria-label="Modo leilão" aria-pressed="true">
           <svg class="icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2.5" y="4" width="6" height="6" rx="1"/><rect x="11.5" y="4" width="6" height="6" rx="1"/><rect x="2.5" y="12" width="6" height="4" rx="1"/><rect x="11.5" y="12" width="6" height="4" rx="1"/></svg>
+          <span class="system-switch-label">Leilão</span>
         </button>
         <button class="system-switch-item" id="system-switch-reacts" type="button" data-system="reacts" title="Modo reacts" aria-label="Modo reacts" aria-pressed="false">
           <svg class="icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2.5" y="3.5" width="15" height="10.5" rx="1.5"/><path d="M8.2 8.1l4 2.1-4 2.1V8.1z" fill="currentColor" stroke="none"/><path d="M6 17h8"/></svg>
+          <span class="system-switch-label">Reacts</span>
         </button>
       </div>
 
