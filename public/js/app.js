@@ -30,6 +30,7 @@ const notifBellBadgeEl = document.getElementById("notif-bell-badge");
 const notifBellPendingEl = document.getElementById("notif-bell-pending");
 const notifBellListEl = document.getElementById("notif-bell-list");
 const notifBellEmptyEl = document.getElementById("notif-bell-empty");
+const lotContextMenuEl = document.getElementById("lot-context-menu");
 const timerEl = document.getElementById("timer");
 const timerClockEl = document.getElementById("timer-clock");
 const timerLabelEl = document.getElementById("timer-label");
@@ -433,6 +434,28 @@ function lotTopDonorHtml(item) {
   `;
 }
 
+// modo corrida: meta manual do apresentador (botão direito no card) -- vale
+// pra apoio e sabotagem juntos (item.total já é o líquido), então uma
+// sabotagem pesada pode derrubar o progresso, não só apoio soma.
+function lotRaceHtml(item) {
+  if (!item.raceGoal) return "";
+  const pct = Math.max(0, Math.min(100, Math.round((item.total / item.raceGoal) * 100)));
+  const label = item.raceGoalReached
+    ? "meta batida, classificado!"
+    : `faltam ${formatBRL(Math.max(0, item.raceGoal - item.total))} pra classificar`;
+  return `
+    <div class="lot-race${item.raceGoalReached ? " is-reached" : ""}">
+      <div class="lot-race-track"><div class="lot-race-fill" style="width:${pct}%"></div></div>
+      <span class="lot-race-label">${label}</span>
+    </div>
+  `;
+}
+
+function raceQualifiedBadgeHtml(item) {
+  if (!item.qualifiedByRace) return "";
+  return `<span class="badge-race-qualified" title="Classificado pela meta da corrida, não pelo valor"><svg class="icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 2.5v15"/><path d="M4 3.5c2-1 3.5 1 5.5 0s3.5-1 5.5 0v6c-2-1-3.5 1-5.5 0s-3.5-1-5.5 0z"/></svg>classificado</span>`;
+}
+
 function lotCardInnerHtml(item, barPct, hitBadge, changed, streakBadge, duelGlow, duelBadge) {
   const thumb = thumbHtml(item, "lot-thumb");
   const bg = item.image
@@ -448,11 +471,13 @@ function lotCardInnerHtml(item, barPct, hitBadge, changed, streakBadge, duelGlow
       <div class="lot-info">
         <p class="lot-name">${escapeHtml(item.name)}</p>
         <span class="lot-total${changed ? " tick" : ""}${item.total < 0 ? " lot-total-negative" : ""}">${formatBRL(item.total)}</span>
+        ${lotRaceHtml(item)}
         ${lotFundingHtml(item)}
         ${lotTopDonorHtml(item)}
       </div>
     </div>
     <div class="lot-corner">
+      ${raceQualifiedBadgeHtml(item)}
       ${streakBadge}
       ${duelBadge}
       ${hitBadge}
@@ -524,6 +549,96 @@ async function confirmAndMergeLots(fromKey, toKey) {
     alert(err.message);
   }
 }
+
+// modo corrida: botão direito num card do catálogo (só modo apresentador)
+// abre esse menu, próprio, em vez do menu nativo do navegador.
+const FLAG_ICON_SVG = `<svg class="icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 2.5v15"/><path d="M4 3.5c2-1 3.5 1 5.5 0s3.5-1 5.5 0v6c-2-1-3.5 1-5.5 0s-3.5-1-5.5 0z"/></svg>`;
+const STOP_ICON_SVG = `<svg class="icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="10" cy="10" r="7"/><path d="M7 7l6 6M13 7l-6 6"/></svg>`;
+
+let contextMenuTargetKey = null;
+
+function closeLotContextMenu() {
+  lotContextMenuEl.hidden = true;
+  contextMenuTargetKey = null;
+}
+
+function openLotContextMenu(x, y, item) {
+  contextMenuTargetKey = item.key;
+  lotContextMenuEl.innerHTML = item.raceGoal
+    ? `
+      <button class="lot-context-menu-item" type="button" data-act="race-edit">${FLAG_ICON_SVG}Editar meta da corrida</button>
+      <button class="lot-context-menu-item danger" type="button" data-act="race-deactivate">${STOP_ICON_SVG}Desativar modo corrida</button>
+    `
+    : `<button class="lot-context-menu-item" type="button" data-act="race-activate">${FLAG_ICON_SVG}Ativar modo corrida</button>`;
+  lotContextMenuEl.hidden = false;
+  lotContextMenuEl.style.left = "0px";
+  lotContextMenuEl.style.top = "0px";
+  const rect = lotContextMenuEl.getBoundingClientRect();
+  const left = Math.max(8, Math.min(x, window.innerWidth - rect.width - 8));
+  const top = Math.max(8, Math.min(y, window.innerHeight - rect.height - 8));
+  lotContextMenuEl.style.left = `${left}px`;
+  lotContextMenuEl.style.top = `${top}px`;
+}
+
+lotListEl.addEventListener("contextmenu", (e) => {
+  if (!document.body.classList.contains("presenter-mode")) return;
+  const card = e.target.closest(".lot-card");
+  if (!card) return;
+  const item = currentItems.find((i) => i.key === card.dataset.key);
+  if (!item) return;
+  e.preventDefault();
+  openLotContextMenu(e.clientX, e.clientY, item);
+});
+
+document.addEventListener("click", (e) => {
+  if (lotContextMenuEl.hidden || lotContextMenuEl.contains(e.target)) return;
+  closeLotContextMenu();
+});
+document.addEventListener("keydown", (e) => { if (e.key === "Escape" && !lotContextMenuEl.hidden) closeLotContextMenu(); });
+document.addEventListener("scroll", () => { if (!lotContextMenuEl.hidden) closeLotContextMenu(); }, true);
+window.addEventListener("blur", () => { if (!lotContextMenuEl.hidden) closeLotContextMenu(); });
+
+lotContextMenuEl.addEventListener("click", async (e) => {
+  const btn = e.target.closest("button[data-act]");
+  if (!btn) return;
+  const key = contextMenuTargetKey;
+  const act = btn.dataset.act;
+  closeLotContextMenu();
+  if (!key) return;
+  const item = currentItems.find((i) => i.key === key);
+
+  if (act === "race-activate" || act === "race-edit") {
+    const value = await promptDialog({
+      title: act === "race-edit" ? "Editar meta da corrida" : "Ativar modo corrida",
+      label: `Valor pra "${item ? item.name : ""}" garantir vaga entre os classificados (R$)`,
+      initialValue: item && item.raceGoal ? item.raceGoal.toFixed(2) : "",
+      inputType: "number",
+      confirmLabel: "Salvar",
+    });
+    if (value === null) return;
+    try {
+      await presenterFetch("/admin/race-goal", { method: "POST", body: JSON.stringify({ key, amount: value }) });
+    } catch (err) {
+      alert(err.message);
+    }
+    return;
+  }
+
+  if (act === "race-deactivate") {
+    const ok = await confirmDialog({
+      title: "Desativar modo corrida",
+      message: `Remover a meta de "${item ? item.name : "esse jogo"}"? A barra de progresso some do card.`,
+      confirmLabel: "Desativar",
+      danger: true,
+    });
+    if (!ok) return;
+    try {
+      await presenterFetch(`/admin/race-goal/${encodeURIComponent(key)}`, { method: "DELETE" });
+    } catch (err) {
+      alert(err.message);
+    }
+  }
+});
 
 function triggerBigWinCelebration(key, type) {
   const card = lotListEl.querySelector(`.lot-card[data-key="${CSS.escape(key)}"]`);

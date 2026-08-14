@@ -376,6 +376,14 @@ function serializeLeaderboard(store, leilaoId) {
   const items = rows.map((row, index) => {
     const rowFunding = funding[row.key] || { added_cents: 0, removed_cents: 0 };
     const topDonor = topDonorByGame[row.key];
+    // modo corrida: meta manual definida pelo apresentador (botão direito no
+    // card) -- bater a meta abre uma vaga EXTRA de classificado (não troca
+    // quem já tava classificado por dinheiro, só soma +1), mesmo que o jogo
+    // não esteja entre os `qualifyCount` primeiros por valor. O rank/ordem
+    // do catálogo continua 100% por dinheiro -- só o "winning" muda.
+    const raceGoalCents = row.raceGoalCents || null;
+    const raceGoalReached = !!(raceGoalCents && row.total_cents >= raceGoalCents);
+    const naturallyWinning = index < qualifyCount;
     return {
       key: row.key,
       name: row.name,
@@ -383,7 +391,10 @@ function serializeLeaderboard(store, leilaoId) {
       added: centsToNumber(rowFunding.added_cents),
       removed: centsToNumber(rowFunding.removed_cents),
       rank: index + 1,
-      winning: index < qualifyCount,
+      winning: naturallyWinning || raceGoalReached,
+      qualifiedByRace: !naturallyWinning && raceGoalReached,
+      raceGoal: raceGoalCents ? centsToNumber(raceGoalCents) : null,
+      raceGoalReached,
       image: row.image_url || null,
       topDonor: topDonor
         ? { username: topDonor.username, total: centsToNumber(topDonor.total_cents), avatar: getDonorAvatar(topDonor.username, onAvatarResolved) }
@@ -1954,6 +1965,26 @@ app.post("/api/l/:id/admin/rename", loadLeilao, requireLeilaoAdmin, (req, res) =
   let game = req.store.renameGame(key, newName);
   if (game && image !== undefined) game = req.store.setGameImage(key, image);
   broadcastUpdate(req.leilaoId, req.store, { type: "rename" });
+  res.json({ ok: true, game });
+});
+
+// modo corrida: meta manual (botão direito no card no board) -- bater a
+// meta abre uma vaga extra de classificado, ver serializeLeaderboard.
+app.post("/api/l/:id/admin/race-goal", loadLeilao, requireLeilaoAdmin, (req, res) => {
+  const { key, amount } = req.body || {};
+  const amountCents = Math.round(Number(amount) * 100);
+  if (!key || !req.store.hasGame(key) || !Number.isFinite(amountCents) || amountCents <= 0) {
+    return res.status(400).json({ error: "Informe um valor válido pra meta" });
+  }
+  const game = req.store.setRaceGoal(key, amountCents);
+  broadcastUpdate(req.leilaoId, req.store, { type: "race-goal" });
+  res.json({ ok: true, game });
+});
+
+app.delete("/api/l/:id/admin/race-goal/:key", loadLeilao, requireLeilaoAdmin, (req, res) => {
+  const game = req.store.clearRaceGoal(req.params.key);
+  if (!game) return res.status(404).json({ error: "Jogo não encontrado" });
+  broadcastUpdate(req.leilaoId, req.store, { type: "race-goal" });
   res.json({ ok: true, game });
 });
 

@@ -209,6 +209,24 @@ function createStore(filePath) {
     return { ...data.games[key] };
   }
 
+  // modo corrida: meta manual em centavos definida pelo apresentador
+  // (botão direito no card) -- bater a meta garante uma vaga extra de
+  // classificado (ver serializeLeaderboard em server.js), independente do
+  // ranking por dinheiro.
+  function setRaceGoal(key, amountCents) {
+    if (!data.games[key]) return null;
+    data.games[key].raceGoalCents = amountCents;
+    save();
+    return { ...data.games[key] };
+  }
+
+  function clearRaceGoal(key) {
+    if (!data.games[key]) return null;
+    delete data.games[key].raceGoalCents;
+    save();
+    return { ...data.games[key] };
+  }
+
   function getLeaderboard() {
     return Object.values(data.games).sort((a, b) => {
       if (b.total_cents !== a.total_cents) return b.total_cents - a.total_cents;
@@ -442,6 +460,8 @@ function createStore(filePath) {
     resolveExistingKey,
     hasGameImage,
     setGameImage,
+    setRaceGoal,
+    clearRaceGoal,
     adjustGame,
     setGameTotal,
     renameGame,
