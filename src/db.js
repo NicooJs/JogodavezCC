@@ -269,6 +269,24 @@ function createStore(filePath) {
       .slice(0, limit);
   }
 
+  // pódio próprio do modo reacts -- mesmo formato/critério do getTopDonors
+  // do leilão, mas somando reactEvents (contribuição pra vídeo) em vez de
+  // events (lote do leilão). Os dois sistemas não compartilham doador
+  // ranqueado de propósito: leilão não roda enquanto reacts tá ativo, então
+  // misturar os dois no mesmo pódio mostraria gente que não tem nada a ver
+  // com o que tá na tela.
+  function getTopReactDonors(limit = 8) {
+    const totals = {};
+    for (const ev of data.reactEvents) {
+      if (!ev.username) continue;
+      totals[ev.username] = (totals[ev.username] || 0) + ev.amount_cents;
+    }
+    return Object.entries(totals)
+      .map(([username, total_cents]) => ({ username, total_cents }))
+      .sort((a, b) => b.total_cents - a.total_cents)
+      .slice(0, limit);
+  }
+
   function getDonorNames() {
     const seen = new Set();
     const names = [];
@@ -638,6 +656,7 @@ function createStore(filePath) {
     markReactVideoReacted,
     getReactVideos,
     getReactedVideos,
+    getTopReactDonors,
   };
 }
 

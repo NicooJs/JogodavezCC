@@ -424,6 +424,16 @@ function serializeLeaderboard(store, leilaoId) {
     avatar: getDonorAvatar(d.username, onAvatarResolved),
   }));
 
+  // pódio próprio do reacts -- leilão não roda enquanto reacts tá ativo,
+  // então o quadro de honra não pode continuar mostrando doador do leilão
+  // nesse modo (pedido explícito do cliente).
+  const reactDonors = store.getTopReactDonors(10).map((d, index) => ({
+    username: d.username,
+    total: centsToNumber(d.total_cents),
+    rank: index + 1,
+    avatar: getDonorAvatar(d.username, onAvatarResolved),
+  }));
+
   const reactVideos = store.getReactVideos().map((v) => ({
     id: v.id,
     title: v.title,
@@ -466,6 +476,7 @@ function serializeLeaderboard(store, leilaoId) {
     reactMultiplier: centsToNumber(getReactMultiplierCents(store)),
     reactVideos,
     reactedVideos,
+    reactDonors,
     lastSabotagedKey: store.getState("lastSabotagedKey", null),
     donors,
     donorNames: store.getDonorNames(),

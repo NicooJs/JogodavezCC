@@ -2664,7 +2664,16 @@ socket.on("update", ({ leaderboard, lastEvent }) => {
   } else {
     renderLots(leaderboard.items, flashKey, lastEvent ? lastEvent.type : null, leaderboard.lastSabotagedKey, leaderboard.qualifyCount || 3);
   }
-  renderDonors(leaderboard.donors || [], leaderboard.hideTotalRaised ? null : leaderboard.totalRaised);
+  // pódio próprio pra cada sistema -- leilão não roda enquanto reacts tá
+  // ativo, então o quadro de honra não pode continuar mostrando doador do
+  // leilão nesse modo (e vice-versa).
+  if (currentActiveSystem === "reacts") {
+    const reactDonors = leaderboard.reactDonors || [];
+    const reactTotal = reactDonors.reduce((sum, d) => sum + (d.total || 0), 0);
+    renderDonors(reactDonors, reactTotal);
+  } else {
+    renderDonors(leaderboard.donors || [], leaderboard.hideTotalRaised ? null : leaderboard.totalRaised);
+  }
   if (lastEvent && lastEvent.type === "reset") {
     historyItems = [];
     renderHistory();
