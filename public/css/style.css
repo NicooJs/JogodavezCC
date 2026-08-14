@@ -680,6 +680,18 @@ body.board-body.has-bg-image .board-cover-bg { display: none; }
   border-bottom: 1px dashed var(--border);
 }
 
+.notif-bell-section-label {
+  font-family: var(--font-mono);
+  font-size: 9.5px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--muted);
+  margin: 0 0 4px;
+  padding: 0 4px;
+}
+.notif-bell-section-label[hidden] { display: none; }
+
 .notif-bell-list { flex: 1; }
 
 .notif-bell-empty {
@@ -881,6 +893,44 @@ body.board-body.has-bg-image .board-cover-bg { display: none; }
 .presenter-fab .icon { width: 22px; height: 22px; }
 .presenter-fab.active { background: var(--surface-2); color: var(--accent-text); box-shadow: 0 2px 10px rgba(0, 0, 0, 0.35); }
 .presenter-fab[hidden] { display: none; }
+
+/* trilha que troca entre leilão e reacts -- só 2 ícones, mesma linguagem
+   visual do .settings-nav-item (fundo sólido na cor de destaque pro item
+   ativo). Presa ao lado do .arena-panel (não flutuante) -- uma versão
+   fixed/flutuante sobrepunha o quadro de honra na coluna esquerda em telas
+   largas, já que o board não tem margem sobrando na borda esquerda. */
+.system-switch {
+  flex-shrink: 0;
+  align-self: flex-start;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 6px;
+  background: var(--surface);
+  background-image: var(--grain);
+  background-blend-mode: overlay;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.35);
+}
+.system-switch[hidden] { display: none; }
+
+.system-switch-item {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 38px;
+  height: 38px;
+  border-radius: 9px;
+  border: none;
+  background: none;
+  color: var(--muted);
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+.system-switch-item .icon { width: 18px; height: 18px; }
+.system-switch-item:hover { color: var(--text); background: var(--surface-2); }
+.system-switch-item.active { color: var(--accent-ink); background: var(--accent); }
 
 /* o mesmo conteúdo de antes (.presenter-bar), agora dentro de um popover
    flutuante que só existe quando o botão acima é clicado -- não empurra
@@ -1954,6 +2004,12 @@ body.board-body.has-bg-image .board-cover-bg { display: none; }
   gap: 22px;
 }
 
+/* col-center é a única em linha (rail do modo reacts ao lado do catálogo,
+   não empilhada em cima dele) -- precisa vir depois de .col nessa cascata
+   pra sobrescrever o column de lá. */
+.col-center { flex-direction: row; align-items: stretch; }
+.col-center .arena-panel { flex: 1; min-width: 0; }
+
 /* cartão solto de verdade: fundo, cantos e borda próprios, sem depender
    de um .board/.col compartilhado pra dar identidade visual -- pedido
    explícito do cliente ("cada item... deve ser um bloco visual separado
@@ -2917,6 +2973,91 @@ body.board-body.has-bg-image .board-cover-bg { display: none; }
   border: 1px solid color-mix(in srgb, var(--gold) 45%, transparent);
 }
 .badge-race-qualified .icon { width: 10px; height: 10px; }
+
+/* modo reacts: card de vídeo, deliberadamente mais simples que o .lot-card
+   (sem rank/medalha, sem breakdown de doação, sem drag-and-drop, sem
+   cantos assimétricos) -- reaproveita só a barra de progresso do modo
+   corrida (.lot-race) pra meta de duração×multiplicador. */
+.react-card {
+  position: relative;
+  width: 100%;
+  display: flex;
+  gap: 14px;
+  align-items: center;
+  padding: 12px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+  animation: card-in 0.25s var(--ease);
+}
+.react-card.is-unlocked { border-color: color-mix(in srgb, var(--gold) 50%, var(--border)); }
+
+.react-card-thumb {
+  flex-shrink: 0;
+  width: 96px;
+  height: 64px;
+  border-radius: 6px;
+  object-fit: cover;
+  background: var(--surface);
+}
+.react-card-thumb-placeholder {
+  flex-shrink: 0;
+  width: 96px;
+  height: 64px;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--surface);
+  color: var(--muted);
+  font-family: var(--font-display);
+  font-style: italic;
+  font-size: 24px;
+}
+
+.react-card-body {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.react-card-title {
+  font-family: var(--font-body);
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.react-card-submitter {
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  color: var(--muted);
+}
+
+.react-card .lot-race { max-width: none; margin: 0; }
+
+.react-unlocked-badge {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 700;
+  padding: 2px 7px;
+  border-radius: 3px;
+  background: var(--gold-bg);
+  color: var(--gold);
+  border: 1px solid color-mix(in srgb, var(--gold) 45%, transparent);
+}
 
 /* menu de botão direito nos cards do catálogo (modo corrida) -- cabeçalho
    mostra pra qual jogo é o menu, não só uma lista de botões solta. */

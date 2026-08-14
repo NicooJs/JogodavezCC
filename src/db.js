@@ -1,4 +1,5 @@
 const fs = require("fs");
+const crypto = require("crypto");
 const { normalizeKey } = require("./parser");
 
 function emptyData() {
@@ -9,6 +10,12 @@ function emptyData() {
     state: {},
     pastAuctions: [],
     nextEventId: 1,
+    // modo reacts -- sistema separado do leilão, mas guardado no mesmo
+    // arquivo (dados próprios, não mistura com games/events). Vídeo tem
+    // status pending -> active -> unlocked -> reacted (ou rejected).
+    reactVideos: {},
+    reactEvents: [],
+    nextReactEventId: 1,
   };
 }
 
@@ -408,13 +415,139 @@ function createStore(filePath) {
     return { ...data.games[key] };
   }
 
+  function generateReactId() {
+    let id;
+    do {
+      id = crypto.randomBytes(5).toString("hex");
+    } while (data.reactVideos[id]);
+    return id;
+  }
+
+  // sugestão de um viewer -- fica "pending" até o apresentador aprovar
+  // (ver approveReactVideo). Se veio com doação junto, o valor fica
+  // guardado em pendingAmountCents e só soma no vídeo quando aprovado --
+  // aprovar tarde não deve fazer o doador perder o que já mandou.
+  function submitReactVideo({ url, platform, title, thumbnail, durationSeconds, submittedBy, amountCents, providerId }) {
+    const id = generateReactId();
+    const now = nowISO();
+    data.reactVideos[id] = {
+      id,
+      url,
+      platform: platform || "other",
+      title: title || url,
+      nickname: null,
+      thumbnail: thumbnail || null,
+      durationSeconds: durationSeconds || null,
+      goalCents: null,
+      totalCents: 0,
+      status: "pending",
+      submittedBy: submittedBy || null,
+      pendingAmountCents: Math.max(0, Math.round(amountCents || 0)),
+      createdAt: now,
+      updatedAt: now,
+    };
+    markProcessed(providerId);
+    save();
+    return { ...data.reactVideos[id] };
+  }
+
+  function getPendingReactVideos() {
+    return Object.values(data.reactVideos)
+      .filter((v) => v.status === "pending")
+      .map((v) => ({ ...v }));
+  }
+
+  // apelido curto é o que a doação por texto livre (pixgg.com) vai casar
+  // depois -- normalizado igual chave de jogo, mesmo motor de reconhecimento
+  // (ver findExistingGameInText, chamado a partir do server.js).
+  function approveReactVideo(id, { nickname, multiplierCents, durationSeconds }) {
+    const video = data.reactVideos[id];
+    if (!video || video.status !== "pending") return null;
+    if (durationSeconds != null) video.durationSeconds = durationSeconds;
+    const minutes = (video.durationSeconds || 0) / 60;
+    video.goalCents = Math.round(minutes * (multiplierCents || 0));
+    video.nickname = normalizeKey(nickname || video.title);
+    video.status = "active";
+    video.updatedAt = nowISO();
+    const startingAmount = video.pendingAmountCents || 0;
+    delete video.pendingAmountCents;
+    save();
+    if (startingAmount > 0) {
+      return applyReactContribution({ id, amountCents: startingAmount, username: video.submittedBy, rawMessage: video.title, providerId: null });
+    }
+    return { ...video };
+  }
+
+  function rejectReactVideo(id) {
+    const video = data.reactVideos[id];
+    if (!video) return false;
+    video.status = "rejected";
+    video.updatedAt = nowISO();
+    save();
+    return true;
+  }
+
+  function applyReactContribution({ id, amountCents, username, rawMessage, providerId }) {
+    const video = data.reactVideos[id];
+    if (!video) return null;
+    video.totalCents += amountCents;
+    video.updatedAt = nowISO();
+    if (video.status === "active" && video.goalCents != null && video.totalCents >= video.goalCents) {
+      video.status = "unlocked";
+    }
+    data.reactEvents.push({
+      id: data.nextReactEventId++,
+      video_id: id,
+      video_title: video.title,
+      amount_cents: amountCents,
+      username: username || null,
+      raw_message: rawMessage || null,
+      provider_id: providerId || null,
+      created_at: nowISO(),
+    });
+    markProcessed(providerId);
+    save();
+    return { ...video };
+  }
+
+  function markReactVideoReacted(id) {
+    const video = data.reactVideos[id];
+    if (!video || video.status !== "unlocked") return null;
+    video.status = "reacted";
+    video.updatedAt = nowISO();
+    save();
+    return { ...video };
+  }
+
+  // ativos = os que já podem receber doação (o público vê isso no board);
+  // "pending" fica de fora até o apresentador aprovar.
+  function getReactVideos() {
+    return Object.values(data.reactVideos)
+      .filter((v) => v.status === "active" || v.status === "unlocked")
+      .map((v) => ({ ...v }));
+  }
+
+  function getReactedVideos() {
+    return Object.values(data.reactVideos)
+      .filter((v) => v.status === "reacted")
+      .map((v) => ({ ...v }));
+  }
+
   function resetAll() {
     const preservedState = { ...data.state };
     delete preservedState.lastSabotagedKey;
     const preservedPastAuctions = data.pastAuctions || [];
+    // "zerar leilão" reseta só o leilão -- reacts é um sistema à parte,
+    // zerar um não deveria apagar o outro sem querer.
+    const preservedReactVideos = data.reactVideos || {};
+    const preservedReactEvents = data.reactEvents || [];
+    const preservedNextReactEventId = data.nextReactEventId || 1;
     data = emptyData();
     data.state = preservedState;
     data.pastAuctions = preservedPastAuctions;
+    data.reactVideos = preservedReactVideos;
+    data.reactEvents = preservedReactEvents;
+    data.nextReactEventId = preservedNextReactEventId;
     save();
   }
 
@@ -497,6 +630,14 @@ function createStore(filePath) {
     getPastAuctions,
     getRawSnapshot,
     registerGameCombo,
+    submitReactVideo,
+    getPendingReactVideos,
+    approveReactVideo,
+    rejectReactVideo,
+    applyReactContribution,
+    markReactVideoReacted,
+    getReactVideos,
+    getReactedVideos,
   };
 }
 

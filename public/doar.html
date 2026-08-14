@@ -48,7 +48,7 @@
         </div>
 
         <form class="doar-step" id="doar-step-form" hidden autocomplete="off">
-          <div class="modal-field">
+          <div class="modal-field" id="doar-action-field">
             <span class="modal-label">ação</span>
             <div class="seg" id="doar-action">
               <button type="button" data-action="add" class="active">Apoiar (+)</button>
@@ -57,7 +57,7 @@
           </div>
 
           <div class="modal-field">
-            <label class="modal-label" for="doar-game" data-label-text="{media}">jogo</label>
+            <label class="modal-label" for="doar-game" id="doar-game-label" data-label-text="{media}">jogo</label>
             <div class="game-input-wrap">
               <span class="game-input-icon" id="doar-game-icon" hidden></span>
               <input type="text" id="doar-game" class="modal-input" placeholder="nome do jogo" autocomplete="off" data-label-placeholder="nome do {media}" />

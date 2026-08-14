@@ -66,6 +66,12 @@
             <div class="notif-bell-head">
               <span>Notificações</span>
             </div>
+            <!-- vídeos sugeridos pro modo reacts, esperando aprovação --
+                 mesmo padrão visual/de ação da fila de doações pendentes
+                 logo abaixo, só que aprovar aqui pede um apelido curto (é
+                 o que a doação por texto livre vai casar depois). -->
+            <p class="notif-bell-section-label" id="notif-bell-reacts-label" hidden>vídeos sugeridos</p>
+            <div class="notif-bell-pending" id="notif-bell-pending-reacts"></div>
             <div class="notif-bell-pending" id="notif-bell-pending"></div>
             <div class="notif-bell-list" id="notif-bell-list"></div>
             <p class="notif-bell-empty" id="notif-bell-empty">Nenhuma mensagem ainda.</p>
@@ -194,10 +200,25 @@
       </div>
 
       <div class="col col-center">
-        <section class="panel arena-panel">
-          <p class="panel-label panel-label-icon" title="Catálogo do leilão">
+        <!-- troca entre o leilão de jogos/filmes e o modo reacts (disputa
+             de vídeo por tempo de reação) -- os dois são exclusivos, só um
+             catálogo fica ativo por vez (ver getActiveSystem em server.js).
+             Presa ao lado do painel que ela controla (não flutuante), pra
+             não sobrepor os outros painéis da coluna esquerda. Só existe em
+             modo apresentador, igual o resto das ferramentas por aqui. -->
+        <div class="system-switch" id="system-switch" hidden>
+          <button class="system-switch-item active" id="system-switch-leilao" type="button" data-system="leilao" title="Modo leilão" aria-label="Modo leilão" aria-pressed="true">
             <svg class="icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2.5" y="4" width="6" height="6" rx="1"/><rect x="11.5" y="4" width="6" height="6" rx="1"/><rect x="2.5" y="12" width="6" height="4" rx="1"/><rect x="11.5" y="12" width="6" height="4" rx="1"/></svg>
-            <span class="sr-only" data-label-text="Catálogo do {media}">Catálogo do leilão</span>
+          </button>
+          <button class="system-switch-item" id="system-switch-reacts" type="button" data-system="reacts" title="Modo reacts" aria-label="Modo reacts" aria-pressed="false">
+            <svg class="icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2.5" y="3.5" width="15" height="10.5" rx="1.5"/><path d="M8.2 8.1l4 2.1-4 2.1V8.1z" fill="currentColor" stroke="none"/><path d="M6 17h8"/></svg>
+          </button>
+        </div>
+        <section class="panel arena-panel">
+          <p class="panel-label panel-label-icon" title="Catálogo do leilão" id="arena-panel-label">
+            <svg class="icon" id="arena-panel-icon-leilao" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2.5" y="4" width="6" height="6" rx="1"/><rect x="11.5" y="4" width="6" height="6" rx="1"/><rect x="2.5" y="12" width="6" height="4" rx="1"/><rect x="11.5" y="12" width="6" height="4" rx="1"/></svg>
+            <svg class="icon" id="arena-panel-icon-reacts" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" hidden><rect x="2.5" y="3.5" width="15" height="10.5" rx="1.5"/><path d="M8.2 8.1l4 2.1-4 2.1V8.1z" fill="currentColor" stroke="none"/><path d="M6 17h8"/></svg>
+            <span class="sr-only" id="arena-panel-title" data-label-text="Catálogo do {media}">Catálogo do leilão</span>
             <span class="panel-count" id="lot-count">0</span>
           </p>
           <div class="arena-grid" id="lot-list">
@@ -742,6 +763,13 @@
               </div>
             </div>
             <button class="btn-mini" id="qualify-count-save">Salvar</button>
+          </div>
+          <div class="panel-row">
+            <div>
+              <label>Modo reacts: valor por minuto de vídeo (R$)</label>
+              <input type="number" id="react-multiplier-input" placeholder="Valor por minuto (R$)" step="0.01" autocomplete="off" />
+            </div>
+            <button class="btn-mini" id="react-multiplier-save">Salvar</button>
           </div>
         </div>
       </div>

@@ -36,6 +36,7 @@ const { hashPassword, verifyPassword, timingSafeEqualString } = require("./src/p
 const { parseMessage, normalizeKey, leftoverAfterMatch, looksLikeNoise, findExistingGameInText } = require("./src/parser");
 const igdbApi = require("./src/igdbApi");
 const { getMediaAdapter, mediaLabel, normalizeMode, MODES: LEILAO_MODES } = require("./src/mediaAdapter");
+const youtubeApi = require("./src/youtubeApi");
 const { fetchTwitchAvatar } = require("./src/twitchClient");
 const twitchAuth = require("./src/twitchAuth");
 const session = require("./src/session");
@@ -203,6 +204,19 @@ function getHideTotalRaised(store) {
 
 function getHostVerified(store) {
   return store.getState("hostVerified", "false") === "true";
+}
+
+// modo reacts é exclusivo com o leilão -- só um dos dois fica "ativo" por
+// vez (não mexe no open/paused do leilão, que continua descrevendo se a
+// live tá aceitando doação de verdade; isso aqui só decide qual catálogo a
+// doação que chegar vai alimentar).
+function getActiveSystem(store) {
+  return store.getState("activeSystem", "leilao") === "reacts" ? "reacts" : "leilao";
+}
+
+function getReactMultiplierCents(store) {
+  const stored = Number(store.getState("reactMultiplierCents", "0"));
+  return Number.isFinite(stored) && stored > 0 ? Math.round(stored) : 0;
 }
 
 // ---------- sessão / login com a Twitch ----------
@@ -410,6 +424,20 @@ function serializeLeaderboard(store, leilaoId) {
     avatar: getDonorAvatar(d.username, onAvatarResolved),
   }));
 
+  const reactVideos = store.getReactVideos().map((v) => ({
+    id: v.id,
+    title: v.title,
+    nickname: v.nickname,
+    thumbnail: v.thumbnail,
+    url: v.url,
+    platform: v.platform,
+    durationSeconds: v.durationSeconds,
+    goal: v.goalCents != null ? centsToNumber(v.goalCents) : null,
+    total: centsToNumber(v.totalCents),
+    status: v.status,
+    submittedBy: v.submittedBy,
+  }));
+
   return {
     title: store.getState("title", "JogodaVez"),
     mode: normalizeMode(store.getState("mode", "jogos")),
@@ -423,6 +451,9 @@ function serializeLeaderboard(store, leilaoId) {
     open: isOpen,
     paused: isPaused,
     items,
+    activeSystem: getActiveSystem(store),
+    reactMultiplier: centsToNumber(getReactMultiplierCents(store)),
+    reactVideos,
     lastSabotagedKey: store.getState("lastSabotagedKey", null),
     donors,
     donorNames: store.getDonorNames(),
@@ -545,6 +576,13 @@ async function processDonationMessage(leilaoId, store, { id, fallbackUsername, f
   const amountCents = fallbackAmount;
   const note = fallbackNote || null;
 
+  // modo reacts é um sistema à parte do leilão (não compete por
+  // classificação, não usa parseMessage) -- desvia pro caminho dele antes
+  // de tocar em qualquer lógica de jogo.
+  if (getActiveSystem(store) === "reacts") {
+    return processReactDonationMessage(leilaoId, store, { id, username, message, amountCents });
+  }
+
   const isOpen = store.getState("open", "true") === "true";
   if (!isOpen) {
     store.logUnparsedEvent({ amountCents, username, rawMessage: message, providerId: id });
@@ -620,6 +658,74 @@ async function processDonationMessage(leilaoId, store, { id, fallbackUsername, f
   });
 
   if (needsImage && !parsed.image) maybeFetchGameImage(leilaoId, store, game.key, game.name, needsImage);
+}
+
+// achar um link colado na mensagem de doação livre -- não precisa ser
+// rigoroso (só decide "parece uma sugestão de vídeo nova"), quem valida de
+// verdade é o fetchVideoMetadata falhando gracioso se o link não servir.
+const URL_IN_TEXT_PATTERN = /https?:\/\/\S+/i;
+
+// modo reacts: doação chegando enquanto ele tá ativo primeiro tenta casar
+// com o apelido de um vídeo já aprovado (mesmo motor de reconhecimento por
+// palavra do leilão, findExistingGameInText); se não bater com nada e a
+// mensagem tiver um link, vira sugestão nova pendente de aprovação; sem
+// nenhum dos dois, não tem o que fazer com a mensagem.
+async function processReactDonationMessage(leilaoId, store, { id, username, message, amountCents }) {
+  const isOpen = store.getState("open", "true") === "true";
+  if (!isOpen) {
+    store.logUnparsedEvent({ amountCents, username, rawMessage: message, providerId: id });
+    broadcastUpdate(leilaoId, store, { type: "closed", username, amount: centsToNumber(amountCents), message });
+    return;
+  }
+
+  const activeVideos = store.getReactVideos().filter((v) => v.nickname);
+  const candidates = activeVideos.map((v) => ({ key: v.nickname, name: v.title, id: v.id }));
+  const matched = findExistingGameInText(message, candidates);
+  if (matched) {
+    const video = store.applyReactContribution({ id: matched.id, amountCents, username, rawMessage: message, providerId: id });
+    touchActivity(store);
+    broadcastUpdate(leilaoId, store, {
+      type: video.status === "unlocked" ? "react-unlocked" : "react-add",
+      username,
+      amount: centsToNumber(amountCents),
+      message,
+      video: { id: video.id, title: video.title, total: centsToNumber(video.totalCents), status: video.status },
+    });
+    return;
+  }
+
+  const urlMatch = URL_IN_TEXT_PATTERN.exec(message || "");
+  if (urlMatch) {
+    const url = urlMatch[0];
+    let metadata = { platform: "other", title: null, thumbnail: null, durationSeconds: null };
+    try {
+      metadata = await youtubeApi.fetchVideoMetadata(url);
+    } catch (err) {
+      console.error("[reacts] erro ao buscar metadata do vídeo sugerido:", err.message);
+    }
+    const video = store.submitReactVideo({
+      url,
+      platform: metadata.platform,
+      title: metadata.title || message.slice(0, 80),
+      thumbnail: metadata.thumbnail,
+      durationSeconds: metadata.durationSeconds,
+      submittedBy: username,
+      amountCents,
+      providerId: id,
+    });
+    touchActivity(store);
+    broadcastUpdate(leilaoId, store, {
+      type: "react-pending",
+      username,
+      amount: centsToNumber(amountCents),
+      message,
+      videoId: video.id,
+    });
+    return;
+  }
+
+  store.logUnparsedEvent({ amountCents, username, rawMessage: message, providerId: id });
+  broadcastUpdate(leilaoId, store, { type: "ignored", username, amount: centsToNumber(amountCents), message });
 }
 
 // ---------- login com a Twitch ----------
@@ -2191,6 +2297,70 @@ app.post("/api/l/:id/admin/qualify-count", loadLeilao, requireLeilaoAdmin, (req,
   req.store.setState("qualifyCount", Math.floor(count));
   broadcastUpdate(req.leilaoId, req.store, { type: "qualify-count" });
   res.json({ ok: true, count: Math.floor(count) });
+});
+
+// ---------- modo reacts ----------
+
+app.post("/api/l/:id/admin/active-system", loadLeilao, requireLeilaoAdmin, (req, res) => {
+  const { system } = req.body || {};
+  if (system !== "leilao" && system !== "reacts") {
+    return res.status(400).json({ error: "Sistema inválido" });
+  }
+  req.store.setState("activeSystem", system);
+  broadcastUpdate(req.leilaoId, req.store, { type: "active-system" });
+  res.json({ ok: true, system });
+});
+
+app.post("/api/l/:id/admin/reacts/multiplier", loadLeilao, requireLeilaoAdmin, (req, res) => {
+  const amount = Number(req.body && req.body.amount);
+  if (!Number.isFinite(amount) || amount <= 0) {
+    return res.status(400).json({ error: "Informe um valor por minuto válido" });
+  }
+  const cents = Math.round(amount * 100);
+  req.store.setState("reactMultiplierCents", cents);
+  broadcastUpdate(req.leilaoId, req.store, { type: "react-multiplier" });
+  res.json({ ok: true, multiplier: centsToNumber(cents) });
+});
+
+app.get("/api/l/:id/admin/reacts/pending", loadLeilao, requireLeilaoAdmin, (req, res) => {
+  const pending = req.store.getPendingReactVideos().map((v) => ({ ...v, avatar: getDonorAvatar(v.submittedBy) }));
+  res.json({ pending });
+});
+
+// aprovar define o apelido (o que a doação por texto livre vai casar depois)
+// e calcula a meta com o multiplicador ATUAL -- se a duração não veio
+// automática (não era YouTube, ou sem YOUTUBE_API_KEY), precisa vir no corpo.
+app.post("/api/l/:id/admin/reacts/:videoId/approve", loadLeilao, requireLeilaoAdmin, (req, res) => {
+  const { nickname, durationSeconds } = req.body || {};
+  if (!nickname || !nickname.trim()) {
+    return res.status(400).json({ error: "Informe um apelido curto pro vídeo" });
+  }
+  const multiplierCents = getReactMultiplierCents(req.store);
+  if (!multiplierCents) {
+    return res.status(400).json({ error: "Defina o multiplicador (R$/min) antes de aprovar um vídeo" });
+  }
+  const durationOverride = durationSeconds != null ? Math.round(Number(durationSeconds)) : null;
+  const video = req.store.approveReactVideo(req.params.videoId, { nickname: nickname.trim(), multiplierCents, durationSeconds: durationOverride });
+  if (!video) return res.status(404).json({ error: "Vídeo pendente não encontrado, ou já não é mais um vídeo pendente de duração válida" });
+  if (!video.goalCents) {
+    return res.status(400).json({ error: "Informe a duração do vídeo pra calcular a meta" });
+  }
+  broadcastUpdate(req.leilaoId, req.store, { type: "react-approved", video: { id: video.id, title: video.title, status: video.status } });
+  res.json({ ok: true, video });
+});
+
+app.post("/api/l/:id/admin/reacts/:videoId/reject", loadLeilao, requireLeilaoAdmin, (req, res) => {
+  const ok = req.store.rejectReactVideo(req.params.videoId);
+  if (!ok) return res.status(404).json({ error: "Vídeo pendente não encontrado" });
+  broadcastUpdate(req.leilaoId, req.store, { type: "react-rejected" });
+  res.json({ ok: true });
+});
+
+app.post("/api/l/:id/admin/reacts/:videoId/mark-reacted", loadLeilao, requireLeilaoAdmin, (req, res) => {
+  const video = req.store.markReactVideoReacted(req.params.videoId);
+  if (!video) return res.status(404).json({ error: "Vídeo não encontrado, ou ainda não liberou a meta" });
+  broadcastUpdate(req.leilaoId, req.store, { type: "react-reacted", video: { id: video.id, title: video.title } });
+  res.json({ ok: true, video });
 });
 
 app.post("/api/l/:id/admin/hide-total", loadLeilao, requireLeilaoAdmin, (req, res) => {

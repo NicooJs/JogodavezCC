@@ -256,6 +256,10 @@ function renderSettingsFromLeaderboard(leaderboard) {
     qualifyInput.value = leaderboard.qualifyCount || 3;
     syncQualifySlider();
   }
+  const multiplierInput = document.getElementById("react-multiplier-input");
+  if (document.activeElement !== multiplierInput) {
+    multiplierInput.value = leaderboard.reactMultiplier || "";
+  }
   renderGamesTable();
   renderMergeOptions();
 }
@@ -349,6 +353,16 @@ document.getElementById("qualify-count-save").addEventListener("click", async ()
   const count = Number(qualifySliderEl.value);
   try {
     await presenterFetch("/admin/qualify-count", { method: "POST", body: JSON.stringify({ count }) });
+  } catch (err) {
+    alert(err.message);
+  }
+});
+
+document.getElementById("react-multiplier-save").addEventListener("click", async () => {
+  const amount = Number(document.getElementById("react-multiplier-input").value);
+  if (!Number.isFinite(amount) || amount <= 0) return alert("Informe um valor por minuto válido");
+  try {
+    await presenterFetch("/admin/reacts/multiplier", { method: "POST", body: JSON.stringify({ amount }) });
   } catch (err) {
     alert(err.message);
   }

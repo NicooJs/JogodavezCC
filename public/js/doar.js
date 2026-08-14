@@ -64,7 +64,9 @@ const hostNameEl = document.getElementById("doar-host-name");
 const leilaoTitleEl = document.getElementById("doar-leilao-title");
 const footnoteHostEl = document.getElementById("doar-footnote-host");
 
+const actionFieldEl = document.getElementById("doar-action-field");
 const actionSeg = document.getElementById("doar-action");
+const gameLabelEl = document.getElementById("doar-game-label");
 const gameEl = document.getElementById("doar-game");
 const gameIconEl = document.getElementById("doar-game-icon");
 const gameAddBtnEl = document.getElementById("doar-game-add-btn");
@@ -192,6 +194,25 @@ function resetForm() {
 }
 
 let leaderboardItems = [];
+let activeSystemMode = "leilao";
+let currentReactVideos = [];
+
+// modo reacts não tem "ação" (sem sabotagem lá) e troca o campo de
+// jogo por vídeo: mesmo input/shelf/botão + reaproveitados, só o
+// conteúdo e os textos mudam. Chamado depois de applyMediaLabels, que
+// reseta esses textos pro padrão jogos/filmes toda vez -- aqui só
+// sobrescreve quando reacts tá ativo.
+function applyReactsFormMode() {
+  const isReacts = activeSystemMode === "reacts";
+  actionFieldEl.hidden = isReacts;
+  if (isReacts) {
+    gameLabelEl.textContent = "vídeo";
+    gameEl.placeholder = "link do vídeo ou apelido já aprovado";
+    gameAddBtnEl.title = "Sugerir um vídeo novo (cole o link)";
+    gameHintEl.textContent = "Escolha um vídeo aprovado da lista ou cole um link novo e toque em + pra sugerir.";
+  }
+  if (currentStep === "form") updateGameShelf();
+}
 
 function normalizeSearch(str) {
   return str.normalize("NFD").replace(/\p{Diacritic}/gu, "").toLowerCase().trim();
@@ -262,8 +283,60 @@ function renderGameShelf(catalogMatches, newMatches) {
   });
 }
 
+// modo reacts: shelf mostra vídeos já aprovados (activeSystem, ver
+// server.js) em vez do catálogo do leilão -- escolher um confirma o
+// apelido normalizado (o que a doação por texto vai reconhecer depois),
+// não o título bonito. Sem busca externa: sugerir vídeo novo é colar o
+// link e tocar em +, não tem "catálogo" pra buscar como tem IGDB/TMDB.
+function reactShelfCardHtml(video) {
+  const thumb = video.thumbnail
+    ? `<img class="game-shelf-cover" src="${escapeHtml(video.thumbnail)}" alt="" loading="lazy" />`
+    : `<div class="game-shelf-cover game-shelf-cover-placeholder">${escapeHtml((video.title[0] || "?").toUpperCase())}</div>`;
+  return `
+    <div class="game-shelf-card" data-nickname="${escapeHtml(video.nickname)}" data-image="${escapeHtml(video.thumbnail || "")}">
+      ${thumb}
+      <span class="game-shelf-name">${escapeHtml(video.title)}</span>
+    </div>
+  `;
+}
+
+function renderReactShelf(matches) {
+  gameShelfEl.innerHTML = matches.length === 0
+    ? `<p class="game-shelf-empty">nenhum vídeo aprovado ainda, cole um link novo e toque em + pra sugerir</p>`
+    : matches.map(reactShelfCardHtml).join("");
+  gameShelfEl.hidden = false;
+  gameHintEl.hidden = gameConfirmed;
+  gameShelfEl.querySelectorAll(".game-shelf-card").forEach((el) => {
+    el.addEventListener("click", () => {
+      confirmGame(el.dataset.nickname, el.dataset.image);
+      gameShelfEl.querySelectorAll(".game-shelf-card.selected").forEach((x) => x.classList.remove("selected"));
+      el.classList.add("selected");
+      gameAddBtnEl.classList.remove("confirmed");
+      amountEl.focus();
+    });
+  });
+}
+
+function updateReactsShelf(query) {
+  clearTimeout(gameShelfDebounce);
+  if (gameShelfAbortController) gameShelfAbortController.abort();
+  if (!query && currentReactVideos.length === 0) {
+    closeGameShelf();
+    return;
+  }
+  const normalizedQuery = normalizeSearch(query);
+  const matches = normalizedQuery
+    ? currentReactVideos.filter((v) => normalizeSearch(v.nickname || v.title || "").includes(normalizedQuery))
+    : currentReactVideos.slice(0, 20);
+  renderReactShelf(matches);
+}
+
 function updateGameShelf() {
   const query = gameEl.value.trim();
+  if (activeSystemMode === "reacts") {
+    updateReactsShelf(query);
+    return;
+  }
   const normalizedQuery = normalizeSearch(query);
   clearTimeout(gameShelfDebounce);
   if (gameShelfAbortController) gameShelfAbortController.abort();
@@ -305,6 +378,12 @@ gameEl.addEventListener("input", () => {
 gameAddBtnEl.addEventListener("click", () => {
   const name = gameEl.value.trim();
   if (!name) return gameEl.focus();
+  if (activeSystemMode === "reacts" && !/^https?:\/\//i.test(name)) {
+    errorEl.textContent = "Cole o link completo do vídeo (começando com http:// ou https://)";
+    errorEl.hidden = false;
+    return gameEl.focus();
+  }
+  errorEl.hidden = true;
   confirmGame(name, null);
   gameShelfEl.querySelectorAll(".game-shelf-card.selected").forEach((el) => el.classList.remove("selected"));
   gameAddBtnEl.classList.add("confirmed");
@@ -352,7 +431,9 @@ async function submitDonation(e) {
   errorEl.hidden = true;
 
   if (!game || !gameConfirmed) {
-    errorEl.textContent = `Escolha um ${mediaLabel()} da lista ou toque em + pra adicionar um novo`;
+    errorEl.textContent = activeSystemMode === "reacts"
+      ? "Escolha um vídeo aprovado da lista ou cole um link novo"
+      : `Escolha um ${mediaLabel()} da lista ou toque em + pra adicionar um novo`;
     errorEl.hidden = false;
     return gameEl.focus();
   }
@@ -363,8 +444,10 @@ async function submitDonation(e) {
   }
 
   if (pixggSlug) {
-    const prefix = getAction() === "remove" ? "sabotar" : "apoiar";
-    pixggMessageEl.value = `${prefix} ${game}`;
+    // reacts não tem sabotagem (ver processReactDonationMessage em
+    // server.js) -- sem prefixo de ação, manda só o apelido/link puro.
+    const message = activeSystemMode === "reacts" ? game : `${getAction() === "remove" ? "sabotar" : "apoiar"} ${game}`;
+    pixggMessageEl.value = message;
     pixggLinkEl.href = `https://pixgg.com/${pixggSlug}`;
     pixggBoardLinkEl.href = `/l/${LEILAO_ID}`;
     pixggConfirmHintEl.hidden = true;
@@ -415,6 +498,9 @@ socket.on("update", ({ leaderboard, lastEvent }) => {
   applyMediaLabels(leaderboard.mode);
   document.documentElement.dataset.theme = leaderboard.theme || "cinza";
   leaderboardItems = leaderboard.items || [];
+  activeSystemMode = leaderboard.activeSystem === "reacts" ? "reacts" : "leilao";
+  currentReactVideos = leaderboard.reactVideos || [];
+  applyReactsFormMode();
 
   isOpenState = !!leaderboard.open;
   isPausedState = !!leaderboard.paused;

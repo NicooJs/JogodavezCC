@@ -28,6 +28,8 @@ const notifBellTriggerEl = document.getElementById("notif-bell-trigger");
 const notifBellDropdownEl = document.getElementById("notif-bell-dropdown");
 const notifBellBadgeEl = document.getElementById("notif-bell-badge");
 const notifBellPendingEl = document.getElementById("notif-bell-pending");
+const notifBellPendingReactsEl = document.getElementById("notif-bell-pending-reacts");
+const notifBellReactsLabelEl = document.getElementById("notif-bell-reacts-label");
 const notifBellListEl = document.getElementById("notif-bell-list");
 const notifBellEmptyEl = document.getElementById("notif-bell-empty");
 const lotContextMenuEl = document.getElementById("lot-context-menu");
@@ -43,6 +45,13 @@ const presenterToggleEl = document.getElementById("presenter-toggle");
 const presenterExitEl = document.getElementById("presenter-exit");
 const presenterDrawerEl = document.getElementById("presenter-drawer");
 const presenterFabEl = document.getElementById("presenter-fab");
+const systemSwitchEl = document.getElementById("system-switch");
+const systemSwitchLeilaoBtn = document.getElementById("system-switch-leilao");
+const systemSwitchReactsBtn = document.getElementById("system-switch-reacts");
+const arenaPanelLabelEl = document.getElementById("arena-panel-label");
+const arenaPanelIconLeilaoEl = document.getElementById("arena-panel-icon-leilao");
+const arenaPanelIconReactsEl = document.getElementById("arena-panel-icon-reacts");
+const arenaPanelTitleEl = document.getElementById("arena-panel-title");
 const modeToggleBoardEl = document.getElementById("mode-toggle-board");
 const timerRingFillEl = document.getElementById("timer-ring-fill");
 const donateModalTimerEl = document.getElementById("donate-modal-timer");
@@ -115,6 +124,7 @@ let hasRenderedLotsOnce = false;
 let lastDuelPair = null;
 let currentItems = [];
 let donorNames = [];
+let currentReactVideos = [];
 let modalGame = null;
 
 function formatBRL(value) {
@@ -554,12 +564,15 @@ async function confirmAndMergeLots(fromKey, toKey) {
 // abre esse menu, próprio, em vez do menu nativo do navegador.
 const FLAG_ICON_SVG = `<svg class="icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 2.5v15"/><path d="M4 3.5c2-1 3.5 1 5.5 0s3.5-1 5.5 0v6c-2-1-3.5 1-5.5 0s-3.5-1-5.5 0z"/></svg>`;
 const STOP_ICON_SVG = `<svg class="icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="10" cy="10" r="7"/><path d="M7 7l6 6M13 7l-6 6"/></svg>`;
+const REACT_ICON_SVG = `<svg class="icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2.5" y="3.5" width="15" height="10.5" rx="1.5"/><path d="M8.2 8.1l4 2.1-4 2.1V8.1z" fill="currentColor" stroke="none"/><path d="M6 17h8"/></svg>`;
 
 let contextMenuTargetKey = null;
+let contextMenuTargetVideoId = null;
 
 function closeLotContextMenu() {
   lotContextMenuEl.hidden = true;
   contextMenuTargetKey = null;
+  contextMenuTargetVideoId = null;
 }
 
 function openLotContextMenu(x, y, item) {
@@ -587,8 +600,40 @@ function openLotContextMenu(x, y, item) {
   lotContextMenuEl.style.top = `${top}px`;
 }
 
+// modo reacts: mesmo menu de contexto do modo corrida (reaproveita o
+// mesmo elemento/CSS), só que a única ação é arquivar um vídeo já
+// liberado -- não faz sentido "marcar como reagido" um vídeo que ainda
+// não bateu a própria meta, por isso só abre pra vídeos "unlocked".
+function openReactContextMenu(x, y, video) {
+  contextMenuTargetVideoId = video.id;
+  const head = `
+    <div class="lot-context-menu-head">
+      <span class="lot-context-menu-eyebrow">${REACT_ICON_SVG}modo reacts</span>
+      <span class="lot-context-menu-game">${escapeHtml(video.title || "")}</span>
+    </div>
+  `;
+  const actions = `<button class="lot-context-menu-item" type="button" data-act="react-mark-reacted">${REACT_ICON_SVG}Marcar como reagido</button>`;
+  lotContextMenuEl.innerHTML = head + actions;
+  lotContextMenuEl.hidden = false;
+  lotContextMenuEl.style.left = "0px";
+  lotContextMenuEl.style.top = "0px";
+  const rect = lotContextMenuEl.getBoundingClientRect();
+  const left = Math.max(8, Math.min(x, window.innerWidth - rect.width - 8));
+  const top = Math.max(8, Math.min(y, window.innerHeight - rect.height - 8));
+  lotContextMenuEl.style.left = `${left}px`;
+  lotContextMenuEl.style.top = `${top}px`;
+}
+
 lotListEl.addEventListener("contextmenu", (e) => {
   if (!document.body.classList.contains("presenter-mode")) return;
+  const reactCard = e.target.closest(".react-card");
+  if (reactCard) {
+    const video = currentReactVideos.find((v) => v.id === reactCard.dataset.videoId);
+    if (!video || video.status !== "unlocked") return;
+    e.preventDefault();
+    openReactContextMenu(e.clientX, e.clientY, video);
+    return;
+  }
   const card = e.target.closest(".lot-card");
   if (!card) return;
   const item = currentItems.find((i) => i.key === card.dataset.key);
@@ -608,8 +653,21 @@ window.addEventListener("blur", () => { if (!lotContextMenuEl.hidden) closeLotCo
 lotContextMenuEl.addEventListener("click", async (e) => {
   const btn = e.target.closest("button[data-act]");
   if (!btn) return;
-  const key = contextMenuTargetKey;
   const act = btn.dataset.act;
+
+  if (act === "react-mark-reacted") {
+    const videoId = contextMenuTargetVideoId;
+    closeLotContextMenu();
+    if (!videoId) return;
+    try {
+      await presenterFetch(`/admin/reacts/${videoId}/mark-reacted`, { method: "POST" });
+    } catch (err) {
+      alert(err.message);
+    }
+    return;
+  }
+
+  const key = contextMenuTargetKey;
   closeLotContextMenu();
   if (!key) return;
   const item = currentItems.find((i) => i.key === key);
@@ -880,6 +938,10 @@ function renderLots(items, flashKey, flashType, lastSabotagedKey, qualifyCount) 
 
   const staleEmpty = lotListEl.querySelector(".arena-empty");
   if (staleEmpty) staleEmpty.remove();
+  // troca de reacts pra leilão: limpa cards de vídeo que possam ter ficado
+  // pra trás -- diferente do .lot-card, o resto desse render é incremental
+  // (reaproveita/cria por chave), então nada mais aqui removeria sozinho.
+  lotListEl.querySelectorAll(".react-card").forEach((el) => el.remove());
 
   const maxTotal = Math.max(...items.map((i) => i.total), 1);
   const nextTotals = new Map();
@@ -1060,6 +1122,91 @@ function renderLots(items, flashKey, flashType, lastSabotagedKey, qualifyCount) 
   currentLeaderKey = newLeaderKey;
 }
 
+let currentActiveSystem = "leilao";
+
+// troca visual entre leilão e reacts -- os dois catálogos são exclusivos
+// (server.js só deixa um activeSystem por vez), então isso decide o que
+// #lot-list mostra e o rótulo/ícone do painel central. Chamado depois de
+// applyMediaLabels no handler de "update": em modo leilão o texto do painel
+// já veio certo de lá (data-label-text), aqui só sobrescreve quando reacts.
+function setActiveSystemUI(system) {
+  currentActiveSystem = system === "reacts" ? "reacts" : "leilao";
+  const isReacts = currentActiveSystem === "reacts";
+  systemSwitchLeilaoBtn.classList.toggle("active", !isReacts);
+  systemSwitchLeilaoBtn.setAttribute("aria-pressed", String(!isReacts));
+  systemSwitchReactsBtn.classList.toggle("active", isReacts);
+  systemSwitchReactsBtn.setAttribute("aria-pressed", String(isReacts));
+  arenaPanelIconLeilaoEl.hidden = isReacts;
+  arenaPanelIconReactsEl.hidden = !isReacts;
+  arenaPanelLabelEl.title = isReacts ? "Vídeos pra reagir" : "Catálogo do leilão";
+  if (isReacts) arenaPanelTitleEl.textContent = "Vídeos pra reagir";
+}
+
+async function setActiveSystem(system) {
+  try {
+    await presenterFetch("/admin/active-system", { method: "POST", body: JSON.stringify({ system }) });
+  } catch (err) {
+    alert(err.message);
+  }
+}
+systemSwitchLeilaoBtn.addEventListener("click", () => setActiveSystem("leilao"));
+systemSwitchReactsBtn.addEventListener("click", () => setActiveSystem("reacts"));
+
+function reactThumbHtml(video) {
+  const letter = escapeHtml(((video.title || "?")[0] || "?").toUpperCase());
+  if (video.thumbnail) {
+    return `<img class="react-card-thumb" src="${escapeHtml(video.thumbnail)}" alt="" loading="lazy" onerror="this.replaceWith(Object.assign(document.createElement('div'),{className:'react-card-thumb-placeholder',textContent:'${letter}'}))" />`;
+  }
+  return `<div class="react-card-thumb-placeholder">${letter}</div>`;
+}
+
+// meta de cada vídeo é fixa desde a aprovação (duração×multiplicador no
+// momento -- não recalcula se o streamer mudar o multiplicador depois),
+// reaproveita a mesma barra .lot-race do modo corrida, só sem corte de
+// classificados: todo vídeo que bate a própria meta libera.
+function reactCardHtml(video) {
+  const goal = video.goal || 0;
+  const total = video.total || 0;
+  const unlocked = video.status === "unlocked";
+  const pct = goal > 0 ? Math.max(0, Math.min(100, Math.round((total / goal) * 100))) : 0;
+  const label = unlocked
+    ? "liberado, entrou na fila!"
+    : goal > 0
+      ? `faltam ${formatBRL(Math.max(0, goal - total))} pra liberar`
+      : "aguardando meta";
+  return `
+    <div class="react-card${unlocked ? " is-unlocked" : ""}" data-video-id="${escapeHtml(video.id)}">
+      ${reactThumbHtml(video)}
+      <div class="react-card-body">
+        <p class="react-card-title" title="${escapeHtml(video.title || "")}">${escapeHtml(video.title || "Vídeo sem título")}</p>
+        <span class="react-card-submitter">sugerido por ${escapeHtml(video.submittedBy || "Anônimo")}</span>
+        <div class="lot-race${unlocked ? " is-reached" : ""}">
+          <div class="lot-race-track"><div class="lot-race-fill" style="width:${pct}%"></div></div>
+          <span class="lot-race-label">${FLAG_ICON_SVG}${label}</span>
+        </div>
+      </div>
+      ${unlocked ? '<span class="react-unlocked-badge">liberado</span>' : ""}
+    </div>
+  `;
+}
+
+// modo reacts reaproveita o mesmo #lot-list do catálogo do leilão (só um
+// dos dois sistemas fica ativo por vez) -- card deliberadamente mais
+// simples que o .lot-card (sem rank, sem drag-and-drop, sem breakdown).
+function renderReactVideos(videos) {
+  lotCountEl.textContent = String(videos.length);
+  if (videos.length === 0) {
+    lotListEl.innerHTML = `
+      <p class="empty-state arena-empty">
+        <span class="arena-empty-title">Fila de reacts vazia</span>
+        Assim que um vídeo bater a meta, ele aparece aqui.
+      </p>
+    `;
+    return;
+  }
+  lotListEl.innerHTML = videos.map(reactCardHtml).join("");
+}
+
 // totalRaised (bruto do leilão inteiro) só pra calcular a % de "domínio" do
 // 1º colocado -- null quando o streamer oculta o total (getHideTotalRaised
 // no server): sem isso, a barra de domínio vazaria o total pela % + valor
@@ -1235,6 +1382,7 @@ async function loadInitialHistory() {
 // últimos 30 eventos), senão uma pendência antiga cairia fora do sino sem
 // ninguém notar.
 let pendingDonations = [];
+let pendingReactVideos = [];
 
 async function loadPendingDonations() {
   try {
@@ -1243,6 +1391,16 @@ async function loadPendingDonations() {
     renderNotifBell();
   } catch (err) {
     console.error("Erro ao carregar doações pendentes:", err);
+  }
+}
+
+async function loadPendingReactVideos() {
+  try {
+    const { pending } = await presenterFetch("/admin/reacts/pending");
+    pendingReactVideos = pending || [];
+    renderNotifBell();
+  } catch (err) {
+    console.error("Erro ao carregar vídeos pendentes do modo reacts:", err);
   }
 }
 
@@ -1268,6 +1426,28 @@ function notifPendingItemHtml(ev) {
         <div class="notif-item-actions">
           <button class="btn-mini primary" data-act="notif-identify" data-event-id="${ev.id}" type="button">identificar</button>
           <button class="btn-mini" data-act="notif-dismiss" data-event-id="${ev.id}" type="button">apoio geral</button>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+function notifPendingReactItemHtml(video) {
+  const time = video.createdAt ? new Date(video.createdAt).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" }) : "";
+  const amount = video.pendingAmountCents ? formatBRL(centsToNumberLocal(video.pendingAmountCents)) : "";
+  return `
+    <div class="notif-item is-pending" data-video-id="${escapeHtml(video.id)}">
+      ${notifItemAvatarHtml(video.title, video.thumbnail)}
+      <div class="notif-item-body">
+        <div class="notif-item-meta">
+          <span class="notif-item-who">${escapeHtml(video.submittedBy || "Anônimo")}</span>
+          ${amount ? `<span class="notif-item-amt">${amount}</span>` : ""}
+          <span class="notif-item-time">${time}</span>
+        </div>
+        <p class="notif-item-msg">${escapeHtml(video.title || video.url || "")}</p>
+        <div class="notif-item-actions">
+          <button class="btn-mini primary" data-act="react-approve" data-video-id="${escapeHtml(video.id)}" type="button">aprovar</button>
+          <button class="btn-mini" data-act="react-reject" data-video-id="${escapeHtml(video.id)}" type="button">rejeitar</button>
         </div>
       </div>
     </div>
@@ -1302,16 +1482,19 @@ function centsToNumberLocal(cents) {
 
 function renderNotifBell() {
   const pendingIds = new Set(pendingDonations.map((p) => p.id));
+  notifBellReactsLabelEl.hidden = pendingReactVideos.length === 0;
+  notifBellPendingReactsEl.innerHTML = pendingReactVideos.map(notifPendingReactItemHtml).join("");
   notifBellPendingEl.innerHTML = pendingDonations.map(notifPendingItemHtml).join("");
   notifBellListEl.innerHTML = historyItems
     .filter((item) => !(item.eventId && pendingIds.has(item.eventId)))
     .slice(0, 30)
     .map(notifFeedItemHtml)
     .join("");
-  const hasAnything = pendingDonations.length > 0 || notifBellListEl.children.length > 0;
+  const hasAnything = pendingDonations.length > 0 || pendingReactVideos.length > 0 || notifBellListEl.children.length > 0;
   notifBellEmptyEl.hidden = hasAnything;
-  notifBellBadgeEl.hidden = pendingDonations.length === 0;
-  notifBellBadgeEl.textContent = pendingDonations.length > 99 ? "99+" : String(pendingDonations.length);
+  const badgeCount = pendingDonations.length + pendingReactVideos.length;
+  notifBellBadgeEl.hidden = badgeCount === 0;
+  notifBellBadgeEl.textContent = badgeCount > 99 ? "99+" : String(badgeCount);
 }
 
 function setNotifBellOpen(open) {
@@ -1322,7 +1505,10 @@ function setNotifBellOpen(open) {
 notifBellTriggerEl.addEventListener("click", () => {
   const opening = notifBellDropdownEl.hidden;
   setNotifBellOpen(opening);
-  if (opening) loadPendingDonations();
+  if (opening) {
+    loadPendingDonations();
+    loadPendingReactVideos();
+  }
 });
 document.addEventListener("click", (e) => {
   if (notifBellDropdownEl.hidden) return;
@@ -1359,6 +1545,63 @@ notifBellPendingEl.addEventListener("click", async (e) => {
       await presenterFetch(`/admin/pending/${eventId}/assign`, {
         method: "POST",
         body: JSON.stringify({ gameName: result.name, gameImage: result.image }),
+      });
+    } catch (err) {
+      alert(err.message);
+    }
+  }
+});
+
+notifBellPendingReactsEl.addEventListener("click", async (e) => {
+  const btn = e.target.closest("button[data-act]");
+  if (!btn) return;
+  const videoId = btn.dataset.videoId;
+  const video = pendingReactVideos.find((v) => v.id === videoId);
+  if (!video) return;
+
+  if (btn.dataset.act === "react-reject") {
+    const ok = await confirmDialog({
+      title: "Rejeitar vídeo sugerido",
+      message: `Rejeitar "${video.title}"? A doação continua contando no total arrecadado, só o vídeo não entra na disputa.`,
+      confirmLabel: "Rejeitar",
+      danger: true,
+    });
+    if (!ok) return;
+    try {
+      await presenterFetch(`/admin/reacts/${videoId}/reject`, { method: "POST" });
+    } catch (err) {
+      alert(err.message);
+    }
+    return;
+  }
+
+  if (btn.dataset.act === "react-approve") {
+    const nickname = await promptDialog({
+      title: "Aprovar vídeo",
+      label: `Apelido curto pra "${video.title}" -- é o que a doação por texto vai reconhecer depois pra somar nesse vídeo`,
+      initialValue: (video.title || "").slice(0, 24),
+      confirmLabel: "Aprovar",
+    });
+    if (!nickname || !nickname.trim()) return;
+
+    let durationSeconds = video.durationSeconds;
+    if (!durationSeconds) {
+      const minutesStr = await promptDialog({
+        title: "Duração do vídeo",
+        label: "Duração em minutos -- não deu pra detectar automaticamente",
+        inputType: "number",
+        confirmLabel: "Continuar",
+      });
+      if (!minutesStr) return;
+      const minutes = Number(minutesStr);
+      if (!Number.isFinite(minutes) || minutes <= 0) return alert("Duração inválida");
+      durationSeconds = Math.round(minutes * 60);
+    }
+
+    try {
+      await presenterFetch(`/admin/reacts/${videoId}/approve`, {
+        method: "POST",
+        body: JSON.stringify({ nickname: nickname.trim(), durationSeconds }),
       });
     } catch (err) {
       alert(err.message);
@@ -2335,7 +2578,13 @@ socket.on("update", ({ leaderboard, lastEvent }) => {
   currentItems = leaderboard.items || [];
   donorNames = leaderboard.donorNames || [];
   const flashKey = lastEvent && lastEvent.game ? lastEvent.game.key : null;
-  renderLots(leaderboard.items, flashKey, lastEvent ? lastEvent.type : null, leaderboard.lastSabotagedKey, leaderboard.qualifyCount || 3);
+  setActiveSystemUI(leaderboard.activeSystem);
+  if (currentActiveSystem === "reacts") {
+    currentReactVideos = leaderboard.reactVideos || [];
+    renderReactVideos(currentReactVideos);
+  } else {
+    renderLots(leaderboard.items, flashKey, lastEvent ? lastEvent.type : null, leaderboard.lastSabotagedKey, leaderboard.qualifyCount || 3);
+  }
   renderDonors(leaderboard.donors || [], leaderboard.hideTotalRaised ? null : leaderboard.totalRaised);
   if (lastEvent && lastEvent.type === "reset") {
     historyItems = [];
@@ -2357,6 +2606,15 @@ socket.on("update", ({ leaderboard, lastEvent }) => {
     if (lastEvent && lastEvent.type === "pending" && document.body.classList.contains("presenter-mode")) {
       loadPendingDonations();
     }
+  }
+
+  // modo reacts tem sua própria fila de pendência (vídeo sugerido, não
+  // doação sem jogo) -- historyLabel não reconhece esses tipos de evento
+  // (fica de fora do feed principal do sino de propósito), só recarrega a
+  // lista de vídeos pendentes quando um deles muda.
+  if (lastEvent && (lastEvent.type === "react-pending" || lastEvent.type === "react-approved" || lastEvent.type === "react-rejected")
+    && document.body.classList.contains("presenter-mode")) {
+    loadPendingReactVideos();
   }
 
   if (flashKey && lastEvent && (lastEvent.type === "add" || lastEvent.type === "remove") && (lastEvent.amount || 0) > 100) {
@@ -2661,10 +2919,16 @@ function setPresenterMode(active) {
     ? (isPresenterOwner ? "Gerar código para moderador" : "Modo apresentador ativo")
     : "Entrar no modo apresentador";
   presenterFabEl.hidden = !active;
+  systemSwitchEl.hidden = !active;
   notifBellTriggerEl.hidden = !active;
   setNotifBellOpen(false);
-  if (active) loadPendingDonations();
-  else pendingDonations = [];
+  if (active) {
+    loadPendingDonations();
+    loadPendingReactVideos();
+  } else {
+    pendingDonations = [];
+    pendingReactVideos = [];
+  }
   // fecha o popover de ferramentas sempre que o modo apresentador muda --
   // entrar no modo apresentador não deve abrir a ferramenta sozinho,
   // cabeçalho começa mínimo (ver instrução do cliente sobre isso).
