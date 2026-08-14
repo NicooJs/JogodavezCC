@@ -24,6 +24,9 @@ const topbarMenuTriggerEl = document.getElementById("topbar-menu-trigger");
 const topbarMenuDropdownEl = document.getElementById("topbar-menu-dropdown");
 const topbarMenuAvatarEl = document.getElementById("topbar-menu-avatar");
 const topbarMenuAvatarPlaceholderEl = document.getElementById("topbar-menu-avatar-placeholder");
+const systemSwitchProfileLinkEl = document.getElementById("system-switch-profile-link");
+const systemSwitchProfileAvatarEl = document.getElementById("system-switch-profile-avatar");
+const systemSwitchProfilePlaceholderEl = document.getElementById("system-switch-profile-placeholder");
 const notifBellTriggerEl = document.getElementById("notif-bell-trigger");
 const notifBellDropdownEl = document.getElementById("notif-bell-dropdown");
 const notifBellBadgeEl = document.getElementById("notif-bell-badge");
@@ -2599,6 +2602,9 @@ socket.on("update", ({ leaderboard, lastEvent }) => {
     topbarMenuAvatarEl.src = leaderboard.hostAvatar;
     topbarMenuAvatarEl.hidden = false;
     topbarMenuAvatarPlaceholderEl.hidden = true;
+    systemSwitchProfileAvatarEl.src = leaderboard.hostAvatar;
+    systemSwitchProfileAvatarEl.hidden = false;
+    systemSwitchProfilePlaceholderEl.hidden = true;
   } else {
     hostAvatarEl.hidden = true;
     hostAvatarEl.removeAttribute("src");
@@ -2606,6 +2612,10 @@ socket.on("update", ({ leaderboard, lastEvent }) => {
     topbarMenuAvatarEl.removeAttribute("src");
     topbarMenuAvatarPlaceholderEl.hidden = false;
     topbarMenuAvatarPlaceholderEl.textContent = (leaderboard.host || "?")[0].toUpperCase();
+    systemSwitchProfileAvatarEl.hidden = true;
+    systemSwitchProfileAvatarEl.removeAttribute("src");
+    systemSwitchProfilePlaceholderEl.hidden = false;
+    systemSwitchProfilePlaceholderEl.textContent = (leaderboard.host || "?")[0].toUpperCase();
   }
   // Usa hostTwitchLogin (login real), nunca o nome de exibição -- evita falsificar o link do canal.
   if (leaderboard.hostVerified && leaderboard.hostTwitchLogin) {
@@ -3027,8 +3037,10 @@ function setPresenterMode(active) {
   // o que não faz sentido nenhum pra quem só tá assistindo.
   if (active && isPresenterOwner) {
     topbarMenuAvatarLinkEl.href = "/perfil";
+    systemSwitchProfileLinkEl.href = "/perfil";
   } else {
     topbarMenuAvatarLinkEl.removeAttribute("href");
+    systemSwitchProfileLinkEl.removeAttribute("href");
   }
   updatePixWarning();
 }

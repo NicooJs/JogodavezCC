@@ -175,14 +175,25 @@
            padding-left correspondente em compensação, só em modo
            apresentador (senão o público veria um respiro vazio à toa). -->
       <div class="system-switch" id="system-switch" hidden>
-        <button class="system-switch-item active" id="system-switch-leilao" type="button" data-system="leilao" title="Modo leilão" aria-label="Modo leilão" aria-pressed="true">
-          <svg class="icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2.5" y="4" width="6" height="6" rx="1"/><rect x="11.5" y="4" width="6" height="6" rx="1"/><rect x="2.5" y="12" width="6" height="4" rx="1"/><rect x="11.5" y="12" width="6" height="4" rx="1"/></svg>
-          <span class="system-switch-label">Leilão</span>
-        </button>
-        <button class="system-switch-item" id="system-switch-reacts" type="button" data-system="reacts" title="Modo reacts" aria-label="Modo reacts" aria-pressed="false">
-          <svg class="icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2.5" y="3.5" width="15" height="10.5" rx="1.5"/><path d="M8.2 8.1l4 2.1-4 2.1V8.1z" fill="currentColor" stroke="none"/><path d="M6 17h8"/></svg>
-          <span class="system-switch-label">Reacts</span>
-        </button>
+        <div class="system-switch-brand" aria-hidden="true"></div>
+        <nav class="system-switch-nav">
+          <button class="system-switch-item active" id="system-switch-leilao" type="button" data-system="leilao" title="Modo leilão" aria-label="Modo leilão" aria-pressed="true">
+            <svg class="icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2.5" y="4" width="6" height="6" rx="1"/><rect x="11.5" y="4" width="6" height="6" rx="1"/><rect x="2.5" y="12" width="6" height="4" rx="1"/><rect x="11.5" y="12" width="6" height="4" rx="1"/></svg>
+            <span class="system-switch-label">Leilão</span>
+          </button>
+          <button class="system-switch-item" id="system-switch-reacts" type="button" data-system="reacts" title="Modo reacts" aria-label="Modo reacts" aria-pressed="false">
+            <svg class="icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2.5" y="3.5" width="15" height="10.5" rx="1.5"/><path d="M8.2 8.1l4 2.1-4 2.1V8.1z" fill="currentColor" stroke="none"/><path d="M6 17h8"/></svg>
+            <span class="system-switch-label">Reacts</span>
+          </button>
+        </nav>
+        <!-- mesmo link/lógica do avatar no topbar-menu (só vira link de
+             verdade pro dono em modo apresentador, ver setPresenterMode em
+             app.js) -- reaproveitado aqui embaixo pra ficar acessível
+             direto da sidebar, sem remover o do topbar. -->
+        <a class="system-switch-profile" id="system-switch-profile-link" target="_blank" rel="noopener" title="Ver perfil" aria-label="Ver perfil">
+          <img class="system-switch-profile-avatar" id="system-switch-profile-avatar" alt="" hidden />
+          <span class="system-switch-profile-placeholder" id="system-switch-profile-placeholder">?</span>
+        </a>
       </div>
 
       <div class="col col-left">
