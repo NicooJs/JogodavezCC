@@ -12,9 +12,12 @@
   --hub-border-soft: #1e1e2a;
   --hub-text: #f4f3f8;
   --hub-muted: #8d8ca0;
-  --hub-accent: #7c5cfc;
+  /* mesma cor de --nav-accent (style.css) -- identidade de navegação
+     compartilhada entre hub e sidebar do board, não duplicar o hex solto
+     de novo se puder referenciar */
+  --hub-accent: var(--nav-accent, #7c5cfc);
   --hub-accent-hover: #8f72ff;
-  --hub-accent-ink: #ffffff;
+  --hub-accent-ink: var(--nav-accent-ink, #ffffff);
   --hub-accent-bg: rgba(124, 92, 252, 0.14);
   --hub-accent-soft: rgba(124, 92, 252, 0.4);
 }
@@ -54,9 +57,8 @@ body.hub-body::before { display: none; }
   align-items: center;
   justify-content: center;
   margin-bottom: 18px;
-  color: var(--hub-accent);
 }
-.hub-sidebar-mark svg { width: 24px; height: 24px; }
+.hub-sidebar-mark img { width: 32px; height: 32px; border-radius: 8px; }
 
 .hub-sidebar-nav {
   display: flex;
@@ -239,6 +241,8 @@ body.hub-body::before { display: none; }
 .hub-main[hidden] { display: none; }
 
 .hub-modal-loading { color: var(--hub-muted); font-size: 13px; }
+
+.hub-drawer-hint { font-size: 12.5px; line-height: 1.6; color: var(--hub-muted); margin: 0 0 16px; }
 
 .hub-modal-list {
   list-style: none;

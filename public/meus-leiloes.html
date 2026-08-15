@@ -26,15 +26,15 @@
   <div class="hub-shell" id="hub-shell" hidden>
     <aside class="hub-sidebar">
       <div class="hub-sidebar-mark" title="JogodaVez">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 2l8 4.5v11L12 22l-8-4.5v-11L12 2z" /><path d="M12 8v8" /><path d="M9 10.5l6 3M15 10.5l-6 3" /></svg>
+        <img src="/favicon-32.png" alt="JogodaVez" />
       </div>
       <nav class="hub-sidebar-nav">
         <button class="hub-sidebar-item is-active" type="button" title="Início" aria-label="Início">
           <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="2.5" y="2.5" width="6.5" height="6.5" rx="1.3" /><rect x="11" y="2.5" width="6.5" height="6.5" rx="1.3" /><rect x="2.5" y="11" width="6.5" height="6.5" rx="1.3" /><rect x="11" y="11" width="6.5" height="6.5" rx="1.3" /></svg>
         </button>
-        <a class="hub-sidebar-item" href="/perfil" title="Perfil" aria-label="Perfil">
+        <button class="hub-sidebar-item" type="button" id="hub-nav-perfil" title="Perfil" aria-label="Perfil">
           <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="10" cy="6.5" r="3.2" /><path d="M4 17c0-3.3 2.7-6 6-6s6 2.7 6 6" /></svg>
-        </a>
+        </button>
         <button class="hub-sidebar-item" type="button" id="hub-nav-config" title="Configurações" aria-label="Configurações">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z" /><circle cx="12" cy="12" r="3" /></svg>
         </button>
@@ -61,15 +61,13 @@
     </main>
   </div>
 
-  <div class="modal-overlay dialog-overlay" id="hub-modal-overlay" hidden>
-    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="hub-modal-title">
-      <button class="modal-close" id="hub-modal-close" type="button" aria-label="Fechar">✕</button>
-      <div class="modal-head">
-        <div class="modal-head-text">
-          <h2 class="modal-title" id="hub-modal-title">Título</h2>
-        </div>
+  <div class="side-drawer-overlay" id="hub-drawer-overlay" hidden>
+    <div class="side-drawer" id="hub-drawer" role="dialog" aria-modal="true" aria-labelledby="hub-drawer-title">
+      <div class="side-drawer-head">
+        <h2 class="side-drawer-title" id="hub-drawer-title">Título</h2>
+        <button class="side-drawer-close" id="hub-drawer-close" type="button" aria-label="Fechar">✕</button>
       </div>
-      <div id="hub-modal-body"></div>
+      <div class="side-drawer-body" id="hub-drawer-body"></div>
     </div>
   </div>
 

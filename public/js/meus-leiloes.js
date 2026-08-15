@@ -4,21 +4,30 @@ const avatarEl = document.getElementById("hub-avatar");
 const greetingEl = document.getElementById("hub-greeting");
 const gridEl = document.getElementById("hub-service-grid");
 
-const modalOverlayEl = document.getElementById("hub-modal-overlay");
-const modalTitleEl = document.getElementById("hub-modal-title");
-const modalBodyEl = document.getElementById("hub-modal-body");
+const drawerOverlayEl = document.getElementById("hub-drawer-overlay");
+const drawerEl = document.getElementById("hub-drawer");
+const drawerTitleEl = document.getElementById("hub-drawer-title");
+const drawerBodyEl = document.getElementById("hub-drawer-body");
 
-function openModal(title, bodyHtml) {
-  modalTitleEl.textContent = title;
-  modalBodyEl.innerHTML = bodyHtml;
-  modalOverlayEl.hidden = false;
+function openDrawer(title, { html, iframeSrc, wide } = {}) {
+  drawerTitleEl.textContent = title;
+  drawerEl.classList.toggle("is-wide", !!wide);
+  if (iframeSrc) {
+    drawerBodyEl.className = "side-drawer-body is-flush";
+    drawerBodyEl.innerHTML = `<iframe class="side-drawer-frame" src="${escapeHtml(iframeSrc)}" title="${escapeHtml(title)}"></iframe>`;
+  } else {
+    drawerBodyEl.className = "side-drawer-body";
+    drawerBodyEl.innerHTML = html || "";
+  }
+  drawerOverlayEl.hidden = false;
 }
-function closeModal() {
-  modalOverlayEl.hidden = true;
+function closeDrawer() {
+  drawerOverlayEl.hidden = true;
+  drawerBodyEl.innerHTML = "";
 }
-document.getElementById("hub-modal-close").addEventListener("click", closeModal);
-modalOverlayEl.addEventListener("click", (e) => { if (e.target === modalOverlayEl) closeModal(); });
-document.addEventListener("keydown", (e) => { if (e.key === "Escape" && !modalOverlayEl.hidden) closeModal(); });
+document.getElementById("hub-drawer-close").addEventListener("click", closeDrawer);
+drawerOverlayEl.addEventListener("click", (e) => { if (e.target === drawerOverlayEl) closeDrawer(); });
+document.addEventListener("keydown", (e) => { if (e.key === "Escape" && !drawerOverlayEl.hidden) closeDrawer(); });
 
 function escapeHtml(str) {
   return String(str).replace(/[&<>"']/g, (c) => ({
@@ -111,33 +120,42 @@ avatarEl.addEventListener("click", async () => {
   location.reload();
 });
 
+document.getElementById("hub-nav-perfil").addEventListener("click", () => {
+  openDrawer("Perfil", { iframeSrc: "/perfil", wide: true });
+});
+
 document.getElementById("hub-nav-config").addEventListener("click", () => {
   if (!leilao) {
     alert("Crie seu leilão primeiro pra acessar as configurações.");
     return;
   }
-  location.href = `${leilao.url}?config=1`;
+  openDrawer("Configurações", { iframeSrc: `${leilao.url}?config=1`, wide: true });
 });
 
 document.getElementById("hub-nav-ranking").addEventListener("click", async () => {
-  openModal("Ranking", `<p class="hub-modal-loading">Carregando...</p>`);
+  if (!leilao) {
+    alert("Crie seu leilão primeiro pra ter ranking.");
+    return;
+  }
+  openDrawer("Seus melhores leilões", { html: `<p class="hub-modal-loading">Carregando...</p>` });
   try {
-    const res = await fetch("/api/ranking");
+    const res = await fetch(`/api/l/${leilao.id}/ranking`);
     const { ranking } = await res.json();
     if (!ranking || !ranking.length) {
-      modalBodyEl.innerHTML = `<p class="empty-state">Ninguém no ranking ainda.</p>`;
+      drawerBodyEl.innerHTML = `<p class="empty-state">Nenhum round arrecadou nada ainda.</p>`;
       return;
     }
-    modalBodyEl.innerHTML = `<ul class="hub-modal-list">${ranking.slice(0, 20).map((s) => `
-      <li>
-        <span class="hub-modal-list-rank">${String(s.rank).padStart(2, "0")}</span>
-        <img class="hub-modal-list-avatar" src="${escapeHtml(s.hostAvatar || "")}" alt="" />
-        <span class="hub-modal-list-name">${escapeHtml(s.host || "Streamer")}</span>
-        <span class="hub-modal-list-value">R$ ${Math.round(s.totalRaised || 0).toLocaleString("pt-BR")}</span>
-      </li>
-    `).join("")}</ul>`;
+    drawerBodyEl.innerHTML = `
+      <p class="hub-drawer-hint">Seus rounds, do que mais arrecadou pro que menos arrecadou -- não é uma disputa com outros streamers.</p>
+      <ul class="hub-modal-list">${ranking.map((r) => `
+        <li>
+          <span class="hub-modal-list-rank">${String(r.rank).padStart(2, "0")}</span>
+          <span class="hub-modal-list-name">${escapeHtml(r.title)}${r.openRound ? " <em>(em andamento)</em>" : ""}</span>
+          <span class="hub-modal-list-value">R$ ${Math.round(r.totalRaised || 0).toLocaleString("pt-BR")}</span>
+        </li>
+      `).join("")}</ul>`;
   } catch (err) {
-    modalBodyEl.innerHTML = `<p class="empty-state">Não deu pra carregar o ranking agora.</p>`;
+    drawerBodyEl.innerHTML = `<p class="empty-state">Não deu pra carregar o ranking agora.</p>`;
   }
 });
 
@@ -146,23 +164,23 @@ document.getElementById("hub-nav-historico").addEventListener("click", async () 
     alert("Crie seu leilão primeiro pra ter histórico.");
     return;
   }
-  openModal("Histórico do leilão", `<p class="hub-modal-loading">Carregando...</p>`);
+  openDrawer("Histórico do leilão", { html: `<p class="hub-modal-loading">Carregando...</p>` });
   try {
     const res = await fetch(`/api/l/${leilao.id}/recap/history`);
     const { history } = await res.json();
     if (!history || !history.length) {
-      modalBodyEl.innerHTML = `<p class="empty-state">Nenhum leilão encerrado ainda.</p>`;
+      drawerBodyEl.innerHTML = `<p class="empty-state">Nenhum leilão encerrado ainda.</p>`;
       return;
     }
-    modalBodyEl.innerHTML = `<ul class="hub-modal-list">${history.map((r, i) => `
+    drawerBodyEl.innerHTML = `<ul class="hub-modal-list">${history.map((r, i) => `
       <li>
         <span class="hub-modal-list-rank">${String(history.length - i).padStart(2, "0")}</span>
-        <span class="hub-modal-list-name">${escapeHtml(r.title || "Leilão")}</span>
+        <span class="hub-modal-list-name">${escapeHtml(r.title || "Leilão")}${r.openRound ? " <em>(em andamento)</em>" : ""}</span>
         <span class="hub-modal-list-value">R$ ${Math.round(r.totalRaised || 0).toLocaleString("pt-BR")}</span>
       </li>
     `).join("")}</ul>`;
   } catch (err) {
-    modalBodyEl.innerHTML = `<p class="empty-state">Não deu pra carregar o histórico agora.</p>`;
+    drawerBodyEl.innerHTML = `<p class="empty-state">Não deu pra carregar o histórico agora.</p>`;
   }
 });
 

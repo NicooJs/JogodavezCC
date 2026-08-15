@@ -1349,28 +1349,29 @@ app.get("/api/ranking", (req, res) => {
   res.json({ ranking: rows });
 });
 
-function computeOwnerRanking(twitchUserId) {
-  if (!twitchUserId) return [];
-  return registry
-    .listLeiloesByOwner(twitchUserId)
-    .map((meta) => {
-      const store = getStore(meta.id);
-      if (getHideTotalRaised(store)) return null;
-      return {
-        id: meta.id,
-        title: store.getState("title", meta.title || "JogodaVez"),
-        totalRaised: computeLeilaoTotalRaised(store),
-        createdAt: meta.createdAt || "",
-      };
-    })
-    .filter((row) => row && row.totalRaised > 0)
+// não é uma disputa entre streamers -- é o próprio streamer vendo qual dos
+// seus rounds (inclui o em andamento) arrecadou mais. Antes rankeava por
+// "leilões diferentes do mesmo dono" (fazia sentido quando um dono podia
+// ter vários leilões); com a regra de um leilão só por conta, isso virou
+// sempre 1 linha, então passou a rankear os rounds arquivados desse único
+// leilão (mesma fonte do histórico, só ordenada por valor).
+function computeLeilaoRoundRanking(store) {
+  if (getHideTotalRaised(store)) return [];
+  return store
+    .getPastAuctions()
+    .filter((round) => round.totalRaised != null && round.totalRaised > 0)
     .sort((a, b) => b.totalRaised - a.totalRaised)
-    .map((row, index) => ({ ...row, rank: index + 1 }));
+    .map((round, index) => ({
+      title: round.title || "JogodaVez",
+      totalRaised: round.totalRaised,
+      archivedAt: round.archivedAt || null,
+      openRound: !!round.openRound,
+      rank: index + 1,
+    }));
 }
 
 app.get("/api/l/:id/ranking", loadLeilao, (req, res) => {
-  const meta = registry.getLeilaoMeta(req.leilaoId);
-  res.json({ ranking: computeOwnerRanking(meta && meta.ownerTwitchUserId) });
+  res.json({ ranking: computeLeilaoRoundRanking(req.store) });
 });
 
 app.get("/api/board-bg-covers", async (req, res) => {

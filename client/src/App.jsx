@@ -184,6 +184,9 @@ function BoardContent() {
           visible={presenter.active}
           profileHref={profileHref}
           hostAvatar={leaderboard.hostAvatar}
+          onOpenSettings={() => setSettingsOpen(true)}
+          onOpenRanking={() => setRankingOpen(true)}
+          onOpenHistory={() => setHistoryOverlayOpen(true)}
         />
 
         <div className="col col-left">
