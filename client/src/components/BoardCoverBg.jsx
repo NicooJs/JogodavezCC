@@ -30,7 +30,7 @@ function CoverTile({ url, onLoaded }) {
 // Refaz quando a modalidade (jogos/filmes) muda, já que /api/board-bg-covers
 // devolve capas diferentes pra cada uma sem mudar a URL (sem Cache-Control
 // de propósito no servidor).
-export default function BoardCoverBg({ leilaoId, mode }) {
+export default function BoardCoverBg({ leilaoId, mode, activeSystem }) {
   const [covers, setCovers] = useState([])
   const revealedRef = useRef(false)
 
@@ -47,7 +47,7 @@ export default function BoardCoverBg({ leilaoId, mode }) {
     return () => {
       cancelled = true
     }
-  }, [leilaoId, mode])
+  }, [leilaoId, mode, activeSystem])
 
   const tiles = useMemo(() => {
     if (!covers.length) return []
@@ -71,7 +71,7 @@ export default function BoardCoverBg({ leilaoId, mode }) {
   }
 
   return (
-    <div className="board-cover-bg" aria-hidden="true">
+    <div className={`board-cover-bg${activeSystem === 'reacts' ? ' is-video' : ''}`} aria-hidden="true">
       <div className="board-cover-bg-grid">
         {tiles.map((url, i) => (
           <CoverTile key={i} url={url} onLoaded={handleTileLoaded} />

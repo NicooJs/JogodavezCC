@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 
 export default function TopbarMenu({
   leilaoId,
@@ -15,6 +15,16 @@ export default function TopbarMenu({
 }) {
   const [open, setOpen] = useState(false)
   const [generating, setGenerating] = useState(false)
+  const rootRef = useRef(null)
+
+  useEffect(() => {
+    if (!open) return
+    const handleClick = (e) => {
+      if (rootRef.current && !rootRef.current.contains(e.target)) setOpen(false)
+    }
+    document.addEventListener('mousedown', handleClick)
+    return () => document.removeEventListener('mousedown', handleClick)
+  }, [open])
 
   const togglePresenter = async () => {
     if (presenterActive) {
@@ -36,7 +46,7 @@ export default function TopbarMenu({
   }
 
   return (
-    <div className="topbar-menu">
+    <div className="topbar-menu" ref={rootRef}>
       <a className="topbar-menu-avatar-link" target="_blank" rel="noopener" aria-label="Ver perfil" href={profileHref || undefined}>
         {hostAvatar ? (
           <img className="topbar-menu-avatar" src={hostAvatar} alt="" />

@@ -1369,9 +1369,20 @@ app.get("/api/l/:id/ranking", loadLeilao, (req, res) => {
 
 app.get("/api/board-bg-covers", async (req, res) => {
   const leilaoId = String(req.query.leilaoId || "");
-  const media = leilaoId && /^[a-z0-9_-]+$/i.test(leilaoId) && registry.leilaoExists(leilaoId)
-    ? getMediaAdapter(getStore(leilaoId))
-    : igdbApi;
+  const valid = leilaoId && /^[a-z0-9_-]+$/i.test(leilaoId) && registry.leilaoExists(leilaoId);
+  const store = valid ? getStore(leilaoId) : null;
+
+  // reacts é um sistema à parte (thumbnail de vídeo, não capa de jogo/filme)
+  // -- desvia antes de tocar no adapter IGDB/TMDB, mesmo esquema do resto do reacts.
+  if (store && getActiveSystem(store) === "reacts") {
+    const thumbs = [...store.getReactVideos(), ...store.getReactedVideos()]
+      .map((v) => v.thumbnail)
+      .filter(Boolean);
+    res.set("Cache-Control", "no-store");
+    return res.json({ covers: [...new Set(thumbs)] });
+  }
+
+  const media = store ? getMediaAdapter(store) : igdbApi;
   const covers = await media.fetchPopularCovers();
   // sem Cache-Control aqui de propósito -- a URL não muda quando a modalidade troca
   // (mesma leilaoId), e um cache HTTP guardaria capa de jogo depois de trocar pra

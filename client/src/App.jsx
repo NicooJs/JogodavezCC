@@ -7,13 +7,14 @@ import { DialogsProvider, useDialogs } from './hooks/useDialogs.jsx'
 import { getLeilaoIdFromPath } from './lib/leilaoId.js'
 import { presenterFetch } from './lib/api.js'
 import Topbar from './components/Topbar.jsx'
+import TotalRaisedChip from './components/TotalRaisedChip.jsx'
 import SystemSwitch from './components/SystemSwitch.jsx'
 import HostPanel from './components/HostPanel.jsx'
 import DonorsPanel from './components/DonorsPanel.jsx'
 import ArenaPanel from './components/ArenaPanel.jsx'
 import TimerPanel from './components/TimerPanel.jsx'
 import HistoryPanel from './components/HistoryPanel.jsx'
-import ReactPlaylistPanel from './components/ReactPlaylistPanel.jsx'
+import ReactsQueue from './components/ReactsQueue.jsx'
 import BoardCoverBg from './components/BoardCoverBg.jsx'
 import PresenterLoginModal from './components/PresenterLoginModal.jsx'
 import ModCodeModal from './components/ModCodeModal.jsx'
@@ -132,7 +133,7 @@ function BoardContent() {
 
   return (
     <div className="page">
-      <BoardCoverBg leilaoId={leilaoId} mode={leaderboard.mode} />
+      <BoardCoverBg leilaoId={leilaoId} mode={leaderboard.mode} activeSystem={leaderboard.activeSystem} />
       <div className="board-bg" aria-hidden="true" ref={boardBgRef}>
         <span className="board-bg-shard board-bg-shard-1" />
         <span className="board-bg-shard board-bg-shard-2" />
@@ -143,8 +144,6 @@ function BoardContent() {
 
       <Topbar
         title={leaderboard.title}
-        totalRaised={leaderboard.totalRaised}
-        hideTotalRaised={isReacts || leaderboard.hideTotalRaised}
         connected={connected}
         leilaoId={leilaoId}
         historyItems={historyItems}
@@ -179,14 +178,24 @@ function BoardContent() {
         />
 
         <div className="col col-left">
+          {isReacts ? null : (
+            <TotalRaisedChip
+              leilaoId={leilaoId}
+              totalRaised={leaderboard.totalRaised}
+              hideTotalRaised={leaderboard.hideTotalRaised}
+              presenterActive={presenter.active}
+            />
+          )}
           <HostPanel leaderboard={leaderboard} />
-          <DonorsPanel donors={donors || []} totalRaised={leaderboard.totalRaised || 0} />
+          {isReacts ? null : <DonorsPanel donors={donors || []} totalRaised={leaderboard.totalRaised || 0} />}
         </div>
 
         <div className="col col-center">
           <ArenaPanel
+            leilaoId={leilaoId}
             leaderboard={leaderboard}
             lastEvent={lastEvent}
+            presenterActive={presenter.active}
             onLotContextMenu={
               presenter.active ? (x, y, item) => setContextMenuTarget({ type: 'race', x, y, item }) : undefined
             }
@@ -198,9 +207,8 @@ function BoardContent() {
         <div className="col col-right">
           <TimerPanel leilaoId={leilaoId} leaderboard={leaderboard} hidden={isReacts} presenterActive={presenter.active} />
           <HistoryPanel items={historyItems} hidden={isReacts} />
-          <ReactPlaylistPanel
-            queue={leaderboard.reactVideos ? leaderboard.reactVideos.filter((v) => v.status === 'unlocked') : []}
-            history={leaderboard.reactedVideos || []}
+          <ReactsQueue
+            leaderboard={leaderboard}
             hidden={!isReacts}
             onVideoContextMenu={
               presenter.active ? (x, y, video) => setContextMenuTarget({ type: 'react', x, y, video }) : undefined
