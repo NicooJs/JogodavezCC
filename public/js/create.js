@@ -12,10 +12,9 @@ const termsCheckEl = document.getElementById("f-terms");
 
 let currentSession = null;
 
-// ?novo=1 pula o redirecionamento automático -- é o que "criar outro
-// leilão" em /meus-leiloes usa pra conseguir chegar no formulário mesmo
-// já tendo um leilão
-const skipAutoRedirect = new URLSearchParams(location.search).has("novo");
+// vindo do card "Reacts" no hub sem leilão ainda criado -- assim que o
+// leilão nascer, já troca pro modo reacts antes de entrar no board
+const wantsReacts = new URLSearchParams(location.search).get("sistema") === "reacts";
 
 async function findExistingLeilao() {
   try {
@@ -35,10 +34,10 @@ async function loadSession() {
     currentSession = { loggedIn: false };
   }
 
-  if (currentSession.loggedIn && !skipAutoRedirect) {
+  if (currentSession.loggedIn) {
     const existing = await findExistingLeilao();
     if (existing) {
-      location.href = existing.url;
+      location.href = "/meus-leiloes";
       return;
     }
   }
@@ -89,6 +88,18 @@ form.addEventListener("submit", async (e) => {
     });
     const data = await res.json().catch(() => ({}));
     if (!res.ok) throw new Error(data.error || `Erro ${res.status}`);
+
+    if (wantsReacts) {
+      try {
+        await fetch(`/api/l/${data.id}/admin/active-system`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ system: "reacts" }),
+        });
+      } catch (err) {
+        // segue pro board mesmo assim -- o streamer troca o modo por lá se isso falhar
+      }
+    }
 
     location.href = data.url;
   } catch (err) {

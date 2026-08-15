@@ -1270,6 +1270,12 @@ app.post("/api/leiloes", async (req, res) => {
 
     await streamersStore.ensureByTwitchUserId(twitchSession.twitchUserId);
 
+    // uma conta, um leilão -- desvincular (POST /admin/unlink-account) é o
+    // único jeito de voltar a criar, decisão de produto pro hub de ferramentas
+    if (registry.listLeiloesByOwner(twitchSession.twitchUserId).length > 0) {
+      return res.status(400).json({ error: "Sua conta já tem um leilão. Desvincule o atual antes de criar outro." });
+    }
+
     const { title } = req.body || {};
     const { id } = await registry.createLeilao({
       title,

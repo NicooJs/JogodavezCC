@@ -1,64 +1,75 @@
 <!DOCTYPE html>
-<html lang="pt-BR" data-theme="cinza">
+<html lang="pt-BR">
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>Meus leilões</title>
+<title>JogodaVez</title>
 <link rel="icon" href="/favicon.png" type="image/png" />
 <link rel="icon" sizes="32x32" href="/favicon-32.png" type="image/png" />
 <link rel="apple-touch-icon" href="/favicon-180.png" />
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Abril+Fatface&family=Nunito:ital,wght@0,500;0,600;0,700;1,500;1,600;1,700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@600;700&family=Nunito:ital,wght@0,500;0,600;0,700;1,500;1,600;1,700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/css/style.css" />
-<link rel="stylesheet" href="/css/create.css" />
+<link rel="stylesheet" href="/css/hub.css" />
 </head>
-<body class="create-body">
-  <div class="create-page">
-    <header class="topbar create-topbar">
-      <p class="topbar-mark">
-        <span class="brand-word">JogodaVez</span>
-        <span class="brand-sub">meus leilões</span>
-      </p>
-      <nav class="create-topbar-nav">
-        <a href="/?novo=1">criar novo</a>
+<body class="hub-body">
+
+  <div class="hub-logged-out" id="hub-logged-out" hidden>
+    <p class="hub-title">Entre com a Twitch pra abrir seu painel</p>
+    <p class="hub-lede">Leilão, reacts e o que mais vier depois -- tudo fica junto aqui, por conta.</p>
+    <a class="create-twitch-login" id="hub-login-link" href="/auth/twitch/start?returnTo=/meus-leiloes">
+      <svg class="icon" viewBox="0 0 2400 2800" fill="currentColor" aria-hidden="true"><path d="M500 0 0 500v1800h600v500l500-500h400l900-900V0H500zm1600 1300-400 400h-400l-350 350v-350H500V200h1600v1100z" /><path d="M1700 550h200v600h-200zM1150 550h200v600h-200z" /></svg>
+      Continuar com a Twitch
+    </a>
+  </div>
+
+  <div class="hub-shell" id="hub-shell" hidden>
+    <aside class="hub-sidebar">
+      <div class="hub-sidebar-mark" title="JogodaVez">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 2l8 4.5v11L12 22l-8-4.5v-11L12 2z" /><path d="M12 8v8" /><path d="M9 10.5l6 3M15 10.5l-6 3" /></svg>
+      </div>
+      <nav class="hub-sidebar-nav">
+        <button class="hub-sidebar-item is-active" type="button" title="Início" aria-label="Início">
+          <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="2.5" y="2.5" width="6.5" height="6.5" rx="1.3" /><rect x="11" y="2.5" width="6.5" height="6.5" rx="1.3" /><rect x="2.5" y="11" width="6.5" height="6.5" rx="1.3" /><rect x="11" y="11" width="6.5" height="6.5" rx="1.3" /></svg>
+        </button>
+        <a class="hub-sidebar-item" href="/perfil" title="Perfil" aria-label="Perfil">
+          <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="10" cy="6.5" r="3.2" /><path d="M4 17c0-3.3 2.7-6 6-6s6 2.7 6 6" /></svg>
+        </a>
+        <button class="hub-sidebar-item" type="button" id="hub-nav-config" title="Configurações" aria-label="Configurações">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z" /><circle cx="12" cy="12" r="3" /></svg>
+        </button>
+        <button class="hub-sidebar-item" type="button" id="hub-nav-ranking" title="Ranking" aria-label="Ranking">
+          <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M6 4h8v3.5a4 4 0 0 1-8 0V4z" /><path d="M6 5H3.5A1.5 1.5 0 0 0 2 6.5v0A2.5 2.5 0 0 0 4.5 9H6M14 5h2.5A1.5 1.5 0 0 1 18 6.5v0A2.5 2.5 0 0 1 15.5 9H14" /><path d="M10 11.5V14" /><path d="M7 16.5h6" /><path d="M8 14h4l.6 2.5H7.4L8 14z" /></svg>
+        </button>
+        <button class="hub-sidebar-item" type="button" id="hub-nav-historico" title="Histórico de leilões" aria-label="Histórico de leilões">
+          <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M10 5.5V10l3 2" /><circle cx="10" cy="10" r="7" /></svg>
+        </button>
       </nav>
-    </header>
+      <div class="hub-sidebar-spacer"></div>
+      <img class="hub-sidebar-avatar" id="hub-avatar" src="" alt="" title="Sair" />
+    </aside>
 
-    <main class="my-leiloes-main">
-      <div class="my-leiloes-logged-out" id="my-logged-out" hidden>
-        <p class="create-existing-title">Entre com a Twitch pra ver seus leilões</p>
-        <p class="create-hint">A lista é por conta: os mesmos leilões aparecem aqui não importa o navegador ou aparelho que você usar.</p>
-        <a class="create-twitch-login" id="my-login-link" href="/auth/twitch/start?returnTo=/meus-leiloes">Continuar com a Twitch</a>
+    <main class="hub-main">
+      <div class="hub-header">
+        <p class="hub-eyebrow">JogodaVez</p>
+        <h1 class="hub-title" id="hub-greeting">Painel</h1>
+        <p class="hub-lede">Escolha uma ferramenta pra abrir. Cada uma vive na sua conta, não importa o navegador ou aparelho.</p>
       </div>
 
-      <div class="my-leiloes-logged-in" id="my-logged-in" hidden>
-        <div class="my-leiloes-header">
-          <div class="create-twitch-logged-in">
-            <img class="create-twitch-avatar" id="my-avatar" src="" alt="" />
-            <span class="create-twitch-name" id="my-name"></span>
-            <button class="create-twitch-logout" id="my-logout" type="button">sair</button>
-          </div>
-        </div>
-
-        <div class="create-existing-list" id="my-list"></div>
-        <p class="my-leiloes-empty" id="my-empty" hidden>Você ainda não criou nenhum leilão com essa conta.</p>
-      </div>
+      <p class="hub-section-label">Ferramentas</p>
+      <div class="hub-service-grid" id="hub-service-grid"></div>
     </main>
   </div>
 
-  <div class="modal-overlay dialog-overlay" id="confirm-dialog-overlay" hidden>
-    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="confirm-dialog-title">
-      <button class="modal-close" id="confirm-dialog-close" type="button" aria-label="Fechar">✕</button>
+  <div class="modal-overlay dialog-overlay" id="hub-modal-overlay" hidden>
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="hub-modal-title">
+      <button class="modal-close" id="hub-modal-close" type="button" aria-label="Fechar">✕</button>
       <div class="modal-head">
         <div class="modal-head-text">
-          <h2 class="modal-title" id="confirm-dialog-title">Título</h2>
+          <h2 class="modal-title" id="hub-modal-title">Título</h2>
         </div>
       </div>
-      <p class="modal-message" id="confirm-dialog-message">Mensagem</p>
-      <div class="modal-actions">
-        <button class="btn-mini" id="confirm-dialog-cancel" type="button">Cancelar</button>
-        <button class="btn-mini" id="confirm-dialog-confirm" type="button">Confirmar</button>
-      </div>
+      <div id="hub-modal-body"></div>
     </div>
   </div>
 

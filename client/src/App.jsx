@@ -56,6 +56,15 @@ function BoardContent() {
   }, [presenter.active])
 
   useEffect(() => {
+    if (!presenter.active) return
+    if (new URLSearchParams(window.location.search).get('config') !== '1') return
+    setSettingsOpen(true)
+    const url = new URL(window.location.href)
+    url.searchParams.delete('config')
+    window.history.replaceState(null, '', url)
+  }, [presenter.active])
+
+  useEffect(() => {
     if (!boardBgRef.current) return
     let cancelled = false
     let cleanup = () => {}
