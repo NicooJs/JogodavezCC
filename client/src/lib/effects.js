@@ -505,3 +505,32 @@ export function triggerConfettiBurst(rect, { colors, count, spark = false, ember
   document.body.appendChild(burst)
   setTimeout(() => burst.remove(), ember ? 1900 : 2900)
 }
+
+// deriva/rotação infinita dos cacos de fundo -- porte de board-bg.js vanilla.
+// Retorna uma função de cleanup (StrictMode monta/desmonta o efeito 2x em dev).
+export async function animateBoardBg(container) {
+  if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return () => {}
+  const { animate } = await import('https://cdn.jsdelivr.net/npm/motion@12.42.2/+esm')
+  const controls = []
+  container.querySelectorAll('.board-bg-shard').forEach((el, i) => {
+    const baseOpacity = parseFloat(getComputedStyle(el).opacity) || 0.2
+    const duration = 16 + Math.random() * 10
+    const driftY = 10 + Math.random() * 14
+    const driftX = (Math.random() - 0.5) * 18
+    const rotateBy = 45 + (Math.random() - 0.5) * 24
+
+    controls.push(
+      animate(
+        el,
+        {
+          y: [0, -driftY, 0],
+          x: [0, driftX, 0],
+          rotate: [45, rotateBy, 45],
+          opacity: [baseOpacity, baseOpacity * 1.5, baseOpacity],
+        },
+        { duration, repeat: Infinity, ease: 'easeInOut', delay: i * 0.4 }
+      )
+    )
+  })
+  return () => controls.forEach((c) => c.stop())
+}

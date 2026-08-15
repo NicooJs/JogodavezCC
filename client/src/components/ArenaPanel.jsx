@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { Fragment, useEffect, useRef, useState } from 'react'
 import LotCard from './LotCard.jsx'
 import { mediaLabel } from '../lib/media.js'
 import { initial } from '../lib/format.js'
@@ -181,7 +181,7 @@ export default function ArenaPanel({ leaderboard, lastEvent, onLotContextMenu, o
                   : null
             const isQualifyBoundary = item.rank === qualifyCount && items.length > qualifyCount
             return (
-              <div key={item.key} style={{ display: 'contents' }}>
+              <Fragment key={item.key}>
                 <LotCard
                   item={item}
                   barPct={barPct}
@@ -204,7 +204,7 @@ export default function ArenaPanel({ leaderboard, lastEvent, onLotContextMenu, o
                     <span>{duelDefender && duelChallenger ? 'disputa pela última vaga' : 'classificados até aqui'}</span>
                   </div>
                 ) : null}
-              </div>
+              </Fragment>
             )
           })
         )}

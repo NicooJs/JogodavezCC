@@ -27,6 +27,7 @@ import PresenterBar from './components/PresenterBar.jsx'
 import LotModal from './components/LotModal.jsx'
 import { formatBRL } from './lib/format.js'
 import { mediaLabel } from './lib/media.js'
+import { animateBoardBg } from './lib/effects.js'
 
 const leilaoId = getLeilaoIdFromPath(window.location.pathname)
 
@@ -45,11 +46,26 @@ function BoardContent() {
   const [lotModalGame, setLotModalGame] = useState(null)
   const recap = useRecap(leilaoId)
   const wasOpenRef = useRef(null)
+  const boardBgRef = useRef(null)
   const { confirmDialog } = useDialogs()
 
   useEffect(() => {
     document.body.classList.toggle('presenter-mode', presenter.active)
   }, [presenter.active])
+
+  useEffect(() => {
+    if (!boardBgRef.current) return
+    let cancelled = false
+    let cleanup = () => {}
+    animateBoardBg(boardBgRef.current).then((stop) => {
+      if (cancelled) stop()
+      else cleanup = stop
+    })
+    return () => {
+      cancelled = true
+      cleanup()
+    }
+  }, [!!leaderboard])
 
   useEffect(() => {
     if (!leaderboard) return
@@ -115,7 +131,7 @@ function BoardContent() {
 
   return (
     <div className="page">
-      <div className="board-bg" aria-hidden="true">
+      <div className="board-bg" aria-hidden="true" ref={boardBgRef}>
         <span className="board-bg-shard board-bg-shard-1" />
         <span className="board-bg-shard board-bg-shard-2" />
         <span className="board-bg-shard board-bg-shard-3" />
@@ -178,7 +194,7 @@ function BoardContent() {
         </div>
 
         <div className="col col-right">
-          <TimerPanel leaderboard={leaderboard} hidden={isReacts} />
+          <TimerPanel leilaoId={leilaoId} leaderboard={leaderboard} hidden={isReacts} presenterActive={presenter.active} />
           <HistoryPanel items={historyItems} hidden={isReacts} />
           <ReactPlaylistPanel
             queue={leaderboard.reactVideos ? leaderboard.reactVideos.filter((v) => v.status === 'unlocked') : []}
