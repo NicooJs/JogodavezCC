@@ -12,6 +12,12 @@
     <link href="https://fonts.googleapis.com/css2?family=Abril+Fatface&family=Fredoka:wght@600;700&family=Nunito:ital,wght@0,500;0,600;0,700;1,500;1,600;1,700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
     <link rel="stylesheet" href="/css/style.css" />
     <link rel="stylesheet" href="/css/settings.css" />
+    <!-- sem isso #root vira uma caixa de largura própria entre body e .page,
+         e o width:100%/max-width:1850px de .page passa a resolver contra o
+         shrink-to-fit de #root em vez do body inteiro (board renderiza bem
+         mais estreito que o vanilla, que tinha .page como filho direto do
+         body flex) -->
+    <style>#root { display: contents; }</style>
   </head>
   <body class="board-body">
     <div id="root"></div>

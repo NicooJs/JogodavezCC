@@ -14,6 +14,7 @@ import ArenaPanel from './components/ArenaPanel.jsx'
 import TimerPanel from './components/TimerPanel.jsx'
 import HistoryPanel from './components/HistoryPanel.jsx'
 import ReactPlaylistPanel from './components/ReactPlaylistPanel.jsx'
+import BoardCoverBg from './components/BoardCoverBg.jsx'
 import PresenterLoginModal from './components/PresenterLoginModal.jsx'
 import ModCodeModal from './components/ModCodeModal.jsx'
 import LotContextMenu from './components/LotContextMenu.jsx'
@@ -131,6 +132,7 @@ function BoardContent() {
 
   return (
     <div className="page">
+      <BoardCoverBg leilaoId={leilaoId} mode={leaderboard.mode} />
       <div className="board-bg" aria-hidden="true" ref={boardBgRef}>
         <span className="board-bg-shard board-bg-shard-1" />
         <span className="board-bg-shard board-bg-shard-2" />
