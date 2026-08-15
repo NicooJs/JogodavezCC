@@ -1513,9 +1513,23 @@ app.post("/api/admin/saques/:id/confirmar-manual", async (req, res) => {
 
 // ---------- board e painel por leilão ----------
 
+// board novo (React, client/) -- ativo só pra leilões na lista de canário
+// (REACT_BOARD_CANARY_IDS, separados por vírgula) E só se o build existir
+// de verdade. O fs.existsSync não é só o mecanismo do canário: é rede de
+// segurança também -- se o build falhar silenciosamente em produção
+// (ver package.json "build"), cai pro board.html de sempre em vez de dar
+// 404 pra todo mundo.
+const REACT_BOARD_CANARY_IDS = new Set(
+  (process.env.REACT_BOARD_CANARY_IDS || "").split(",").map((id) => id.trim()).filter(Boolean)
+);
+const REACT_BOARD_INDEX_PATH = path.join(__dirname, "public", "board-app", "index.html");
+
 app.get("/l/:id", (req, res) => {
   if (!registry.leilaoExists(req.params.id)) return res.status(404).send("Leilão não encontrado");
   res.set("Referrer-Policy", "no-referrer");
+  if (REACT_BOARD_CANARY_IDS.has(req.params.id) && fs.existsSync(REACT_BOARD_INDEX_PATH)) {
+    return res.sendFile(REACT_BOARD_INDEX_PATH);
+  }
   res.sendFile(path.join(__dirname, "public", "board.html"));
 });
 

@@ -5,10 +5,11 @@
   "type": "commonjs",
   "main": "server.js",
   "engines": {
-    "node": ">=18.0.0"
+    "node": ">=20.19.0"
   },
   "scripts": {
-    "start": "node server.js"
+    "start": "node server.js",
+    "build": "npm --prefix client ci && npm --prefix client run build"
   },
   "dependencies": {
     "dotenv": "^16.4.5",
