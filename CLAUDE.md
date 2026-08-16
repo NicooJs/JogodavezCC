@@ -196,9 +196,35 @@ no canto pra não parecer um ícone de "ver meu perfil" (isso já confundiu o
 cliente uma vez). "Ver perfil de verdade" é o ícone de pessoa na nav, não
 o avatar.
 
-**Ranking e Histórico** são só HTML montado por fetch direto
-(`ensureRankingView`/`ensureHistoricoView`, cada um cacheia depois da
-primeira carga bem-sucedida -- erro reseta o cache pra permitir retry).
+**Não existe mais ícone de "Ranking" separado no hub** (removido
+2026-08-16) -- `/api/l/:id/ranking` (por valor) e `/api/l/:id/recap/history`
+(por data) puxavam praticamente os mesmos dados (`getPastAuctions()`), só
+ordenados diferente; ficaram redundantes uma vez que cada round já mostra
+o próprio total. A rota `/api/l/:id/ranking` **continua existindo** no
+server -- só não é mais usada pelo hub, o board (`RankingModal.jsx`,
+`app.js`) ainda depende dela pro próprio ranking, sem relação com o hub.
+
+**Histórico** (`client/historico.html` + `historico-main.jsx` +
+`HistoricoStandalone.jsx`) segue o mesmo padrão de entry-point standalone
+que Configurações -- terceiro *entry* do Vite, mesmo mecanismo de
+fetch-and-inject em `painel.js` (`loadStandaloneEntry()`, fatorado depois
+que o Histórico virou o segundo consumidor do mesmo truque). Visual
+inspirado no histórico de partidas do OP.GG (estrutura, não a paleta):
+cada round vira uma linha com data relativa, duração, jogo vencedor em
+destaque, "roster" dos outros jogos que competeram naquele round e os
+top doadores -- tudo já vinha em `buildRecap()` (`server.js`), não precisou
+de rota nova. Sidebar tem um card de resumo geral (total histórico, média
+por round, melhor round) e um widget de **"estilo de jogos"** (gênero,
+somando valor arrecadado por gênero em todos os rounds -- métrica
+escolhida foi valor arrecadado, não "quantas vezes apareceu"). Gênero é
+capturado de graça na mesma busca que já resolve a capa do jogo
+(`getCachedGenre()` em `src/igdbApi.js`/`src/movieImages.js`, populado como
+efeito colateral de `fetchGameImage()`, sem chamada extra à API) e salvo
+por jogo via `store.setGameGenre()` -- jogo sem gênero resolvido cai em
+"Outros" no agregado (`buildRecap`'s `genreBreakdown`, soma por TODOS os
+jogos do round, não só os classificados em `topGames`). Rounds arquivados
+**antes** dessa mudança não têm `genreBreakdown` (não migra
+retroativamente, mesmo padrão já usado pra troca de nome de tema).
 
 **Configurações NÃO é iframe do board** (mudou 2026-08-15 a pedido
 explícito do cliente: "não quero que abra o leilão, quero que o hub seja

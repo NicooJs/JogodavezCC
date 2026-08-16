@@ -134,6 +134,13 @@ async function fetchPopularCovers(count = 30) {
 // (confirmado testando ao vivo, capa errada foi parar no board de verdade).
 // name aqui já é um nome limpo e resolvido, então prioriza um candidato cujo
 // nome bate exatamente antes de aceitar só o mais "relevante" pra IGDB
+// gênero pega carona na mesma busca que já resolve a capa -- sem chamada
+// extra à IGDB. genreCache é só um efeito colateral de fetchGameImage,
+// getCachedGenre (chamado depois, do server.js) só lê o que já foi
+// resolvido; se fetchGameImage nunca rodou pra esse nome, fica sem gênero
+// (aceitável, é estatística "bônus", não bloqueia nada).
+const genreCache = new Map();
+
 async function fetchGameImage(name) {
   const cacheKey = name.trim().toLowerCase();
   if (cache.has(cacheKey)) return cache.get(cacheKey);
@@ -141,14 +148,19 @@ async function fetchGameImage(name) {
   const escaped = name.replace(/"/g, '\\"');
   const results = await igdbQuery(
     "games",
-    `search "${escaped}"; fields name,cover.image_id; limit 8;`
+    `search "${escaped}"; fields name,cover.image_id,genres.name; limit 8;`
   );
 
   const normalizedName = normalizeKey(name);
   const best = (results || []).find((g) => normalizeKey(g.name) === normalizedName) || (results && results[0]);
   const image = coverUrl(best && best.cover && best.cover.image_id);
   cache.set(cacheKey, image);
+  genreCache.set(cacheKey, (best && best.genres && best.genres[0] && best.genres[0].name) || null);
   return image;
+}
+
+function getCachedGenre(name) {
+  return genreCache.get(name.trim().toLowerCase()) || null;
 }
 
 function toYear(unixSeconds) {
@@ -241,4 +253,4 @@ async function identifyGameFromNoisyText(text) {
   return null;
 }
 
-module.exports = { fetchGameImage, searchGames, identifyGameFromNoisyText, fetchPopularCovers };
+module.exports = { fetchGameImage, searchGames, identifyGameFromNoisyText, fetchPopularCovers, getCachedGenre };

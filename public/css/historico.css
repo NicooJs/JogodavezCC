@@ -1,0 +1,165 @@
+/* Histórico do hub (/painel) -- estrutura inspirada no histórico de
+   partidas do OP.GG (sidebar de estatísticas + lista principal), paleta e
+   texturas continuam as da casa (--surface/--accent/--font-mono etc, ver
+   style.css), não a paleta azul/vermelha da referência. */
+
+.hist-layout {
+  display: flex;
+  align-items: flex-start;
+  gap: 24px;
+}
+
+.hist-sidebar {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  width: 260px;
+  flex-shrink: 0;
+  position: sticky;
+  top: 20px;
+}
+
+.hist-widget {
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 16px 18px;
+}
+
+.hist-widget-title {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin: 0 0 12px;
+}
+
+.hist-summary-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  padding: 6px 0;
+  border-top: 1px dashed var(--border-soft);
+}
+.hist-summary-row:first-of-type { border-top: none; padding-top: 0; }
+.hist-summary-label { font-size: 12px; color: var(--muted); }
+.hist-summary-value { font-family: var(--font-mono); font-weight: 700; color: var(--text); font-size: 13px; }
+
+.hist-summary-best {
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid var(--border-soft);
+}
+.hist-summary-best-row { display: flex; align-items: baseline; justify-content: space-between; margin-top: 4px; }
+.hist-summary-best-value { font-family: var(--font-mono); font-weight: 700; color: var(--accent-text); font-size: 13px; }
+.hist-summary-best-date { font-size: 11px; color: var(--muted); }
+
+.hist-genre-list { display: flex; flex-direction: column; gap: 12px; }
+.hist-genre-row-head { display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 5px; }
+.hist-genre-label { font-size: 12px; font-weight: 600; color: var(--text); }
+.hist-genre-value { font-family: var(--font-mono); font-size: 11px; color: var(--muted); }
+.hist-genre-track { height: 6px; border-radius: 999px; background: var(--surface); overflow: hidden; }
+.hist-genre-fill { height: 100%; border-radius: 999px; background: linear-gradient(90deg, var(--accent), var(--accent-text)); }
+
+.hist-list { display: flex; flex-direction: column; gap: 10px; flex: 1; min-width: 0; }
+
+.hist-round {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  background: var(--surface-2);
+  background-image: var(--grain);
+  background-blend-mode: overlay;
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--border);
+  border-radius: 10px;
+  padding: 14px 18px;
+}
+.hist-round.is-open { border-left-color: var(--accent); }
+
+.hist-round-when { display: flex; flex-direction: column; gap: 4px; width: 90px; flex-shrink: 0; }
+.hist-round-date { font-size: 12px; font-weight: 600; color: var(--text); }
+.hist-round-duration { font-family: var(--font-mono); font-size: 11px; color: var(--muted); }
+.hist-round-tag {
+  align-self: flex-start;
+  background: var(--accent-bg);
+  color: var(--accent-text);
+  font-family: var(--font-mono);
+  font-size: 10px;
+  padding: 2px 7px;
+  border-radius: 999px;
+}
+
+.hist-round-body { display: flex; align-items: center; gap: 16px; flex: 1; min-width: 0; }
+
+.hist-round-winner { display: flex; align-items: center; gap: 10px; flex-shrink: 0; min-width: 170px; }
+.hist-round-winner-cover { width: 44px; height: 44px; border-radius: 8px; object-fit: cover; flex-shrink: 0; }
+.hist-round-cover-placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--surface);
+  color: var(--muted);
+  font-weight: 700;
+}
+.hist-round-winner-text { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
+.hist-round-winner-tag {
+  font-family: var(--font-mono);
+  font-size: 9.5px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--bronze);
+}
+.hist-round-winner-name {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 150px;
+}
+.hist-round-winner-total { font-family: var(--font-mono); font-size: 12px; font-weight: 600; color: var(--positive); }
+.hist-round-empty { color: var(--muted); font-size: 12px; }
+
+.hist-round-roster { display: flex; gap: 4px; flex-wrap: wrap; max-width: 220px; }
+.hist-round-roster-item { width: 28px; height: 28px; border-radius: 6px; overflow: hidden; flex-shrink: 0; }
+.hist-round-roster-item img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.hist-round-roster-item .hist-round-cover-placeholder { width: 100%; height: 100%; font-size: 11px; border-radius: 6px; }
+
+.hist-round-stats {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 4px;
+  flex-shrink: 0;
+  min-width: 130px;
+  text-align: right;
+}
+.hist-round-total { font-family: var(--font-mono); font-size: 16px; font-weight: 800; color: var(--text); }
+.hist-round-meta { font-size: 11px; color: var(--muted); }
+.hist-round-donors { display: flex; align-items: center; gap: 6px; }
+.hist-round-donor-avatars { display: flex; }
+.hist-round-donor-avatar {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  border: 2px solid var(--surface-2);
+  margin-left: -6px;
+  object-fit: cover;
+  background: var(--surface);
+}
+.hist-round-donor-avatar:first-child { margin-left: 0; }
+.hist-round-donor-placeholder { display: flex; align-items: center; justify-content: center; font-size: 8px; font-weight: 700; color: var(--muted); }
+.hist-round-mvp { font-family: var(--font-mono); font-size: 10px; font-weight: 600; color: var(--accent-text); }
+
+@media (max-width: 900px) {
+  .hist-layout { flex-direction: column; }
+  .hist-sidebar { width: 100%; position: static; flex-direction: row; flex-wrap: wrap; }
+  .hist-sidebar .hist-widget { flex: 1; min-width: 220px; }
+  .hist-round { flex-wrap: wrap; }
+  .hist-round-stats { align-items: flex-start; text-align: left; }
+}

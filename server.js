@@ -528,6 +528,19 @@ function buildRecap(store) {
 
   const durationMs = Number(store.getState("lastAuctionDurationMs", 0)) || null;
 
+  // "estilo de jogos" no Histórico do hub -- soma por TODOS os jogos do
+  // round (não só os classificados em topGames), já que é estatística
+  // agregada, não sobre quem ganhou
+  const genreBreakdown = {};
+  rows.forEach((row) => {
+    if (row.total_cents <= 0) return;
+    const genre = row.genre || "Outros";
+    genreBreakdown[genre] = (genreBreakdown[genre] || 0) + row.total_cents;
+  });
+  const genreBreakdownList = Object.entries(genreBreakdown)
+    .map(([genre, cents]) => ({ genre, total: centsToNumber(cents) }))
+    .sort((a, b) => b.total - a.total);
+
   return {
     title: store.getState("title", "JogodaVez"),
     mode: normalizeMode(store.getState("mode", "jogos")),
@@ -540,6 +553,7 @@ function buildRecap(store) {
     topGames,
     topDonors,
     biggestDonation,
+    genreBreakdown: genreBreakdownList,
   };
 }
 
@@ -549,8 +563,14 @@ function broadcastUpdate(leilaoId, store, lastEvent) {
 
 function maybeFetchGameImage(leilaoId, store, key, name, needsImage) {
   if (!needsImage) return;
-  getMediaAdapter(store).fetchGameImage(name)
+  const adapter = getMediaAdapter(store);
+  adapter.fetchGameImage(name)
     .then((imageUrl) => {
+      // gênero pega carona na mesma busca (getCachedGenre só lê o que
+      // fetchGameImage já resolveu) -- estatística pro Histórico do hub,
+      // não afeta nada se vier null
+      const genre = adapter.getCachedGenre ? adapter.getCachedGenre(name) : null;
+      if (genre) store.setGameGenre(key, genre);
       if (!imageUrl) return;
       store.setGameImage(key, imageUrl);
       broadcastUpdate(leilaoId, store, null);

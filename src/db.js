@@ -609,6 +609,15 @@ function createStore(filePath) {
     return { count, expiresAt };
   }
 
+  // gênero é só estatística (indicador de "estilo de jogos" no Histórico do
+  // hub) -- nunca bloqueia nada se ficar null (jogo sem gênero resolvido)
+  function setGameGenre(key, genre) {
+    if (!data.games[key]) return null;
+    data.games[key].genre = genre || null;
+    save();
+    return { ...data.games[key] };
+  }
+
   // !hype "jogo" no chat da Twitch -- contador simples, nunca reseta
   // sozinho (só via resetAll, junto com o resto do jogo, igual comboCount)
   function likeGame(key) {
@@ -658,6 +667,7 @@ function createStore(filePath) {
     getPastAuctions,
     getRawSnapshot,
     registerGameCombo,
+    setGameGenre,
     likeGame,
     submitReactVideo,
     getPendingReactVideos,

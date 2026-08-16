@@ -12,7 +12,6 @@ const views = {
   home: document.getElementById("view-home"),
   perfil: document.getElementById("view-perfil"),
   config: document.getElementById("view-config"),
-  ranking: document.getElementById("view-ranking"),
   historico: document.getElementById("view-historico"),
 };
 const navButtons = [...document.querySelectorAll(".hub-sidebar-item[data-view]")];
@@ -26,7 +25,6 @@ function showView(name) {
 
 function loadView(name) {
   if (name === "config") return ensureConfigView();
-  if (name === "ranking") return ensureRankingView();
   if (name === "historico") return ensureHistoricoView();
   if (name === "perfil") return ensurePerfilView();
 }
@@ -48,17 +46,14 @@ function escapeHtml(str) {
   }[c]));
 }
 
-// Configurações -- monta um React de verdade (ver client/src/settings-main.jsx),
-// nunca o board/leilão. O bundle só é buscado na primeira vez que a view é
-// aberta; depois disso mount() é só re-render (raiz React persiste porque
-// #settings-root nunca sai do DOM, só fica hidden).
-const settingsRootEl = document.getElementById("settings-root");
-let settingsPanelLoad = null;
-let settingsMounted = false;
-
-function loadSettingsPanel() {
-  if (settingsPanelLoad) return settingsPanelLoad;
-  settingsPanelLoad = fetch("/board-app/settings.html")
+// Configurações e Histórico montam React de verdade (ver
+// client/src/settings-main.jsx e historico-main.jsx), nunca o board/leilão
+// inteiro. Cada bundle é buscado (fetch + extrai o <script> com hash já
+// resolvido pelo Vite) só na primeira vez que a view é aberta -- depois
+// mount() é só re-render, a raiz React persiste porque o container nunca
+// sai do DOM, só fica hidden.
+function loadStandaloneEntry(htmlPath) {
+  return fetch(htmlPath)
     .then((res) => res.text())
     .then((html) => {
       const doc = new DOMParser().parseFromString(html, "text/html");
@@ -78,13 +73,17 @@ function loadSettingsPanel() {
         document.body.appendChild(s);
       });
     });
-  return settingsPanelLoad;
 }
+
+const settingsRootEl = document.getElementById("settings-root");
+let settingsPanelLoad = null;
+let settingsMounted = false;
 
 async function ensureConfigView() {
   if (settingsMounted) return;
   try {
-    await loadSettingsPanel();
+    if (!settingsPanelLoad) settingsPanelLoad = loadStandaloneEntry("/board-app/settings.html");
+    await settingsPanelLoad;
     window.JogodaVezSettingsPanel.mount("settings-root", leilao.id);
     settingsMounted = true;
   } catch (err) {
@@ -92,66 +91,23 @@ async function ensureConfigView() {
   }
 }
 
-// Ranking -----------------------------------------------------------------
-let rankingLoaded = false;
-async function ensureRankingView() {
-  if (rankingLoaded) return;
-  views.ranking.innerHTML = `<p class="hub-modal-loading">Carregando...</p>`;
-  try {
-    const res = await fetch(`/api/l/${leilao.id}/ranking`);
-    const { ranking } = await res.json();
-    rankingLoaded = true;
-    if (!ranking || !ranking.length) {
-      views.ranking.innerHTML = `<p class="empty-state">Nenhum round arrecadou nada ainda.</p>`;
-      return;
-    }
-    views.ranking.innerHTML = `
-      <div class="hub-header">
-        <p class="hub-eyebrow">JogodaVez</p>
-        <h1 class="hub-title">Seus melhores leilões</h1>
-        <p class="hub-lede">Seus rounds, do que mais arrecadou pro que menos arrecadou -- não é uma disputa com outros streamers.</p>
-      </div>
-      <ul class="hub-modal-list">${ranking.map((r) => `
-        <li>
-          <span class="hub-modal-list-rank">${String(r.rank).padStart(2, "0")}</span>
-          <span class="hub-modal-list-name">${escapeHtml(r.title)}${r.openRound ? " <em>(em andamento)</em>" : ""}</span>
-          <span class="hub-modal-list-value">R$ ${Math.round(r.totalRaised || 0).toLocaleString("pt-BR")}</span>
-        </li>
-      `).join("")}</ul>`;
-  } catch (err) {
-    rankingLoaded = false;
-    views.ranking.innerHTML = `<p class="empty-state">Não deu pra carregar o ranking agora.</p>`;
-  }
-}
+// Histórico -- junta o que antes eram duas telas (Ranking e Histórico,
+// dados quase idênticos: os dois vinham de getPastAuctions(), só ordenados
+// diferente) numa lista só de rounds encerrados, estilo histórico de
+// partidas.
+const historicoRootEl = document.getElementById("historico-root");
+let historicoPanelLoad = null;
+let historicoMounted = false;
 
-// Histórico -----------------------------------------------------------------
-let historicoLoaded = false;
 async function ensureHistoricoView() {
-  if (historicoLoaded) return;
-  views.historico.innerHTML = `<p class="hub-modal-loading">Carregando...</p>`;
+  if (historicoMounted) return;
   try {
-    const res = await fetch(`/api/l/${leilao.id}/recap/history`);
-    const { history } = await res.json();
-    historicoLoaded = true;
-    if (!history || !history.length) {
-      views.historico.innerHTML = `<p class="empty-state">Nenhum leilão encerrado ainda.</p>`;
-      return;
-    }
-    views.historico.innerHTML = `
-      <div class="hub-header">
-        <p class="hub-eyebrow">JogodaVez</p>
-        <h1 class="hub-title">Histórico de leilões</h1>
-      </div>
-      <ul class="hub-modal-list">${history.map((r, i) => `
-        <li>
-          <span class="hub-modal-list-rank">${String(history.length - i).padStart(2, "0")}</span>
-          <span class="hub-modal-list-name">${escapeHtml(r.title || "Leilão")}${r.openRound ? " <em>(em andamento)</em>" : ""}</span>
-          <span class="hub-modal-list-value">R$ ${Math.round(r.totalRaised || 0).toLocaleString("pt-BR")}</span>
-        </li>
-      `).join("")}</ul>`;
+    if (!historicoPanelLoad) historicoPanelLoad = loadStandaloneEntry("/board-app/historico.html");
+    await historicoPanelLoad;
+    window.JogodaVezHistoricoPanel.mount("historico-root", leilao.id);
+    historicoMounted = true;
   } catch (err) {
-    historicoLoaded = false;
-    views.historico.innerHTML = `<p class="empty-state">Não deu pra carregar o histórico agora.</p>`;
+    historicoRootEl.innerHTML = `<p class="empty-state">Não deu pra carregar o histórico agora.</p>`;
   }
 }
 

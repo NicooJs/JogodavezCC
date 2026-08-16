@@ -42,6 +42,27 @@ async function fetchPopularCovers(count = 30) {
   }
 }
 
+// lista de gêneros do TMDB é estática (não muda), busca só uma vez e
+// mantém em memória -- a busca de filme só devolve genre_ids (números),
+// precisa desse mapa pra virar nome
+let genreListPromise = null;
+async function getGenreMap() {
+  const apiKey = process.env.TMDB_API_KEY;
+  if (!apiKey) return new Map();
+  if (!genreListPromise) {
+    genreListPromise = fetch(`https://api.themoviedb.org/3/genre/movie/list?api_key=${apiKey}&language=pt-BR`)
+      .then((res) => (res.ok ? res.json() : { genres: [] }))
+      .then((json) => new Map((json.genres || []).map((g) => [g.id, g.name])))
+      .catch(() => new Map());
+  }
+  return genreListPromise;
+}
+
+// gênero pega carona na mesma busca que já resolve o pôster -- sem chamada
+// extra à TMDB pra cada filme (só a lista de gêneros, uma vez). Efeito
+// colateral de fetchGameImage, getCachedGenre só lê o que já foi resolvido.
+const genreCache = new Map();
+
 async function fetchGameImage(name) {
   const apiKey = process.env.TMDB_API_KEY;
   if (!apiKey) return null;
@@ -62,11 +83,20 @@ async function fetchGameImage(name) {
     const first = json.results && json.results[0];
     const image = posterUrl(first && first.poster_path);
     cache.set(cacheKey, image);
+
+    const firstGenreId = first && first.genre_ids && first.genre_ids[0];
+    const genreMap = await getGenreMap();
+    genreCache.set(cacheKey, genreMap.get(firstGenreId) || null);
+
     return image;
   } catch (err) {
     console.error("Erro ao buscar pôster do filme na TMDB:", err.message);
     return null;
   }
+}
+
+function getCachedGenre(name) {
+  return genreCache.get(name.trim().toLowerCase()) || null;
 }
 
 async function searchGames(query) {
@@ -117,4 +147,4 @@ async function identifyGameFromNoisyText(text) {
   }
 }
 
-module.exports = { fetchGameImage, searchGames, identifyGameFromNoisyText, fetchPopularCovers };
+module.exports = { fetchGameImage, searchGames, identifyGameFromNoisyText, fetchPopularCovers, getCachedGenre };
