@@ -170,18 +170,37 @@ leilão que ele já tinha.
 Tela de entrada depois do login -- **por conta, não por leilão** (visual OP.GG
 copiado de propósito, paleta roxa própria em `hub.css`, `--hub-accent`
 referenciando o mesmo `--nav-accent` que a sidebar do board usa). Grid de
-cards de "ferramentas" (hoje só Leilão e Reacts, mais vem depois); ícone de
-Perfil/Configurações/Ranking/Histórico na sidebar abre um **painel lateral
-deslizante** (`.side-drawer-overlay`/`.side-drawer`, `style.css`, cobre
-parte da tela vindo da direita) em vez de navegar pra outra página.
+cards de "ferramentas" (hoje só Leilão e Reacts, mais vem depois).
 
-**Ranking e Histórico** são só HTML montado por fetch direto (`openDrawer()`
-genérico, troca o `innerHTML` do corpo do drawer a cada abertura). **Perfil**
-ainda é um `<iframe src="/perfil">` dentro do drawer -- funciona porque
-`/perfil` já é uma página standalone própria, mas é um atalho pendente de
-reconstrução (mesma lógica abaixo, ainda não feita pro Perfil).
+**Navegação é 100% inline, nunca modal/drawer** (decisão revertida
+2026-08-16 depois de um round anterior que usava painel lateral deslizante
+-- o cliente achou confuso e pediu pra trocar). Cada ícone da sidebar
+(Início/Perfil/Configurações/Ranking/Histórico, `data-view` no HTML) troca
+o conteúdo de `.hub-main` no lugar: `showView(name)` em `painel.js` esconde
+todos os `.hub-view` e mostra só o escolhido, atualizando `.is-active` na
+sidebar -- sem overlay por cima do resto da tela, sem "sair da tela".
+**Regra de CSS importante aprendida aqui, vale pra qualquer elemento
+escondido por `[hidden]` daqui pra frente**: se o elemento também tem
+`display` fixado por classe (ex: `.hub-shell { display: flex }`), essa
+regra de classe vence o `[hidden] { display:none }` nativo do navegador por
+especificidade -- sempre precisa de um `[hidden] { display: none }`
+explícito pro seletor específico (ver `.hub-shell[hidden]`/`.hub-view[hidden]`
+em `hub.css`). Já causou um bug real (tela de deslogado aparecendo
+"desformatada", com a sidebar/grid vazando por trás do aviso de login).
 
-**Configurações NÃO é iframe do board** (foi, mudou 2026-08-15 a pedido
+**Avatar da conta (canto inferior da sidebar) desloga ao clicar** (com
+confirmação nativa `confirm()` -- não é `confirmDialog`, é uma exceção
+deliberada aqui já que esse fluxo referente à sessão não passa por
+`presenterFetch`/React) -- tem um selinho vermelho de saída sempre visível
+no canto pra não parecer um ícone de "ver meu perfil" (isso já confundiu o
+cliente uma vez). "Ver perfil de verdade" é o ícone de pessoa na nav, não
+o avatar.
+
+**Ranking e Histórico** são só HTML montado por fetch direto
+(`ensureRankingView`/`ensureHistoricoView`, cada um cacheia depois da
+primeira carga bem-sucedida -- erro reseta o cache pra permitir retry).
+
+**Configurações NÃO é iframe do board** (mudou 2026-08-15 a pedido
 explícito do cliente: "não quero que abra o leilão, quero que o hub seja
 uma interface diferente e independente") -- é um segundo *entry point* do
 Vite (`client/settings.html` + `client/src/settings-main.jsx`, ver
@@ -192,13 +211,18 @@ board só embrulha esse mesmo conteúdo num `.modal-overlay`) sem nunca
 montar `App.jsx`/o board inteiro. `painel.js` busca `/board-app/settings.html`
 sob demanda (só na primeira abertura), extrai o `<script type="module">`
 com hash já resolvido pelo Vite e injeta no próprio DOM do hub -- o
-`#settings-root` é um container **permanente** no `painel.html` (drawer
-próprio, separado do genérico de Ranking/Histórico, que teria destruído a
-raiz React ao trocar `innerHTML` pra outro conteúdo). `window.
-JogodaVezSettingsPanel.mount(containerId, leilaoId)`, exposto pelo entry,
-é idempotente -- reabrir só re-renderiza a raiz já existente, preserva
-estado (ex: aba ativa). Esse é o padrão a repetir quando o Perfil for
-reconstruído do mesmo jeito.
+`#settings-root` é um container **permanente** dentro da view "config"
+(nunca sai do DOM, só fica `hidden`, senão a raiz React seria destruída
+toda vez que a view trocasse). `window.JogodaVezSettingsPanel.mount(containerId,
+leilaoId)`, exposto pelo entry, é idempotente -- reabrir só re-renderiza a
+raiz já existente, preserva estado (ex: aba ativa). CSS específico de
+hospedar isso fora do modal (`.hub-view-config .settings-*`) fica em
+`settings.css`, não em `hub.css` -- nav da configuração usa
+`position: sticky` já que a página inteira rola, não uma caixa de altura
+fixa. Esse é o padrão a repetir quando o Perfil for reconstruído do mesmo
+jeito (em andamento, seção por seção -- ver `#view-perfil` em
+`painel.html`, hoje só um placeholder "chega em breve" pras 4 seções que
+ainda não foram portadas pra React).
 
 ### Doação (`doar.html` + `doar.js`)
 

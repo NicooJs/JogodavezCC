@@ -38,8 +38,9 @@ const TABS = [
 
 // conteúdo puro (cabeçalho + abas), sem o wrapper de overlay -- reaproveitado
 // tanto pelo modal do board (SettingsModal, abaixo) quanto pelo painel
-// standalone do hub (settings-main.jsx), que hospeda isso dentro do próprio
-// side-drawer em vez de um modal centralizado por cima do board.
+// standalone do hub (settings-main.jsx), que hospeda isso direto na view
+// "Configurações" do hub-main em vez de um modal centralizado por cima do
+// board.
 export function SettingsPanelContent({ leilaoId, leaderboard, tab, setTab }) {
   return (
     <>

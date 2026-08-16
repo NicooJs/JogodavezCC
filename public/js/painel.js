@@ -1,41 +1,60 @@
 const loggedOutEl = document.getElementById("hub-logged-out");
 const shellEl = document.getElementById("hub-shell");
 const avatarEl = document.getElementById("hub-avatar");
+const avatarBtnEl = document.getElementById("hub-avatar-btn");
 const greetingEl = document.getElementById("hub-greeting");
 const gridEl = document.getElementById("hub-service-grid");
 
-const drawerOverlayEl = document.getElementById("hub-drawer-overlay");
-const drawerEl = document.getElementById("hub-drawer");
-const drawerTitleEl = document.getElementById("hub-drawer-title");
-const drawerBodyEl = document.getElementById("hub-drawer-body");
+// cada item da sidebar troca o conteúdo da área principal (hub-main) --
+// nada de modal/drawer aqui, view escolhida fica sempre visível junto com
+// a sidebar, igual um app de configurações comum
+const views = {
+  home: document.getElementById("view-home"),
+  perfil: document.getElementById("view-perfil"),
+  config: document.getElementById("view-config"),
+  ranking: document.getElementById("view-ranking"),
+  historico: document.getElementById("view-historico"),
+};
+const navButtons = [...document.querySelectorAll(".hub-sidebar-item[data-view]")];
 
-function openDrawer(title, { html, iframeSrc, wide } = {}) {
-  drawerTitleEl.textContent = title;
-  drawerEl.classList.toggle("is-wide", !!wide);
-  if (iframeSrc) {
-    // ainda usado só pelo Perfil por enquanto (reconstrução própria vem
-    // numa rodada separada) -- Configurações já não passa mais por aqui
-    drawerBodyEl.className = "side-drawer-body is-flush";
-    drawerBodyEl.innerHTML = `<iframe class="side-drawer-frame" src="${escapeHtml(iframeSrc)}" title="${escapeHtml(title)}"></iframe>`;
-  } else {
-    drawerBodyEl.className = "side-drawer-body";
-    drawerBodyEl.innerHTML = html || "";
-  }
-  drawerOverlayEl.hidden = false;
+function showView(name) {
+  if (!views[name]) return;
+  Object.entries(views).forEach(([key, el]) => { el.hidden = key !== name; });
+  navButtons.forEach((btn) => btn.classList.toggle("is-active", btn.dataset.view === name));
+  loadView(name);
 }
-function closeDrawer() {
-  drawerOverlayEl.hidden = true;
-  drawerBodyEl.innerHTML = "";
-}
-document.getElementById("hub-drawer-close").addEventListener("click", closeDrawer);
-drawerOverlayEl.addEventListener("click", (e) => { if (e.target === drawerOverlayEl) closeDrawer(); });
 
-// drawer próprio de Configurações -- monta um React de verdade (ver
-// client/src/settings-main.jsx), nunca o board/leilão. O bundle só é
-// buscado na primeira abertura; depois disso mount() é só re-render.
-const settingsDrawerOverlayEl = document.getElementById("settings-drawer-overlay");
+function loadView(name) {
+  if (name === "config") return ensureConfigView();
+  if (name === "ranking") return ensureRankingView();
+  if (name === "historico") return ensureHistoricoView();
+  if (name === "perfil") return ensurePerfilView();
+}
+
+navButtons.forEach((btn) => {
+  btn.addEventListener("click", () => {
+    const view = btn.dataset.view;
+    if (!leilao && view !== "home" && view !== "perfil") {
+      alert("Crie seu leilão primeiro pra acessar isso.");
+      return;
+    }
+    showView(view);
+  });
+});
+
+function escapeHtml(str) {
+  return String(str).replace(/[&<>"']/g, (c) => ({
+    "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;",
+  }[c]));
+}
+
+// Configurações -- monta um React de verdade (ver client/src/settings-main.jsx),
+// nunca o board/leilão. O bundle só é buscado na primeira vez que a view é
+// aberta; depois disso mount() é só re-render (raiz React persiste porque
+// #settings-root nunca sai do DOM, só fica hidden).
 const settingsRootEl = document.getElementById("settings-root");
 let settingsPanelLoad = null;
+let settingsMounted = false;
 
 function loadSettingsPanel() {
   if (settingsPanelLoad) return settingsPanelLoad;
@@ -62,31 +81,91 @@ function loadSettingsPanel() {
   return settingsPanelLoad;
 }
 
-async function openSettingsDrawer() {
-  settingsDrawerOverlayEl.hidden = false;
+async function ensureConfigView() {
+  if (settingsMounted) return;
   try {
     await loadSettingsPanel();
     window.JogodaVezSettingsPanel.mount("settings-root", leilao.id);
+    settingsMounted = true;
   } catch (err) {
     settingsRootEl.innerHTML = `<p class="empty-state">Não deu pra carregar as configurações agora.</p>`;
   }
 }
-function closeSettingsDrawer() {
-  settingsDrawerOverlayEl.hidden = true;
+
+// Ranking -----------------------------------------------------------------
+let rankingLoaded = false;
+async function ensureRankingView() {
+  if (rankingLoaded) return;
+  views.ranking.innerHTML = `<p class="hub-modal-loading">Carregando...</p>`;
+  try {
+    const res = await fetch(`/api/l/${leilao.id}/ranking`);
+    const { ranking } = await res.json();
+    rankingLoaded = true;
+    if (!ranking || !ranking.length) {
+      views.ranking.innerHTML = `<p class="empty-state">Nenhum round arrecadou nada ainda.</p>`;
+      return;
+    }
+    views.ranking.innerHTML = `
+      <div class="hub-header">
+        <p class="hub-eyebrow">JogodaVez</p>
+        <h1 class="hub-title">Seus melhores leilões</h1>
+        <p class="hub-lede">Seus rounds, do que mais arrecadou pro que menos arrecadou -- não é uma disputa com outros streamers.</p>
+      </div>
+      <ul class="hub-modal-list">${ranking.map((r) => `
+        <li>
+          <span class="hub-modal-list-rank">${String(r.rank).padStart(2, "0")}</span>
+          <span class="hub-modal-list-name">${escapeHtml(r.title)}${r.openRound ? " <em>(em andamento)</em>" : ""}</span>
+          <span class="hub-modal-list-value">R$ ${Math.round(r.totalRaised || 0).toLocaleString("pt-BR")}</span>
+        </li>
+      `).join("")}</ul>`;
+  } catch (err) {
+    rankingLoaded = false;
+    views.ranking.innerHTML = `<p class="empty-state">Não deu pra carregar o ranking agora.</p>`;
+  }
 }
-document.getElementById("settings-drawer-close").addEventListener("click", closeSettingsDrawer);
-settingsDrawerOverlayEl.addEventListener("click", (e) => { if (e.target === settingsDrawerOverlayEl) closeSettingsDrawer(); });
 
-document.addEventListener("keydown", (e) => {
-  if (e.key !== "Escape") return;
-  if (!settingsDrawerOverlayEl.hidden) return closeSettingsDrawer();
-  if (!drawerOverlayEl.hidden) return closeDrawer();
-});
+// Histórico -----------------------------------------------------------------
+let historicoLoaded = false;
+async function ensureHistoricoView() {
+  if (historicoLoaded) return;
+  views.historico.innerHTML = `<p class="hub-modal-loading">Carregando...</p>`;
+  try {
+    const res = await fetch(`/api/l/${leilao.id}/recap/history`);
+    const { history } = await res.json();
+    historicoLoaded = true;
+    if (!history || !history.length) {
+      views.historico.innerHTML = `<p class="empty-state">Nenhum leilão encerrado ainda.</p>`;
+      return;
+    }
+    views.historico.innerHTML = `
+      <div class="hub-header">
+        <p class="hub-eyebrow">JogodaVez</p>
+        <h1 class="hub-title">Histórico de leilões</h1>
+      </div>
+      <ul class="hub-modal-list">${history.map((r, i) => `
+        <li>
+          <span class="hub-modal-list-rank">${String(history.length - i).padStart(2, "0")}</span>
+          <span class="hub-modal-list-name">${escapeHtml(r.title || "Leilão")}${r.openRound ? " <em>(em andamento)</em>" : ""}</span>
+          <span class="hub-modal-list-value">R$ ${Math.round(r.totalRaised || 0).toLocaleString("pt-BR")}</span>
+        </li>
+      `).join("")}</ul>`;
+  } catch (err) {
+    historicoLoaded = false;
+    views.historico.innerHTML = `<p class="empty-state">Não deu pra carregar o histórico agora.</p>`;
+  }
+}
 
-function escapeHtml(str) {
-  return String(str).replace(/[&<>"']/g, (c) => ({
-    "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;",
-  }[c]));
+// Perfil -- reconstrução em andamento, seção por seção (ver plano); por
+// enquanto só um placeholder honesto em vez de fingir que já tá pronto.
+function ensurePerfilView() {
+  views.perfil.innerHTML = `
+    <div class="hub-header">
+      <p class="hub-eyebrow">JogodaVez</p>
+      <h1 class="hub-title">Perfil</h1>
+      <p class="hub-lede">Chave Pix, saldo, alerta e widget do OBS -- tudo por conta, não por leilão.</p>
+    </div>
+    <p class="empty-state">Essa seção está sendo reconstruída aqui dentro do painel. Chega em breve.</p>
+  `;
 }
 
 const ICON_LEILAO = `<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2.5" y="4" width="6" height="6" rx="1" /><rect x="11.5" y="4" width="6" height="6" rx="1" /><rect x="2.5" y="12" width="6" height="4" rx="1" /><rect x="11.5" y="12" width="6" height="4" rx="1" /></svg>`;
@@ -167,75 +246,11 @@ async function goToReacts() {
   location.href = leilao.url;
 }
 
-avatarEl.addEventListener("click", async () => {
+avatarBtnEl.addEventListener("click", async () => {
   const ok = confirm("Sair da conta?");
   if (!ok) return;
   await fetch("/api/session/logout", { method: "POST" }).catch(() => {});
   location.reload();
-});
-
-document.getElementById("hub-nav-perfil").addEventListener("click", () => {
-  openDrawer("Perfil", { iframeSrc: "/perfil", wide: true });
-});
-
-document.getElementById("hub-nav-config").addEventListener("click", () => {
-  if (!leilao) {
-    alert("Crie seu leilão primeiro pra acessar as configurações.");
-    return;
-  }
-  openSettingsDrawer();
-});
-
-document.getElementById("hub-nav-ranking").addEventListener("click", async () => {
-  if (!leilao) {
-    alert("Crie seu leilão primeiro pra ter ranking.");
-    return;
-  }
-  openDrawer("Seus melhores leilões", { html: `<p class="hub-modal-loading">Carregando...</p>` });
-  try {
-    const res = await fetch(`/api/l/${leilao.id}/ranking`);
-    const { ranking } = await res.json();
-    if (!ranking || !ranking.length) {
-      drawerBodyEl.innerHTML = `<p class="empty-state">Nenhum round arrecadou nada ainda.</p>`;
-      return;
-    }
-    drawerBodyEl.innerHTML = `
-      <p class="hub-drawer-hint">Seus rounds, do que mais arrecadou pro que menos arrecadou -- não é uma disputa com outros streamers.</p>
-      <ul class="hub-modal-list">${ranking.map((r) => `
-        <li>
-          <span class="hub-modal-list-rank">${String(r.rank).padStart(2, "0")}</span>
-          <span class="hub-modal-list-name">${escapeHtml(r.title)}${r.openRound ? " <em>(em andamento)</em>" : ""}</span>
-          <span class="hub-modal-list-value">R$ ${Math.round(r.totalRaised || 0).toLocaleString("pt-BR")}</span>
-        </li>
-      `).join("")}</ul>`;
-  } catch (err) {
-    drawerBodyEl.innerHTML = `<p class="empty-state">Não deu pra carregar o ranking agora.</p>`;
-  }
-});
-
-document.getElementById("hub-nav-historico").addEventListener("click", async () => {
-  if (!leilao) {
-    alert("Crie seu leilão primeiro pra ter histórico.");
-    return;
-  }
-  openDrawer("Histórico do leilão", { html: `<p class="hub-modal-loading">Carregando...</p>` });
-  try {
-    const res = await fetch(`/api/l/${leilao.id}/recap/history`);
-    const { history } = await res.json();
-    if (!history || !history.length) {
-      drawerBodyEl.innerHTML = `<p class="empty-state">Nenhum leilão encerrado ainda.</p>`;
-      return;
-    }
-    drawerBodyEl.innerHTML = `<ul class="hub-modal-list">${history.map((r, i) => `
-      <li>
-        <span class="hub-modal-list-rank">${String(history.length - i).padStart(2, "0")}</span>
-        <span class="hub-modal-list-name">${escapeHtml(r.title || "Leilão")}${r.openRound ? " <em>(em andamento)</em>" : ""}</span>
-        <span class="hub-modal-list-value">R$ ${Math.round(r.totalRaised || 0).toLocaleString("pt-BR")}</span>
-      </li>
-    `).join("")}</ul>`;
-  } catch (err) {
-    drawerBodyEl.innerHTML = `<p class="empty-state">Não deu pra carregar o histórico agora.</p>`;
-  }
 });
 
 loadSession();
