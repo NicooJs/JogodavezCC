@@ -13,6 +13,8 @@ function openDrawer(title, { html, iframeSrc, wide } = {}) {
   drawerTitleEl.textContent = title;
   drawerEl.classList.toggle("is-wide", !!wide);
   if (iframeSrc) {
+    // ainda usado só pelo Perfil por enquanto (reconstrução própria vem
+    // numa rodada separada) -- Configurações já não passa mais por aqui
     drawerBodyEl.className = "side-drawer-body is-flush";
     drawerBodyEl.innerHTML = `<iframe class="side-drawer-frame" src="${escapeHtml(iframeSrc)}" title="${escapeHtml(title)}"></iframe>`;
   } else {
@@ -27,7 +29,59 @@ function closeDrawer() {
 }
 document.getElementById("hub-drawer-close").addEventListener("click", closeDrawer);
 drawerOverlayEl.addEventListener("click", (e) => { if (e.target === drawerOverlayEl) closeDrawer(); });
-document.addEventListener("keydown", (e) => { if (e.key === "Escape" && !drawerOverlayEl.hidden) closeDrawer(); });
+
+// drawer próprio de Configurações -- monta um React de verdade (ver
+// client/src/settings-main.jsx), nunca o board/leilão. O bundle só é
+// buscado na primeira abertura; depois disso mount() é só re-render.
+const settingsDrawerOverlayEl = document.getElementById("settings-drawer-overlay");
+const settingsRootEl = document.getElementById("settings-root");
+let settingsPanelLoad = null;
+
+function loadSettingsPanel() {
+  if (settingsPanelLoad) return settingsPanelLoad;
+  settingsPanelLoad = fetch("/board-app/settings.html")
+    .then((res) => res.text())
+    .then((html) => {
+      const doc = new DOMParser().parseFromString(html, "text/html");
+      doc.querySelectorAll('link[rel="modulepreload"]').forEach((link) => {
+        const l = document.createElement("link");
+        l.rel = "modulepreload";
+        l.href = link.getAttribute("href");
+        document.head.appendChild(l);
+      });
+      const entryScript = doc.querySelector('script[type="module"]');
+      return new Promise((resolve, reject) => {
+        const s = document.createElement("script");
+        s.type = "module";
+        s.src = entryScript.getAttribute("src");
+        s.onload = resolve;
+        s.onerror = reject;
+        document.body.appendChild(s);
+      });
+    });
+  return settingsPanelLoad;
+}
+
+async function openSettingsDrawer() {
+  settingsDrawerOverlayEl.hidden = false;
+  try {
+    await loadSettingsPanel();
+    window.JogodaVezSettingsPanel.mount("settings-root", leilao.id);
+  } catch (err) {
+    settingsRootEl.innerHTML = `<p class="empty-state">Não deu pra carregar as configurações agora.</p>`;
+  }
+}
+function closeSettingsDrawer() {
+  settingsDrawerOverlayEl.hidden = true;
+}
+document.getElementById("settings-drawer-close").addEventListener("click", closeSettingsDrawer);
+settingsDrawerOverlayEl.addEventListener("click", (e) => { if (e.target === settingsDrawerOverlayEl) closeSettingsDrawer(); });
+
+document.addEventListener("keydown", (e) => {
+  if (e.key !== "Escape") return;
+  if (!settingsDrawerOverlayEl.hidden) return closeSettingsDrawer();
+  if (!drawerOverlayEl.hidden) return closeDrawer();
+});
 
 function escapeHtml(str) {
   return String(str).replace(/[&<>"']/g, (c) => ({
@@ -129,7 +183,7 @@ document.getElementById("hub-nav-config").addEventListener("click", () => {
     alert("Crie seu leilão primeiro pra acessar as configurações.");
     return;
   }
-  openDrawer("Configurações", { iframeSrc: `${leilao.url}?config=1`, wide: true });
+  openSettingsDrawer();
 });
 
 document.getElementById("hub-nav-ranking").addEventListener("click", async () => {

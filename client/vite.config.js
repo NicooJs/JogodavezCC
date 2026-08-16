@@ -20,6 +20,16 @@ export default defineConfig(({ command }) => ({
   build: {
     outDir: path.resolve(import.meta.dirname, '../public/board-app'),
     emptyOutDir: true,
+    rollupOptions: {
+      // settings.html é um segundo entry, não uma página navegável -- o
+      // hub (public/js/painel.js) busca esse HTML construído só pra extrair
+      // o <script src> com hash já resolvido e injetar no próprio DOM do
+      // painel, montando SettingsStandalone sem carregar nada do board.
+      input: {
+        main: path.resolve(import.meta.dirname, 'index.html'),
+        settings: path.resolve(import.meta.dirname, 'settings.html'),
+      },
+    },
   },
   server: {
     proxy: {

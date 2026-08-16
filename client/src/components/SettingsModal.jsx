@@ -36,6 +36,48 @@ const TABS = [
   },
 ]
 
+// conteúdo puro (cabeçalho + abas), sem o wrapper de overlay -- reaproveitado
+// tanto pelo modal do board (SettingsModal, abaixo) quanto pelo painel
+// standalone do hub (settings-main.jsx), que hospeda isso dentro do próprio
+// side-drawer em vez de um modal centralizado por cima do board.
+export function SettingsPanelContent({ leilaoId, leaderboard, tab, setTab }) {
+  return (
+    <>
+      <div className="settings-head">
+        <div className="settings-head-text">
+          <p className="modal-eyebrow">Configurações</p>
+          <h2 className="modal-title">Painel do leilão</h2>
+        </div>
+      </div>
+
+      <div className="settings-shell">
+        <div className="settings-nav" role="tablist">
+          {TABS.map((t) => (
+            <button
+              key={t.id}
+              className={`settings-nav-item${tab === t.id ? ' active' : ''}`}
+              type="button"
+              role="tab"
+              aria-selected={String(tab === t.id)}
+              onClick={() => setTab(t.id)}
+            >
+              {t.icon}
+              <span>{typeof t.label === 'function' ? t.label(leaderboard.mode) : t.label}</span>
+            </button>
+          ))}
+        </div>
+
+        <div className="settings-body">
+          {tab === 'geral' ? <GeneralTab leilaoId={leilaoId} leaderboard={leaderboard} /> : null}
+          {tab === 'aparencia' ? <AppearanceTab leilaoId={leilaoId} leaderboard={leaderboard} /> : null}
+          {tab === 'jogos' ? <GamesTab leilaoId={leilaoId} leaderboard={leaderboard} /> : null}
+          {tab === 'avancado' ? <AdvancedTab leilaoId={leilaoId} /> : null}
+        </div>
+      </div>
+    </>
+  )
+}
+
 export default function SettingsModal({ open, onClose, leilaoId, leaderboard }) {
   const [tab, setTab] = useState('geral')
 
@@ -45,37 +87,7 @@ export default function SettingsModal({ open, onClose, leilaoId, leaderboard }) 
     <div className="modal-overlay settings-overlay" onClick={(e) => e.target === e.currentTarget && onClose()}>
       <div className="settings-modal" role="dialog" aria-modal="true">
         <button className="modal-close" type="button" aria-label="Fechar" onClick={onClose}>✕</button>
-        <div className="settings-head">
-          <div className="settings-head-text">
-            <p className="modal-eyebrow">Configurações</p>
-            <h2 className="modal-title">Painel do leilão</h2>
-          </div>
-        </div>
-
-        <div className="settings-shell">
-          <div className="settings-nav" role="tablist">
-            {TABS.map((t) => (
-              <button
-                key={t.id}
-                className={`settings-nav-item${tab === t.id ? ' active' : ''}`}
-                type="button"
-                role="tab"
-                aria-selected={String(tab === t.id)}
-                onClick={() => setTab(t.id)}
-              >
-                {t.icon}
-                <span>{typeof t.label === 'function' ? t.label(leaderboard.mode) : t.label}</span>
-              </button>
-            ))}
-          </div>
-
-          <div className="settings-body">
-            {tab === 'geral' ? <GeneralTab leilaoId={leilaoId} leaderboard={leaderboard} /> : null}
-            {tab === 'aparencia' ? <AppearanceTab leilaoId={leilaoId} leaderboard={leaderboard} /> : null}
-            {tab === 'jogos' ? <GamesTab leilaoId={leilaoId} leaderboard={leaderboard} /> : null}
-            {tab === 'avancado' ? <AdvancedTab leilaoId={leilaoId} /> : null}
-          </div>
-        </div>
+        <SettingsPanelContent leilaoId={leilaoId} leaderboard={leaderboard} tab={tab} setTab={setTab} />
       </div>
     </div>
   )

@@ -130,6 +130,6 @@ public/index.html            criação de leilão
 public/board.html            placar + painel de apresentador
 public/doar.html             página de doação
 public/alerta.html           overlay pro OBS
-public/meus-leiloes.html     lista dos leilões do streamer logado
+public/painel.html           hub de ferramentas do streamer logado
 scripts/migrate.js           aplica as migrations SQL em src/migrations/
 ```

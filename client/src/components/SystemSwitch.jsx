@@ -12,7 +12,7 @@ export default function SystemSwitch({
 
   return (
     <div className="system-switch" id="system-switch" hidden={!visible}>
-      <a className="system-switch-brand" href="/meus-leiloes" title="Início">
+      <a className="system-switch-brand" href="/painel" title="Início">
         <img src="/favicon-32.png" alt="JogodaVez" />
       </a>
       <nav className="system-switch-nav">

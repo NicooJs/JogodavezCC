@@ -3961,6 +3961,59 @@ body.presenter-mode .page {
 .lot-edit button .icon { width: 12px; height: 12px; }
 .lot-edit button:hover { border-color: var(--accent); color: var(--accent-text); }
 
+/* !hype "jogo" no chat da Twitch (twitchChatBot.js) -- contador persistente
+   (sempre visível, canto inferior direito, não some entre re-renders) +
+   chama transitória a cada 10 likes (.is-firing/.lot-firing-flame, 5s) */
+.lot-likes {
+  position: absolute;
+  bottom: 10px;
+  right: 10px;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 8px;
+  border-radius: 999px;
+  background: rgba(10, 10, 14, 0.55);
+  backdrop-filter: blur(4px);
+  color: #ff6f91;
+  font-family: var(--font-mono);
+  font-size: 11.5px;
+  font-weight: 600;
+}
+.lot-likes .icon { width: 12px; height: 12px; }
+.lot-likes span { color: var(--text); }
+
+.lot-firing-flame {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  z-index: 2;
+  width: 22px;
+  height: 22px;
+  color: #ff7a1a;
+  filter: drop-shadow(0 0 6px rgba(255, 122, 26, 0.8));
+  animation: lot-firing-flame-flicker 0.6s ease-in-out infinite alternate;
+}
+
+@keyframes lot-firing-flame-flicker {
+  from { transform: scale(1) rotate(-2deg); opacity: 0.85; }
+  to { transform: scale(1.12) rotate(2deg); opacity: 1; }
+}
+
+.lot-card.is-firing { animation: lot-card-firing 5s ease-in-out; }
+
+@keyframes lot-card-firing {
+  0%, 100% { box-shadow: none; border-color: var(--border); }
+  15%, 85% { box-shadow: 0 0 0 2px rgba(255, 138, 26, 0.55), 0 0 22px 4px rgba(255, 94, 0, 0.35); border-color: rgba(255, 138, 26, 0.6); }
+  50% { box-shadow: 0 0 0 2px rgba(255, 180, 61, 0.8), 0 0 32px 8px rgba(255, 120, 0, 0.55); border-color: rgba(255, 180, 61, 0.85); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .lot-card.is-firing { animation: none; box-shadow: 0 0 0 2px rgba(255, 138, 26, 0.6); }
+  .lot-firing-flame { animation: none; }
+}
+
 .timer-panel { flex-shrink: 0; }
 
 .timer { display: flex; align-items: center; gap: 12px; }
@@ -4428,7 +4481,7 @@ body.presenter-mode .page {
   to { opacity: 1; transform: translateY(0) scale(1); }
 }
 
-/* painel lateral deslizante -- usado no hub (/meus-leiloes) e no board
+/* painel lateral deslizante -- usado no hub (/painel) e no board
    pra perfil/configurações/ranking/histórico: cobre parte da tela vindo
    da direita em vez de modal centralizado, pra não sentir que "saiu da
    tela" ao navegar entre essas seções */
@@ -4505,6 +4558,17 @@ body.presenter-mode .page {
   padding: 20px;
 }
 .side-drawer-body.is-flush { padding: 0; }
+
+/* hospeda o SettingsPanelContent (React) direto no drawer, sem o
+   modal-overlay/settings-modal que o embrulha no board -- precisa do mesmo
+   comportamento de scroll isolado (só .settings-body rola, nav fica fixa) */
+.side-drawer-body.is-settings {
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+.side-drawer-body.is-settings .settings-shell { min-height: 0; }
 
 .side-drawer-frame {
   width: 100%;

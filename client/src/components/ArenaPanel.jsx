@@ -19,6 +19,8 @@ export default function ArenaPanel({ leilaoId, leaderboard, lastEvent, presenter
   const [changedKeys, setChangedKeys] = useState(new Set())
   const [flash, setFlash] = useState(null)
   const flashTimer = useRef(null)
+  const [firingKey, setFiringKey] = useState(null)
+  const firingTimer = useRef(null)
   const cardNodes = useRef(new Map())
 
   useEffect(() => {
@@ -55,6 +57,17 @@ export default function ArenaPanel({ leilaoId, leaderboard, lastEvent, presenter
       }
     }
     return () => clearTimeout(flashTimer.current)
+  }, [lastEvent])
+
+  // !hype "jogo" a cada 10 likes (ver twitchChatBot.js) -- só o gatilho
+  // pontual, o contador em si (item.likes) já vem sempre no leaderboard,
+  // igual combo/streak
+  useEffect(() => {
+    if (!lastEvent || lastEvent.type !== 'hype' || !lastEvent.fire || !lastEvent.game) return
+    clearTimeout(firingTimer.current)
+    setFiringKey(lastEvent.game.key)
+    firingTimer.current = setTimeout(() => setFiringKey(null), 5000)
+    return () => clearTimeout(firingTimer.current)
   }, [lastEvent])
 
   let duelDefender = null
@@ -117,6 +130,7 @@ export default function ArenaPanel({ leilaoId, leaderboard, lastEvent, presenter
                   changed={changedKeys.has(item.key)}
                   hitBadge={hitBadge}
                   streakTier={streakActive ? streakTier(combo.count) : 0}
+                  firing={firingKey === item.key}
                   duelRole={duelRole}
                   duelChallengerDeficit={duelChallenger && item.key === duelChallenger.key ? duelDefender.total - item.total : 0}
                   mediaLabel={mediaLabel(leaderboard.mode)}

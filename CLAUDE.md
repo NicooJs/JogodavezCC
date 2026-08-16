@@ -154,14 +154,51 @@ anima entrada (lib Motion) e busca `GET /api/ranking` pra mostrar prova
 social ("N streamers usando"). Login Twitch é sempre obrigatório pra criar
 leilão novo.
 
-Streamer logado que já tem leilão é redirecionado direto pro mais recente
+Streamer logado que já tem leilão é redirecionado direto pro hub (`/painel`)
 ao visitar `/` (`findExistingLeilao()` em `create.js`, via
-`/api/meus-leiloes`) -- não existe mais o antigo sistema de "leilões
-criados nesse navegador" em `localStorage` (era de antes do login com a
-Twitch existir, ficou redundante e foi removido). `?novo=1` na URL pula
-esse redirecionamento automático e força o formulário a aparecer -- é o
-que o link "criar novo" de `/meus-leiloes` usa, já que sem isso ele
-simplesmente devolvia o streamer pro leilão que ele já tinha.
+`/api/meus-leiloes` -- essa rota de API manteve o nome antigo, só a página
+`/meus-leiloes` virou `/painel`, com redirect 301 da URL velha) -- não
+existe mais o antigo sistema de "leilões criados nesse navegador" em
+`localStorage` (era de antes do login com a Twitch existir, ficou
+redundante e foi removido). `?novo=1` na URL pula esse redirecionamento
+automático e força o formulário a aparecer -- é o que o link "criar novo"
+do hub usa, já que sem isso ele simplesmente devolvia o streamer pro
+leilão que ele já tinha.
+
+### Hub (`painel.html` + `painel.js`)
+
+Tela de entrada depois do login -- **por conta, não por leilão** (visual OP.GG
+copiado de propósito, paleta roxa própria em `hub.css`, `--hub-accent`
+referenciando o mesmo `--nav-accent` que a sidebar do board usa). Grid de
+cards de "ferramentas" (hoje só Leilão e Reacts, mais vem depois); ícone de
+Perfil/Configurações/Ranking/Histórico na sidebar abre um **painel lateral
+deslizante** (`.side-drawer-overlay`/`.side-drawer`, `style.css`, cobre
+parte da tela vindo da direita) em vez de navegar pra outra página.
+
+**Ranking e Histórico** são só HTML montado por fetch direto (`openDrawer()`
+genérico, troca o `innerHTML` do corpo do drawer a cada abertura). **Perfil**
+ainda é um `<iframe src="/perfil">` dentro do drawer -- funciona porque
+`/perfil` já é uma página standalone própria, mas é um atalho pendente de
+reconstrução (mesma lógica abaixo, ainda não feita pro Perfil).
+
+**Configurações NÃO é iframe do board** (foi, mudou 2026-08-15 a pedido
+explícito do cliente: "não quero que abra o leilão, quero que o hub seja
+uma interface diferente e independente") -- é um segundo *entry point* do
+Vite (`client/settings.html` + `client/src/settings-main.jsx`, ver
+`client/vite.config.js`), buildado junto do board pra dentro do mesmo
+`public/board-app/`. Reaproveita o componente React de verdade
+(`SettingsPanelContent`, extraído de `SettingsModal.jsx` -- o modal do
+board só embrulha esse mesmo conteúdo num `.modal-overlay`) sem nunca
+montar `App.jsx`/o board inteiro. `painel.js` busca `/board-app/settings.html`
+sob demanda (só na primeira abertura), extrai o `<script type="module">`
+com hash já resolvido pelo Vite e injeta no próprio DOM do hub -- o
+`#settings-root` é um container **permanente** no `painel.html` (drawer
+próprio, separado do genérico de Ranking/Histórico, que teria destruído a
+raiz React ao trocar `innerHTML` pra outro conteúdo). `window.
+JogodaVezSettingsPanel.mount(containerId, leilaoId)`, exposto pelo entry,
+é idempotente -- reabrir só re-renderiza a raiz já existente, preserva
+estado (ex: aba ativa). Esse é o padrão a repetir quando o Perfil for
+reconstruído do mesmo jeito.
 
 ### Doação (`doar.html` + `doar.js`)
 
@@ -193,6 +230,27 @@ flash de cor, tick de valor, badge de streak (combo dentro de 60s), glow de
 duelo (dois classificados com placar próximo), confete se > R$100, e no
 fechamento do leilão o "Vencedor!" (swirl canvas) seguido do recap
 automático ~2.4s depois.
+
+**Chat da Twitch (`!hype "nome do jogo"`, `src/twitchChatBot.js`)**: bot
+compartilhado (uma conta só, todos os leilões), conectado anônimo via
+`tmi.js` (sem OAuth, só lê chat público -- não precisa de autorização por
+streamer). Entra no canal de cada leilão que já tem `hostTwitchLogin`
+salvo (`store.getState`, setado na criação, não é o mesmo que o meta do
+`registry.js`) assim que o server sobe, e no canal de um leilão novo na
+hora que ele é criado (`registerChannel`, chamado de dentro de `POST
+/api/leiloes`). Cada `!hype "jogo"` reconhecido (mesmo `findExistingGameInText`
+usado pra doação livre, só casa jogo que já existe no catálogo, nunca cria
+um novo) soma 1 em `likes` nesse jogo (`store.likeGame`, campo simples que
+zera sozinho no `resetAll` igual `comboCount`) -- limitado a 1 hype aceito
+por espectador a cada 10 minutos (`Map` em memória, por `viewerId` da
+Twitch, não por conta nossa). A cada múltiplo de 10 likes, o servidor
+manda um `lastEvent` (`type: "hype", fire: true`) só pra esse gatilho
+pontual -- o contador em si vem sempre no `leaderboard.items[].likes`
+(persistente, igual `combo`), não no evento. No board, `ArenaPanel.jsx`
+segue o mesmo idioma do `flash`/confete (`useEffect` em `[lastEvent]`,
+`setTimeout` de 5s) pra acender `.lot-card.is-firing` (glow laranja
+pulsante + `.lot-firing-flame`); o coração+contagem (`.lot-likes`) é
+sempre visível quando `likes > 0`, sem depender de evento nenhum.
 
 **Mesclar lotes por drag and drop**: arrastar um `.lot-card` sobre outro
 (mouse/desktop só, checado por `document.body.classList.contains
@@ -249,7 +307,7 @@ carrega o `leilaoId`, isso é estrutural) -- o Perfil mostra o leilão mais
 recente do streamer como representante (`registry.listLeiloesByOwner`
 ordenado por `createdAt`), mesmo critério que `/api/ranking` já usa pra
 agrupar o total de doações por dono. Streamer com mais de um leilão vê um
-aviso com link pra `/meus-leiloes`.
+aviso com link pro hub (`/painel`).
 
 **Doações e bloqueio de doador**: `GET /api/perfil/donations` lista o
 histórico de doações PAGAS do streamer (todos os leilões, via `payments`

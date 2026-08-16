@@ -38,6 +38,7 @@ const igdbApi = require("./src/igdbApi");
 const { getMediaAdapter, mediaLabel, normalizeMode, MODES: LEILAO_MODES } = require("./src/mediaAdapter");
 const youtubeApi = require("./src/youtubeApi");
 const { fetchTwitchAvatar } = require("./src/twitchClient");
+const twitchChatBot = require("./src/twitchChatBot");
 const twitchAuth = require("./src/twitchAuth");
 const session = require("./src/session");
 const efiWebhook = require("./src/efiWebhook");
@@ -225,7 +226,7 @@ const SESSION_MAX_AGE_SECONDS = 30 * 24 * 60 * 60;
 const OAUTH_STATE_MAX_AGE_SECONDS = 600;
 
 // allowlist exata (não regex) pra fechar open-redirect
-const ALLOWED_RETURN_PATHS = new Set(["/", "/meus-leiloes", "/perfil"]);
+const ALLOWED_RETURN_PATHS = new Set(["/", "/painel", "/perfil"]);
 function safeReturnTo(value) {
   return ALLOWED_RETURN_PATHS.has(value) ? value : "/";
 }
@@ -414,6 +415,7 @@ function serializeLeaderboard(store, leilaoId) {
         ? { username: topDonor.username, total: centsToNumber(topDonor.total_cents), avatar: getDonorAvatar(topDonor.username, onAvatarResolved) }
         : null,
       combo: { count: row.comboCount || 0, expiresAt: row.comboExpiresAt || 0 },
+      likes: row.likes || 0,
     };
   });
 
@@ -1247,8 +1249,13 @@ app.get("/api/meus-leiloes", (req, res) => {
   res.json({ leiloes: rows });
 });
 
+app.get("/painel", (req, res) => {
+  res.sendFile(path.join(__dirname, "public", "painel.html"));
+});
+
+// link antigo (bookmarks, indexação) -- redireciona pro nome novo
 app.get("/meus-leiloes", (req, res) => {
-  res.sendFile(path.join(__dirname, "public", "meus-leiloes.html"));
+  res.redirect(301, "/painel");
 });
 
 app.get("/termos", (req, res) => {
@@ -1284,6 +1291,7 @@ app.post("/api/leiloes", async (req, res) => {
       hostTwitchUserId: twitchSession.twitchUserId,
       hostTwitchLogin: twitchSession.twitchLogin,
     });
+    twitchChatBot.registerChannel(id, twitchSession.twitchLogin);
     res.json({ ok: true, id, url: `/l/${id}` });
   } catch (err) {
     res.status(400).json({ error: err.message });
@@ -2492,6 +2500,21 @@ setInterval(() => {
 
 require("./src/stateBackup").start();
 require("./src/reconciliation").start();
+
+// bot de chat da Twitch (!hype "jogo") -- lê o chat de cada leilão que já
+// tem dono com Twitch vinculado; leilões novos entram na hora (ver
+// twitchChatBot.registerChannel em POST /api/leiloes)
+twitchChatBot.init({
+  getStore,
+  registry,
+  onHypeAccepted: (leilaoId, store, game) => {
+    broadcastUpdate(leilaoId, store, {
+      type: "hype",
+      game: { key: game.key, name: game.name, likes: game.likes },
+      fire: game.likes > 0 && game.likes % 10 === 0,
+    });
+  },
+});
 
 // ---------- start ----------
 

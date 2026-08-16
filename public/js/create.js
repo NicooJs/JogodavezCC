@@ -37,7 +37,7 @@ async function loadSession() {
   if (currentSession.loggedIn) {
     const existing = await findExistingLeilao();
     if (existing) {
-      location.href = "/meus-leiloes";
+      location.href = "/painel";
       return;
     }
   }

@@ -10,6 +10,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@600;700&family=Nunito:ital,wght@0,500;0,600;0,700;1,500;1,600;1,700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/css/style.css" />
+<link rel="stylesheet" href="/css/settings.css" />
 <link rel="stylesheet" href="/css/hub.css" />
 </head>
 <body class="hub-body">
@@ -17,7 +18,7 @@
   <div class="hub-logged-out" id="hub-logged-out" hidden>
     <p class="hub-title">Entre com a Twitch pra abrir seu painel</p>
     <p class="hub-lede">Leilão, reacts e o que mais vier depois -- tudo fica junto aqui, por conta.</p>
-    <a class="create-twitch-login" id="hub-login-link" href="/auth/twitch/start?returnTo=/meus-leiloes">
+    <a class="create-twitch-login" id="hub-login-link" href="/auth/twitch/start?returnTo=/painel">
       <svg class="icon" viewBox="0 0 2400 2800" fill="currentColor" aria-hidden="true"><path d="M500 0 0 500v1800h600v500l500-500h400l900-900V0H500zm1600 1300-400 400h-400l-350 350v-350H500V200h1600v1100z" /><path d="M1700 550h200v600h-200zM1150 550h200v600h-200z" /></svg>
       Continuar com a Twitch
     </a>
@@ -71,6 +72,22 @@
     </div>
   </div>
 
-  <script src="/js/meus-leiloes.js"></script>
+  <!-- drawer próprio pra Configurações (não o genérico acima): hospeda o
+       React de verdade (SettingsStandalone), então precisa de um container
+       permanente no DOM -- o genérico troca o innerHTML do body a cada
+       abertura, o que destruiria a raiz React montada aqui dentro -->
+  <div class="side-drawer-overlay" id="settings-drawer-overlay" hidden>
+    <div class="side-drawer is-wide" id="settings-drawer" role="dialog" aria-modal="true" aria-labelledby="settings-drawer-title">
+      <div class="side-drawer-head">
+        <h2 class="side-drawer-title" id="settings-drawer-title">Configurações</h2>
+        <button class="side-drawer-close" id="settings-drawer-close" type="button" aria-label="Fechar">✕</button>
+      </div>
+      <div class="side-drawer-body is-settings" id="settings-root">
+        <p class="hub-modal-loading">Carregando…</p>
+      </div>
+    </div>
+  </div>
+
+  <script src="/js/painel.js"></script>
 </body>
 </html>

@@ -609,6 +609,16 @@ function createStore(filePath) {
     return { count, expiresAt };
   }
 
+  // !hype "jogo" no chat da Twitch -- contador simples, nunca reseta
+  // sozinho (só via resetAll, junto com o resto do jogo, igual comboCount)
+  function likeGame(key) {
+    const game = data.games[key];
+    if (!game) return null;
+    game.likes = (game.likes || 0) + 1;
+    save();
+    return game.likes;
+  }
+
   return {
     getState,
     setState,
@@ -648,6 +658,7 @@ function createStore(filePath) {
     getPastAuctions,
     getRawSnapshot,
     registerGameCombo,
+    likeGame,
     submitReactVideo,
     getPendingReactVideos,
     approveReactVideo,
