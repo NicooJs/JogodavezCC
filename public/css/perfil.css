@@ -272,12 +272,6 @@
   color: var(--text);
 }
 
-.perfil-stat-footnote {
-  margin: 2px 0 0;
-  font-size: 11px;
-  color: var(--muted);
-}
-
 .perfil-chart-card { gap: 6px; }
 
 .perfil-chart-wrap { margin-top: 6px; }

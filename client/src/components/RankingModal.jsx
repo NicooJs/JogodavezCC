@@ -29,7 +29,6 @@ export default function RankingModal({ leilaoId, open, onClose }) {
         <div className="ranking-modal-head">
           <p className="modal-eyebrow">seus leilões</p>
           <h2 className="modal-title">Ranking dos seus leilões</h2>
-          <p className="ranking-modal-hint">Seus leilões, do que mais arrecadou pro que menos arrecadou.</p>
         </div>
         <div className="ranking-modal-body">
           {ranking && ranking.length === 0 ? (

@@ -23,7 +23,7 @@ export default function AdvancedTab({ leilaoId }) {
     setRevokeFeedback(null)
     const ok = await confirmDialog({
       title: 'Revogar acesso de moderadores',
-      message: 'Qualquer moderador conectado agora com o código de uso único perde o acesso imediatamente. Eles vão precisar de um código novo pra entrar de novo. Você não é afetado.',
+      message: 'Tem certeza?',
       confirmLabel: 'Revogar acesso',
       danger: true,
     })

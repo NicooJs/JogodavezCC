@@ -12,7 +12,6 @@ export default function VisaoGeralTab({ data }) {
           <div className="perfil-stat-text">
             <p className="perfil-stat-value">{data.donationCount30d}</p>
             <p className="perfil-stat-label">doações recebidas</p>
-            <p className="perfil-stat-footnote">últimos 30 dias</p>
           </div>
         </section>
 
@@ -23,7 +22,6 @@ export default function VisaoGeralTab({ data }) {
           <div className="perfil-stat-text">
             <p className="perfil-stat-value">{formatBRL(data.donationTotalCents30d / 100)}</p>
             <p className="perfil-stat-label">recebido no período</p>
-            <p className="perfil-stat-footnote">últimos 30 dias</p>
           </div>
         </section>
       </div>
