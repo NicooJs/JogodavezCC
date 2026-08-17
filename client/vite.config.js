@@ -29,6 +29,7 @@ export default defineConfig(({ command }) => ({
         main: path.resolve(import.meta.dirname, 'index.html'),
         settings: path.resolve(import.meta.dirname, 'settings.html'),
         historico: path.resolve(import.meta.dirname, 'historico.html'),
+        perfil: path.resolve(import.meta.dirname, 'perfil.html'),
       },
     },
   },

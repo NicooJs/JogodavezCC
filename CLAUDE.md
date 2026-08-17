@@ -352,6 +352,28 @@ ver abaixo). Rotas de conta em `server.js`: `GET /api/perfil`,
 arrecadado (`ledgerStore.getLifetimeEarnedCents`, nunca cai mesmo depois de
 sacado) e "sair da conta".
 
+**No hub (`/painel`), a seção Perfil está sendo reconstruída em React aos
+poucos** (`client/perfil.html` + `perfil-main.jsx` + `PerfilStandalone.jsx`,
+4º *entry* standalone do Vite, mesmo padrão de fetch-and-inject de
+Configurações/Histórico -- ver `#view-perfil`/`#perfil-root` em
+`painel.html`). Só **Visão geral** tem conteúdo de verdade
+(`VisaoGeralTab.jsx` + `DonationChart.jsx`, port 1:1 do SVG à mão de
+`perfil.js`, mesmo `GET /api/perfil`) -- as outras 4 abas (Financeiro,
+Widget OBS, Alerta, Doações) mostram um placeholder "chega em breve"
+dentro do próprio componente, reconstrução é deliberadamente seção por
+seção, confirmando com o cliente a cada uma antes de seguir. O `public/perfil.html`
+standalone abaixo **continua existindo e funcionando normalmente** (é pra
+onde `/perfil` aponta, usado pelo link do widget OBS e por quem chega
+direto na URL) -- não foi substituído, só ganhou um "espelho" parcial
+dentro do hub. Reaproveita as classes de `perfil.css` quase sem alteração
+(`.perfil-shell`/`.perfil-sidebar`/`.perfil-nav`/`.perfil-stat-card`/etc já
+eram bem desenhadas, não precisou reinventar visual), exceto que **não**
+usa o hack de `.perfil-main` de escapar pro `100vw` (isso só fazia sentido
+na página standalone antiga, que era o `body` inteiro -- no hub o conteúdo
+já flui dentro de `.hub-main`). Botão "Sair da conta" usa `confirmDialog`
+de verdade (`useDialogs.jsx`), não `confirm()` nativo, diferente do avatar
+da sidebar do hub (ver seção Hub acima, que É uma exceção deliberada).
+
 O link do widget OBS **precisa** referenciar um leilão específico (a URL
 carrega o `leilaoId`, isso é estrutural) -- o Perfil mostra o leilão mais
 recente do streamer como representante (`registry.listLeiloesByOwner`

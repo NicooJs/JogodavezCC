@@ -111,17 +111,24 @@ async function ensureHistoricoView() {
   }
 }
 
-// Perfil -- reconstrução em andamento, seção por seção (ver plano); por
-// enquanto só um placeholder honesto em vez de fingir que já tá pronto.
-function ensurePerfilView() {
-  views.perfil.innerHTML = `
-    <div class="hub-header">
-      <p class="hub-eyebrow">JogodaVez</p>
-      <h1 class="hub-title">Perfil</h1>
-      <p class="hub-lede">Chave Pix, saldo, alerta e widget do OBS -- tudo por conta, não por leilão.</p>
-    </div>
-    <p class="empty-state">Essa seção está sendo reconstruída aqui dentro do painel. Chega em breve.</p>
-  `;
+// Perfil -- reconstrução em andamento, seção por seção (ver plano). Só
+// Visão geral tem conteúdo de verdade por enquanto, as outras 4 abas
+// mostram um placeholder honesto dentro do próprio PerfilStandalone.
+// Perfil é por CONTA, não por leilão -- mount() não recebe leilaoId.
+const perfilRootEl = document.getElementById("perfil-root");
+let perfilPanelLoad = null;
+let perfilMounted = false;
+
+async function ensurePerfilView() {
+  if (perfilMounted) return;
+  try {
+    if (!perfilPanelLoad) perfilPanelLoad = loadStandaloneEntry("/board-app/perfil.html");
+    await perfilPanelLoad;
+    window.JogodaVezPerfilPanel.mount("perfil-root");
+    perfilMounted = true;
+  } catch (err) {
+    perfilRootEl.innerHTML = `<p class="empty-state">Não deu pra carregar seu perfil agora.</p>`;
+  }
 }
 
 const ICON_LEILAO = `<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2.5" y="4" width="6" height="6" rx="1" /><rect x="11.5" y="4" width="6" height="6" rx="1" /><rect x="2.5" y="12" width="6" height="4" rx="1" /><rect x="11.5" y="12" width="6" height="4" rx="1" /></svg>`;
