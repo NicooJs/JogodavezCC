@@ -51,4 +51,44 @@ async function fetchTwitchAvatar(login) {
   }
 }
 
-module.exports = { fetchTwitchAvatar };
+// wallpaper do banner de perfil (Histórico do hub) -- offline_image_url é
+// a arte que a própria Twitch mostra quando o canal tá offline, cadastrada
+// pelo streamer no painel dele. Cache/função separada de fetchTwitchAvatar
+// de propósito: avatar é chamado com MUITOS logins diferentes (todo doador
+// que aparece no board), banner só é chamado pro próprio streamer dono do
+// perfil (uma vez por carregamento do Histórico) -- juntar os dois faria
+// toda busca de avatar de doador puxar um campo que nunca usa.
+const bannerCache = new Map();
+
+async function fetchTwitchChannelBanner(login) {
+  const clientId = process.env.TWITCH_CLIENT_ID;
+  if (!clientId) return null;
+
+  const cacheKey = login.trim().toLowerCase();
+  if (bannerCache.has(cacheKey)) return bannerCache.get(cacheKey);
+
+  try {
+    const token = await getAppToken();
+    if (!token) return null;
+
+    const res = await fetch(`https://api.twitch.tv/helix/users?login=${encodeURIComponent(cacheKey)}`, {
+      headers: { Authorization: `Bearer ${token}`, "Client-Id": clientId },
+    });
+
+    if (!res.ok) {
+      console.error("Twitch respondeu", res.status, "ao buscar banner de", login);
+      return null;
+    }
+
+    const json = await res.json();
+    const user = json.data && json.data[0];
+    const bannerUrl = (user && user.offline_image_url) || null;
+    bannerCache.set(cacheKey, bannerUrl);
+    return bannerUrl;
+  } catch (err) {
+    console.error("Erro ao buscar banner do canal na Twitch:", err.message);
+    return null;
+  }
+}
+
+module.exports = { fetchTwitchAvatar, fetchTwitchChannelBanner };

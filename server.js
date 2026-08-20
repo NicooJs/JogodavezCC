@@ -37,7 +37,7 @@ const { parseMessage, normalizeKey, leftoverAfterMatch, looksLikeNoise, findExis
 const igdbApi = require("./src/igdbApi");
 const { getMediaAdapter, mediaLabel, normalizeMode, MODES: LEILAO_MODES } = require("./src/mediaAdapter");
 const youtubeApi = require("./src/youtubeApi");
-const { fetchTwitchAvatar } = require("./src/twitchClient");
+const { fetchTwitchAvatar, fetchTwitchChannelBanner } = require("./src/twitchClient");
 const twitchChatBot = require("./src/twitchChatBot");
 const twitchAuth = require("./src/twitchAuth");
 const session = require("./src/session");
@@ -893,13 +893,14 @@ app.get("/api/perfil", async (req, res) => {
   if (!twitchSession) return res.status(401).json({ error: "Faça login com a Twitch" });
   try {
     const streamer = await streamersStore.ensureByTwitchUserId(twitchSession.twitchUserId);
-    const [balanceCents, lifetimeEarnedCents, pixKeyInfo, donationStats, alertPrefs, pixggCredentials] = await Promise.all([
+    const [balanceCents, lifetimeEarnedCents, pixKeyInfo, donationStats, alertPrefs, pixggCredentials, channelBannerUrl] = await Promise.all([
       ledgerStore.getBalance(streamer.id),
       ledgerStore.getLifetimeEarnedCents(streamer.id),
       streamerPixKeysStore.getPixKeyInfo(streamer.id),
       ledgerStore.getDonationSeries(streamer.id, 30),
       streamerAlertPrefsStore.getPrefs(streamer.id),
       streamerPixggStore.getCredentials(streamer.id),
+      fetchTwitchChannelBanner(twitchSession.twitchLogin),
     ]);
 
     // widget OBS referencia um leilão específico por natureza (a URL carrega
@@ -917,6 +918,7 @@ app.get("/api/perfil", async (req, res) => {
       twitchLogin: twitchSession.twitchLogin,
       displayName: twitchSession.displayName,
       avatarUrl: twitchSession.avatarUrl,
+      channelBannerUrl,
       connectedAt: streamer.connectedAt,
       theme,
       balanceCents,

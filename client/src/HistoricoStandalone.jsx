@@ -23,36 +23,6 @@ function formatDuration(ms) {
   return `${m}min`
 }
 
-function ProfileBanner({ profile, onRefresh, refreshing }) {
-  const since = profile?.connectedAt
-    ? new Date(profile.connectedAt).toLocaleDateString('pt-BR', { month: 'short', year: 'numeric' })
-    : null
-
-  return (
-    <div className="hist-banner">
-      <div className="hist-banner-bg" aria-hidden="true" />
-      <div className="hist-banner-content">
-        {profile?.avatarUrl ? (
-          <img className="hist-banner-avatar" src={profile.avatarUrl} alt="" />
-        ) : (
-          <div className="hist-banner-avatar" />
-        )}
-        <div className="hist-banner-text">
-          <p className="hist-banner-name">{profile?.displayName || profile?.twitchLogin || ''}</p>
-          <p className="hist-banner-login">
-            {profile?.twitchLogin ? `@${profile.twitchLogin}` : ''}
-            {since ? <span className="hist-banner-since">streamer desde {since}</span> : null}
-          </p>
-        </div>
-        <button className="hist-banner-refresh" type="button" onClick={onRefresh} disabled={refreshing}>
-          <svg className="icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M16 10a6 6 0 1 1-1.8-4.3" /><path d="M16 3v4h-4" /></svg>
-          Atualizar
-        </button>
-      </div>
-    </div>
-  )
-}
-
 const FILTERS = [
   { id: 'todos', label: 'Todos' },
   { id: 'jogos', label: 'Jogos' },
@@ -75,6 +45,49 @@ function FilterTabs({ filter, setFilter, counts }) {
           <span className="hist-filter-count">{counts[f.id] || 0}</span>
         </button>
       ))}
+    </div>
+  )
+}
+
+function ProfileBanner({ profile, onRefresh, refreshing, filter, setFilter, counts }) {
+  const since = profile?.connectedAt
+    ? new Date(profile.connectedAt).toLocaleDateString('pt-BR', { month: 'short', year: 'numeric' })
+    : null
+
+  // wallpaper = banner do canal da Twitch (offline_image_url, GET /api/perfil)
+  // -- some sozinho num degradê pro fundo escuro à esquerda, onde a
+  // identidade fica; sem banner cadastrado, o degradê vermelho de
+  // style.css (.hist-banner-bg) já cobre sozinho
+  const bgStyle = profile?.channelBannerUrl
+    ? {
+        backgroundImage: `linear-gradient(90deg, rgba(10,5,7,0.97) 0%, rgba(10,5,7,0.8) 30%, rgba(10,5,7,0.25) 68%, rgba(10,5,7,0.05) 100%), url(${profile.channelBannerUrl})`,
+      }
+    : undefined
+
+  return (
+    <div className="hist-banner">
+      <div className="hist-banner-top">
+        <div className="hist-banner-bg" style={bgStyle} aria-hidden="true" />
+        <div className="hist-banner-content">
+          {profile?.avatarUrl ? (
+            <img className="hist-banner-avatar" src={profile.avatarUrl} alt="" />
+          ) : (
+            <div className="hist-banner-avatar" />
+          )}
+          <div className="hist-banner-text">
+            <p className="hist-banner-name">{profile?.displayName || profile?.twitchLogin || ''}</p>
+            <p className="hist-banner-login">
+              {profile?.twitchLogin ? `@${profile.twitchLogin}` : ''}
+              {since ? <span className="hist-banner-since">streamer desde {since}</span> : null}
+            </p>
+          </div>
+          <button className="hist-banner-refresh" type="button" onClick={onRefresh} disabled={refreshing}>
+            <svg className="icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M16 10a6 6 0 1 1-1.8-4.3" /><path d="M16 3v4h-4" /></svg>
+            Atualizar
+          </button>
+        </div>
+      </div>
+      <FilterTabs filter={filter} setFilter={setFilter} counts={counts} />
     </div>
   )
 }
@@ -252,8 +265,7 @@ export default function HistoricoStandalone({ leilaoId }) {
 
   return (
     <div className="hist-page">
-      <ProfileBanner profile={profile} onRefresh={onRefresh} refreshing={refreshing} />
-      <FilterTabs filter={filter} setFilter={setFilter} counts={counts} />
+      <ProfileBanner profile={profile} onRefresh={onRefresh} refreshing={refreshing} filter={filter} setFilter={setFilter} counts={counts} />
 
       {filtered.length === 0 ? (
         <p className="empty-state">Nenhum round encerrado nessa categoria ainda.</p>

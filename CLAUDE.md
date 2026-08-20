@@ -237,11 +237,25 @@ partida de LoL. Banner de perfil no topo (`ProfileBanner`, mesmo
 `GET /api/perfil` que o Perfil usa: avatar, nome, "streamer desde",
 botão "Atualizar" que reconsulta `/api/perfil` + `/recap/history`) e abas
 de filtro por modalidade (Todos/Jogos/Filmes, filtra `round.mode`) ficam
-sempre visíveis mesmo com a lista vazia. Filtrar recalcula os widgets da
-sidebar também (resumo geral e estilo de jogos são sobre os rounds
-FILTRADOS, não o total geral) -- não tem filtro de Reacts ainda, esse
-sistema não arquiva um histórico de rounds hoje (escopo maior, decisão
+sempre visíveis mesmo com a lista vazia, unidas num container só (mesmo
+cartão, sem gap) pra imitar o card de invocador do OP.GG. Filtrar
+recalcula os widgets da sidebar também (resumo geral e estilo de jogos
+são sobre os rounds FILTRADOS, não o total geral) -- não tem filtro de
+Reacts ainda, esse sistema não arquiva um histórico de rounds hoje (escopo maior, decisão
 consciente de deixar de fora por enquanto).
+
+O wallpaper do banner (lado direito, atrás do degradê) é o banner do
+próprio canal da Twitch do streamer -- `channelBannerUrl` em
+`GET /api/perfil`, resolvido por `fetchTwitchChannelBanner()`
+(`src/twitchClient.js`, novo, usa `offline_image_url` do Helix
+`GET /users`). Deliberadamente **não** reaproveita `fetchTwitchAvatar`
+nem o cache dela -- avatar é buscado pra centenas de logins diferentes
+(todo doador que aparece no board), banner só é buscado pro dono do
+próprio perfil, misturar os dois faria toda busca de avatar de doador
+carregar um campo que nunca usa. Sem banner cadastrado na Twitch, cai no
+degradê vermelho padrão (`.hist-banner-bg` em `historico.css`) -- o
+`style` inline que `ProfileBanner` aplica só existe quando
+`channelBannerUrl` vem preenchido, senão a regra CSS de fallback fica de pé.
 
 **Configurações NÃO é iframe do board** (mudou 2026-08-15 a pedido
 explícito do cliente: "não quero que abra o leilão, quero que o hub seja
