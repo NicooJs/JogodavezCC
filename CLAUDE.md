@@ -256,6 +256,18 @@ carregar um campo que nunca usa. Sem banner cadastrado na Twitch, cai no
 degradê vermelho padrão (`.hist-banner-bg` em `historico.css`) -- o
 `style` inline que `ProfileBanner` aplica só existe quando
 `channelBannerUrl` vem preenchido, senão a regra CSS de fallback fica de pé.
+Se o wallpaper não aparecer, **não é bug** por padrão -- é o streamer sem
+banner cadastrado na própria Twitch (opcional, muita gente nunca
+configura); `fetchTwitchChannelBanner()` foi verificado contra a API de
+verdade (canal público conhecido) e devolve a URL certa quando ela existe.
+
+**Largura própria (2026-08-17)**: só a view Histórico usa mais espaço
+horizontal que o resto do hub -- `.hub-main:has(> #view-historico:not([hidden]))`
+em `historico.css` sobe o `max-width` de 1180px (padrão do hub) pra
+1640px e reduz o padding esquerdo, pra ficar "colado" na sidebar do hub
+igual o OP.GG fica colado na própria barra de ícones. Não mexe nas
+outras views (Início/Perfil/Configurações) -- só ativa via `:has()`
+quando `#view-historico` é o filho visível.
 
 **Configurações NÃO é iframe do board** (mudou 2026-08-15 a pedido
 explícito do cliente: "não quero que abra o leilão, quero que o hub seja
