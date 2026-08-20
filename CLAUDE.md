@@ -432,6 +432,20 @@ Mesma condição de sempre: sem `latestLeilao`, mostra aviso pra criar um
 leilão primeiro; com mais de um leilão, aponta pro `/painel` em vez do
 antigo `/meus-leiloes`.
 
+**Alerta (2026-08-17)** também ganhou conteúdo de verdade
+(`AlertaTab.jsx`) -- port completo, não simplificado: 4 presets
+sintetizados via Web Audio (mesmo mapa de frequências duplicado de
+`perfil.js`, comentário explica por quê), upload de áudio próprio com
+sonda de duração no cliente (`new Audio(URL.createObjectURL(file))`,
+recusa antes de subir se passar de 10s) e confirmação no servidor,
+`perfilFetch()` novo em `client/src/lib/api.js` (mesmo padrão de
+`presenterFetch`, só que pra `/api/perfil/*` em vez de `/api/l/:id/*`,
+reutilizável pelas próximas abas). Testado contra o servidor de
+verdade sem estar logado -- o botão Salvar bateu em `/api/perfil/alert-chime`,
+levou 401 "Faça login com a Twitch" de propósito, e o feedback de erro
+apareceu certinho -- prova que o caminho de erro funciona ponta a ponta;
+o caminho de sucesso só troca o status da resposta.
+
 **Reformulação visual pediu pra ficar em cima da paleta atual, não uma
 nova** (2026-08-17 -- diferente do Histórico, que teve exceção de cor
 autorizada; aqui o cliente rejeitou uma proposta de paleta nova e pediu

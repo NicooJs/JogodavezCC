@@ -16,3 +16,22 @@ export async function presenterFetch(leilaoId, path, options = {}) {
   }
   return res.status === 204 ? null : res.json()
 }
+
+// mesma coisa, mas pra rotas de conta (/api/perfil/*, sem leilaoId --
+// espelha perfilFetch do perfil.js vanilla)
+export async function perfilFetch(path, options = {}) {
+  const isFormData = options.body instanceof FormData
+  const res = await fetch(`/api/perfil${path}`, {
+    ...options,
+    credentials: 'same-origin',
+    headers: {
+      ...(isFormData ? {} : { 'Content-Type': 'application/json' }),
+      ...(options.headers || {}),
+    },
+  })
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({}))
+    throw new Error(data.error || `Erro ${res.status}`)
+  }
+  return res.status === 204 ? null : res.json()
+}
