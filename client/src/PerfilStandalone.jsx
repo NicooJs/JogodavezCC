@@ -4,6 +4,7 @@ import { formatBRL } from './lib/format.js'
 import VisaoGeralTab from './components/perfil/VisaoGeralTab.jsx'
 import WidgetObsTab from './components/perfil/WidgetObsTab.jsx'
 import AlertaTab from './components/perfil/AlertaTab.jsx'
+import DoacoesTab from './components/perfil/DoacoesTab.jsx'
 
 const TABS = [
   {
@@ -119,7 +120,8 @@ function PerfilContent({ data, tab, setTab }) {
         {tab === 'geral' ? <VisaoGeralTab data={data} /> : null}
         {tab === 'obs' ? <WidgetObsTab data={data} /> : null}
         {tab === 'alerta' ? <AlertaTab data={data} /> : null}
-        {tab !== 'geral' && tab !== 'obs' && tab !== 'alerta' ? (
+        {tab === 'doacoes' ? <DoacoesTab /> : null}
+        {tab !== 'geral' && tab !== 'obs' && tab !== 'alerta' && tab !== 'doacoes' ? (
           <p className="empty-state">Essa seção está sendo reconstruída aqui dentro do painel. Chega em breve.</p>
         ) : null}
       </div>

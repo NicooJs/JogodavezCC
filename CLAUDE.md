@@ -446,6 +446,20 @@ levou 401 "Faça login com a Twitch" de propósito, e o feedback de erro
 apareceu certinho -- prova que o caminho de erro funciona ponta a ponta;
 o caminho de sucesso só troca o status da resposta.
 
+**Doações (2026-08-17)** foi portada de propósito com o mesmo bloqueio
+"Em breve" que a página standalone já tem, **não é feature nova
+desativada por engano**: enquanto a ponte via pixgg.com for o caminho
+ativo de doação, o webhook dela só atualiza o placar do leilão, nunca
+grava linha em `payments` no Postgres (é de lá que `donorIp` viria pra
+bloquear alguém) -- então histórico e bloqueio nunca refletem doação
+recente de verdade nesse meio tempo (ver commit `fd4d45a`). `DoacoesTab.jsx`
+implementa a lógica real (busca com debounce, listar/bloquear/desbloquear,
+`GET/POST /api/perfil/donations`, `/blocked-donors`) mas embrulha tudo em
+`.perfil-disabled-wrap` (`pointer-events: none` + selo "Em breve"),
+pronta pra "ligar" só tirando o wrapper quando a Efí for aprovada e
+`payments` voltar a ser alimentado por doação de verdade -- mesmo padrão
+da página standalone, não reinventado.
+
 **Reformulação visual pediu pra ficar em cima da paleta atual, não uma
 nova** (2026-08-17 -- diferente do Histórico, que teve exceção de cor
 autorizada; aqui o cliente rejeitou uma proposta de paleta nova e pediu
