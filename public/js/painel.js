@@ -16,11 +16,27 @@ const views = {
 };
 const navButtons = [...document.querySelectorAll(".hub-sidebar-item[data-view]")];
 
-function showView(name) {
+// cada view tem seu próprio caminho (rotas espelhadas em server.js, todas
+// servem o mesmo painel.html) pra um F5 manter o streamer na mesma tela
+// em vez de sempre voltar pro Início
+const VIEW_PATHS = { home: "/painel", perfil: "/painel/perfil", config: "/painel/config", historico: "/painel/historico" };
+function viewForPath(pathname) {
+  return Object.keys(VIEW_PATHS).find((name) => VIEW_PATHS[name] === pathname) || null;
+}
+
+// só troca o DOM + carrega a view, sem mexer no histórico -- usado tanto
+// pela navegação normal (via showView) quanto por popstate (voltar/avançar)
+function applyView(name) {
   if (!views[name]) return;
   Object.entries(views).forEach(([key, el]) => { el.hidden = key !== name; });
   navButtons.forEach((btn) => btn.classList.toggle("is-active", btn.dataset.view === name));
   loadView(name);
+}
+
+function showView(name) {
+  applyView(name);
+  const path = VIEW_PATHS[name];
+  if (path && location.pathname !== path) history.pushState({ view: name }, "", path);
 }
 
 function loadView(name) {
@@ -38,6 +54,10 @@ navButtons.forEach((btn) => {
     }
     showView(view);
   });
+});
+
+window.addEventListener("popstate", () => {
+  applyView(viewForPath(location.pathname) || "home");
 });
 
 function escapeHtml(str) {
@@ -142,13 +162,31 @@ async function loadSession() {
 
   loggedOutEl.hidden = session.loggedIn;
   shellEl.hidden = !session.loggedIn;
-  if (!session.loggedIn) return;
+  if (!session.loggedIn) {
+    // leva o login de volta pra onde o streamer tentou entrar (ex: um F5
+    // em /painel/perfil sem sessão), não sempre pro Início
+    const loginLink = document.getElementById("hub-login-link");
+    if (loginLink && viewForPath(location.pathname)) {
+      loginLink.href = `/auth/twitch/start?returnTo=${encodeURIComponent(location.pathname)}`;
+    }
+    return;
+  }
 
   avatarEl.src = session.avatarUrl || "";
   greetingEl.textContent = `Olá, ${session.displayName || session.twitchLogin || ""}`;
 
   await loadLeilao();
   renderServices();
+
+  // decide a view inicial pela URL (F5 mantém a página), mas Config/
+  // Histórico exigem leilão -- sem um, cai pro Início silenciosamente
+  // (sem o alert(), que é só pra clique explícito no meio da navegação)
+  let initialView = viewForPath(location.pathname) || "home";
+  if (!leilao && initialView !== "home" && initialView !== "perfil") {
+    initialView = "home";
+    history.replaceState({ view: initialView }, "", VIEW_PATHS[initialView]);
+  }
+  applyView(initialView);
 }
 
 async function loadLeilao() {

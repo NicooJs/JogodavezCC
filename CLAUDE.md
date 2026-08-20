@@ -188,6 +188,27 @@ explícito pro seletor específico (ver `.hub-shell[hidden]`/`.hub-view[hidden]`
 em `hub.css`). Já causou um bug real (tela de deslogado aparecendo
 "desformatada", com a sidebar/grid vazando por trás do aviso de login).
 
+**Cada view tem seu próprio caminho (2026-08-20), pra sobreviver a um F5**
+(`/painel`, `/painel/perfil`, `/painel/config`, `/painel/historico`) --
+antes disso um F5 em qualquer view que não fosse Início sempre voltava pro
+começo, já que a troca é 100% client-side. `server.js` serve o mesmo
+`painel.html` pras 4 rotas (`app.get(["/painel", "/painel/perfil", ...])`);
+quem decide qual view mostrar continua sendo `painel.js`, lendo
+`location.pathname` (`viewForPath()`) em vez de sempre cair no Início.
+`showView(name)` agora também dá `history.pushState` pro caminho
+correspondente, e um listener de `popstate` restaura a view certa no
+botão voltar/avançar do navegador -- sem isso o F5 funcionaria mas
+voltar/avançar ficaria quebrado. Config/Histórico continuam exigindo um
+leilão (mesma guarda que já existia no clique da sidebar); acessar essas
+URLs direto sem leilão cai silenciosamente pro Início via
+`history.replaceState` (sem o `alert()`, que é só pro clique explícito no
+meio da navegação). O link de login (`#hub-login-link`, mostrado só pra
+deslogado) agora aponta o `returnTo` pro caminho atual em vez de sempre
+`/painel`, então um F5 numa view específica sem sessão volta pra ela
+depois do OAuth -- `ALLOWED_RETURN_PATHS` em `server.js` precisou ganhar
+as 3 rotas novas (allowlist contra open-redirect, não aceita path
+arbitrário).
+
 **Avatar da conta (canto inferior da sidebar) desloga ao clicar** (com
 confirmação nativa `confirm()` -- não é `confirmDialog`, é uma exceção
 deliberada aqui já que esse fluxo referente à sessão não passa por
