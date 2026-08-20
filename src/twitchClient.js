@@ -51,42 +51,56 @@ async function fetchTwitchAvatar(login) {
   }
 }
 
-// wallpaper do banner de perfil (Histórico do hub) -- offline_image_url é
-// a arte que a própria Twitch mostra quando o canal tá offline, cadastrada
-// pelo streamer no painel dele. Cache/função separada de fetchTwitchAvatar
-// de propósito: avatar é chamado com MUITOS logins diferentes (todo doador
-// que aparece no board), banner só é chamado pro próprio streamer dono do
-// perfil (uma vez por carregamento do Histórico) -- juntar os dois faria
-// toda busca de avatar de doador puxar um campo que nunca usa.
+// wallpaper do banner de perfil (Histórico do hub) -- o banner de fundo
+// do canal (o que o streamer configura em "Banner" no Creator Dashboard,
+// a imagem larga atrás do player) NUNCA foi exposto pela API oficial da
+// Twitch (Helix) -- só existia na API antiga (Kraken v5), desativada há
+// anos, sem substituto oficial. A ÚNICA forma de conseguir esse campo
+// hoje é a API interna (não documentada) que o próprio site da Twitch
+// usa, com o Client-Id público do web client deles (não é segredo nosso,
+// é o mesmo client-id embutido no JS público de twitch.tv, usado por
+// praticamente toda ferramenta terceira que mostra isso). Decisão
+// consciente do cliente (2026-08-17), sabendo do risco: sem contrato de
+// estabilidade, pode quebrar ou ser bloqueada sem aviso -- diferente de
+// TUDO mais nesse arquivo, que usa só Helix oficial autenticado com
+// nossas próprias credenciais. Se um dia parar de funcionar, cai
+// graciosamente pro degradê (nunca derruba o Histórico).
+const TWITCH_WEB_CLIENT_ID = "kimne78kx3ncx6brgo4mv6wki5h1ko";
+
+// Cache/função separada de fetchTwitchAvatar de propósito: avatar é
+// chamado com MUITOS logins diferentes (todo doador que aparece no
+// board), banner só é chamado pro próprio streamer dono do perfil (uma
+// vez por carregamento do Histórico) -- juntar os dois faria toda busca
+// de avatar de doador puxar um campo que nunca usa.
 const bannerCache = new Map();
 
 async function fetchTwitchChannelBanner(login) {
-  const clientId = process.env.TWITCH_CLIENT_ID;
-  if (!clientId) return null;
-
   const cacheKey = login.trim().toLowerCase();
   if (bannerCache.has(cacheKey)) return bannerCache.get(cacheKey);
 
   try {
-    const token = await getAppToken();
-    if (!token) return null;
-
-    const res = await fetch(`https://api.twitch.tv/helix/users?login=${encodeURIComponent(cacheKey)}`, {
-      headers: { Authorization: `Bearer ${token}`, "Client-Id": clientId },
+    const res = await fetch("https://gql.twitch.tv/gql", {
+      method: "POST",
+      headers: { "Client-Id": TWITCH_WEB_CLIENT_ID, "Content-Type": "application/json" },
+      body: JSON.stringify({
+        query: "query($login: String!) { user(login: $login) { bannerImageURL } }",
+        variables: { login: cacheKey },
+      }),
+      signal: AbortSignal.timeout(6000),
     });
 
     if (!res.ok) {
-      console.error("Twitch respondeu", res.status, "ao buscar banner de", login);
+      console.error("Twitch (gql interno) respondeu", res.status, "ao buscar banner de", login);
+      bannerCache.set(cacheKey, null);
       return null;
     }
 
     const json = await res.json();
-    const user = json.data && json.data[0];
-    const bannerUrl = (user && user.offline_image_url) || null;
+    const bannerUrl = (json.data && json.data.user && json.data.user.bannerImageURL) || null;
     bannerCache.set(cacheKey, bannerUrl);
     return bannerUrl;
   } catch (err) {
-    console.error("Erro ao buscar banner do canal na Twitch:", err.message);
+    console.error("Erro ao buscar banner do canal na Twitch (gql interno):", err.message);
     return null;
   }
 }

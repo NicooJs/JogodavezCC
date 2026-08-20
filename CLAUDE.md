@@ -244,22 +244,29 @@ são sobre os rounds FILTRADOS, não o total geral) -- não tem filtro de
 Reacts ainda, esse sistema não arquiva um histórico de rounds hoje (escopo maior, decisão
 consciente de deixar de fora por enquanto).
 
-O wallpaper do banner (lado direito, atrás do degradê) é o banner do
-próprio canal da Twitch do streamer -- `channelBannerUrl` em
-`GET /api/perfil`, resolvido por `fetchTwitchChannelBanner()`
-(`src/twitchClient.js`, novo, usa `offline_image_url` do Helix
-`GET /users`). Deliberadamente **não** reaproveita `fetchTwitchAvatar`
-nem o cache dela -- avatar é buscado pra centenas de logins diferentes
-(todo doador que aparece no board), banner só é buscado pro dono do
-próprio perfil, misturar os dois faria toda busca de avatar de doador
-carregar um campo que nunca usa. Sem banner cadastrado na Twitch, cai no
+O wallpaper do banner (lado direito, atrás do degradê) é o banner de
+fundo de verdade do canal da Twitch do streamer (a imagem larga que o
+streamer configura em "Banner" no Creator Dashboard) -- `channelBannerUrl`
+em `GET /api/perfil`, resolvido por `fetchTwitchChannelBanner()`
+(`src/twitchClient.js`). **Importante, já foi confundido uma vez**: isso
+NÃO é o campo `offline_image_url` da Helix (API oficial) -- esse é a
+imagem que aparece *dentro do player* quando offline, coisa diferente.
+O banner de fundo do canal nunca foi exposto pela Helix (existia só na
+API antiga Kraken v5, desativada há anos, sem substituto oficial) -- a
+única forma de conseguir é a API **interna não documentada** que o
+próprio site da Twitch usa (`gql.twitch.tv`, campo `bannerImageURL`,
+Client-Id público do web client deles `kimne78kx3ncx6brgo4mv6wki5h1ko`,
+não é segredo nosso). **Decisão consciente do cliente (2026-08-17),
+sabendo do risco**: sem contrato de estabilidade, pode quebrar ou ser
+bloqueada pela Twitch sem aviso -- diferente de tudo mais em
+`twitchClient.js`, que usa só Helix oficial autenticado com nossas
+próprias credenciais. Se quebrar no futuro, cai graciosamente pro
 degradê vermelho padrão (`.hist-banner-bg` em `historico.css`) -- o
 `style` inline que `ProfileBanner` aplica só existe quando
-`channelBannerUrl` vem preenchido, senão a regra CSS de fallback fica de pé.
-Se o wallpaper não aparecer, **não é bug** por padrão -- é o streamer sem
-banner cadastrado na própria Twitch (opcional, muita gente nunca
-configura); `fetchTwitchChannelBanner()` foi verificado contra a API de
-verdade (canal público conhecido) e devolve a URL certa quando ela existe.
+`channelBannerUrl` vem preenchido, senão a regra CSS de fallback fica de
+pé. Query GraphQL usa variável (`$login`), nunca interpolação de string
+direto na query -- mesma disciplina de "sempre parametrizado" que o
+resto do projeto já segue pra SQL.
 
 **Largura própria (2026-08-17)**: só a view Histórico usa mais espaço
 horizontal que o resto do hub -- `.hub-main:has(> #view-historico:not([hidden]))`
