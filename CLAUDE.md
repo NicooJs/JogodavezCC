@@ -424,6 +424,14 @@ já flui dentro de `.hub-main`). Botão "Sair da conta" usa `confirmDialog`
 de verdade (`useDialogs.jsx`), não `confirm()` nativo, diferente do avatar
 da sidebar do hub (ver seção Hub acima, que É uma exceção deliberada).
 
+**Widget OBS (2026-08-17)** foi a primeira das 4 abas placeholder a ganhar
+conteúdo de verdade (`WidgetObsTab.jsx`) -- port direto do que já existia
+em `perfil.js` (link + `CopyButton.jsx`, o mesmo componente React que o
+board já usa pros links de doação/alerta, não um novo), sem rota nova.
+Mesma condição de sempre: sem `latestLeilao`, mostra aviso pra criar um
+leilão primeiro; com mais de um leilão, aponta pro `/painel` em vez do
+antigo `/meus-leiloes`.
+
 **Reformulação visual pediu pra ficar em cima da paleta atual, não uma
 nova** (2026-08-17 -- diferente do Histórico, que teve exceção de cor
 autorizada; aqui o cliente rejeitou uma proposta de paleta nova e pediu
