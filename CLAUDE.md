@@ -406,12 +406,10 @@ sacado) e "sair da conta".
 poucos** (`client/perfil.html` + `perfil-main.jsx` + `PerfilStandalone.jsx`,
 4º *entry* standalone do Vite, mesmo padrão de fetch-and-inject de
 Configurações/Histórico -- ver `#view-perfil`/`#perfil-root` em
-`painel.html`). Só **Visão geral** tem conteúdo de verdade
-(`VisaoGeralTab.jsx` + `DonationChart.jsx`, port 1:1 do SVG à mão de
-`perfil.js`, mesmo `GET /api/perfil`) -- as outras 4 abas (Financeiro,
-Widget OBS, Alerta, Doações) mostram um placeholder "chega em breve"
-dentro do próprio componente, reconstrução é deliberadamente seção por
-seção, confirmando com o cliente a cada uma antes de seguir. O `public/perfil.html`
+`painel.html`). **As 5 abas já têm conteúdo de verdade** (Visão geral,
+Financeiro, Widget OBS, Alerta, Doações -- ver parágrafos abaixo pra cada
+uma), reconstruídas deliberadamente seção por seção, confirmando com o
+cliente a cada uma antes de seguir (não foi tudo de uma vez). O `public/perfil.html`
 standalone abaixo **continua existindo e funcionando normalmente** (é pra
 onde `/perfil` aponta, usado pelo link do widget OBS e por quem chega
 direto na URL) -- não foi substituído, só ganhou um "espelho" parcial
@@ -459,6 +457,27 @@ implementa a lógica real (busca com debounce, listar/bloquear/desbloquear,
 pronta pra "ligar" só tirando o wrapper quando a Efí for aprovada e
 `payments` voltar a ser alimentado por doação de verdade -- mesmo padrão
 da página standalone, não reinventado.
+
+**Financeiro (2026-08-20)** foi a última das 5 abas, deixada por último de
+propósito por ser a mais sensível a dinheiro (ver "Regra permanente" no
+topo deste arquivo). `FinanceiroTab.jsx` reproduz exatamente a mesma
+divisão de responsabilidade que a página standalone já tem, não inventa
+nada novo: o card "doação via pixgg.com" fica **fora** do bloqueio (slug +
+Client ID + Client Secret com `type="password"`, conecta/desconecta via
+`perfilFetch("/pixgg")`/`"/pixgg/desconectar"`, é a ponte ativa de
+verdade) e saldo/chave Pix/saque ficam **dentro** do mesmo
+`.perfil-disabled-wrap`/`"Em breve"` que Doações já usa -- porque
+`pix.send` (envio via API) na Efí Produção segue com o limite diário
+minúsculo de conta nova ainda não liberado no dashboard deles (ver
+`docs/STATUS-EFI.md`, não é bug de código, é uma ação pendente do lado do
+cliente). Validação e normalização de chave Pix por tipo (aleatória/CPF-
+CNPJ/celular/email) foi portada 1:1 de `perfil.js` (`normalizePixKey`),
+incluindo o detalhe de auto-prefixar `+55` em celular. Testado contra
+`window.fetch` mockado: conectar pixgg.com bate no payload certo e mostra
+feedback de sucesso, histórico de saques renderiza os 3 status
+(`pending`/`sent`/`failed` com a razão da falha), e `getComputedStyle`
+confirma `pointer-events: none` na área bloqueada -- mesmo padrão de
+verificação já usado nas abas anteriores.
 
 **Reformulação visual pediu pra ficar em cima da paleta atual, não uma
 nova** (2026-08-17 -- diferente do Histórico, que teve exceção de cor
