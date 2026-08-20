@@ -23,6 +23,62 @@ function formatDuration(ms) {
   return `${m}min`
 }
 
+function ProfileBanner({ profile, onRefresh, refreshing }) {
+  const since = profile?.connectedAt
+    ? new Date(profile.connectedAt).toLocaleDateString('pt-BR', { month: 'short', year: 'numeric' })
+    : null
+
+  return (
+    <div className="hist-banner">
+      <div className="hist-banner-bg" aria-hidden="true" />
+      <div className="hist-banner-content">
+        {profile?.avatarUrl ? (
+          <img className="hist-banner-avatar" src={profile.avatarUrl} alt="" />
+        ) : (
+          <div className="hist-banner-avatar" />
+        )}
+        <div className="hist-banner-text">
+          <p className="hist-banner-name">{profile?.displayName || profile?.twitchLogin || ''}</p>
+          <p className="hist-banner-login">
+            {profile?.twitchLogin ? `@${profile.twitchLogin}` : ''}
+            {since ? <span className="hist-banner-since">streamer desde {since}</span> : null}
+          </p>
+        </div>
+        <button className="hist-banner-refresh" type="button" onClick={onRefresh} disabled={refreshing}>
+          <svg className="icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M16 10a6 6 0 1 1-1.8-4.3" /><path d="M16 3v4h-4" /></svg>
+          Atualizar
+        </button>
+      </div>
+    </div>
+  )
+}
+
+const FILTERS = [
+  { id: 'todos', label: 'Todos' },
+  { id: 'jogos', label: 'Jogos' },
+  { id: 'filmes', label: 'Filmes' },
+]
+
+function FilterTabs({ filter, setFilter, counts }) {
+  return (
+    <div className="hist-filter-tabs" role="tablist">
+      {FILTERS.map((f) => (
+        <button
+          key={f.id}
+          type="button"
+          role="tab"
+          aria-selected={filter === f.id}
+          className={`hist-filter-tab${filter === f.id ? ' active' : ''}`}
+          onClick={() => setFilter(f.id)}
+        >
+          {f.label}
+          <span className="hist-filter-count">{counts[f.id] || 0}</span>
+        </button>
+      ))}
+    </div>
+  )
+}
+
 function SummaryCard({ totalAllTime, roundCount, avgPerRound, bestRound }) {
   return (
     <div className="hist-widget">
@@ -147,59 +203,71 @@ function RoundRow({ round, mediaWord }) {
 
 export default function HistoricoStandalone({ leilaoId }) {
   const [history, setHistory] = useState(null)
+  const [profile, setProfile] = useState(null)
   const [error, setError] = useState(false)
+  const [refreshing, setRefreshing] = useState(false)
+  const [filter, setFilter] = useState('todos')
+
+  const load = () => {
+    return Promise.all([
+      fetch(`/api/l/${leilaoId}/recap/history`).then((res) => res.json()),
+      fetch('/api/perfil').then((res) => (res.ok ? res.json() : null)).catch(() => null),
+    ]).then(([historyData, profileData]) => {
+      setHistory(historyData.history || [])
+      setProfile(profileData)
+    })
+  }
 
   useEffect(() => {
-    fetch(`/api/l/${leilaoId}/recap/history`)
-      .then((res) => res.json())
-      .then((data) => setHistory(data.history || []))
-      .catch(() => setError(true))
+    load().catch(() => setError(true))
   }, [leilaoId])
+
+  const onRefresh = () => {
+    setRefreshing(true)
+    load().catch(() => setError(true)).finally(() => setRefreshing(false))
+  }
 
   if (error) return <p className="empty-state">Não deu pra carregar o histórico agora.</p>
   if (!history) return <p className="hub-modal-loading">Carregando…</p>
 
-  if (!history.length) {
-    return (
-      <>
-        <div className="hub-header">
-          <p className="hub-eyebrow">JogodaVez</p>
-          <h1 className="hub-title">Histórico de leilões</h1>
-        </div>
-        <p className="empty-state">Nenhum leilão encerrado ainda.</p>
-      </>
-    )
+  const counts = {
+    todos: history.length,
+    jogos: history.filter((h) => mediaLabel(h.mode) === 'jogo').length,
+    filmes: history.filter((h) => mediaLabel(h.mode) === 'filme').length,
   }
+  const filtered = filter === 'todos' ? history : history.filter((h) => mediaLabel(h.mode) === (filter === 'jogos' ? 'jogo' : 'filme'))
 
-  const totalAllTime = history.reduce((sum, h) => sum + (h.totalRaised || 0), 0)
-  const avgPerRound = totalAllTime / history.length
-  const bestRound = history.reduce((best, h) => (!best || (h.totalRaised || 0) > (best.totalRaised || 0) ? h : best), null)
+  const totalAllTime = filtered.reduce((sum, h) => sum + (h.totalRaised || 0), 0)
+  const avgPerRound = filtered.length ? totalAllTime / filtered.length : 0
+  const bestRound = filtered.reduce((best, h) => (!best || (h.totalRaised || 0) > (best.totalRaised || 0) ? h : best), null)
 
   const genreTotals = new Map()
-  history.forEach((h) => {
+  filtered.forEach((h) => {
     (h.genreBreakdown || []).forEach(({ genre, total }) => {
       genreTotals.set(genre, (genreTotals.get(genre) || 0) + total)
     })
   })
   const genres = [...genreTotals.entries()].map(([genre, total]) => ({ genre, total })).sort((a, b) => b.total - a.total)
-  const mediaWord = mediaLabel(history[0].mode)
+  const mediaWord = mediaLabel((filtered[0] || history[0]).mode)
 
   return (
-    <>
-      <div className="hub-header">
-        <p className="hub-eyebrow">JogodaVez</p>
-        <h1 className="hub-title">Histórico de leilões</h1>
-        <p className="hub-lede">Todos os seus rounds encerrados, do mais recente pro mais antigo -- não é uma disputa com outros streamers.</p>
-      </div>
-      <div className="hist-layout">
-        <aside className="hist-sidebar">
-          <SummaryCard totalAllTime={totalAllTime} roundCount={history.length} avgPerRound={avgPerRound} bestRound={bestRound} />
-          <GenreWidget genres={genres} mediaWord={mediaWord} />
-        </aside>
-        <div className="hist-list">
-          {history.map((round, i) => <RoundRow key={i} round={round} mediaWord={mediaLabel(round.mode)} />)}
+    <div className="hist-page">
+      <ProfileBanner profile={profile} onRefresh={onRefresh} refreshing={refreshing} />
+      <FilterTabs filter={filter} setFilter={setFilter} counts={counts} />
+
+      {filtered.length === 0 ? (
+        <p className="empty-state">Nenhum round encerrado nessa categoria ainda.</p>
+      ) : (
+        <div className="hist-layout">
+          <aside className="hist-sidebar">
+            <SummaryCard totalAllTime={totalAllTime} roundCount={filtered.length} avgPerRound={avgPerRound} bestRound={bestRound} />
+            <GenreWidget genres={genres} mediaWord={mediaWord} />
+          </aside>
+          <div className="hist-list">
+            {filtered.map((round, i) => <RoundRow key={i} round={round} mediaWord={mediaLabel(round.mode)} />)}
+          </div>
         </div>
-      </div>
-    </>
+      )}
+    </div>
   )
 }

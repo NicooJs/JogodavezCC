@@ -209,22 +209,39 @@ server -- só não é mais usada pelo hub, o board (`RankingModal.jsx`,
 que Configurações -- terceiro *entry* do Vite, mesmo mecanismo de
 fetch-and-inject em `painel.js` (`loadStandaloneEntry()`, fatorado depois
 que o Histórico virou o segundo consumidor do mesmo truque). Visual
-inspirado no histórico de partidas do OP.GG (estrutura, não a paleta):
-cada round vira uma linha com data relativa, duração, jogo vencedor em
-destaque, "roster" dos outros jogos que competeram naquele round e os
-top doadores -- tudo já vinha em `buildRecap()` (`server.js`), não precisou
-de rota nova. Sidebar tem um card de resumo geral (total histórico, média
-por round, melhor round) e um widget de **"estilo de jogos"** (gênero,
-somando valor arrecadado por gênero em todos os rounds -- métrica
-escolhida foi valor arrecadado, não "quantas vezes apareceu"). Gênero é
-capturado de graça na mesma busca que já resolve a capa do jogo
-(`getCachedGenre()` em `src/igdbApi.js`/`src/movieImages.js`, populado como
-efeito colateral de `fetchGameImage()`, sem chamada extra à API) e salvo
-por jogo via `store.setGameGenre()` -- jogo sem gênero resolvido cai em
-"Outros" no agregado (`buildRecap`'s `genreBreakdown`, soma por TODOS os
-jogos do round, não só os classificados em `topGames`). Rounds arquivados
-**antes** dessa mudança não têm `genreBreakdown` (não migra
-retroativamente, mesmo padrão já usado pra troca de nome de tema).
+inspirado no histórico de partidas do OP.GG: cada round vira uma linha
+com data relativa, duração, jogo vencedor em destaque, "roster" dos
+outros jogos que competeram naquele round e os top doadores -- tudo já
+vinha em `buildRecap()` (`server.js`), não precisou de rota nova. Sidebar
+tem um card de resumo geral (total histórico, média por round, melhor
+round) e um widget de **"estilo de jogos"** (gênero, somando valor
+arrecadado por gênero em todos os rounds -- métrica escolhida foi valor
+arrecadado, não "quantas vezes apareceu"). Gênero é capturado de graça na
+mesma busca que já resolve a capa do jogo (`getCachedGenre()` em
+`src/igdbApi.js`/`src/movieImages.js`, populado como efeito colateral de
+`fetchGameImage()`, sem chamada extra à API) e salvo por jogo via
+`store.setGameGenre()` -- jogo sem gênero resolvido cai em "Outros" no
+agregado (`buildRecap`'s `genreBreakdown`, soma por TODOS os jogos do
+round, não só os classificados em `topGames`). Rounds arquivados **antes**
+dessa mudança não têm `genreBreakdown` (não migra retroativamente, mesmo
+padrão já usado pra troca de nome de tema).
+
+**Exceção deliberada de paleta (2026-08-17)**: diferente do resto do
+site, o Histórico copia a cor vermelha da referência OP.GG de propósito
+(`--hist-accent`, escopado dentro de `.hist-page` em `historico.css`,
+não vaza pro resto do hub) -- autorizado explicitamente pelo cliente,
+mesma categoria de exceção que o roxo do hub (`--hub-accent`). O
+vermelho é só identidade visual da seção, não representa vitória/derrota
+-- um round de leilão não tem isso pro streamer, diferente de uma
+partida de LoL. Banner de perfil no topo (`ProfileBanner`, mesmo
+`GET /api/perfil` que o Perfil usa: avatar, nome, "streamer desde",
+botão "Atualizar" que reconsulta `/api/perfil` + `/recap/history`) e abas
+de filtro por modalidade (Todos/Jogos/Filmes, filtra `round.mode`) ficam
+sempre visíveis mesmo com a lista vazia. Filtrar recalcula os widgets da
+sidebar também (resumo geral e estilo de jogos são sobre os rounds
+FILTRADOS, não o total geral) -- não tem filtro de Reacts ainda, esse
+sistema não arquiva um histórico de rounds hoje (escopo maior, decisão
+consciente de deixar de fora por enquanto).
 
 **Configurações NÃO é iframe do board** (mudou 2026-08-15 a pedido
 explícito do cliente: "não quero que abra o leilão, quero que o hub seja
