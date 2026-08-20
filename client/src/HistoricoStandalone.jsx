@@ -60,7 +60,7 @@ function ProfileBanner({ profile, onRefresh, refreshing, filter, setFilter, coun
   // style.css (.hist-banner-bg) já cobre sozinho
   const bgStyle = profile?.channelBannerUrl
     ? {
-        backgroundImage: `linear-gradient(90deg, rgba(10,5,7,0.97) 0%, rgba(10,5,7,0.8) 30%, rgba(10,5,7,0.25) 68%, rgba(10,5,7,0.05) 100%), url(${profile.channelBannerUrl})`,
+        backgroundImage: `linear-gradient(90deg, rgba(10,5,7,0.95) 0%, rgba(10,5,7,0.65) 26%, rgba(10,5,7,0.1) 58%, rgba(10,5,7,0) 78%), url(${profile.channelBannerUrl})`,
       }
     : undefined
 
@@ -152,9 +152,9 @@ function RoundRow({ round, mediaWord }) {
   return (
     <article className={`hist-round${round.openRound ? ' is-open' : ''}`}>
       <div className="hist-round-when">
+        <span className="hist-round-status">{round.openRound ? 'Em andamento' : 'Encerrado'}</span>
         <span className="hist-round-date">{relativeDate(round.archivedAt)}</span>
         {round.durationMs ? <span className="hist-round-duration">{formatDuration(round.durationMs)}</span> : null}
-        {round.openRound ? <span className="hist-round-tag">em andamento</span> : null}
       </div>
 
       <div className="hist-round-body">
@@ -175,6 +175,17 @@ function RoundRow({ round, mediaWord }) {
           <p className="hist-round-empty">Nenhum {mediaWord} recebeu apoio nesse round.</p>
         )}
 
+        <div className="hist-round-metrics">
+          <div className="hist-round-metric">
+            <span className="hist-round-metric-value">{round.totalGames}</span>
+            <span className="hist-round-metric-label">{mediaWord}{round.totalGames === 1 ? '' : 's'}</span>
+          </div>
+          <div className="hist-round-metric">
+            <span className="hist-round-metric-value">{round.totalDonors}</span>
+            <span className="hist-round-metric-label">apoio{round.totalDonors === 1 ? '' : 's'}</span>
+          </div>
+        </div>
+
         {rest.length ? (
           <div className="hist-round-roster">
             {rest.map((g) => (
@@ -193,9 +204,6 @@ function RoundRow({ round, mediaWord }) {
       <div className="hist-round-stats">
         <span className={`hist-round-total${round.totalRaised == null ? ' is-hidden' : ''}`}>
           {round.totalRaised != null ? formatBRL(round.totalRaised) : 'oculto'}
-        </span>
-        <span className="hist-round-meta">
-          {round.totalGames} {mediaWord}{round.totalGames === 1 ? '' : 's'} · {round.totalDonors} apoiador{round.totalDonors === 1 ? '' : 'es'}
         </span>
         {topDonors.length ? (
           <div className="hist-round-donors">
