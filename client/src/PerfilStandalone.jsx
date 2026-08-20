@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { DialogsProvider, useDialogs } from './hooks/useDialogs.jsx'
+import { formatBRL } from './lib/format.js'
 import VisaoGeralTab from './components/perfil/VisaoGeralTab.jsx'
 
 const TABS = [
@@ -79,6 +80,10 @@ function PerfilContent({ data, tab, setTab }) {
               {data.twitchLogin ? `@${data.twitchLogin}` : ''}
               {since ? <span className="perfil-since">streamer desde {since}</span> : null}
             </p>
+          </div>
+          <div className="perfil-lifetime">
+            <span className="perfil-lifetime-value">{formatBRL((data.lifetimeEarnedCents || 0) / 100)}</span>
+            <span className="perfil-lifetime-label">arrecadado no total</span>
           </div>
         </div>
 

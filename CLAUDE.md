@@ -424,6 +424,22 @@ já flui dentro de `.hub-main`). Botão "Sair da conta" usa `confirmDialog`
 de verdade (`useDialogs.jsx`), não `confirm()` nativo, diferente do avatar
 da sidebar do hub (ver seção Hub acima, que É uma exceção deliberada).
 
+**Reformulação visual pediu pra ficar em cima da paleta atual, não uma
+nova** (2026-08-17 -- diferente do Histórico, que teve exceção de cor
+autorizada; aqui o cliente rejeitou uma proposta de paleta nova e pediu
+"faça em cima do nosso visual atual"). O que mudou foi só refino, sem
+trocar cor nenhuma: `lifetimeEarnedCents` (já existia na resposta de
+`/api/perfil`, nunca tinha sido mostrado no mount do hub) virou um número
+de destaque na própria identidade da sidebar (`.perfil-lifetime`), a
+sidebar ganhou o mesmo glow-atrás-do-painel que `.host-panel`/`.timer-panel`
+do board já usam (`.perfil-sidebar::before`, `var(--accent-glow)` --
+como o hub não seta `data-theme`, isso sempre resolve pro tema "cinza"
+default, não pela cor do leilão do streamer, e tá tudo bem assim) e os
+`.perfil-stat-card` ganharam cantos levemente assimétricos por posição
+(`:nth-of-type(2n+1/2n+2)`), mesma sensação "cortado à mão" do
+`.lot-card` do board. Esse é o padrão de polish a repetir nas próximas
+abas: melhorar dentro da linguagem visual já existente, não reinventar.
+
 O link do widget OBS **precisa** referenciar um leilão específico (a URL
 carrega o `leilaoId`, isso é estrutural) -- o Perfil mostra o leilão mais
 recente do streamer como representante (`registry.listLeiloesByOwner`

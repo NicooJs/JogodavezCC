@@ -48,6 +48,7 @@
   gap: 4px;
   position: sticky;
   top: 24px;
+  overflow: hidden;
   background-color: var(--surface);
   background-image: var(--grain);
   background-blend-mode: overlay;
@@ -56,7 +57,27 @@
   padding: 26px 14px 14px;
 }
 
+/* mesmo truque do host-panel do board (glow atrás do painel, z-index:0
+   proposital -- fica embaixo do conteúdo real só porque ::before sempre
+   pinta antes dos filhos de verdade, ver .perfil-sidebar-identity com
+   position:relative logo abaixo) */
+.perfil-sidebar::before {
+  content: "";
+  position: absolute;
+  top: -30px;
+  left: 50%;
+  width: 220px;
+  height: 220px;
+  transform: translateX(-50%);
+  background: radial-gradient(circle, var(--accent-glow), transparent 70%);
+  filter: blur(26px);
+  opacity: 0.6;
+  z-index: 0;
+  pointer-events: none;
+}
+
 .perfil-sidebar-identity {
+  position: relative;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -65,6 +86,28 @@
   padding: 0 10px 22px;
   margin-bottom: 8px;
   border-bottom: 1px solid var(--border-soft);
+}
+
+.perfil-lifetime {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1px;
+  margin-top: 2px;
+}
+.perfil-lifetime-label {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.perfil-lifetime-value {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  font-size: 24px;
+  font-weight: 700;
+  color: var(--accent-text);
 }
 
 .perfil-sidebar-divider {
@@ -237,6 +280,11 @@
   border-radius: 13px;
   padding: 18px 20px;
 }
+/* cantos levemente assimétricos, mesma sensação "cortado à mão" do
+   .lot-card/.game-shelf-card do board -- alternando por posição pra não
+   parecer template repetido */
+.perfil-stats-row .perfil-stat-card:nth-of-type(2n+1) { border-radius: 14px 10px 14px 11px; }
+.perfil-stats-row .perfil-stat-card:nth-of-type(2n+2) { border-radius: 10px 13px 10px 14px; }
 
 .perfil-stat-icon {
   display: flex;
