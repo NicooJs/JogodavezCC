@@ -191,7 +191,9 @@ function RoundRow({ round, mediaWord }) {
       </div>
 
       <div className="hist-round-stats">
-        <span className="hist-round-total">{round.totalRaised != null ? formatBRL(round.totalRaised) : 'oculto'}</span>
+        <span className={`hist-round-total${round.totalRaised == null ? ' is-hidden' : ''}`}>
+          {round.totalRaised != null ? formatBRL(round.totalRaised) : 'oculto'}
+        </span>
         <span className="hist-round-meta">
           {round.totalGames} {mediaWord}{round.totalGames === 1 ? '' : 's'} · {round.totalDonors} apoiador{round.totalDonors === 1 ? '' : 'es'}
         </span>

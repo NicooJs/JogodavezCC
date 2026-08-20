@@ -300,6 +300,7 @@
   text-align: right;
 }
 .hist-round-total { font-family: var(--font-mono); font-size: 21px; font-weight: 800; color: var(--text); }
+.hist-round-total.is-hidden { font-size: 13px; font-weight: 600; font-style: italic; color: var(--muted); }
 .hist-round-meta { font-size: 11.5px; color: var(--muted); }
 .hist-round-donors { display: flex; align-items: center; gap: 7px; }
 .hist-round-donor-avatars { display: flex; }
