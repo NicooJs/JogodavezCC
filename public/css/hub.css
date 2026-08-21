@@ -51,10 +51,19 @@ body.hub-body::before { display: none; }
   padding: 18px 0 14px;
 }
 
-/* proporções do design antigo do hub (76px/48px), maiores que o board
-   (68px/46px) -- mesmo NavRail dos dois, só o tamanho difere por contexto */
-.hub-sidebar .nav-rail-brand { width: 40px; height: 40px; margin: 0 auto 18px; }
-.hub-sidebar .nav-rail-brand img { border-radius: 8px; }
+/* proporções do design antigo do hub (76px/48px, gap 4px), maiores que o
+   board (68px/46px, gap 6px) -- mesmo NavRail dos dois, só o tamanho
+   difere por contexto */
+.hub-sidebar .nav-rail { gap: 4px; }
+.hub-sidebar .nav-rail-brand {
+  width: 40px;
+  height: 40px;
+  margin: 0 auto 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.hub-sidebar .nav-rail-brand img { width: 32px; height: 32px; border-radius: 8px; }
 .hub-sidebar .nav-rail-item { width: 48px; height: 48px; border-radius: 12px; }
 .hub-sidebar .nav-rail-item:hover { background: var(--hub-surface); color: var(--hub-text); }
 .hub-sidebar .nav-rail-item.active { background: var(--hub-accent); color: var(--hub-accent-ink); }
@@ -99,9 +108,12 @@ body.hub-body::before { display: none; }
    (.page/.board em style.css, grid de 3 colunas) -- mesmo mecanismo de
    :has() que o Histórico já usa (historico.css), reage ao [hidden] que
    applyView() já alterna, sem JS extra */
+/* sem padding aqui de propósito -- o board já tem o próprio respiro
+   interno (.page { padding: 18px 24px 14px }), duplicar just deixava o
+   espaçamento diferente do /l/:id direto */
 .hub-main:has(> #view-leilao:not([hidden])) {
   max-width: 1850px;
-  padding: 24px 32px 40px;
+  padding: 0;
 }
 
 .hub-header { margin-bottom: 34px; }

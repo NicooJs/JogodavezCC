@@ -150,6 +150,14 @@ body::before {
 
 .page { position: relative; z-index: 1; }
 
+/* board embutido no hub (App.jsx `embedded`) -- .board-bg/.board-cover-bg
+   são position:fixed pensados pra cobrir a janela inteira; aqui precisam
+   ficar contidos só na área do board dentro do hub, não vazar por cima
+   do resto da tela. overflow:hidden corta qualquer sobra nas bordas. */
+.page-embedded { overflow: hidden; }
+.page-embedded .board-bg,
+.page-embedded .board-cover-bg { position: absolute; }
+
 ::selection { background: var(--accent-bg); color: var(--accent-text); }
 
 :focus-visible {
@@ -202,6 +210,16 @@ body.board-body.has-bg-image {
   background-attachment: fixed;
 }
 
+/* board embutido: fundo customizado do leilão fica contido na própria
+   área do board (.page-embedded), não no body inteiro do hub (esse
+   continua com o fundo do hub por baixo do resto da tela -- por isso
+   sem background-attachment:fixed aqui, que seria relativo à janela) */
+body.hub-body.has-bg-image .page-embedded {
+  background-image: linear-gradient(rgba(8, 8, 14, 0.72), rgba(8, 8, 14, 0.72)), var(--bg-image);
+  background-size: cover;
+  background-position: center;
+}
+
 .board-bg {
   position: fixed;
   inset: 0;
@@ -209,7 +227,7 @@ body.board-body.has-bg-image {
   overflow: hidden;
   pointer-events: none;
 }
-body.board-body.has-bg-image .board-bg { display: none; }
+body.board-body.has-bg-image .board-bg, body.hub-body.has-bg-image .board-bg { display: none; }
 
 .board-bg-shard {
   position: absolute;
@@ -238,9 +256,9 @@ body.board-body.has-bg-image .board-bg { display: none; }
   opacity: 0;
   transition: opacity 1.4s ease;
 }
-body.board-body.has-covers .board-cover-bg { opacity: 1; }
-body.board-body.has-covers .board-bg { display: none; }
-body.board-body.has-bg-image .board-cover-bg { display: none; }
+body.board-body.has-covers .board-cover-bg, body.hub-body.has-covers .board-cover-bg { opacity: 1; }
+body.board-body.has-covers .board-bg, body.hub-body.has-covers .board-bg { display: none; }
+body.board-body.has-bg-image .board-cover-bg, body.hub-body.has-bg-image .board-cover-bg { display: none; }
 
 .board-cover-bg-grid {
   position: absolute;

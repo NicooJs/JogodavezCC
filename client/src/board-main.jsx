@@ -20,6 +20,14 @@ function unmount() {
   if (!root) return
   root.unmount()
   root = null
+  // limpa os efeitos que o board aplica no body/html compartilhado do hub
+  // (fundo de capas, imagem de fundo custom, tema) -- na página /l/:id
+  // isso nunca precisou de limpeza porque sair sempre recarregava a
+  // página inteira; aqui só desmonta, então o que não for revertido fica
+  // pendurado até a próxima vez que alguém entrar na view Leilão
+  document.body.classList.remove('has-covers', 'has-bg-image')
+  document.body.style.removeProperty('--bg-image')
+  delete document.documentElement.dataset.theme
 }
 
 window.JogodaVezBoardPanel = { mount, unmount }

@@ -106,10 +106,6 @@ function BoardContent({ leilaoId, embedded }) {
   }, [leaderboard?.theme])
 
   useEffect(() => {
-    // fundo customizado é desenhado em .board-bg/.board-cover-bg, que não
-    // renderizam quando embutido (ver mais abaixo) -- setar isso no body
-    // compartilhado do hub não teria efeito visual útil, só risco de vazar
-    if (embedded) return
     if (leaderboard?.backgroundImageUrl) {
       document.body.style.setProperty('--bg-image', `url("${leaderboard.backgroundImageUrl}")`)
       document.body.classList.add('has-bg-image')
@@ -117,7 +113,7 @@ function BoardContent({ leilaoId, embedded }) {
       document.body.classList.remove('has-bg-image')
       document.body.style.removeProperty('--bg-image')
     }
-  }, [leaderboard?.backgroundImageUrl, embedded])
+  }, [leaderboard?.backgroundImageUrl])
 
   const switchSystem = (system) => {
     presenterFetch(leilaoId, '/admin/active-system', {
@@ -157,19 +153,15 @@ function BoardContent({ leilaoId, embedded }) {
   const profileHref = presenter.active && presenter.isOwner ? '/painel/perfil' : null
 
   return (
-    <div className="page">
-      {embedded ? null : (
-        <>
-          <BoardCoverBg leilaoId={leilaoId} mode={leaderboard.mode} activeSystem={leaderboard.activeSystem} />
-          <div className="board-bg" aria-hidden="true" ref={boardBgRef}>
-            <span className="board-bg-shard board-bg-shard-1" />
-            <span className="board-bg-shard board-bg-shard-2" />
-            <span className="board-bg-shard board-bg-shard-3" />
-            <span className="board-bg-shard board-bg-shard-4" />
-            <span className="board-bg-shard board-bg-shard-5" />
-          </div>
-        </>
-      )}
+    <div className={embedded ? 'page page-embedded' : 'page'}>
+      <BoardCoverBg leilaoId={leilaoId} mode={leaderboard.mode} activeSystem={leaderboard.activeSystem} />
+      <div className="board-bg" aria-hidden="true" ref={boardBgRef}>
+        <span className="board-bg-shard board-bg-shard-1" />
+        <span className="board-bg-shard board-bg-shard-2" />
+        <span className="board-bg-shard board-bg-shard-3" />
+        <span className="board-bg-shard board-bg-shard-4" />
+        <span className="board-bg-shard board-bg-shard-5" />
+      </div>
 
       <Topbar
         title={leaderboard.title}
