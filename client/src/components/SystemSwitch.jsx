@@ -17,14 +17,6 @@ export default function SystemSwitch({
   // equivalente no hub (é por leilão, não histórico entre rounds).
   const items = [
     {
-      key: 'voltar',
-      title: 'Voltar pro painel',
-      href: '/painel',
-      icon: (
-        <svg className="icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M12 4.5L6 10l6 5.5" /></svg>
-      ),
-    },
-    {
       key: 'settings',
       title: 'Configurações',
       href: '/painel/config',
@@ -63,6 +55,12 @@ export default function SystemSwitch({
         }}
       >
         <nav className="nav-rail-nav">
+          <a className="nav-rail-item" href="/painel" title="Voltar pro painel" aria-label="Voltar pro painel">
+            <svg className="icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M12 4.5L6 10l6 5.5" /></svg>
+          </a>
+        </nav>
+        <span className="nav-rail-sep" aria-hidden="true" />
+        <nav className="nav-rail-nav">
           <button
             className={`nav-rail-item${isReacts ? '' : ' active'}`}
             type="button"
@@ -72,7 +70,7 @@ export default function SystemSwitch({
             aria-pressed={String(!isReacts)}
             onClick={() => onSwitch('leilao')}
           >
-            <svg className="icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><rect x="2.5" y="4" width="6" height="6" rx="1" /><rect x="11.5" y="4" width="6" height="6" rx="1" /><rect x="2.5" y="12" width="6" height="4" rx="1" /><rect x="11.5" y="12" width="6" height="4" rx="1" /></svg>
+            <svg className="icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M4 12.5l4.2-4.2" /><rect x="8.4" y="4.9" width="6" height="3" rx="0.8" transform="rotate(45 11.4 6.4)" /><path d="M11 9l4 4" /><path d="M13.2 6.8l3.3 3.3" /><path d="M3 17h8.5" /></svg>
           </button>
           <button
             className={`nav-rail-item${isReacts ? ' active' : ''}`}
