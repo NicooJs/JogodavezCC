@@ -56,7 +56,7 @@ export default function SystemSwitch({
       >
         <nav className="nav-rail-nav">
           <a className="nav-rail-item" href="/painel" title="Voltar pro painel" aria-label="Voltar pro painel">
-            <svg className="icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M12 4.5L6 10l6 5.5" /></svg>
+            <svg className="icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><rect x="2.5" y="2.5" width="6.5" height="6.5" rx="1.3" /><rect x="11" y="2.5" width="6.5" height="6.5" rx="1.3" /><rect x="2.5" y="11" width="6.5" height="6.5" rx="1.3" /><rect x="11" y="11" width="6.5" height="6.5" rx="1.3" /></svg>
           </a>
         </nav>
         <span className="nav-rail-sep" aria-hidden="true" />
@@ -70,7 +70,7 @@ export default function SystemSwitch({
             aria-pressed={String(!isReacts)}
             onClick={() => onSwitch('leilao')}
           >
-            <svg className="icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M4 12.5l4.2-4.2" /><rect x="8.4" y="4.9" width="6" height="3" rx="0.8" transform="rotate(45 11.4 6.4)" /><path d="M11 9l4 4" /><path d="M13.2 6.8l3.3 3.3" /><path d="M3 17h8.5" /></svg>
+            <svg className="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M2.5 6.5l4-4M5.5 9.5l4-4" /><path d="M4 8l1.5 1.5" /><path d="M8.5 6.5l7.5 7.5" /><path d="M14 20.5h6" /><path d="M17 20.5v-4" /></svg>
           </button>
           <button
             className={`nav-rail-item${isReacts ? ' active' : ''}`}
