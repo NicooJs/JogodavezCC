@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { formatBRL, initial } from './lib/format.js'
 import { mediaLabel } from './lib/media.js'
+import LoadingSplash from './components/LoadingSplash.jsx'
 
 function relativeDate(iso) {
   if (!iso) return '—'
@@ -251,7 +252,7 @@ export default function HistoricoStandalone({ leilaoId }) {
   }
 
   if (error) return <p className="empty-state">Não deu pra carregar o histórico agora.</p>
-  if (!history) return <p className="hub-modal-loading">Carregando…</p>
+  if (!history) return <LoadingSplash />
 
   const counts = {
     todos: history.length,

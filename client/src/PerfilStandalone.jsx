@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { DialogsProvider, useDialogs } from './hooks/useDialogs.jsx'
 import { formatBRL } from './lib/format.js'
+import LoadingSplash from './components/LoadingSplash.jsx'
 import VisaoGeralTab from './components/perfil/VisaoGeralTab.jsx'
 import FinanceiroTab from './components/perfil/FinanceiroTab.jsx'
 import WidgetObsTab from './components/perfil/WidgetObsTab.jsx'
@@ -141,7 +142,7 @@ export default function PerfilStandalone() {
   }, [])
 
   if (error) return <p className="empty-state">Não deu pra carregar seu perfil agora.</p>
-  if (!data) return <p className="hub-modal-loading">Carregando…</p>
+  if (!data) return <LoadingSplash />
 
   return (
     <DialogsProvider leilaoId={null}>

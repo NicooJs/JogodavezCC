@@ -41,6 +41,7 @@ export default defineConfig(({ command }) => ({
       '/socket.io': { target: 'http://localhost:3000', ws: true },
       '/uploads': 'http://localhost:3000',
       '/css': 'http://localhost:3000',
+      '/img': 'http://localhost:3000',
       '/favicon.png': 'http://localhost:3000',
       '/favicon-32.png': 'http://localhost:3000',
       '/favicon-180.png': 'http://localhost:3000',

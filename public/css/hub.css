@@ -251,8 +251,6 @@ body.hub-body::before { display: none; }
 .hub-main[hidden] { display: none; }
 .hub-shell[hidden] { display: none; }
 
-.hub-modal-loading { color: var(--hub-muted); font-size: 13px; }
-
 .hub-drawer-hint { font-size: 12.5px; line-height: 1.6; color: var(--hub-muted); margin: 0 0 16px; }
 
 .hub-modal-list {

@@ -2348,6 +2348,40 @@ body.presenter-mode .page-embedded {
   padding: 10px 0;
 }
 
+/* Splash de carregamento genérico -- reusado em qualquer tela que precise
+   de um estado de loading maior que um texto solto (views do hub, doar.html).
+   Não é pra loading pequeno dentro de lista já carregada (ex: DoacoesTab),
+   isso continua um texto simples. */
+.loading-splash {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  padding: 56px 20px;
+  text-align: center;
+}
+.loading-splash-img {
+  width: 132px;
+  height: auto;
+  animation: loading-splash-float 2.6s ease-in-out infinite;
+}
+.loading-splash-text {
+  font-family: var(--font-mono);
+  font-size: 12.5px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+@keyframes loading-splash-float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-9px); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .loading-splash-img { animation: none; }
+}
+
 .donor-row {
   position: relative;
   display: flex;
