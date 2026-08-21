@@ -6,17 +6,28 @@ export default function SystemSwitch({
   visible,
   profileHref,
   hostAvatar,
-  onOpenSettings,
   onOpenRanking,
-  onOpenHistory,
 }) {
   const isReacts = activeSystem === 'reacts'
 
+  // Configurações e Histórico saíram de modal local pro mesmo lugar que o
+  // hub usa (/painel/config, /painel/historico) -- sidebar precisa ser a
+  // mesma experiência nos dois contextos, não duas versões diferentes do
+  // mesmo item. Ranking fica de fora dessa regra de propósito: não existe
+  // equivalente no hub (é por leilão, não histórico entre rounds).
   const items = [
+    {
+      key: 'voltar',
+      title: 'Voltar pro painel',
+      href: '/painel',
+      icon: (
+        <svg className="icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M12 4.5L6 10l6 5.5" /></svg>
+      ),
+    },
     {
       key: 'settings',
       title: 'Configurações',
-      onClick: onOpenSettings,
+      href: '/painel/config',
       icon: (
         <svg className="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z" /><circle cx="12" cy="12" r="3" /></svg>
       ),
@@ -32,7 +43,7 @@ export default function SystemSwitch({
     {
       key: 'historico',
       title: 'Histórico de leilões',
-      onClick: onOpenHistory,
+      href: '/painel/historico',
       icon: (
         <svg className="icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M10 5.5V10l3 2" /><circle cx="10" cy="10" r="7" /></svg>
       ),
@@ -42,7 +53,7 @@ export default function SystemSwitch({
   return (
     <div className="system-switch" id="system-switch" hidden={!visible}>
       <NavRail
-        brand={{ href: '/painel', title: 'Início', iconSrc: '/favicon-32.png' }}
+        brand={{ title: 'JogodaVez', iconSrc: '/favicon-32.png' }}
         items={items}
         footer={{
           title: 'Ver perfil',
