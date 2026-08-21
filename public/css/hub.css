@@ -88,6 +88,15 @@ body.hub-body::before { display: none; }
    conteúdo aqui dentro -- nunca abre modal/drawer por cima do resto */
 .hub-view[hidden] { display: none; }
 
+/* board embutido precisa da mesma largura de quando é a página inteira
+   (.page/.board em style.css, grid de 3 colunas) -- mesmo mecanismo de
+   :has() que o Histórico já usa (historico.css), reage ao [hidden] que
+   applyView() já alterna, sem JS extra */
+.hub-main:has(> #view-leilao:not([hidden])) {
+  max-width: 1850px;
+  padding: 24px 32px 40px;
+}
+
 .hub-header { margin-bottom: 34px; }
 
 .hub-eyebrow {

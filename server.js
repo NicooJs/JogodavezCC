@@ -226,7 +226,7 @@ const SESSION_MAX_AGE_SECONDS = 30 * 24 * 60 * 60;
 const OAUTH_STATE_MAX_AGE_SECONDS = 600;
 
 // allowlist exata (não regex) pra fechar open-redirect
-const ALLOWED_RETURN_PATHS = new Set(["/", "/painel", "/painel/perfil", "/painel/config", "/painel/historico", "/perfil"]);
+const ALLOWED_RETURN_PATHS = new Set(["/", "/painel", "/painel/leilao", "/painel/perfil", "/painel/config", "/painel/historico", "/perfil"]);
 function safeReturnTo(value) {
   return ALLOWED_RETURN_PATHS.has(value) ? value : "/";
 }
@@ -1280,7 +1280,7 @@ app.get("/api/meus-leiloes", (req, res) => {
 // cada view do hub (Início/Perfil/Configurações/Histórico) tem seu próprio
 // caminho pra sobreviver a um F5 -- todos servem o mesmo painel.html, quem
 // decide qual view mostrar é o próprio painel.js lendo location.pathname
-app.get(["/painel", "/painel/perfil", "/painel/config", "/painel/historico"], (req, res) => {
+app.get(["/painel", "/painel/leilao", "/painel/perfil", "/painel/config", "/painel/historico"], (req, res) => {
   res.sendFile(path.join(__dirname, "public", "painel.html"));
 });
 

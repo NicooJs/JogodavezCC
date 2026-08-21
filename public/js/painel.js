@@ -8,6 +8,7 @@ const gridEl = document.getElementById("hub-service-grid");
 // a sidebar, igual um app de configurações comum
 const views = {
   home: document.getElementById("view-home"),
+  leilao: document.getElementById("view-leilao"),
   perfil: document.getElementById("view-perfil"),
   config: document.getElementById("view-config"),
   historico: document.getElementById("view-historico"),
@@ -17,15 +18,18 @@ let activeView = "home";
 // cada view tem seu próprio caminho (rotas espelhadas em server.js, todas
 // servem o mesmo painel.html) pra um F5 manter o streamer na mesma tela
 // em vez de sempre voltar pro Início
-const VIEW_PATHS = { home: "/painel", perfil: "/painel/perfil", config: "/painel/config", historico: "/painel/historico" };
+const VIEW_PATHS = { home: "/painel", leilao: "/painel/leilao", perfil: "/painel/perfil", config: "/painel/config", historico: "/painel/historico" };
 function viewForPath(pathname) {
   return Object.keys(VIEW_PATHS).find((name) => VIEW_PATHS[name] === pathname) || null;
 }
 
 // só troca o DOM + carrega a view, sem mexer no histórico -- usado tanto
-// pela navegação normal (via showView) quanto por popstate (voltar/avançar)
+// pela navegação normal (via showView) quanto por popstate (voltar/avançar).
+// "leilao" é a única view que desmonta de verdade ao sair (ver
+// unmountLeilaoView) -- as outras só ficam hidden e mantêm o estado.
 function applyView(name) {
   if (!views[name]) return;
+  if (activeView === "leilao" && name !== "leilao") unmountLeilaoView();
   activeView = name;
   Object.entries(views).forEach(([key, el]) => { el.hidden = key !== name; });
   mountSidebar();
@@ -39,13 +43,14 @@ function showView(name) {
 }
 
 function loadView(name) {
+  if (name === "leilao") return ensureLeilaoView();
   if (name === "config") return ensureConfigView();
   if (name === "historico") return ensureHistoricoView();
   if (name === "perfil") return ensurePerfilView();
 }
 
-// mesma trava de antes (Config/Histórico exigem leilão) -- agora chamada
-// como callback pelo React da sidebar em vez de listener direto no botão
+// mesma trava de antes (Leilão/Config/Histórico exigem leilão) -- agora
+// chamada como callback pelo React da sidebar em vez de listener direto no botão
 function onSidebarNavigate(view) {
   if (!leilao && view !== "home" && view !== "perfil") {
     alert("Crie seu leilão primeiro pra acessar isso.");
@@ -120,6 +125,35 @@ function loadStandaloneEntry(htmlPath) {
         document.body.appendChild(s);
       });
     });
+}
+
+// Leilão -- diferente das outras 3 views React do hub (montam uma vez,
+// ficam vivas escondidas), essa desmonta de verdade ao sair (ver
+// applyView) pra fechar o socket em vez de deixar rodando sem ninguém
+// olhando. boardPanelLoad só guarda o carregamento do script (isso sim
+// só acontece uma vez); boardMounted controla se a raiz React tá de pé
+// agora.
+const boardRootEl = document.getElementById("board-root");
+let boardPanelLoad = null;
+let boardMounted = false;
+
+async function ensureLeilaoView() {
+  if (boardMounted) return;
+  try {
+    if (!boardPanelLoad) boardPanelLoad = loadStandaloneEntry("/board-app/board.html");
+    await boardPanelLoad;
+    window.JogodaVezBoardPanel.mount("board-root", leilao.id);
+    boardMounted = true;
+  } catch (err) {
+    boardRootEl.innerHTML = `<p class="empty-state">Não deu pra carregar o leilão agora.</p>`;
+  }
+}
+
+function unmountLeilaoView() {
+  if (!boardMounted) return;
+  window.JogodaVezBoardPanel.unmount();
+  boardMounted = false;
+  boardRootEl.innerHTML = "";
 }
 
 const settingsRootEl = document.getElementById("settings-root");
@@ -227,7 +261,7 @@ function renderServices() {
   const reactsHref = leilao ? leilao.url : "/?sistema=reacts";
 
   gridEl.innerHTML = `
-    <a class="hub-service-card" href="${escapeHtml(leilaoHref)}">
+    <a class="hub-service-card" href="${escapeHtml(leilaoHref)}" id="hub-card-leilao">
       <div class="hub-service-art tone-leilao">
         <span class="hub-service-art-icon">${ICON_LEILAO}</span>
       </div>
@@ -252,6 +286,13 @@ function renderServices() {
   `;
 
   if (leilao) {
+    // com leilão já criado, os cards abrem embutido no hub em vez de sair
+    // pra /l/:id -- href continua apontando pra lá só como fallback (ex:
+    // ctrl+clique abre numa aba nova de verdade, útil pro OBS/segunda tela)
+    document.getElementById("hub-card-leilao").addEventListener("click", (e) => {
+      e.preventDefault();
+      onSidebarNavigate("leilao");
+    });
     document.getElementById("hub-card-reacts").addEventListener("click", (e) => {
       e.preventDefault();
       goToReacts();
@@ -270,7 +311,7 @@ async function goToReacts() {
   } catch (err) {
     // segue pro board mesmo assim -- o streamer troca o modo por lá se essa chamada falhar
   }
-  location.href = leilao.url;
+  onSidebarNavigate("leilao");
 }
 
 loadSession();

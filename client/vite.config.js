@@ -31,6 +31,7 @@ export default defineConfig(({ command }) => ({
         historico: path.resolve(import.meta.dirname, 'historico.html'),
         perfil: path.resolve(import.meta.dirname, 'perfil.html'),
         sidebar: path.resolve(import.meta.dirname, 'sidebar.html'),
+        board: path.resolve(import.meta.dirname, 'board.html'),
       },
     },
   },

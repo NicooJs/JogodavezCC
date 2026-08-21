@@ -4,7 +4,6 @@ import { useDonationHistory } from './hooks/useDonationHistory.js'
 import { usePresenterMode } from './hooks/usePresenterMode.js'
 import { useRecap } from './hooks/useRecap.js'
 import { DialogsProvider, useDialogs } from './hooks/useDialogs.jsx'
-import { getLeilaoIdFromPath } from './lib/leilaoId.js'
 import { presenterFetch } from './lib/api.js'
 import Topbar from './components/Topbar.jsx'
 import TotalRaisedChip from './components/TotalRaisedChip.jsx'
@@ -31,9 +30,15 @@ import { formatBRL } from './lib/format.js'
 import { mediaLabel } from './lib/media.js'
 import { animateBoardBg } from './lib/effects.js'
 
-const leilaoId = getLeilaoIdFromPath(window.location.pathname)
-
-function BoardContent() {
+// `leilaoId` chega por prop (não mais lido de window.location.pathname aqui
+// dentro) pra esse componente poder servir tanto o /l/:id de sempre
+// (client/src/main.jsx computa da URL) quanto uma instância embutida
+// dentro do hub (client/src/board-main.jsx, que recebe o id de
+// painel.js). `embedded` desliga o que só faz sentido numa página cheia:
+// fundo/capas fixos no viewport inteiro, a sidebar própria do board (a
+// do hub já cobre isso), drag-and-drop de merge, canvas do recap/confete/
+// swirl -- ver plano "board embutido no hub".
+function BoardContent({ leilaoId, embedded }) {
   const { leaderboard, lastEvent, connected } = useLeaderboard(leilaoId)
   const historyItems = useDonationHistory(leilaoId, lastEvent)
   const presenter = usePresenterMode(leilaoId)
@@ -52,8 +57,11 @@ function BoardContent() {
   const { confirmDialog } = useDialogs()
 
   useEffect(() => {
+    // embutido no hub, o body é compartilhado com o resto do painel --
+    // não mexe nele pra não vazar CSS pensado pra página cheia do board
+    if (embedded) return
     document.body.classList.toggle('presenter-mode', presenter.active)
-  }, [presenter.active])
+  }, [presenter.active, embedded])
 
   useEffect(() => {
     if (!presenter.active) return
@@ -79,6 +87,10 @@ function BoardContent() {
   }, [!!leaderboard])
 
   useEffect(() => {
+    // "Vencedor!" (swirl canvas) + recap automático ficam de fora da
+    // versão embutida por enquanto (Fase B do plano religa) -- ver
+    // recap sob demanda continua funcionando (HistoryOverlay -> RecapModal)
+    if (embedded) return
     if (!leaderboard) return
     const wasOpen = wasOpenRef.current
     wasOpenRef.current = leaderboard.open
@@ -87,13 +99,17 @@ function BoardContent() {
       setSoldTrigger({ leaderName: leader ? leader.name : null, id: Date.now() })
       setTimeout(() => recap.showCurrent(), 2400)
     }
-  }, [leaderboard?.open])
+  }, [leaderboard?.open, embedded])
 
   useEffect(() => {
     document.documentElement.dataset.theme = leaderboard?.theme || 'cinza'
   }, [leaderboard?.theme])
 
   useEffect(() => {
+    // fundo customizado é desenhado em .board-bg/.board-cover-bg, que não
+    // renderizam quando embutido (ver mais abaixo) -- setar isso no body
+    // compartilhado do hub não teria efeito visual útil, só risco de vazar
+    if (embedded) return
     if (leaderboard?.backgroundImageUrl) {
       document.body.style.setProperty('--bg-image', `url("${leaderboard.backgroundImageUrl}")`)
       document.body.classList.add('has-bg-image')
@@ -101,7 +117,7 @@ function BoardContent() {
       document.body.classList.remove('has-bg-image')
       document.body.style.removeProperty('--bg-image')
     }
-  }, [leaderboard?.backgroundImageUrl])
+  }, [leaderboard?.backgroundImageUrl, embedded])
 
   const switchSystem = (system) => {
     presenterFetch(leilaoId, '/admin/active-system', {
@@ -142,14 +158,18 @@ function BoardContent() {
 
   return (
     <div className="page">
-      <BoardCoverBg leilaoId={leilaoId} mode={leaderboard.mode} activeSystem={leaderboard.activeSystem} />
-      <div className="board-bg" aria-hidden="true" ref={boardBgRef}>
-        <span className="board-bg-shard board-bg-shard-1" />
-        <span className="board-bg-shard board-bg-shard-2" />
-        <span className="board-bg-shard board-bg-shard-3" />
-        <span className="board-bg-shard board-bg-shard-4" />
-        <span className="board-bg-shard board-bg-shard-5" />
-      </div>
+      {embedded ? null : (
+        <>
+          <BoardCoverBg leilaoId={leilaoId} mode={leaderboard.mode} activeSystem={leaderboard.activeSystem} />
+          <div className="board-bg" aria-hidden="true" ref={boardBgRef}>
+            <span className="board-bg-shard board-bg-shard-1" />
+            <span className="board-bg-shard board-bg-shard-2" />
+            <span className="board-bg-shard board-bg-shard-3" />
+            <span className="board-bg-shard board-bg-shard-4" />
+            <span className="board-bg-shard board-bg-shard-5" />
+          </div>
+        </>
+      )}
 
       <Topbar
         title={leaderboard.title}
@@ -165,6 +185,9 @@ function BoardContent() {
         onModCodeGenerated={setModCode}
         onOpenSettings={() => setSettingsOpen(true)}
         onOpenRanking={() => setRankingOpen(true)}
+        embedded={embedded}
+        activeSystem={leaderboard.activeSystem}
+        onSwitchSystem={switchSystem}
       />
 
       {presenter.active ? (
@@ -178,14 +201,16 @@ function BoardContent() {
       ) : null}
 
       <main className="board">
-        <SystemSwitch
-          activeSystem={leaderboard.activeSystem}
-          onSwitch={switchSystem}
-          visible={presenter.active}
-          profileHref={profileHref}
-          hostAvatar={leaderboard.hostAvatar}
-          onOpenRanking={() => setRankingOpen(true)}
-        />
+        {embedded ? null : (
+          <SystemSwitch
+            activeSystem={leaderboard.activeSystem}
+            onSwitch={switchSystem}
+            visible={presenter.active}
+            profileHref={profileHref}
+            hostAvatar={leaderboard.hostAvatar}
+            onOpenRanking={() => setRankingOpen(true)}
+          />
+        )}
 
         <div className="col col-left">
           {isReacts ? null : (
@@ -207,10 +232,10 @@ function BoardContent() {
             lastEvent={lastEvent}
             presenterActive={presenter.active}
             onLotContextMenu={
-              presenter.active ? (x, y, item) => setContextMenuTarget({ type: 'race', x, y, item }) : undefined
+              presenter.active && !embedded ? (x, y, item) => setContextMenuTarget({ type: 'race', x, y, item }) : undefined
             }
             onEditLot={presenter.active ? setLotModalGame : undefined}
-            onMergeLots={presenter.active ? mergeLots : undefined}
+            onMergeLots={presenter.active && !embedded ? mergeLots : undefined}
           />
         </div>
 
@@ -273,10 +298,10 @@ function BoardContent() {
   )
 }
 
-export default function App() {
+export default function App({ leilaoId, embedded = false }) {
   return (
     <DialogsProvider leilaoId={leilaoId}>
-      <BoardContent />
+      <BoardContent leilaoId={leilaoId} embedded={embedded} />
     </DialogsProvider>
   )
 }

@@ -3,6 +3,9 @@ import NavRail from './components/NavRail.jsx'
 const ICON_HOME = (
   <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><rect x="2.5" y="2.5" width="6.5" height="6.5" rx="1.3" /><rect x="11" y="2.5" width="6.5" height="6.5" rx="1.3" /><rect x="2.5" y="11" width="6.5" height="6.5" rx="1.3" /><rect x="11" y="11" width="6.5" height="6.5" rx="1.3" /></svg>
 )
+const ICON_LEILAO = (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><path d="M2.5 6.5l4-4M5.5 9.5l4-4" /><path d="M4 8l1.5 1.5" /><path d="M8.5 6.5l7.5 7.5" /><path d="M14 20.5h6" /><path d="M17 20.5v-4" /></svg>
+)
 const ICON_PERFIL = (
   <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><circle cx="10" cy="6.5" r="3.2" /><path d="M4 17c0-3.3 2.7-6 6-6s6 2.7 6 6" /></svg>
 )
@@ -14,12 +17,13 @@ const ICON_HISTORICO = (
 )
 
 // espelha a sidebar do board (client/src/components/SystemSwitch.jsx),
-// mesmo NavRail -- diferença: aqui os 4 itens navegam de verdade (trocam a
+// mesmo NavRail -- diferença: aqui os itens navegam de verdade (trocam a
 // view do hub via onNavigate) em vez de abrir modal, e o rodapé é logout
 // (onLogout), não link de perfil.
 export default function SidebarStandalone({ activeView, avatarUrl, onNavigate, onLogout }) {
   const items = [
     { key: 'home', title: 'Início', icon: ICON_HOME, active: activeView === 'home', onClick: () => onNavigate('home') },
+    { key: 'leilao', title: 'Leilão', icon: ICON_LEILAO, active: activeView === 'leilao', onClick: () => onNavigate('leilao') },
     { key: 'perfil', title: 'Perfil', icon: ICON_PERFIL, active: activeView === 'perfil', onClick: () => onNavigate('perfil') },
     { key: 'config', title: 'Configurações', icon: ICON_CONFIG, active: activeView === 'config', onClick: () => onNavigate('config') },
     { key: 'historico', title: 'Histórico de leilões', icon: ICON_HISTORICO, active: activeView === 'historico', onClick: () => onNavigate('historico') },
