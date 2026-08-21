@@ -38,97 +38,44 @@ body.hub-body::before { display: none; }
   min-height: 100vh;
 }
 
+/* caixa/posição da sidebar -- conteúdo interno (marca, itens, rodapé) é o
+   NavRail compartilhado com o board (ver client/src/components/NavRail.jsx
+   e as regras genéricas `.nav-rail-*` em style.css). Aqui só sobrescreve
+   cor/hover pra bater com a paleta própria do hub (--hub-*, independente
+   de tema de leilão), já que o NavRail sozinho usa os tokens do site. */
 .hub-sidebar {
   flex-shrink: 0;
-  width: 76px;
+  width: 68px;
   background: var(--hub-sidebar-bg);
   border-right: 1px solid var(--hub-border-soft);
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  padding: 18px 0 14px;
-  gap: 4px;
+  padding: 18px 10px;
 }
 
-.hub-sidebar-mark {
-  width: 40px;
-  height: 40px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  margin-bottom: 18px;
-}
-.hub-sidebar-mark img { width: 32px; height: 32px; border-radius: 8px; }
-
-.hub-sidebar-nav {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  width: 100%;
-  align-items: center;
-}
-
-.hub-sidebar-item {
-  width: 48px;
-  height: 48px;
-  border-radius: 12px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: var(--hub-muted);
-  background: none;
-  border: none;
-  cursor: pointer;
-  text-decoration: none;
-  transition: background 0.15s ease, color 0.15s ease;
-}
-.hub-sidebar-item svg { width: 21px; height: 21px; }
-.hub-sidebar-item:hover { background: var(--hub-surface); color: var(--hub-text); }
-.hub-sidebar-item.is-active { background: var(--hub-accent); color: var(--hub-accent-ink); }
-.hub-sidebar-item.is-active:hover { background: var(--hub-accent-hover); }
-
-.hub-sidebar-spacer { flex: 1; }
+.hub-sidebar .nav-rail-item:hover { background: var(--hub-surface); color: var(--hub-text); }
+.hub-sidebar .nav-rail-item.active { background: var(--hub-accent); color: var(--hub-accent-ink); }
+.hub-sidebar .nav-rail-item.active:hover { background: var(--hub-accent-hover); }
 
 /* avatar de conta = botão de sair (não abre "perfil", isso já tem ícone
    próprio na nav) -- o selo vermelho no canto deixa a função óbvia sem
    precisar trocar a foto por um ícone genérico */
-.hub-sidebar-avatar-wrap {
-  position: relative;
-  width: 40px;
-  height: 40px;
-  padding: 0;
-  border: none;
-  background: none;
-  cursor: pointer;
-  border-radius: 50%;
-}
-.hub-sidebar-avatar-wrap:hover .hub-sidebar-avatar { border-color: var(--danger); }
-
-.hub-sidebar-avatar {
-  width: 40px;
-  height: 40px;
-  border-radius: 50%;
-  object-fit: cover;
+.hub-sidebar .nav-rail-footer {
   background: var(--hub-surface-2);
-  border: 2px solid var(--hub-border);
-  transition: border-color 0.15s ease;
+  border-color: var(--hub-border);
 }
+.hub-sidebar button.nav-rail-footer:hover { border-color: var(--danger); }
 
-.hub-sidebar-avatar-exit {
+.hub-sidebar .nav-rail-avatar-exit {
   position: absolute;
   bottom: -2px;
   right: -2px;
   width: 17px;
   height: 17px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
   border-radius: 50%;
   background: var(--danger);
   color: #fff;
   border: 2px solid var(--hub-sidebar-bg);
 }
-.hub-sidebar-avatar-exit svg { width: 10px; height: 10px; }
+.hub-sidebar .nav-rail-avatar-exit .icon { width: 10px; height: 10px; }
 
 .hub-main {
   flex: 1;
@@ -339,7 +286,7 @@ body.hub-body::before { display: none; }
 
 @media (max-width: 720px) {
   .hub-sidebar { width: 60px; }
-  .hub-sidebar-item { width: 40px; height: 40px; }
+  .hub-sidebar .nav-rail-item { width: 40px; height: 40px; }
   .hub-main { padding: 28px 20px 40px; }
   .hub-title { font-size: 26px; }
 }

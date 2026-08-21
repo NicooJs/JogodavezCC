@@ -922,10 +922,6 @@ body.board-body.has-bg-image .board-cover-bg { display: none; }
   bottom: 0;
   z-index: 40;
   width: 68px;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 6px;
   padding: 18px 10px;
   background:
     linear-gradient(180deg, var(--nav-accent-glow), transparent 40%),
@@ -935,7 +931,21 @@ body.board-body.has-bg-image .board-cover-bg { display: none; }
 }
 .system-switch[hidden] { display: none; }
 
-.system-switch-brand {
+/* trilha vertical em si (marca, itens, rodapé) -- compartilhada com o hub
+   via client/src/components/NavRail.jsx, ver hub.css pro contexto do hub.
+   Só cuida do layout interno; posição/fundo/largura vêm de quem envolve
+   (.system-switch aqui, .hub-sidebar no hub). */
+.nav-rail {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 100%;
+  height: 100%;
+  gap: 6px;
+}
+.nav-rail[hidden] { display: none; }
+
+.nav-rail-brand {
   flex-shrink: 0;
   width: 30px;
   height: 30px;
@@ -944,9 +954,9 @@ body.board-body.has-bg-image .board-cover-bg { display: none; }
   overflow: hidden;
   display: block;
 }
-.system-switch-brand img { width: 100%; height: 100%; object-fit: cover; }
+.nav-rail-brand img { width: 100%; height: 100%; object-fit: cover; }
 
-.system-switch-sep {
+.nav-rail-sep {
   flex-shrink: 0;
   width: 30px;
   height: 1px;
@@ -954,14 +964,14 @@ body.board-body.has-bg-image .board-cover-bg { display: none; }
   background: var(--border);
 }
 
-.system-switch-nav {
+.nav-rail-nav {
   display: flex;
   flex-direction: column;
   gap: 6px;
   width: 100%;
 }
 
-.system-switch-item {
+.nav-rail-item {
   display: flex;
   align-items: center;
   justify-content: center;
@@ -974,27 +984,30 @@ body.board-body.has-bg-image .board-cover-bg { display: none; }
   background: none;
   color: var(--muted);
   cursor: pointer;
+  text-decoration: none;
   transition: background 0.15s ease, color 0.15s ease, transform 0.15s ease;
 }
-.system-switch-item .icon { width: 21px; height: 21px; flex-shrink: 0; }
-.system-switch-item:hover { color: var(--text); background: var(--surface-2); transform: translateY(-1px); }
-.system-switch-item.active {
+.nav-rail-item .icon { width: 21px; height: 21px; flex-shrink: 0; }
+.nav-rail-item:hover { color: var(--text); background: var(--surface-2); transform: translateY(-1px); }
+.nav-rail-item.active {
   color: var(--nav-accent-ink);
   background: var(--nav-accent);
   box-shadow: 0 4px 14px -4px var(--nav-accent-glow);
 }
 
-/* avatar de perfil embutido embaixo da trilha -- mesmo link/lógica do
-   avatar no topbar-menu (só vira link de verdade pro dono em modo
-   apresentador, ver setPresenterMode em app.js), reaproveitado aqui pra
-   ficar acessível direto da sidebar. */
-.system-switch-profile {
-  margin-top: auto;
+.nav-rail-spacer { flex: 1; }
+
+/* avatar embutido embaixo da trilha -- no board é o link de perfil (só vira
+   link de verdade pro dono em modo apresentador, ver setPresenterMode em
+   app.js); no hub é o botão de sair da conta (ver hub.css pro selo
+   vermelho de saída). */
+.nav-rail-footer {
   flex-shrink: 0;
   width: 42px;
   height: 42px;
   border-radius: 50%;
   overflow: hidden;
+  position: relative;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1008,8 +1021,10 @@ body.board-body.has-bg-image .board-cover-bg { display: none; }
   cursor: default;
   transition: border-color 0.15s ease;
 }
-.system-switch-profile[href]:hover { border-color: var(--accent); cursor: pointer; }
-.system-switch-profile-avatar { width: 100%; height: 100%; object-fit: cover; }
+.nav-rail-footer[href]:hover, button.nav-rail-footer:hover { border-color: var(--accent); cursor: pointer; }
+button.nav-rail-footer { cursor: pointer; }
+.nav-rail-avatar { width: 100%; height: 100%; object-fit: cover; }
+.nav-rail-avatar-placeholder { display: flex; align-items: center; justify-content: center; }
 
 /* o mesmo conteúdo de antes (.presenter-bar), agora dentro de um popover
    flutuante que só existe quando o botão acima é clicado -- não empurra
@@ -4387,15 +4402,15 @@ body.presenter-mode .page {
     bottom: auto;
     width: auto;
     height: 48px;
-    flex-direction: row;
-    align-items: center;
     padding: 0 14px;
     box-shadow: inset 0 -1px 0 var(--border);
   }
-  .system-switch-brand { display: none; margin: 0 6px 0 0; }
-  .system-switch-nav { flex-direction: row; gap: 8px; width: auto; }
-  .system-switch-item { width: 34px; height: 34px; margin: 0; }
-  .system-switch-profile { margin-top: 0; margin-left: auto; width: 32px; height: 32px; }
+  #system-switch .nav-rail { flex-direction: row; align-items: center; }
+  #system-switch .nav-rail-brand { display: none; margin: 0 6px 0 0; }
+  #system-switch .nav-rail-nav { flex-direction: row; gap: 8px; width: auto; }
+  #system-switch .nav-rail-sep { display: none; }
+  #system-switch .nav-rail-item { width: 34px; height: 34px; margin: 0; }
+  #system-switch .nav-rail-footer { width: 32px; height: 32px; }
 }
 
 @media (max-width: 720px) {

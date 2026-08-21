@@ -1,7 +1,5 @@
 const loggedOutEl = document.getElementById("hub-logged-out");
 const shellEl = document.getElementById("hub-shell");
-const avatarEl = document.getElementById("hub-avatar");
-const avatarBtnEl = document.getElementById("hub-avatar-btn");
 const greetingEl = document.getElementById("hub-greeting");
 const gridEl = document.getElementById("hub-service-grid");
 
@@ -14,7 +12,7 @@ const views = {
   config: document.getElementById("view-config"),
   historico: document.getElementById("view-historico"),
 };
-const navButtons = [...document.querySelectorAll(".hub-sidebar-item[data-view]")];
+let activeView = "home";
 
 // cada view tem seu próprio caminho (rotas espelhadas em server.js, todas
 // servem o mesmo painel.html) pra um F5 manter o streamer na mesma tela
@@ -28,8 +26,9 @@ function viewForPath(pathname) {
 // pela navegação normal (via showView) quanto por popstate (voltar/avançar)
 function applyView(name) {
   if (!views[name]) return;
+  activeView = name;
   Object.entries(views).forEach(([key, el]) => { el.hidden = key !== name; });
-  navButtons.forEach((btn) => btn.classList.toggle("is-active", btn.dataset.view === name));
+  mountSidebar();
   loadView(name);
 }
 
@@ -45,16 +44,44 @@ function loadView(name) {
   if (name === "perfil") return ensurePerfilView();
 }
 
-navButtons.forEach((btn) => {
-  btn.addEventListener("click", () => {
-    const view = btn.dataset.view;
-    if (!leilao && view !== "home" && view !== "perfil") {
-      alert("Crie seu leilão primeiro pra acessar isso.");
-      return;
-    }
-    showView(view);
-  });
-});
+// mesma trava de antes (Config/Histórico exigem leilão) -- agora chamada
+// como callback pelo React da sidebar em vez de listener direto no botão
+function onSidebarNavigate(view) {
+  if (!leilao && view !== "home" && view !== "perfil") {
+    alert("Crie seu leilão primeiro pra acessar isso.");
+    return;
+  }
+  showView(view);
+}
+
+async function onSidebarLogout() {
+  const ok = confirm("Sair da conta?");
+  if (!ok) return;
+  await fetch("/api/session/logout", { method: "POST" }).catch(() => {});
+  location.reload();
+}
+
+// sidebar é o único standalone que monta assim que a sessão carrega, não
+// sob demanda (ver ensureConfigView/ensureHistoricoView/ensurePerfilView
+// abaixo) -- fica visível o tempo todo, não escondida atrás de um clique.
+// mount() de novo a cada troca de view só atualiza activeView (re-render
+// comum, a raiz React não é recriada).
+let sidebarPanelLoad = null;
+async function mountSidebar() {
+  try {
+    if (!sidebarPanelLoad) sidebarPanelLoad = loadStandaloneEntry("/board-app/sidebar.html");
+    await sidebarPanelLoad;
+    window.JogodaVezSidebar.mount("sidebar-root", {
+      activeView,
+      avatarUrl: session && session.avatarUrl,
+      onNavigate: onSidebarNavigate,
+      onLogout: onSidebarLogout,
+    });
+  } catch (err) {
+    // sem sidebar por enquanto, mas o resto do hub continua usável -- não
+    // trava loadSession() por causa disso
+  }
+}
 
 window.addEventListener("popstate", () => {
   applyView(viewForPath(location.pathname) || "home");
@@ -172,7 +199,6 @@ async function loadSession() {
     return;
   }
 
-  avatarEl.src = session.avatarUrl || "";
   greetingEl.textContent = `Olá, ${session.displayName || session.twitchLogin || ""}`;
 
   await loadLeilao();
@@ -246,12 +272,5 @@ async function goToReacts() {
   }
   location.href = leilao.url;
 }
-
-avatarBtnEl.addEventListener("click", async () => {
-  const ok = confirm("Sair da conta?");
-  if (!ok) return;
-  await fetch("/api/session/logout", { method: "POST" }).catch(() => {});
-  location.reload();
-});
 
 loadSession();
