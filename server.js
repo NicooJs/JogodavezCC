@@ -619,7 +619,6 @@ async function processDonationMessage(leilaoId, store, { id, fallbackUsername, f
   const username = fallbackUsername;
   const message = fallbackMessage;
   const amountCents = fallbackAmount;
-  const note = fallbackNote || null;
 
   // modo reacts é um sistema à parte do leilão (não compete por
   // classificação, não usa parseMessage) -- desvia pro caminho dele antes
@@ -665,6 +664,11 @@ async function processDonationMessage(leilaoId, store, { id, fallbackUsername, f
     return;
   }
   parsed = await resolveParsedGame(store, parsed);
+  // recado embutido na própria mensagem ("+Jogo. recado", ver parseMessage)
+  // tem prioridade sobre fallbackNote, que só existe hoje pro caminho antigo
+  // de doação direta (rota /doacao, campo separado) -- os dois nunca vêm
+  // preenchidos ao mesmo tempo na prática.
+  const note = parsed.note || fallbackNote || null;
 
   const needsImage = !store.hasGame(parsed.key) || !store.hasGameImage(parsed.key);
 

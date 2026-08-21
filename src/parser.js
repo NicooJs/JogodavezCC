@@ -46,7 +46,20 @@ function parseMessage(rawMessage) {
   if (!action) return null;
 
   text = text.trim();
-  text = text.replace(/^[\s\-–—:.,!]+/, "").replace(/[\s!.,]+$/, "").trim();
+  text = text.replace(/^[\s\-–—:.,!]+/, "").trim();
+
+  // convenção pro doador escrever jogo + recado no mesmo campo (pixgg.com
+  // só manda 1 texto livre pro streamer, ver server.js processDonationMessage):
+  // "+Jogo. recado pro streamer" -- primeiro ponto corta os dois, sem ponto
+  // continua funcionando exatamente como antes (mensagem só com jogo).
+  let note = null;
+  const dotIndex = text.indexOf(".");
+  if (dotIndex !== -1) {
+    note = text.slice(dotIndex + 1).trim().slice(0, 140) || null;
+    text = text.slice(0, dotIndex).trim();
+  } else {
+    text = text.replace(/[\s!.,]+$/, "").trim();
+  }
 
   if (!text) return null;
 
@@ -54,7 +67,7 @@ function parseMessage(rawMessage) {
   const key = normalizeKey(name);
   if (!key) return null;
 
-  return { action, name, key };
+  return { action, name, key, note };
 }
 
 const NOISE_WORDS = new Set([

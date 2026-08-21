@@ -18,6 +18,17 @@ fetch(`/api/l/${LEILAO_ID}/pixgg-config`)
     // desligado enquanto DONATIONS_VIA_EFI_ENABLED estiver falso -- essa
     // frase é sobre custódia na Efí, nunca se aplica agora (ver docs/STATUS-EFI.md)
     document.getElementById("doar-footnote-payment").hidden = true;
+    // "seu nome"/"voz de IA" não têm efeito nenhum no caminho do pixgg.com
+    // (nome vem da conta do doador lá, voz é lida a partir do texto que ele
+    // mesmo digita na página deles) -- esconder pra não prometer algo que
+    // esse fluxo não entrega. HTML já nasce assumindo pixgg (caso comum
+    // hoje); só reverte aqui se ele cair e o fluxo antigo de doação direta
+    // (onde os dois campos valem de verdade) voltar a ser usado.
+    if (!pixggSlug) {
+      document.getElementById("doar-name-field").hidden = false;
+      document.getElementById("doar-voice-field").hidden = false;
+      moreToggleEl.firstChild.textContent = "+ nome e mensagem ";
+    }
   })
   .catch(() => {
     pixggSlug = null; // se a checagem falhar, trata como indisponível -- nunca assume Efí por omissão
@@ -409,7 +420,7 @@ const moreFieldsEl = document.getElementById("doar-more-fields");
 moreToggleEl.addEventListener("click", () => {
   moreFieldsEl.hidden = false;
   moreToggleEl.hidden = true;
-  nameEl.focus();
+  (pixggSlug ? noteEl : nameEl).focus();
 });
 
 const voiceSegEl = document.getElementById("doar-voice");
@@ -446,7 +457,14 @@ async function submitDonation(e) {
   if (pixggSlug) {
     // reacts não tem sabotagem (ver processReactDonationMessage em
     // server.js) -- sem prefixo de ação, manda só o apelido/link puro.
-    const message = activeSystemMode === "reacts" ? game : `${getAction() === "remove" ? "sabotar" : "apoiar"} ${game}`;
+    // recado (se tiver) vai depois de um ponto final -- server.js separa os
+    // dois de volta (parseMessage em src/parser.js). "seu nome"/"voz de IA"
+    // não têm campo aqui de propósito: quem manda esses de verdade é o
+    // pixgg.com (nome do doador vem da conta dele lá, voz é lida a partir
+    // desse mesmo texto na página deles, não algo que a gente controle).
+    const note = noteEl.value.trim();
+    const prefix = getAction() === "remove" ? "-" : "+";
+    const message = activeSystemMode === "reacts" ? game : `${prefix}${game}${note ? `. ${note}` : ""}`;
     pixggMessageEl.value = message;
     pixggLinkEl.href = `https://pixgg.com/${pixggSlug}`;
     pixggBoardLinkEl.href = `/l/${LEILAO_ID}`;
