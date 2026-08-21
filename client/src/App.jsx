@@ -141,6 +141,25 @@ function BoardContent({ leilaoId, embedded }) {
     }
   }
 
+  // mesmo gesto de arrastar-e-soltar do merge de lotes, só que pra corrigir
+  // apoiador com nome digitado errado (2 doações do mesmo humano, cada uma
+  // com um apelido diferente) -- junta tudo sob o nome de destino.
+  const mergeDonors = async (fromUsername, toUsername) => {
+    if (!fromUsername || !toUsername || fromUsername === toUsername) return
+    const ok = await confirmDialog({
+      title: 'Mesclar apoiador',
+      message: `Juntar as doações de "${fromUsername}" em "${toUsername}"? Todo o histórico passa a contar como "${toUsername}". Essa ação não pode ser desfeita.`,
+      confirmLabel: 'Mesclar',
+      danger: true,
+    })
+    if (!ok) return
+    try {
+      await presenterFetch(leilaoId, '/admin/merge-donor', { method: 'POST', body: JSON.stringify({ fromUsername, toUsername }) })
+    } catch (err) {
+      alert(err.message)
+    }
+  }
+
   if (!leilaoId) {
     return <p style={{ padding: 24 }}>Leilão não encontrado (URL precisa ser /l/:id).</p>
   }
@@ -218,7 +237,13 @@ function BoardContent({ leilaoId, embedded }) {
             />
           )}
           <HostPanel leaderboard={leaderboard} />
-          {isReacts ? null : <DonorsPanel donors={donors || []} totalRaised={leaderboard.totalRaised || 0} />}
+          {isReacts ? null : (
+            <DonorsPanel
+              donors={donors || []}
+              totalRaised={leaderboard.totalRaised || 0}
+              onMergeDonors={presenter.active ? mergeDonors : undefined}
+            />
+          )}
         </div>
 
         <div className="col col-center">

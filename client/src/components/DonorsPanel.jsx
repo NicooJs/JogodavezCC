@@ -1,11 +1,44 @@
+import { useState } from 'react'
 import { formatBRL, initial } from '../lib/format.js'
 import { RankBadge } from './icons.jsx'
 
-export default function DonorsPanel({ donors, totalRaised }) {
+export default function DonorsPanel({ donors, totalRaised, onMergeDonors }) {
   const [leader, ...rest] = donors
   const maxTotal = Math.max(...rest.map((d) => d.total), 1)
   const dominance =
     leader && totalRaised > 0 ? Math.max(2, Math.min(100, Math.round((leader.total / totalRaised) * 100))) : null
+
+  // arrastar um apoiador sobre outro mescla os dois (mesmo apoiador digitou
+  // o nome diferente em 2 doações) -- só ativo em modo apresentador
+  // (onMergeDonors vem undefined pro público/moderador sem acesso)
+  const [draggingUsername, setDraggingUsername] = useState(null)
+  const [dropTargetUsername, setDropTargetUsername] = useState(null)
+  const dragProps = (username) =>
+    onMergeDonors && username // "Anônimo" (username vazio) não é uma pessoa só pra mesclar
+      ? {
+          draggable: true,
+          onDragStart: (e) => {
+            e.dataTransfer.effectAllowed = 'move'
+            e.dataTransfer.setData('text/plain', username)
+            setDraggingUsername(username)
+          },
+          onDragOver: (e) => {
+            e.preventDefault()
+            e.dataTransfer.dropEffect = 'move'
+            setDropTargetUsername(username)
+          },
+          onDragLeave: () => setDropTargetUsername(null),
+          onDrop: (e) => {
+            e.preventDefault()
+            setDropTargetUsername(null)
+            const from = e.dataTransfer.getData('text/plain')
+            if (from && from !== username) onMergeDonors(from, username)
+          },
+          onDragEnd: () => setDraggingUsername(null),
+        }
+      : {}
+  const dragClass = (username) =>
+    `${draggingUsername === username ? ' dragging' : ''}${dropTargetUsername === username ? ' drop-target' : ''}`
 
   return (
     <section className="panel donors-panel">
@@ -23,7 +56,7 @@ export default function DonorsPanel({ donors, totalRaised }) {
       <div className="donor-list">
         {donors.length === 0 ? <p className="empty-state">Ainda sem apoiadores.</p> : null}
         {leader ? (
-          <div className="donor-leader">
+          <div className={`donor-leader${dragClass(leader.username)}`} {...dragProps(leader.username)}>
             <div className="donor-leader-avatar-wrap">
               {leader.avatar ? (
                 <img className="donor-leader-avatar" src={leader.avatar} alt="" loading="lazy" />
@@ -56,7 +89,12 @@ export default function DonorsPanel({ donors, totalRaised }) {
         {rest.map((d) => {
           const pct = d.total > 0 ? Math.max(4, Math.round((d.total / maxTotal) * 100)) : 0
           return (
-            <div className={`donor-row rank-${d.rank}`} style={{ '--pct': `${pct}%` }} key={d.username + d.rank}>
+            <div
+              className={`donor-row rank-${d.rank}${dragClass(d.username)}`}
+              style={{ '--pct': `${pct}%` }}
+              key={d.username + d.rank}
+              {...dragProps(d.username)}
+            >
               <div className="donor-row-fill" />
               <span className="donor-rank">
                 <RankBadge rank={d.rank} />

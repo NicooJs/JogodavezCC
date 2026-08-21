@@ -412,10 +412,15 @@ function tickTimer() {
 }
 setInterval(tickTimer, 1000);
 
+// mesmo glifo oficial da Twitch usado em .host-twitch-badge -- placeholder
+// pra lote sem capa (jogo desconhecido ou "quadro" da live que não é
+// jogo/filme de verdade, nunca vai achar capa numa busca IGDB/TMDB)
+const TWITCH_ICON_SVG = `<svg class="icon" viewBox="0 0 2400 2800" fill="currentColor" aria-hidden="true"><path d="M500 0 0 500v1800h600v500l500-500h400l900-900V0H500zm1600 1300-400 400h-400l-350 350v-350H500V200h1600v1100z" /><path d="M1700 550h200v600h-200zM1150 550h200v600h-200z" /></svg>`;
+
 function thumbHtml(item, className) {
   return item.image
-    ? `<img class="${className}" src="${escapeHtml(item.image)}" alt="" loading="lazy" onerror="this.replaceWith(Object.assign(document.createElement('div'),{className:'${className} ${className}-placeholder',textContent:'${escapeHtml((item.name[0] || "?").toUpperCase())}'}))" />`
-    : `<div class="${className} ${className}-placeholder">${escapeHtml((item.name[0] || "?").toUpperCase())}</div>`;
+    ? `<img class="${className}" src="${escapeHtml(item.image)}" alt="" loading="lazy" onerror="this.replaceWith(Object.assign(document.createElement('div'),{className:'${className} ${className}-placeholder',innerHTML:${JSON.stringify(TWITCH_ICON_SVG)}}))" />`
+    : `<div class="${className} ${className}-placeholder">${TWITCH_ICON_SVG}</div>`;
 }
 
 const MEDAL_ICON_SVG = `<svg class="medal-icon" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -570,10 +575,77 @@ async function confirmAndMergeLots(fromKey, toKey) {
   }
 }
 
+// mesmo gesto de arrastar-e-soltar do merge de lotes acima, só que pra
+// apoiador com nome digitado errado -- diferente de lotListEl (cards
+// reaproveitados via data-key, listener preso na criação), donorListEl
+// é reconstruído inteiro a cada renderDonors(), então os listeners ficam
+// no container estável (delegação) em vez de em cada linha.
+let draggedDonorUsername = null;
+
+donorListEl.addEventListener("dragstart", (e) => {
+  const row = e.target.closest("[data-donor-username]");
+  if (!row) return;
+  if (!document.body.classList.contains("presenter-mode")) return e.preventDefault();
+  const username = row.dataset.donorUsername;
+  if (!username) return e.preventDefault(); // "Anônimo" não é uma pessoa só pra mesclar
+  draggedDonorUsername = username;
+  e.dataTransfer.effectAllowed = "move";
+  e.dataTransfer.setData("text/plain", username);
+  requestAnimationFrame(() => row.classList.add("dragging"));
+});
+
+donorListEl.addEventListener("dragover", (e) => {
+  const row = e.target.closest("[data-donor-username]");
+  if (!row || !draggedDonorUsername || draggedDonorUsername === row.dataset.donorUsername) return;
+  e.preventDefault();
+  e.dataTransfer.dropEffect = "move";
+  row.classList.add("drop-target");
+});
+
+donorListEl.addEventListener("dragleave", (e) => {
+  const row = e.target.closest("[data-donor-username]");
+  if (row) row.classList.remove("drop-target");
+});
+
+donorListEl.addEventListener("drop", async (e) => {
+  const row = e.target.closest("[data-donor-username]");
+  if (!row) return;
+  e.preventDefault();
+  row.classList.remove("drop-target");
+  const fromUsername = draggedDonorUsername;
+  const toUsername = row.dataset.donorUsername;
+  draggedDonorUsername = null;
+  if (!fromUsername || !toUsername || fromUsername === toUsername) return;
+  await confirmAndMergeDonors(fromUsername, toUsername);
+});
+
+donorListEl.addEventListener("dragend", (e) => {
+  const row = e.target.closest("[data-donor-username]");
+  if (row) row.classList.remove("dragging");
+  donorListEl.querySelectorAll(".drop-target").forEach((el) => el.classList.remove("drop-target"));
+  draggedDonorUsername = null;
+});
+
+async function confirmAndMergeDonors(fromUsername, toUsername) {
+  const ok = await confirmDialog({
+    title: "Mesclar apoiador",
+    message: `Juntar as doações de "${fromUsername}" em "${toUsername}"? Todo o histórico passa a contar como "${toUsername}". Essa ação não pode ser desfeita.`,
+    confirmLabel: "Mesclar",
+    danger: true,
+  });
+  if (!ok) return;
+  try {
+    await presenterFetch("/admin/merge-donor", { method: "POST", body: JSON.stringify({ fromUsername, toUsername }) });
+  } catch (err) {
+    alert(err.message);
+  }
+}
+
 // modo corrida: botão direito num card do catálogo (só modo apresentador)
 // abre esse menu, próprio, em vez do menu nativo do navegador.
 const FLAG_ICON_SVG = `<svg class="icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 2.5v15"/><path d="M4 3.5c2-1 3.5 1 5.5 0s3.5-1 5.5 0v6c-2-1-3.5 1-5.5 0s-3.5-1-5.5 0z"/></svg>`;
 const STOP_ICON_SVG = `<svg class="icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="10" cy="10" r="7"/><path d="M7 7l6 6M13 7l-6 6"/></svg>`;
+const TRASH_ICON_SVG = `<svg class="icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 5.5h12"/><path d="M8 5.5V4a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1v1.5"/><path d="M5.5 5.5l.6 10a1.5 1.5 0 0 0 1.5 1.4h4.8a1.5 1.5 0 0 0 1.5-1.4l.6-10"/><path d="M8.3 8.5v5M11.7 8.5v5"/></svg>`;
 const REACT_ICON_SVG = `<svg class="icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2.5" y="3.5" width="15" height="10.5" rx="1.5"/><path d="M8.2 8.1l4 2.1-4 2.1V8.1z" fill="currentColor" stroke="none"/><path d="M6 17h8"/></svg>`;
 const PLAY_ICON_SVG = `<svg class="icon" viewBox="0 0 20 20" fill="none" stroke="none" aria-hidden="true"><path d="M6 4.5v11l8-5.5-8-5.5z" fill="currentColor"/></svg>`;
 
@@ -594,12 +666,13 @@ function openLotContextMenu(x, y, item) {
       <span class="lot-context-menu-game">${escapeHtml(item.name)}</span>
     </div>
   `;
-  const actions = item.raceGoal
+  const raceActions = item.raceGoal
     ? `
       <button class="lot-context-menu-item" type="button" data-act="race-edit">${FLAG_ICON_SVG}Editar meta da corrida</button>
       <button class="lot-context-menu-item danger" type="button" data-act="race-deactivate">${STOP_ICON_SVG}Desativar modo corrida</button>
     `
     : `<button class="lot-context-menu-item" type="button" data-act="race-activate">${FLAG_ICON_SVG}Ativar modo corrida</button>`;
+  const actions = raceActions + `<button class="lot-context-menu-item danger" type="button" data-act="game-delete">${TRASH_ICON_SVG}Excluir jogo</button>`;
   lotContextMenuEl.innerHTML = head + actions;
   lotContextMenuEl.hidden = false;
   lotContextMenuEl.style.left = "0px";
@@ -704,6 +777,21 @@ lotContextMenuEl.addEventListener("click", async (e) => {
     if (!ok) return;
     try {
       await presenterFetch(`/admin/race-goal/${encodeURIComponent(key)}`, { method: "DELETE" });
+    } catch (err) {
+      alert(err.message);
+    }
+  }
+
+  if (act === "game-delete") {
+    const ok = await confirmDialog({
+      title: "Excluir jogo",
+      message: `Excluir "${item.name}" do catálogo? Essa ação não pode ser desfeita.`,
+      confirmLabel: "Excluir",
+      danger: true,
+    });
+    if (!ok) return;
+    try {
+      await presenterFetch(`/admin/game/${encodeURIComponent(key)}`, { method: "DELETE" });
     } catch (err) {
       alert(err.message);
     }
@@ -1304,7 +1392,7 @@ function renderDonors(donors, totalRaised) {
       : `<span class="donor-leader-avatar donor-avatar-placeholder">${escapeHtml((leader.username || "?")[0].toUpperCase())}</span>`;
     const dominance = totalRaised > 0 ? Math.max(2, Math.min(100, Math.round((leader.total / totalRaised) * 100))) : null;
     leaderHtml = `
-    <div class="donor-leader">
+    <div class="donor-leader" draggable="true" data-donor-username="${escapeHtml(leader.username || "")}">
       <div class="donor-leader-avatar-wrap">
         ${avatar}
         <span class="donor-leader-badge">01</span>
@@ -1330,7 +1418,7 @@ function renderDonors(donors, totalRaised) {
       ? `<img class="donor-avatar" src="${escapeHtml(d.avatar)}" alt="" loading="lazy" />`
       : `<span class="donor-avatar donor-avatar-placeholder">${escapeHtml((d.username || "?")[0].toUpperCase())}</span>`;
     return `
-    <div class="donor-row rank-${d.rank}" style="--pct:${pct}%">
+    <div class="donor-row rank-${d.rank}" style="--pct:${pct}%" draggable="true" data-donor-username="${escapeHtml(d.username || "")}">
       <div class="donor-row-fill"></div>
       <span class="donor-rank">${rankBadgeHtml(d.rank)}</span>
       ${avatar}

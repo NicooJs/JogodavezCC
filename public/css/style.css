@@ -2412,6 +2412,18 @@ body.presenter-mode .page-embedded {
 
 .donor-row:hover { background: var(--surface-2); transform: translateX(2px); }
 
+/* arrastar um apoiador sobre outro mescla os dois (mesmo padrão visual do
+   merge de lotes, .lot-card.dragging/.drop-target em style.css) -- só fica
+   arrastável quando onMergeDonors existe (presenter.active), ver
+   DonorsPanel.jsx */
+.donor-row[draggable="true"], .donor-leader[draggable="true"] { cursor: grab; }
+.donor-row[draggable="true"]:active, .donor-leader[draggable="true"]:active { cursor: grabbing; }
+.donor-row.dragging, .donor-leader.dragging { opacity: 0.35; }
+.donor-row.drop-target, .donor-leader.drop-target {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px var(--accent), 0 0 0 6px var(--accent-bg);
+}
+
 /* 2º e 3º lugar ganham um tom de medalha (prata/bronze) igual o líder já
    tem em dourado, pra não ficar tudo igual abaixo do card do 1º -- brilho
    ambiente bem lento pra tirar o aspecto parado da lista sem virar poluição
@@ -2937,12 +2949,10 @@ body.presenter-mode .page-embedded {
   align-items: center;
   justify-content: center;
   color: var(--muted);
-  font-family: var(--font-display);
-  font-style: italic;
-  font-size: 28px;
 }
+.lot-thumb-placeholder .icon { width: 44%; height: 44%; }
 
-.lot-card.rank-1 .lot-thumb-placeholder { font-size: 48px; }
+.lot-card.rank-1 .lot-thumb-placeholder .icon { width: 40%; height: 40%; }
 
 .lot-info {
   display: flex;
@@ -4529,7 +4539,7 @@ body.presenter-mode .page-embedded {
   .lot-card.rank-1 { min-height: 90px; }
   .lot-card.rank-1 .lot-card-content { gap: 10px; padding: 12px 14px; }
   .lot-card.rank-1 .lot-thumb,
-  .lot-card.rank-1 .lot-thumb-placeholder { width: 46px; height: 46px; font-size: 28px; }
+  .lot-card.rank-1 .lot-thumb-placeholder { width: 46px; height: 46px; }
   .lot-card.rank-1 .lot-rank { width: 32px; }
   .lot-card.rank-1 .lot-rank .medal-icon { width: 27px; height: 27px; }
   .lot-card.rank-1 .lot-name { font-size: 17px; white-space: nowrap; }

@@ -1,10 +1,10 @@
 import { useState } from 'react'
 import { formatBRL, initial } from '../lib/format.js'
-import { RankBadge, FlagIcon } from './icons.jsx'
+import { RankBadge, FlagIcon, TwitchIcon } from './icons.jsx'
 
 function Thumb({ item }) {
   if (item.image) return <img className="lot-thumb" src={item.image} alt="" loading="lazy" />
-  return <div className="lot-thumb lot-thumb-placeholder">{initial(item.name)}</div>
+  return <div className="lot-thumb lot-thumb-placeholder"><TwitchIcon /></div>
 }
 
 export default function LotCard({

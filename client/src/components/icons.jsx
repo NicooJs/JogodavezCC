@@ -27,6 +27,29 @@ export function FlagIcon() {
   )
 }
 
+// mesmo glifo oficial da Twitch usado em .host-twitch-badge (HostPanel.jsx)
+// -- aqui serve de placeholder pra lote sem capa (jogo desconhecido ou
+// "quadro" da live que não é jogo/filme de verdade, nunca vai achar capa)
+export function TwitchIcon() {
+  return (
+    <svg className="icon" viewBox="0 0 2400 2800" fill="currentColor" aria-hidden="true">
+      <path d="M500 0 0 500v1800h600v500l500-500h400l900-900V0H500zm1600 1300-400 400h-400l-350 350v-350H500V200h1600v1100z" />
+      <path d="M1700 550h200v600h-200zM1150 550h200v600h-200z" />
+    </svg>
+  )
+}
+
+export function TrashIcon() {
+  return (
+    <svg className="icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M4 5.5h12" />
+      <path d="M8 5.5V4a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1v1.5" />
+      <path d="M5.5 5.5l.6 10a1.5 1.5 0 0 0 1.5 1.4h4.8a1.5 1.5 0 0 0 1.5-1.4l.6-10" />
+      <path d="M8.3 8.5v5M11.7 8.5v5" />
+    </svg>
+  )
+}
+
 export function StopIcon() {
   return (
     <svg className="icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">

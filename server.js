@@ -2203,6 +2203,17 @@ app.post("/api/l/:id/admin/merge", loadLeilao, requireLeilaoAdmin, (req, res) =>
   res.json({ ok: true, game });
 });
 
+// mesmo espírito do merge de jogos acima, só que pra corrigir apelido
+// digitado errado -- reescreve o nome em todos os eventos já registrados
+// (ver renameDonor em src/db.js), sem afetar valor nenhum
+app.post("/api/l/:id/admin/merge-donor", loadLeilao, requireLeilaoAdmin, (req, res) => {
+  const { fromUsername, toUsername } = req.body || {};
+  const result = req.store.renameDonor(fromUsername, toUsername);
+  if (!result) return res.status(404).json({ error: "Apoiador não encontrado" });
+  broadcastUpdate(req.leilaoId, req.store, { type: "merge-donor" });
+  res.json({ ok: true });
+});
+
 // doações que caíram na fila de pendência (ver processDonationMessage) --
 // sino de notificações lista com GET, resolve com um dos dois POST abaixo.
 app.get("/api/l/:id/admin/pending", loadLeilao, requireLeilaoAdmin, (req, res) => {

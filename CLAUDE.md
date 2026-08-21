@@ -438,7 +438,30 @@ sempre visível quando `likes > 0`, sem depender de evento nenhum.
 `POST /admin/merge` que já existia pro fluxo manual — listeners de drag
 (`wireLotCardDrag` em `app.js`) são presos no card só na criação (elementos
 são reaproveitados entre re-renders via `data-key`, só o `innerHTML` muda),
-nunca a cada atualização do leaderboard.
+nunca a cada atualização do leaderboard. Botão direito num `.lot-card`
+também ganhou **"Excluir jogo"** (`DELETE /admin/game/:key`, já existia pro
+fluxo da tabela de Configurações → Jogos/Filmes, só faltava no menu de
+contexto do board).
+
+**Mesclar apoiador por drag and drop (2026-08-21)**: mesmo gesto acima,
+aplicado ao `.donor-row`/`.donor-leader` do `DonorsPanel` -- corrige
+apoiador que digitou o próprio nome diferente em doações separadas. Doador
+não tem registro próprio (diferente de jogo): total/rank em `getTopDonors`
+são sempre calculados na hora agrupando `data.events[].username`, então
+"mesclar" é só `renameDonor` (`src/db.js`) reescrevendo esse campo em todos
+os eventos que batem com o nome errado, via `POST /admin/merge-donor`.
+Diferente do `.lot-card` (reaproveitado via `data-key`), `donorListEl` é
+reconstruído inteiro a cada `renderDonors()` no vanilla -- os listeners de
+drag ficam no container estável (delegação via `data-donor-username`), não
+em cada linha. "Anônimo" (username vazio) não é arrastável, não faz sentido
+mesclar identidades que nunca foram uma pessoa só.
+
+**Placeholder de capa desconhecida vira o logo da Twitch (2026-08-21)**:
+`.lot-thumb-placeholder` mostrava a inicial do nome; trocado pelo mesmo
+glifo da Twitch usado em `.host-twitch-badge` (`TwitchIcon` em
+`icons.jsx`/`TWITCH_ICON_SVG` em `app.js`) -- cobre tanto jogo real sem
+capa encontrada quanto "quadro" da live que não é jogo/filme de verdade
+(nunca vai ter capa nenhuma pra achar).
 
 **Recap**: estatísticas + pódio + download de imagem (canvas 2D, ver seção
 de animações) + compartilhar no X. Histórico de recaps acessível via modal e

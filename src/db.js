@@ -407,6 +407,24 @@ function createStore(filePath) {
     save();
   }
 
+  // doador não tem registro próprio (diferente de jogo) -- total/rank em
+  // getTopDonors são sempre calculados na hora, agrupando por data.events[].
+  // "mesclar" aqui é só reescrever o username em todos os eventos que têm o
+  // nome errado pro nome certo, então a próxima leitura já soma junto.
+  function renameDonor(fromUsername, toUsername) {
+    if (!fromUsername || !toUsername || fromUsername === toUsername) return null;
+    let touched = false;
+    data.events.forEach((ev) => {
+      if (ev.username === fromUsername) {
+        ev.username = toUsername;
+        touched = true;
+      }
+    });
+    if (!touched) return null;
+    save();
+    return { username: toUsername };
+  }
+
   function mergeGames(fromKey, toKey, useNameFrom = false) {
     const from = data.games[fromKey];
     const to = data.games[toKey];
@@ -661,6 +679,7 @@ function createStore(filePath) {
     renameGame,
     deleteGame,
     mergeGames,
+    renameDonor,
     addManualGame,
     resetAll,
     archiveAuction,

@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { presenterFetch } from '../lib/api.js'
-import { FlagIcon, StopIcon, ReactModeIcon } from './icons.jsx'
+import { FlagIcon, StopIcon, ReactModeIcon, TrashIcon } from './icons.jsx'
 import { useDialogs } from '../hooks/useDialogs.jsx'
 
 // menu de botão direito: modo corrida (nos cards do catálogo do leilão) ou
@@ -66,6 +66,23 @@ export default function LotContextMenu({ leilaoId, target, onClose, onOpenRaceMo
     }
   }
 
+  const deleteLot = async () => {
+    const item = target.item
+    onClose()
+    const ok = await confirmDialog({
+      title: 'Excluir jogo',
+      message: `Excluir "${item.name}" do catálogo? Essa ação não pode ser desfeita.`,
+      confirmLabel: 'Excluir',
+      danger: true,
+    })
+    if (!ok) return
+    try {
+      await presenterFetch(leilaoId, `/admin/game/${encodeURIComponent(item.key)}`, { method: 'DELETE' })
+    } catch (err) {
+      alert(err.message)
+    }
+  }
+
   const markReacted = async () => {
     const videoId = target.video.id
     onClose()
@@ -102,6 +119,9 @@ export default function LotContextMenu({ leilaoId, target, onClose, onOpenRaceMo
               <FlagIcon />Ativar modo corrida
             </button>
           )}
+          <button className="lot-context-menu-item danger" type="button" onClick={deleteLot}>
+            <TrashIcon />Excluir jogo
+          </button>
         </>
       ) : (
         <>
