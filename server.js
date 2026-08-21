@@ -1248,8 +1248,11 @@ app.post("/api/perfil/blocked-donors/:blockId/unblock", async (req, res) => {
   }
 });
 
+// link antigo (bookmarks, link do widget OBS gerado antes da migração,
+// indexação) -- página standalone foi aposentada, Perfil agora vive só no
+// hub (as 5 abas já têm conteúdo completo lá, ver CLAUDE.md)
 app.get("/perfil", (req, res) => {
-  res.sendFile(path.join(__dirname, "public", "perfil.html"));
+  res.redirect(301, "/painel/perfil");
 });
 
 app.get("/api/meus-leiloes", (req, res) => {

@@ -335,7 +335,34 @@ Validações client-side (jogo precisa estar "confirmado" via shelf ou botão
 também decide mensagens de erro específicas (chave Pix não cadastrada, conta
 restrita/bloqueada, token expirado).
 
-### Board/apresentador (`board.html` + `app.js`)
+### Board/apresentador (`board.html` + `app.js`, sendo substituído por React)
+
+**Migração pro React em andamento desde 2026-08-14, canário por leilão**
+(`client/src/App.jsx` + `client/src/components/*.jsx`, mesmo backend
+Express/Socket.IO, sem mudança de rota de API). `server.js` decide qual
+versão servir em `GET /l/:id`: se o id do leilão está na env var
+`REACT_BOARD_CANARY_IDS` (lista separada por vírgula, editável no Railway
+sem redeploy de código) **e** o build de `public/board-app/index.html`
+existe, serve a versão React; senão, serve o `board.html` vanilla abaixo,
+inalterado. Reiniciar o serviço (redeploy, sem rebuild) é necessário pra um
+novo id entrar em vigor -- só editar a variável não basta enquanto o
+processo já está de pé. Estado em 2026-08-21: **os 2 leilões com atividade
+real hoje (`ec333f9059e5`/nicolebaz, `d954607a933e`/sabrinoca) estão no
+canário** -- 12 dos 13 modais do vanilla já têm par React (`SettingsModal`,
+`RankingModal`, `RecapModal`, `RaceModal`, `LotModal`, `ModCodeModal`,
+`PresenterLoginModal`, `ExtratoModal`, `HistoryOverlay`, `SoldOverlay`,
+`TopbarMenu`, `LotContextMenu`). O `donate-modal` (gerar QR Pix direto,
+Efí) foi **decidido não portar**: além de já estar com o botão de entrada
+oculto de propósito (doação hoje é só via link `/l/:id/doar`, nunca
+embutida no board -- ver comentário em `board.html` junto do
+`donate-open-btn`), ele reflete um fluxo de pagamento (QR Efí + confirmação
+por socket) que `doar.js` já não usa mais (ponte pixgg.com fez esse branch
+virar código morto, ver seção de pagamento acima) -- portar agora seria
+recriar uma arquitetura obsoleta que precisará ser refeita quando a Efí for
+aprovada de verdade. Roteiro completo (terminar a migração, aposentar
+`public/perfil.html` standalone em cima do hub, limpar resíduo de "conta
+podia ter mais de 1 leilão") em
+`C:\Users\User\.claude\plans\dapper-singing-chipmunk.md`.
 
 Grid 3 colunas: host+doadores (esquerda), catálogo de lotes (`.lot-card`,
 centro), timer+histórico (direita). `.presenter-bar` só aparece em modo
@@ -406,7 +433,7 @@ Configurações) e troca todos os textos da UI via sistema de labels dinâmicos
 Um ícone no canto do `host-panel` (`#host-perfil-link`) leva pro Perfil,
 visível só pro dono em modo apresentador (não pra público nem moderador).
 
-### Perfil (`perfil.html` + `perfil.js`)
+### Perfil (`/painel/perfil`, React -- página standalone antiga aposentada em 2026-08-21)
 
 Tela de conta, fora do escopo de um leilão específico -- `streamerId` é por
 conta (`streamersStore.ensureByTwitchUserId`), então chave Pix, saldo,
@@ -423,25 +450,30 @@ ver abaixo). Rotas de conta em `server.js`: `GET /api/perfil`,
 arrecadado (`ledgerStore.getLifetimeEarnedCents`, nunca cai mesmo depois de
 sacado) e "sair da conta".
 
-**No hub (`/painel`), a seção Perfil está sendo reconstruída em React aos
-poucos** (`client/perfil.html` + `perfil-main.jsx` + `PerfilStandalone.jsx`,
-4º *entry* standalone do Vite, mesmo padrão de fetch-and-inject de
-Configurações/Histórico -- ver `#view-perfil`/`#perfil-root` em
-`painel.html`). **As 5 abas já têm conteúdo de verdade** (Visão geral,
-Financeiro, Widget OBS, Alerta, Doações -- ver parágrafos abaixo pra cada
-uma), reconstruídas deliberadamente seção por seção, confirmando com o
-cliente a cada uma antes de seguir (não foi tudo de uma vez). O `public/perfil.html`
-standalone abaixo **continua existindo e funcionando normalmente** (é pra
-onde `/perfil` aponta, usado pelo link do widget OBS e por quem chega
-direto na URL) -- não foi substituído, só ganhou um "espelho" parcial
-dentro do hub. Reaproveita as classes de `perfil.css` quase sem alteração
-(`.perfil-shell`/`.perfil-sidebar`/`.perfil-nav`/`.perfil-stat-card`/etc já
-eram bem desenhadas, não precisou reinventar visual), exceto que **não**
-usa o hack de `.perfil-main` de escapar pro `100vw` (isso só fazia sentido
-na página standalone antiga, que era o `body` inteiro -- no hub o conteúdo
-já flui dentro de `.hub-main`). Botão "Sair da conta" usa `confirmDialog`
-de verdade (`useDialogs.jsx`), não `confirm()` nativo, diferente do avatar
-da sidebar do hub (ver seção Hub acima, que É uma exceção deliberada).
+**Perfil vivia em duas versões (vanilla `public/perfil.html`/`perfil.js` +
+React `/painel/perfil`) até 2026-08-21**, quando a vanilla foi aposentada:
+uma vez que as 5 abas do React ficaram completas (ver histórico abaixo,
+terminado com Financeiro em 2026-08-20), a standalone virou pura
+duplicação (2ª implementação de `confirmDialog`, 2ª implementação da
+sidebar `.perfil-nav`) sem ganhar nada em troca. `GET /perfil`
+(`server.js`) agora é só um `301` pra `/painel/perfil` -- mesmo padrão já
+usado em `/meus-leiloes` → `/painel`. `public/perfil.html`/`perfil.js`
+foram removidos; `public/css/perfil.css` **continua existindo** (o hub
+carrega ele direto em `painel.html`, `PerfilStandalone.jsx` reaproveita as
+classes quase sem alteração).
+
+A versão React (`client/perfil.html` + `perfil-main.jsx` +
+`PerfilStandalone.jsx`, 4º *entry* standalone do Vite, mesmo padrão de
+fetch-and-inject de Configurações/Histórico -- ver `#view-perfil`/`#perfil-root`
+em `painel.html`) é agora **a única**. Reaproveita as classes de
+`perfil.css` quase sem alteração (`.perfil-shell`/`.perfil-sidebar`/`.perfil-nav`/
+`.perfil-stat-card`/etc já eram bem desenhadas, não precisou reinventar
+visual), exceto que **não** usa o hack de `.perfil-main` de escapar pro
+`100vw` (isso só fazia sentido na página standalone antiga, que era o
+`body` inteiro -- no hub o conteúdo já flui dentro de `.hub-main`). Botão
+"Sair da conta" usa `confirmDialog` de verdade (`useDialogs.jsx`), não
+`confirm()` nativo, diferente do avatar da sidebar do hub (ver seção Hub
+acima, que É uma exceção deliberada).
 
 **Widget OBS (2026-08-17)** foi a primeira das 4 abas placeholder a ganhar
 conteúdo de verdade (`WidgetObsTab.jsx`) -- port direto do que já existia

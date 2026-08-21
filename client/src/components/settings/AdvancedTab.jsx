@@ -47,7 +47,7 @@ export default function AdvancedTab({ leilaoId }) {
     <div className="settings-panel-group">
       <div className="panel">
         <h2 className="panel-title">Chave Pix e saldo</h2>
-        <p className="hint">Chave Pix, saldo e saques agora ficam no <a href="/perfil">seu Perfil</a>, fora do escopo de um leilão específico.</p>
+        <p className="hint">Chave Pix, saldo e saques agora ficam no <a href="/painel/perfil">seu Perfil</a>, fora do escopo de um leilão específico.</p>
       </div>
 
       <div className="panel">
@@ -85,7 +85,7 @@ export default function AdvancedTab({ leilaoId }) {
           Derruba o acesso de qualquer moderador conectado agora com o
           código de uso único (eles precisam de um código novo pra
           entrar de novo). Não afeta você. Pra sair da sua própria conta,
-          use o <a href="/perfil">seu Perfil</a>.
+          use o <a href="/painel/perfil">seu Perfil</a>.
         </p>
         <div className="panel-row">
           <button className="btn-mini danger" type="button" onClick={revokeMods}>Revogar acesso de moderadores</button>

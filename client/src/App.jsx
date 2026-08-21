@@ -138,7 +138,7 @@ function BoardContent() {
 
   const isReacts = leaderboard.activeSystem === 'reacts'
   const donors = isReacts ? leaderboard.reactDonors : leaderboard.donors
-  const profileHref = presenter.active && presenter.isOwner ? '/perfil' : null
+  const profileHref = presenter.active && presenter.isOwner ? '/painel/perfil' : null
 
   return (
     <div className="page">
