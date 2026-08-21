@@ -25,6 +25,22 @@ streamer tem isso conectado. Isso é uma **ponte temporária** enquanto o
 cadastro na Efí como intermediador de pagamentos não é aprovado — não é uma
 volta definitiva ao pix.gg, é a Efí que segue sendo o destino final.
 
+**Convenção jogo + recado no mesmo campo (2026-08-21)**: o pixgg.com só
+manda 1 campo de texto livre no webhook (`Message`), sem separar "jogo
+escolhido" de "recado pro streamer" -- doar.js gera `+Jogo. recado` (ponto
+separa os dois; `-Jogo` sabota), `parseMessage` (`src/parser.js`) extrai o
+recado de volta e ele entra no `lastEvent` do alerta ao vivo normalmente.
+Sem ponto continua funcionando como sempre (só jogo, sem recado) -- não
+quebra doação antiga nem quem digita direto no pixgg.com sem seguir a
+convenção. Os campos "seu nome"/"voz de IA" saíram do formulário nesse
+fluxo (ficam ocultos via JS quando `pixggSlug` existe, voltam se cair) --
+quem manda esses de verdade é a própria pixgg.com (nome da conta do doador
+lá, voz é lida a partir do texto que ele digita direto no site deles, não
+algo controlável por aqui). Doação sem jogo reconhecível (nem convenção nem
+`findExistingGameInText`) vira fila de pendência (sino de notificação,
+`NotifBell.jsx`), não um card falso no catálogo -- isso já tinha sido
+corrigido antes (`3590d2f`, 2026-08-13).
+
 A infraestrutura da **Efí Bank** (custódia numa Conta Master única + ledger
 interno no Postgres — `fee_config`, `streamer_balances`, `ledger_entries`,
 etc., ver `src/ledgerStore.js`) continua existindo no código e é o que
