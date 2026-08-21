@@ -90,10 +90,6 @@ function BoardContent({ leilaoId, embedded }) {
   }, [!!leaderboard])
 
   useEffect(() => {
-    // "Vencedor!" (swirl canvas) + recap automático ficam de fora da
-    // versão embutida por enquanto (Fase B do plano religa) -- ver
-    // recap sob demanda continua funcionando (HistoryOverlay -> RecapModal)
-    if (embedded) return
     if (!leaderboard) return
     const wasOpen = wasOpenRef.current
     wasOpenRef.current = leaderboard.open
@@ -102,7 +98,7 @@ function BoardContent({ leilaoId, embedded }) {
       setSoldTrigger({ leaderName: leader ? leader.name : null, id: Date.now() })
       setTimeout(() => recap.showCurrent(), 2400)
     }
-  }, [leaderboard?.open, embedded])
+  }, [leaderboard?.open])
 
   useEffect(() => {
     document.documentElement.dataset.theme = leaderboard?.theme || 'cinza'
