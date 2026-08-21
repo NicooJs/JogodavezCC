@@ -23,6 +23,7 @@ import SettingsModal from './components/SettingsModal.jsx'
 import RecapModal from './components/RecapModal.jsx'
 import SoldOverlay from './components/SoldOverlay.jsx'
 import HistoryOverlay from './components/HistoryOverlay.jsx'
+import LoadingSplash from './components/LoadingSplash.jsx'
 import RankingModal from './components/RankingModal.jsx'
 import PresenterBar from './components/PresenterBar.jsx'
 import LotModal from './components/LotModal.jsx'
@@ -144,7 +145,11 @@ function BoardContent({ leilaoId, embedded }) {
     return <p style={{ padding: 24 }}>Leilão não encontrado (URL precisa ser /l/:id).</p>
   }
   if (!leaderboard) {
-    return null
+    return (
+      <div className="board-loading">
+        <LoadingSplash />
+      </div>
+    )
   }
 
   const isReacts = leaderboard.activeSystem === 'reacts'

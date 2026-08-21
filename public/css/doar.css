@@ -108,11 +108,11 @@
 .doar-state[hidden] { display: none; }
 .doar-closed .icon { width: 26px; height: 26px; color: var(--danger); }
 
-/* mascote de loading fica menor aqui -- o card de doação é compacto,
-   o tamanho padrão do .loading-splash (pensado pra seção cheia do hub)
-   ficaria grande demais */
-.doar-loading .loading-splash { padding: 8px 4px; gap: 10px; }
-.doar-loading .loading-splash-img { width: 84px; }
+/* mascote de loading fica menor aqui -- o card de doação é estreito,
+   o tamanho padrão do .loading-splash (pensado pra tela cheia) não cabe,
+   mas continua bem maior que o resto do conteúdo do card de propósito */
+.doar-loading .loading-splash { min-height: 0; padding: 10px 4px; gap: 12px; }
+.doar-loading .loading-splash-img { width: 150px; }
 
 .doar-step[hidden] { display: none; }
 .doar-step .modal-field:not(:last-child) { margin-bottom: 10px; }
