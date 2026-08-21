@@ -130,8 +130,9 @@ compartilhados. Ao adicionar CSS novo, seguir a convenção visual existente
 
 - **`.btn-mini`**: botão base (`.primary`, `.danger`), usado em quase todo modal admin.
 - **`.copy-btn`**: ícone copiar→check com cross-fade, lógica em `public/js/copy-button.js` (`wireCopyButton(btn, inputEl)`), tooltip via `[data-tooltip]::after`.
-- **`promptDialog`/`confirmDialog`**: **duas implementações separadas, não compartilham módulo** — uma em `public/js/settings.js` (board), outra em `public/js/meus-leiloes.js`. Ambas retornam Promise, mesmo padrão de overlay (`.dialog-overlay`, `z-index: 70`, regra em `style.css` já que várias páginas usam).
+- **`promptDialog`/`confirmDialog`**: **2 implementações separadas, não compartilham módulo** — vanilla `public/js/settings.js` (só o board antigo, `board.html`/`app.js`, ainda vivo enquanto a migração pro React não termina) e React `client/src/hooks/useDialogs.jsx` (board novo canário + hub). Ambas retornam Promise, mesmo padrão de overlay (`.dialog-overlay`, `z-index: 70`, regra em `style.css`). A 3ª implementação que existia em `public/js/perfil.js` foi removida quando o Perfil standalone foi aposentado (ver seção Perfil).
 - **Sidebar de navegação com ícone + label dentro de modal**: `.settings-nav`/`.settings-nav-item` em `settings.css`, mesmo visual (ícone + label, estado ativo com fundo sólido na cor de destaque) do padrão `.perfil-nav-item` do Perfil, mas é uma implementação própria escopada ao modal, não reuso direto da classe.
+- **`NavRail` (`client/src/components/NavRail.jsx`)** — essa aqui **é** reuso de verdade, exceção ao padrão "mesmo visual, implementações separadas" logo acima: a trilha vertical de ícones do hub (`.hub-sidebar`) e do board (`.system-switch`, dentro de `SystemSwitch.jsx`) são o mesmo componente React, só configurado diferente (itens de navegação real no hub via `SidebarStandalone.jsx`, ver seção Hub; itens que abrem modal + toggle Leilão/Reacts como controle à parte no board). Só existe porque o hub ganhou um 5º entry standalone do Vite (`client/sidebar.html`, mesmo padrão de Configurações/Histórico/Perfil) especificamente pra isso — antes disso a sidebar do hub era vanilla puro e não dava pra compartilhar com o board React.
 - **`.seg`** (segmented control): Apoiar/Sabotar, Sem voz/Com voz.
 - **`.game-shelf`**: carrossel horizontal de capas com `scroll-snap` + máscara de fade nas bordas, populado por catálogo local + busca IGDB/TMDB debounced.
 - **`.modal`/`.modal-overlay`**: base de todos os diálogos, todos com grain.
@@ -175,10 +176,24 @@ cards de "ferramentas" (hoje só Leilão e Reacts, mais vem depois).
 **Navegação é 100% inline, nunca modal/drawer** (decisão revertida
 2026-08-16 depois de um round anterior que usava painel lateral deslizante
 -- o cliente achou confuso e pediu pra trocar). Cada ícone da sidebar
-(Início/Perfil/Configurações/Ranking/Histórico, `data-view` no HTML) troca
-o conteúdo de `.hub-main` no lugar: `showView(name)` em `painel.js` esconde
-todos os `.hub-view` e mostra só o escolhido, atualizando `.is-active` na
-sidebar -- sem overlay por cima do resto da tela, sem "sair da tela".
+(Início/Perfil/Configurações/Histórico -- não tem Ranking aqui, isso é
+coisa do board, ver mais abaixo) troca o conteúdo de `.hub-main` no lugar:
+`showView(name)` em `painel.js` esconde todos os `.hub-view` e mostra só o
+escolhido -- sem overlay por cima do resto da tela, sem "sair da tela".
+
+**A sidebar em si virou React (2026-08-21)**, `NavRail` (ver "Componentes
+reutilizáveis" acima) -- mesmo componente que o board usa em
+`SystemSwitch.jsx`, montado via um 5º entry standalone do Vite
+(`client/sidebar.html`, mesmo padrão de Configurações/Histórico/Perfil,
+ver abaixo). `painel.html` só tem um container vazio
+(`<aside id="sidebar-root">`); `painel.js` chama
+`window.JogodaVezSidebar.mount("sidebar-root", {activeView, avatarUrl,
+onNavigate, onLogout})` assim que a sessão carrega (diferente das outras
+3 views, que montam só na primeira abertura -- a sidebar precisa estar
+visível desde o início) e de novo a cada troca de view, só pra atualizar
+`activeView` (reusa a mesma raiz React, não recria). `showView(name)`
+continua existindo e fazendo a troca de verdade; o clique agora chega nela
+via callback (`onNavigate`) em vez de listener direto num `<button>` vanilla.
 **Regra de CSS importante aprendida aqui, vale pra qualquer elemento
 escondido por `[hidden]` daqui pra frente**: se o elemento também tem
 `display` fixado por classe (ex: `.hub-shell { display: flex }`), essa
