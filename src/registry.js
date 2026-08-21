@@ -2,6 +2,7 @@ const fs = require("fs");
 const path = require("path");
 const crypto = require("crypto");
 const { getStore, DATA_DIR } = require("./stores");
+const registryBackup = require("./registryBackup");
 
 const REGISTRY_FILE = path.join(DATA_DIR, "_registry.json");
 
@@ -46,6 +47,7 @@ async function createLeilao({ title, host, hostAvatar, hostTwitchUserId, hostTwi
   };
   registry.leiloes[id] = meta;
   save();
+  await registryBackup.backupLeilaoMeta(id, meta);
 
   // sem senha na criação -- o dono entra direto via Twitch (requireLeilaoAdmin
   // já aceita isso). Se precisar delegar pra um moderador, gera um código de
@@ -86,6 +88,7 @@ function listLeiloesByOwner(twitchUserId) {
 function deleteLeilao(id) {
   delete registry.leiloes[id];
   save();
+  registryBackup.deleteLeilaoBackup(id); // fire-and-forget, já loga o próprio erro internamente
 }
 
 // tira o vínculo do leilão com a conta Twitch (some de "meus leilões" e a sessão
@@ -96,6 +99,7 @@ function unlinkOwner(id) {
   if (!registry.leiloes[id]) return;
   registry.leiloes[id].ownerTwitchUserId = null;
   save();
+  registryBackup.backupLeilaoMeta(id, registry.leiloes[id]); // fire-and-forget, já loga o próprio erro internamente
 }
 
 module.exports = {

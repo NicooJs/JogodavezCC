@@ -2531,6 +2531,10 @@ setInterval(() => {
 
 require("./src/stateBackup").start();
 require("./src/reconciliation").start();
+// backfill único do registro (dono/título/criado-em) no Postgres -- cobre
+// leilões criados antes dessa feature existir; daqui pra frente cada
+// criação/exclusão/desvínculo já se auto-atualiza (ver src/registry.js)
+require("./src/registryBackup").backupAll().catch((err) => console.error("[registryBackup] falha no backfill inicial:", err.message));
 
 // bot de chat da Twitch (!hype "jogo") -- lê o chat de cada leilão que já
 // tem dono com Twitch vinculado; leilões novos entram na hora (ver
