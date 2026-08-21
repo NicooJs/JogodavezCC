@@ -151,10 +151,13 @@ body::before {
 .page { position: relative; z-index: 1; }
 
 /* board embutido no hub (App.jsx `embedded`) -- .board-bg/.board-cover-bg
-   são position:fixed pensados pra cobrir a janela inteira; aqui precisam
-   ficar contidos só na área do board dentro do hub, não vazar por cima
-   do resto da tela. overflow:hidden corta qualquer sobra nas bordas. */
-.page-embedded { overflow: hidden; }
+   são position:fixed pensados pra cobrir a janela inteira; aqui passam a
+   position:absolute com inset:0, o que já os prende exatamente na caixa
+   de .page-embedded (que tem position:relative) sem precisar de
+   overflow:hidden no .page inteiro -- isso cortava conteúdo de verdade
+   (timer, colunas mais altas que 1000px) que só passa da borda por causa
+   de scroll interno normal, não é "sobra" do fundo. Cada um deles já tem
+   overflow:hidden na própria regra, suficiente pra conter os próprios tiles. */
 .page-embedded .board-bg,
 .page-embedded .board-cover-bg { position: absolute; }
 
@@ -1459,6 +1462,13 @@ button.nav-rail-footer { cursor: pointer; }
    entre os dois). */
 body.presenter-mode .page {
   padding-left: 92px;
+}
+/* embutido no hub não tem o SystemSwitch fixo (a sidebar do hub já cobre
+   a navegação), então não precisa do respiro extra que compensa ele --
+   sem isso o board embutido ficava com uma margem esquerda a mais que o
+   /l/:id não tem */
+body.presenter-mode .page-embedded {
+  padding-left: 24px;
 }
 
 @keyframes board-tension {
@@ -4422,6 +4432,7 @@ body.presenter-mode .page {
      borda esquerda -- não sobra espaço lateral pra uma coluna a mais
      nesse ponto. */
   body.presenter-mode .page { padding-left: 24px; padding-top: 62px; }
+  body.presenter-mode .page-embedded { padding-left: 24px; padding-top: 18px; }
   #system-switch {
     left: 0;
     right: 0;
@@ -4443,6 +4454,7 @@ body.presenter-mode .page {
 @media (max-width: 720px) {
   .page { padding: 14px 16px 10px; height: auto; }
   body.presenter-mode .page { padding-left: 16px; padding-top: 58px; }
+  body.presenter-mode .page-embedded { padding-left: 16px; padding-top: 14px; }
   .board { display: flex; flex-direction: column; height: auto; }
   .col { display: contents; }
   .panel { min-height: 0; border-right: none; }

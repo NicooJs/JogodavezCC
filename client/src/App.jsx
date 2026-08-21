@@ -57,11 +57,14 @@ function BoardContent({ leilaoId, embedded }) {
   const { confirmDialog } = useDialogs()
 
   useEffect(() => {
-    // embutido no hub, o body é compartilhado com o resto do painel --
-    // não mexe nele pra não vazar CSS pensado pra página cheia do board
-    if (embedded) return
+    // precisa continuar ligando mesmo embutido -- LotCard usa essa classe
+    // (via document.body.classList.contains) pra saber se o drag-and-drop
+    // de merge tá liberado. O padding extra que essa classe também ativa
+    // (compensação pro SystemSwitch fixo) é resetado só pro caso embutido
+    // via .page-embedded no CSS, já que aqui não tem SystemSwitch pra
+    // abrir espaço.
     document.body.classList.toggle('presenter-mode', presenter.active)
-  }, [presenter.active, embedded])
+  }, [presenter.active])
 
   useEffect(() => {
     if (!presenter.active) return
@@ -224,10 +227,10 @@ function BoardContent({ leilaoId, embedded }) {
             lastEvent={lastEvent}
             presenterActive={presenter.active}
             onLotContextMenu={
-              presenter.active && !embedded ? (x, y, item) => setContextMenuTarget({ type: 'race', x, y, item }) : undefined
+              presenter.active ? (x, y, item) => setContextMenuTarget({ type: 'race', x, y, item }) : undefined
             }
             onEditLot={presenter.active ? setLotModalGame : undefined}
-            onMergeLots={presenter.active && !embedded ? mergeLots : undefined}
+            onMergeLots={presenter.active ? mergeLots : undefined}
           />
         </div>
 
