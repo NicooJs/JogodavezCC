@@ -45,12 +45,17 @@ body.hub-body::before { display: none; }
    de tema de leilão), já que o NavRail sozinho usa os tokens do site. */
 .hub-sidebar {
   flex-shrink: 0;
-  width: 68px;
+  width: 76px;
   background: var(--hub-sidebar-bg);
   border-right: 1px solid var(--hub-border-soft);
-  padding: 18px 10px;
+  padding: 18px 0 14px;
 }
 
+/* proporções do design antigo do hub (76px/48px), maiores que o board
+   (68px/46px) -- mesmo NavRail dos dois, só o tamanho difere por contexto */
+.hub-sidebar .nav-rail-brand { width: 40px; height: 40px; margin: 0 auto 18px; }
+.hub-sidebar .nav-rail-brand img { border-radius: 8px; }
+.hub-sidebar .nav-rail-item { width: 48px; height: 48px; border-radius: 12px; }
 .hub-sidebar .nav-rail-item:hover { background: var(--hub-surface); color: var(--hub-text); }
 .hub-sidebar .nav-rail-item.active { background: var(--hub-accent); color: var(--hub-accent-ink); }
 .hub-sidebar .nav-rail-item.active:hover { background: var(--hub-accent-hover); }
@@ -59,6 +64,8 @@ body.hub-body::before { display: none; }
    próprio na nav) -- o selo vermelho no canto deixa a função óbvia sem
    precisar trocar a foto por um ícone genérico */
 .hub-sidebar .nav-rail-footer {
+  width: 40px;
+  height: 40px;
   background: var(--hub-surface-2);
   border-color: var(--hub-border);
 }

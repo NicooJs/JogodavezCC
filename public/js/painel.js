@@ -288,25 +288,27 @@ function renderServices() {
   if (leilao) {
     // com leilão já criado, os cards abrem embutido no hub em vez de sair
     // pra /l/:id -- href continua apontando pra lá só como fallback (ex:
-    // ctrl+clique abre numa aba nova de verdade, útil pro OBS/segunda tela)
+    // ctrl+clique abre numa aba nova de verdade, útil pro OBS/segunda tela).
+    // Cada card garante o próprio modo antes de entrar -- sem isso, "Leilão"
+    // podia abrir mostrando Reacts se foi o último modo deixado ligado.
     document.getElementById("hub-card-leilao").addEventListener("click", (e) => {
       e.preventDefault();
-      onSidebarNavigate("leilao");
+      switchSystemAndOpen("leilao");
     });
     document.getElementById("hub-card-reacts").addEventListener("click", (e) => {
       e.preventDefault();
-      goToReacts();
+      switchSystemAndOpen("reacts");
     });
   }
 }
 
-async function goToReacts() {
+async function switchSystemAndOpen(system) {
   try {
     await fetch(`/api/l/${leilao.id}/admin/active-system`, {
       method: "POST",
       credentials: "same-origin",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ system: "reacts" }),
+      body: JSON.stringify({ system }),
     });
   } catch (err) {
     // segue pro board mesmo assim -- o streamer troca o modo por lá se essa chamada falhar
