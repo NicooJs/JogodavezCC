@@ -18,6 +18,9 @@ export default function WidgetObsTab({ data }) {
               <CopyButton value={link} />
             </div>
             <p className="perfil-card-footnote">Leilão: {data.latestLeilao.title}</p>
+            {/* leilaoCount > 1 só é alcançável hoje por conta com dado de antes
+                da regra "uma conta, um leilão" (POST /api/leiloes) -- mantido
+                como salvaguarda pra esse caso legado, não removido */}
             {(data.leilaoCount || 0) > 1 ? (
               <p className="perfil-card-footnote">
                 Esse é o link do seu leilão mais recente. Se quiser o de outro, veja em <a href="/painel">seu painel</a>.

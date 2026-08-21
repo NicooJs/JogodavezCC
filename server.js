@@ -932,6 +932,9 @@ app.get("/api/perfil", async (req, res) => {
       alertChime: alertPrefs.chime,
       alertCustomSoundUrl: alertPrefs.customSoundUrl,
       latestLeilao,
+      // só passa de 1 por conta de dado legado (leilão de antes da regra
+      // "uma conta, um leilão" em POST /api/leiloes) -- WidgetObsTab.jsx usa
+      // isso só como salvaguarda pra esse caso, não é fluxo normal
       leilaoCount: ownedLeiloes.length,
       pixggConnected: !!pixggCredentials,
       pixggSlug: pixggCredentials ? pixggCredentials.pixggSlug : null,
