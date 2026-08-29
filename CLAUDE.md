@@ -25,14 +25,22 @@ streamer tem isso conectado. Isso é uma **ponte temporária** enquanto o
 cadastro na Efí como intermediador de pagamentos não é aprovado — não é uma
 volta definitiva ao pix.gg, é a Efí que segue sendo o destino final.
 
-**Convenção jogo + recado no mesmo campo (2026-08-21)**: o pixgg.com só
-manda 1 campo de texto livre no webhook (`Message`), sem separar "jogo
-escolhido" de "recado pro streamer" -- doar.js gera `+Jogo. recado` (ponto
-separa os dois; `-Jogo` sabota), `parseMessage` (`src/parser.js`) extrai o
-recado de volta e ele entra no `lastEvent` do alerta ao vivo normalmente.
-Sem ponto continua funcionando como sempre (só jogo, sem recado) -- não
-quebra doação antiga nem quem digita direto no pixgg.com sem seguir a
-convenção. Os campos "seu nome"/"voz de IA" saíram do formulário nesse
+**Convenção jogo + recado no mesmo campo (2026-08-21, separador trocado pra
+" | " em 2026-08-29)**: o pixgg.com só manda 1 campo de texto livre no
+webhook (`Message`), sem separar "jogo escolhido" de "recado pro streamer"
+-- doar.js gera `+Jogo | recado` (`-Jogo` sabota), `parseMessage`
+(`src/parser.js`) extrai o recado de volta e ele entra no `lastEvent` do
+alerta ao vivo normalmente. Sem " | " continua funcionando como sempre (só
+jogo, sem recado) -- não quebra doação antiga nem quem digita direto no
+pixgg.com sem seguir a convenção. **Separador era "." até 2026-08-29**,
+trocado pra " | " porque título de filme em pt-BR usa ponto com frequência
+(abreviação tipo "Sr. e Sra. Smith", "Dr. Estranho") -- o primeiro ponto da
+mensagem cortava o nome do filme no meio (virava "Sr" + recado bogus "e
+Sra. Smith"), bug que só afetava filme, não jogo (raro ter ponto no meio do
+nome). Mesmo bug existia em qualquer chamada de `parseMessage` com nome
+contendo ponto, não só na ponte pixgg.com -- também batia em lançamento
+manual de filme (`POST /admin/manual-entry`) e na rota antiga de doação
+direta (`POST /doacao`). Os campos "seu nome"/"voz de IA" saíram do formulário nesse
 fluxo (ficam ocultos via JS quando `pixggSlug` existe, voltam se cair) --
 quem manda esses de verdade é a própria pixgg.com (nome da conta do doador
 lá, voz é lida a partir do texto que ele digita direto no site deles, não

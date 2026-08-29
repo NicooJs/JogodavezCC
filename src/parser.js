@@ -48,15 +48,20 @@ function parseMessage(rawMessage) {
   text = text.trim();
   text = text.replace(/^[\s\-–—:.,!]+/, "").trim();
 
-  // convenção pro doador escrever jogo + recado no mesmo campo (pixgg.com
-  // só manda 1 texto livre pro streamer, ver server.js processDonationMessage):
-  // "+Jogo. recado pro streamer" -- primeiro ponto corta os dois, sem ponto
-  // continua funcionando exatamente como antes (mensagem só com jogo).
+  // convenção pro doador escrever jogo/filme + recado no mesmo campo
+  // (pixgg.com só manda 1 texto livre pro streamer, ver server.js
+  // processDonationMessage): "+Jogo | recado pro streamer" -- " | " corta os
+  // dois, sem " | " continua funcionando exatamente como antes (mensagem só
+  // com jogo). Era "." até 2026-08-29, mas título de filme em pt-BR usa ponto
+  // com frequência ("Sr. e Sra. Smith", "Dr. Estranho") -- isso truncava o
+  // nome no meio ("Sr", recado "e Sra. Smith") pra qualquer filme com
+  // abreviação no título. "|" não aparece em título nem em recado digitado
+  // à mão, então não tem esse ponto cego.
   let note = null;
-  const dotIndex = text.indexOf(".");
-  if (dotIndex !== -1) {
-    note = text.slice(dotIndex + 1).trim().slice(0, 140) || null;
-    text = text.slice(0, dotIndex).trim();
+  const pipeIndex = text.indexOf(" | ");
+  if (pipeIndex !== -1) {
+    note = text.slice(pipeIndex + 3).trim().slice(0, 140) || null;
+    text = text.slice(0, pipeIndex).trim();
   } else {
     text = text.replace(/[\s!.,]+$/, "").trim();
   }
