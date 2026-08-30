@@ -2,15 +2,17 @@ import { useEffect, useRef, useState } from 'react'
 import { presenterFetch } from '../lib/api.js'
 import { FlagIcon, StopIcon, ReactModeIcon, TrashIcon } from './icons.jsx'
 import { useDialogs } from '../hooks/useDialogs.jsx'
+import { mediaLabel } from '../lib/media.js'
 
-// menu de botão direito: modo corrida (nos cards do catálogo do leilão) ou
-// "marcar como reagido" (na fila do reacts) -- mesmo elemento/CSS pros
-// dois, só o conteúdo muda (espelha openLotContextMenu/openReactContextMenu
-// do app.js vanilla).
-export default function LotContextMenu({ leilaoId, target, onClose, onOpenRaceModal }) {
+// menu de botão direito: modo corrida (nos cards do catálogo do leilão),
+// "adicionar manualmente" (clique fora dos cards, no catálogo vazio) ou
+// "marcar como reagido" (na fila do reacts) -- mesmo elemento/CSS pros três,
+// só o conteúdo muda (espelha openLotContextMenu/openReactContextMenu do
+// app.js vanilla).
+export default function LotContextMenu({ leilaoId, mode, target, onClose, onOpenRaceModal, onAddManual }) {
   const menuRef = useRef(null)
   const [pos, setPos] = useState(null)
-  const { confirmDialog } = useDialogs()
+  const { confirmDialog, promptDialog } = useDialogs()
 
   useEffect(() => {
     if (!target) {
@@ -83,6 +85,17 @@ export default function LotContextMenu({ leilaoId, target, onClose, onOpenRaceMo
     }
   }
 
+  const addManual = async () => {
+    onClose()
+    const name = await promptDialog({
+      title: `Adicionar ${mediaLabel(mode)} manualmente`,
+      label: 'Nome',
+      confirmLabel: 'Continuar',
+    })
+    if (!name || !name.trim()) return
+    onAddManual({ name: name.trim(), image: null })
+  }
+
   const markReacted = async () => {
     const videoId = target.video.id
     onClose()
@@ -123,6 +136,11 @@ export default function LotContextMenu({ leilaoId, target, onClose, onOpenRaceMo
             <TrashIcon />Excluir jogo
           </button>
         </>
+      ) : target.type === 'add-manual' ? (
+        <button className="lot-context-menu-item" type="button" onClick={addManual}>
+          <svg className="icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M10 4.5v11M4.5 10h11" /></svg>
+          Adicionar {mediaLabel(mode)} manualmente
+        </button>
       ) : (
         <>
           <div className="lot-context-menu-head">

@@ -108,6 +108,26 @@ export default function PresenterBar({ leilaoId, leaderboard, items, onOpenLotMo
         <svg className="icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M12.5 3.5a3 3 0 0 1 3.9 3.9l-7.6 7.6-4.3 1 1-4.3 7-7z" /><path d="M11 5l3.5 3.5" /></svg>
       </button>
 
+      {/* fora do drawer de propósito -- trocar de modalidade é uma ação
+          rara e importante (zera catálogo/histórico), não devia ficar
+          escondida atrás do lápis junto com "adicionar lote"/"zerar" */}
+      <button
+        className="mode-toggle"
+        type="button"
+        data-mode={mode}
+        title={`Modalidade: ${Media}s (clique pra trocar pra ${mode === 'filmes' ? 'Jogos' : 'Filmes'})`}
+        aria-label={`Trocar modalidade do leilão pra ${mode === 'filmes' ? 'Jogos' : 'Filmes'}`}
+        onClick={toggleMode}
+      >
+        <span className="mode-toggle-thumb" aria-hidden="true" />
+        <span className="mode-toggle-icon mode-toggle-icon-jogos" aria-hidden="true">
+          <svg className="icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><path d="M6 6h8a3 3 0 0 1 3 3.2l-.6 4.5a2 2 0 0 1-3.4 1.2L11.8 13H8.2l-1.2 1.9a2 2 0 0 1-3.4-1.2L3 9.2A3 3 0 0 1 6 6z" /><path d="M6.5 8.3v2.4M5.3 9.5h2.4" /><circle cx="14" cy="8.6" r="0.6" fill="currentColor" stroke="none" /><circle cx="15.3" cy="9.9" r="0.6" fill="currentColor" stroke="none" /></svg>
+        </span>
+        <span className="mode-toggle-icon mode-toggle-icon-filmes" aria-hidden="true">
+          <svg className="icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><path d="M3 8.5h14V15a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V8.5z" /><path d="M3 8.5l1.2-4h11.6l1.2 4" /><path d="M6.5 4.5l-1 4M10 4.5l-1 4M13.5 4.5l-1 4" /></svg>
+        </span>
+      </button>
+
       {drawerOpen ? (
         <section className="presenter-bar presenter-popover">
           <div className="field-wrap presenter-search">
@@ -158,22 +178,6 @@ export default function PresenterBar({ leilaoId, leaderboard, items, onOpenLotMo
           </button>
           <button className="pbar-btn pbar-btn-ghost pbar-btn-icon-only" type="button" title="Ver rounds anteriores" aria-label="Histórico" onClick={onOpenHistory}>
             <svg className="icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M10 5.5V10l3 2" /><circle cx="10" cy="10" r="7" /></svg>
-          </button>
-          <button
-            className="mode-toggle"
-            type="button"
-            data-mode={mode}
-            title={`Modalidade: ${Media}s (clique pra trocar pra ${mode === 'filmes' ? 'Jogos' : 'Filmes'})`}
-            aria-label={`Trocar modalidade do leilão pra ${mode === 'filmes' ? 'Jogos' : 'Filmes'}`}
-            onClick={toggleMode}
-          >
-            <span className="mode-toggle-thumb" aria-hidden="true" />
-            <span className="mode-toggle-icon mode-toggle-icon-jogos" aria-hidden="true">
-              <svg className="icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><path d="M6 6h8a3 3 0 0 1 3 3.2l-.6 4.5a2 2 0 0 1-3.4 1.2L11.8 13H8.2l-1.2 1.9a2 2 0 0 1-3.4-1.2L3 9.2A3 3 0 0 1 6 6z" /><path d="M6.5 8.3v2.4M5.3 9.5h2.4" /><circle cx="14" cy="8.6" r="0.6" fill="currentColor" stroke="none" /><circle cx="15.3" cy="9.9" r="0.6" fill="currentColor" stroke="none" /></svg>
-            </span>
-            <span className="mode-toggle-icon mode-toggle-icon-filmes" aria-hidden="true">
-              <svg className="icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><path d="M3 8.5h14V15a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V8.5z" /><path d="M3 8.5l1.2-4h11.6l1.2 4" /><path d="M6.5 4.5l-1 4M10 4.5l-1 4M13.5 4.5l-1 4" /></svg>
-            </span>
           </button>
         </section>
       ) : null}

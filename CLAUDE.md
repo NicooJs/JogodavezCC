@@ -257,6 +257,16 @@ no canto pra não parecer um ícone de "ver meu perfil" (isso já confundiu o
 cliente uma vez). "Ver perfil de verdade" é o ícone de pessoa na nav, não
 o avatar.
 
+**Bug de clipping no selinho de saída (corrigido 2026-08-30)**: `.nav-rail-avatar-exit`
+é posicionado com offset negativo (`bottom:-2px; right:-2px`) de propósito,
+pra ficar "pendurado" na borda do círculo do avatar -- só que `.nav-rail-footer`
+(o pai) tinha `overflow: hidden` pra deixar a própria foto redonda, e isso
+cortava o selinho pela metade (aparência quebrada, tipo um pedaço de círculo
+solto). Fix: o `border-radius: 50%` que arredonda a foto foi pro `.nav-rail-avatar`/
+`.nav-rail-avatar-placeholder` diretamente, e `overflow: hidden` saiu do
+`.nav-rail-footer` -- o selinho (elemento irmão da foto, não filho) deixa de
+ser cortado pelo clipping que só precisa valer pra foto em si.
+
 **Não existe mais ícone de "Ranking" separado no hub** (removido
 2026-08-16) -- `/api/l/:id/ranking` (por valor) e `/api/l/:id/recap/history`
 (por data) puxavam praticamente os mesmos dados (`getPastAuctions()`), só
@@ -470,6 +480,24 @@ glifo da Twitch usado em `.host-twitch-badge` (`TwitchIcon` em
 `icons.jsx`/`TWITCH_ICON_SVG` em `app.js`) -- cobre tanto jogo real sem
 capa encontrada quanto "quadro" da live que não é jogo/filme de verdade
 (nunca vai ter capa nenhuma pra achar).
+
+**Adicionar jogo/filme manualmente pelo catálogo (2026-08-30)**: botão
+direito no `.arena-grid` **fora** de qualquer `.lot-card` (inclusive com o
+catálogo vazio) abre "Adicionar {jogo/filme} manualmente" (`LotContextMenu.jsx`,
+`target.type === "add-manual"`) -- pede o nome via `promptDialog` e abre o
+mesmo `LotModal` já usado pela busca da presenter-bar (`{name, image: null}`),
+que lança via `POST /admin/manual-entry` normalmente (capa é resolvida do
+lado do servidor, igual doação de chat/pixgg.com). Só existe na versão React
+por enquanto -- o botão direito do vanilla (`app.js`) continua só com corrida/excluir.
+
+**Toggle Jogos↔Filmes saiu de dentro do drawer do apresentador (2026-08-30)**:
+antes só aparecia depois de clicar no FAB de lápis (`.presenter-fab`, abre
+"ferramentas do apresentador" -- busca, lançar lote, zerar, histórico).
+Trocar de modalidade zera catálogo e histórico do round, então não devia
+ficar no meio dessas ferramentas menores nem exigir 2 cliques -- `.mode-toggle`
+virou elemento irmão do FAB, sempre visível em modo apresentador
+(`position: fixed`, mesmo `z-index`, encostado à esquerda do FAB), tanto no
+board vanilla (`board.html`/`app.js`) quanto no React (`PresenterBar.jsx`).
 
 **Recap**: estatísticas + pódio + download de imagem (canvas 2D, ver seção
 de animações) + compartilhar no X. Histórico de recaps acessível via modal e

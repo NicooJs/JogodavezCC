@@ -255,6 +255,9 @@ function BoardContent({ leilaoId, embedded }) {
             onLotContextMenu={
               presenter.active ? (x, y, item) => setContextMenuTarget({ type: 'race', x, y, item }) : undefined
             }
+            onCatalogContextMenu={
+              presenter.active ? (x, y) => setContextMenuTarget({ type: 'add-manual', x, y }) : undefined
+            }
             onEditLot={presenter.active ? setLotModalGame : undefined}
             onMergeLots={presenter.active ? mergeLots : undefined}
           />
@@ -289,9 +292,11 @@ function BoardContent({ leilaoId, embedded }) {
       <ModCodeModal code={modCode} onClose={() => setModCode(null)} />
       <LotContextMenu
         leilaoId={leilaoId}
+        mode={leaderboard.mode}
         target={contextMenuTarget}
         onClose={() => setContextMenuTarget(null)}
         onOpenRaceModal={setRaceModalItem}
+        onAddManual={setLotModalGame}
       />
       <RaceModal leilaoId={leilaoId} item={raceModalItem} onClose={() => setRaceModalItem(null)} />
       <SettingsModal open={settingsOpen} onClose={() => setSettingsOpen(false)} leilaoId={leilaoId} leaderboard={leaderboard} />

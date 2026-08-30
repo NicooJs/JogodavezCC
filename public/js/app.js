@@ -3105,6 +3105,7 @@ function setPresenterMode(active) {
     ? (isPresenterOwner ? "Gerar código para moderador" : "Modo apresentador ativo")
     : "Entrar no modo apresentador";
   presenterFabEl.hidden = !active;
+  modeToggleBoardEl.hidden = !active;
   systemSwitchEl.hidden = !active;
   notifBellTriggerEl.hidden = !active;
   setNotifBellOpen(false);

@@ -1036,7 +1036,6 @@ body.board-body.has-bg-image .board-cover-bg, body.hub-body.has-bg-image .board-
   width: 42px;
   height: 42px;
   border-radius: 50%;
-  overflow: hidden;
   position: relative;
   display: flex;
   align-items: center;
@@ -1053,7 +1052,10 @@ body.board-body.has-bg-image .board-cover-bg, body.hub-body.has-bg-image .board-
 }
 .nav-rail-footer[href]:hover, button.nav-rail-footer:hover { border-color: var(--accent); cursor: pointer; }
 button.nav-rail-footer { cursor: pointer; }
-.nav-rail-avatar { width: 100%; height: 100%; object-fit: cover; }
+/* redondo no próprio elemento (não no pai) -- overflow:hidden no pai
+   cortava o selinho de saída, que precisa ficar pendurado na borda com
+   offset negativo (ver .nav-rail-avatar-exit em hub.css) */
+.nav-rail-avatar { width: 100%; height: 100%; object-fit: cover; border-radius: 50%; }
 .nav-rail-avatar-placeholder { display: flex; align-items: center; justify-content: center; }
 
 /* o mesmo conteúdo de antes (.presenter-bar), agora dentro de um popover
@@ -1122,10 +1124,16 @@ button.nav-rail-footer { cursor: pointer; }
 .theme-dots[hidden] { display: none; }
 .theme-dots { display: flex; align-items: center; gap: 7px; margin-left: auto; }
 
-/* switch de modalidade (jogos/filmes) direto na barra do apresentador --
-   igual um interruptor de tema claro/escuro, pra ser óbvio pra qualquer um */
+/* switch de modalidade (jogos/filmes) -- igual um interruptor de tema
+   claro/escuro, pra ser óbvio pra qualquer um. Fixo do lado do botão de
+   ferramentas do apresentador (não dentro do popover que ele abre): trocar
+   de modalidade é raro e importante (zera catálogo/histórico), não devia
+   ficar escondido atrás do lápis junto com "adicionar lote"/"zerar". */
 .mode-toggle {
-  position: relative;
+  position: fixed;
+  right: 92px;
+  bottom: 38px;
+  z-index: 40;
   display: inline-flex;
   align-items: center;
   width: 56px;
@@ -1136,8 +1144,10 @@ button.nav-rail-footer { cursor: pointer; }
   border: 1px solid var(--border);
   cursor: pointer;
   flex-shrink: 0;
+  box-shadow: 0 10px 26px -8px rgba(0, 0, 0, 0.35);
   transition: border-color 0.15s ease;
 }
+.mode-toggle[hidden] { display: none; }
 .mode-toggle:hover { border-color: var(--accent-soft); }
 
 .mode-toggle-thumb {
