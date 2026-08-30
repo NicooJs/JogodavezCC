@@ -10,7 +10,7 @@ function streakTier(count) {
   return 1
 }
 
-export default function ArenaPanel({ leilaoId, leaderboard, lastEvent, presenterActive, onLotContextMenu, onEditLot, onMergeLots }) {
+export default function ArenaPanel({ leilaoId, leaderboard, lastEvent, presenterActive, onLotContextMenu, onCatalogContextMenu, onEditLot, onMergeLots }) {
   const isReacts = leaderboard.activeSystem === 'reacts'
   const items = leaderboard.items || []
   const qualifyCount = leaderboard.qualifyCount || 3
@@ -98,7 +98,21 @@ export default function ArenaPanel({ leilaoId, leaderboard, lastEvent, presenter
         <span className="sr-only">{label}</span>
         <span className="panel-count">{items.length}</span>
       </p>
-      <div className="arena-grid">
+      <div
+        className="arena-grid"
+        onContextMenu={
+          onCatalogContextMenu
+            ? (e) => {
+                // deixa o botão direito do próprio card cuidar do menu dele
+                // (modo corrida/excluir) -- aqui só o clique fora de qualquer
+                // card, no catálogo vazio, abre "adicionar manualmente"
+                if (e.target.closest('.lot-card')) return
+                e.preventDefault()
+                onCatalogContextMenu(e.clientX, e.clientY)
+              }
+            : undefined
+        }
+      >
         {items.length === 0 ? (
           <p className="empty-state arena-empty">
             <span className="arena-empty-title">Catálogo vazio</span>

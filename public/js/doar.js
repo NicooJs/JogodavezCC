@@ -457,14 +457,16 @@ async function submitDonation(e) {
   if (pixggSlug) {
     // reacts não tem sabotagem (ver processReactDonationMessage em
     // server.js) -- sem prefixo de ação, manda só o apelido/link puro.
-    // recado (se tiver) vai depois de um ponto final -- server.js separa os
-    // dois de volta (parseMessage em src/parser.js). "seu nome"/"voz de IA"
-    // não têm campo aqui de propósito: quem manda esses de verdade é o
+    // recado (se tiver) vai depois de " | " -- server.js separa os dois de
+    // volta (parseMessage em src/parser.js). Não usa "." como separador
+    // porque título de filme em pt-BR tem ponto com frequência (abreviação
+    // tipo "Sr.", "Dr."), o que cortava o nome no meio. "seu nome"/"voz de
+    // IA" não têm campo aqui de propósito: quem manda esses de verdade é o
     // pixgg.com (nome do doador vem da conta dele lá, voz é lida a partir
     // desse mesmo texto na página deles, não algo que a gente controle).
     const note = noteEl.value.trim();
     const prefix = getAction() === "remove" ? "-" : "+";
-    const message = activeSystemMode === "reacts" ? game : `${prefix}${game}${note ? `. ${note}` : ""}`;
+    const message = activeSystemMode === "reacts" ? game : `${prefix}${game}${note ? ` | ${note}` : ""}`;
     pixggMessageEl.value = message;
     pixggLinkEl.href = `https://pixgg.com/${pixggSlug}`;
     pixggBoardLinkEl.href = `/l/${LEILAO_ID}`;
