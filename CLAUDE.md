@@ -527,26 +527,43 @@ mais se proteger do caso extremo que não existe mais -- voltou a ser
 `inset: -10px` (acompanha a altura real do card) como era originalmente.
 
 **Card do rank 1 "vazando" visualmente por baixo dos vizinhos (2026-09-01,
-hipótese, não reproduzido localmente)**: cliente reportou (com print
-circulado) o rank 1 aparentando não "terminar" -- um pedaço da borda/fundo
-continuava visível sobrepondo o topo dos cards 2/3 da linha seguinte.
-Reproduzi a estrutura exata (`.arena-grid` com rank 1 full-width + 2 cards
-na linha de baixo, mesmo CSS) num Chromium headless local via Playwright
-pra medir as posições reais (`getBoundingClientRect`) -- sem overlap
-nenhum, grid calculado certinho. Ou seja, não é erro de cálculo de
-layout: a hipótese mais provável é um bug de repaint do Chromium (comum
-com `filter: blur()` dentro de Grid que reordena com frequência, como
-aqui via Socket.IO a cada doação) -- o navegador "esquece" de repintar a
-região de um card quando ele muda de posição, deixando o `.lot-card-bg`
-borrado de um card antigo vazar visualmente até algo forçar um repaint
-manual (scroll, resize). Mitigação: `.lot-card` ganhou `transform:
-translateZ(0)` (força compositing layer próprio, fix conhecido pra essa
-classe de bug) + `contain: layout style` (isola cálculo de layout do
-card, sem cortar o glow do `:hover`, que já é `box-shadow` de propósito
-maior que o card -- por isso não usa `contain: paint`, que cortaria
-isso). **Não confirmado em produção ainda** -- é a explicação mais
-plausível que sobrou depois de descartar erro de layout via reprodução
-real, não uma correção comprovada.
+2 tentativas, cliente pediu explicitamente pra manter o destaque do rank 1
+e só corrigir o bug -- reverter o visual não é opção)**: cliente reportou
+(com print circulado) o rank 1 aparentando não "terminar" -- um pedaço da
+borda/fundo continuava visível sobrepondo o topo dos cards 2/3 da linha
+seguinte, reproduzido ao vivo no Chrome/Edge no Windows, piora ao
+redimensionar a janela (não melhora, o que descarta "só precisa de um
+repaint" como explicação completa). Reproduzi a estrutura exata
+(`.arena-grid` com rank 1 full-width + 2 cards na linha de baixo, mesmo
+CSS) num Chromium headless local via Playwright pra medir as posições
+reais (`getBoundingClientRect`) -- sem overlap nenhum, grid calculado
+certinho, confirmando que não é erro de cálculo de layout (o card em si
+não é maior que deveria).
+
+1ª tentativa: hipótese de bug de repaint do Chromium (comum com
+`filter: blur()` dentro de Grid que reordena com frequência via Socket.IO)
+-- o navegador "esqueceria" de repintar a região de um card quando ele
+muda de posição, deixando o `.lot-card-bg` borrado de um card antigo vazar
+visualmente. Mitigação: `transform: translateZ(0)` (força compositing
+layer próprio) + `contain: layout style`. **Confirmado pelo cliente que
+NÃO resolveu** ("continua a mesma coisa") -- descartada.
+
+2ª tentativa (atual): troca de teoria -- forçar uma layer de compositing
+própria (exatamente o que a 1ª tentativa fazia) é mais provavelmente o que
+DISPARA esse bug conhecido do Chromium, não o que evita: `filter: blur()`
+num elemento dentro de um ancestral com `overflow: hidden` pode ignorar
+esse clip quando esse ancestral (ou o próprio elemento) é promovido a
+layer de GPU própria (via `transform`/`contain: layout`) -- a lógica de
+"expandir área pro blur" do compositor às vezes calcula contra o rect
+errado nesse cenário, e piora com reflow (redimensionar), batendo com o
+sintoma relatado. `transform: translateZ(0)` e `contain: layout` saíram
+de `.lot-card`; no lugar, `clip-path: inset(0 round var(--radius))` --
+reforça o corte no compositor (não só no layout do `overflow: hidden`,
+que sozinho não bastou) e não depende de nenhuma promoção de layer pra
+funcionar. Usa `var(--radius)` (6px) fixo em vez do raio assimétrico
+específico de cada card (`:nth-of-type(3n+1/2/3)`, 5-9px) -- diferença
+pequena o bastante (1-3px) pra não ficar perceptível com o blur+gradiente
+por cima. **Não confirmado em produção ainda.**
 
 **Adicionar jogo/filme manualmente pelo catálogo (2026-08-30)**: botão
 direito no `.arena-grid` **fora** de qualquer `.lot-card` (inclusive com o
