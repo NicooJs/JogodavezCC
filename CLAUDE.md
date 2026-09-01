@@ -513,11 +513,18 @@ específico. Sem corrida ativa, nada muda: nome, valor, repasse e top doador
 empilhados exatamente como sempre foram (`.lot-total` embaixo do nome,
 pedido explícito antigo). Como corrida+valor+doador (o que quer que esteja
 empilhado em `.lot-info` a cada momento) sempre cabe dentro da altura da
-capa (112px comum, 178px rank 1), o card nunca precisa crescer.
-`align-items: start` no Grid e a altura fixa da `.lot-card-bg` continuam
-valendo como redundância (não fazem mais diferença no caso comum agora que
-o card não cresce, mas evitam o mesmo sintoma se algum dia sobrar conteúdo
-demais mesmo com a nova divisão).
+capa (112px comum, 178px rank 1), o card nunca precisa crescer por causa
+disso. `align-items: start` no Grid continua valendo como redundância.
+
+A altura fixa da `.lot-card-bg` (1ª tentativa) **voltou atrás** depois disso:
+um número fixo (168px/230px) não acompanha nome que quebra linha (rank 1,
+`white-space: normal`) nem repasse+top doador um pouco mais alto que a
+média -- sobrava um pedaço de fundo sólido visível embaixo da capa nesses
+casos (bug novo visto no rank 1 com nome longo, "Gretchen Filme Estrada").
+Como a causa raiz de verdade (corrida empilhando junto com repasse/top
+doador) já foi resolvida direto no conteúdo, `.lot-card-bg` não precisa
+mais se proteger do caso extremo que não existe mais -- voltou a ser
+`inset: -10px` (acompanha a altura real do card) como era originalmente.
 
 **Adicionar jogo/filme manualmente pelo catálogo (2026-08-30)**: botão
 direito no `.arena-grid` **fora** de qualquer `.lot-card` (inclusive com o
@@ -536,6 +543,46 @@ ficar no meio dessas ferramentas menores nem exigir 2 cliques -- `.mode-toggle`
 virou elemento irmão do FAB, sempre visível em modo apresentador
 (`position: fixed`, mesmo `z-index`, encostado à esquerda do FAB), tanto no
 board vanilla (`board.html`/`app.js`) quanto no React (`PresenterBar.jsx`).
+
+**Lápis virou mini-menu, modo corrida ganhou meta global + trava de posição
+(2026-09-01)**: pedido explícito do cliente depois de explicar a intenção de
+verdade do modo corrida -- não é só "vaga extra de classificado", é "esse
+jogo/filme já está garantido, o streamer vai jogar/assistir ele nem que
+outro passe na frente em dinheiro depois". Três mudanças juntas:
+
+1. **Trava de posição de verdade** (`computeRaceRanks` em `server.js`): antes,
+   bater a meta só somava +1 vaga de classificado (`qualifiedByRace`), mas o
+   NÚMERO do rank continuava 100% por dinheiro -- um lote podia subir/descer
+   de posição mesmo já "classificado por corrida". Agora, no momento em que
+   o total cruza a meta, o rank naquele instante é congelado
+   (`race_locked_rank`, persistido por jogo) e nunca mais muda enquanto o
+   total continuar >= a própria meta -- os outros lotes se reorganizam ao
+   redor dele, pulando o número reservado. Se sabotagem derrubar o total
+   abaixo da meta, destrava (volta pra fila normal por dinheiro); se bater
+   nível de novo depois, ganha uma trava NOVA (pode ser outra posição).
+   `naturallyWinning` (base do `qualifiedByRace`) continua calculado por
+   dinheiro puro (`naturalRankByKey`, sem nenhuma trava no meio) -- só o
+   `rank` exibido é que incorpora as travas, pra não confundir "quem tá
+   forte por dinheiro" com "que número aparece no card".
+2. **Meta global do leilão** (`raceGlobalGoalCents`/`raceGlobalMaxWinners`, `store.setState`,
+   rotas `POST`/`DELETE /admin/race-config`): antes só dava pra configurar
+   meta lote por lote (botão direito no card, `RaceModal.jsx`). Agora o
+   streamer também pode definir UM valor + quantas vagas bônus ele concede,
+   valendo pra qualquer lote que não tenha meta MANUAL própria (meta manual
+   sempre tem prioridade sobre a global pro mesmo lote, pra poder customizar
+   um caso sem mexer na config geral). O teto de vagas só vale pra quem
+   qualifica pela meta global -- meta manual por lote nunca teve limite de
+   quantos podem bater, e continua sem limite.
+3. **Lápis virou mini-menu** (`PresenterBar.jsx`): o FAB de ferramentas
+   (`.presenter-fab`) antes abria direto o popover com busca+adicionar
+   lote+zerar+histórico. Agora abre um mini-menu vertical simples
+   (`.presenter-mini-menu`, ícone+label empilhados em cima do FAB) com 4
+   itens: Adicionar lote (abre o mesmo popover de busca de sempre),
+   **Modo corrida** (novo, abre `RaceConfigModal.jsx` -- modal simples só
+   com valor + vagas bônus), Histórico, Zerar leilão. Só existe na versão
+   React por enquanto -- o vanilla (`app.js`/`board.html`) continua com o
+   popover antigo sem o item de corrida (meta global só dá pra configurar
+   pelo board React até isso ser portado).
 
 **Recap**: estatísticas + pódio + download de imagem (canvas 2D, ver seção
 de animações) + compartilhar no X. Histórico de recaps acessível via modal e

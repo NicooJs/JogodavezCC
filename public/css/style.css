@@ -1084,6 +1084,56 @@ button.nav-rail-footer { cursor: pointer; }
   to { opacity: 1; transform: translateY(0); }
 }
 
+/* mini-menu do lápis: navegação simples, ícones empilhados aparecendo em
+   cima do botão ao clicar (corrida/histórico/zerar ganharam acesso de 1
+   clique a mais, sem competir espaço com o campo de busca no mesmo
+   popover -- "adicionar lote" ainda abre o popover de busca de sempre,
+   só que como um item deste menu em vez do lápis abrir ele direto). */
+.presenter-mini-menu {
+  position: fixed;
+  right: 26px;
+  bottom: 90px;
+  z-index: 40;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 6px;
+  box-shadow: 0 16px 40px -12px rgba(0, 0, 0, 0.5);
+  animation: drop-in 0.15s var(--ease);
+}
+
+.presenter-mini-menu-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  white-space: nowrap;
+  padding: 9px 14px 9px 10px;
+  border-radius: 8px;
+  background: none;
+  border: none;
+  color: var(--text);
+  font-family: var(--font-body);
+  font-size: 13.5px;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+.presenter-mini-menu-item:hover { background: var(--surface-2); }
+.presenter-mini-menu-item.danger { color: var(--danger); }
+.presenter-mini-menu-item.danger:hover { background: var(--danger-bg); }
+
+.presenter-mini-menu-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  flex-shrink: 0;
+}
+.presenter-mini-menu-icon .icon { width: 17px; height: 17px; }
+
 .presenter-bar[hidden] { display: none; }
 
 .presenter-bar input {
@@ -2772,27 +2822,26 @@ body.presenter-mode .page-embedded {
   transform: scale(1.02);
 }
 
-/* altura fixa (não `inset` esticando pra altura toda do card) de propósito:
-   card com barra de corrida + badge de duelo/likes/top doador fica bem mais
-   alto que o normal, e `background-size: cover` cobrindo essa altura toda
-   dava um zoom pesado na capa -- parecia esticada/borrada até embaixo.
-   168px = mesma altura que já cobria um card "normal" (min-height 148px +
-   10px de sangria em cima/embaixo), então não muda nada pro caso comum, só
-   deixa de crescer quando o card cresce por causa de conteúdo extra. O
-   resto do card (fora dessa faixa) mostra o fundo sólido normal, que já é
-   legível o bastante pras barras/badges que ficam ali. */
+/* voltou a ser `inset` (cobre a altura inteira do card) depois de ter virado
+   altura fixa por um tempo -- aquilo tratava o sintoma (corrida+duelo
+   deixava o card mais alto que o normal, "cover" numa altura maior dava
+   zoom pesado na capa) só que na causa errada: um número fixo (168/230px)
+   não acompanha nome que quebra linha ou combinações de repasse+top doador
+   um pouco mais altas que a média, sobrando um pedaço de fundo sólido
+   visível embaixo da capa nesses casos (bug novo visto no rank 1 com nome
+   longo). A causa raiz de verdade (corrida empilhando junto com repasse/top
+   doador e deixando o card MUITO mais alto) já foi resolvida direto no
+   conteúdo -- ver .lot-extras -- então essa capa nunca mais precisa cobrir
+   uma altura fora do normal, e pode voltar a acompanhar o card sem se
+   preocupar com o caso extremo que já não existe mais. */
 .lot-card-bg {
   position: absolute;
-  top: -10px;
-  left: -10px;
-  right: -10px;
-  height: 168px;
+  inset: -10px;
   background-size: cover;
   background-position: center 30%;
   filter: blur(5px) saturate(1.1) brightness(0.78);
   transform: scale(1.04);
 }
-.lot-card.rank-1 .lot-card-bg { height: 230px; }
 
 /* meio-termo depois de duas tentativas erradas: nem o blur pesado/escurecido
    de sempre (escondia a capa quase toda) nem o quase cru de antes (deixava
@@ -4673,6 +4722,8 @@ body.presenter-mode .page-embedded {
 
 .modal-thumb[hidden] { display: none; }
 .modal-head-text { min-width: 0; }
+
+.modal-hint { margin: 0 0 16px; font-size: 13px; line-height: 1.5; color: var(--muted); }
 
 .modal-eyebrow {
   margin: 0 0 2px;

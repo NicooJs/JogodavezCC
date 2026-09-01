@@ -231,6 +231,28 @@ function createStore(filePath) {
   function clearRaceGoal(key) {
     if (!data.games[key]) return null;
     delete data.games[key].raceGoalCents;
+    // sem meta nenhuma, não faz sentido continuar com a posição travada de
+    // uma meta que não existe mais
+    delete data.games[key].race_locked_rank;
+    save();
+    return { ...data.games[key] };
+  }
+
+  // posição travada pra sempre no rank em que o lote bateu a meta de
+  // corrida (pedido explícito do cliente: não é só uma vaga extra de
+  // classificado, o NÚMERO do rank também não pode mais mudar enquanto o
+  // total continuar acima da meta) -- ver computeRaceRanks em server.js,
+  // que decide quando travar/destravar e chama essas duas funções.
+  function setRaceLockedRank(key, rank) {
+    if (!data.games[key]) return null;
+    data.games[key].race_locked_rank = rank;
+    save();
+    return { ...data.games[key] };
+  }
+
+  function clearRaceLockedRank(key) {
+    if (!data.games[key]) return null;
+    delete data.games[key].race_locked_rank;
     save();
     return { ...data.games[key] };
   }
@@ -674,6 +696,8 @@ function createStore(filePath) {
     setGameImage,
     setRaceGoal,
     clearRaceGoal,
+    setRaceLockedRank,
+    clearRaceLockedRank,
     adjustGame,
     setGameTotal,
     renameGame,

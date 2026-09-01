@@ -378,6 +378,81 @@ async function resolveParsedGame(store, parsed) {
   return parsed;
 }
 
+// modo corrida: trava a POSIÇÃO (não só o status de classificado) do lote
+// que bate a meta, no rank exato em que ele estava no momento em que bateu
+// -- pedido explícito do cliente (antes só garantia uma vaga extra, mas o
+// número do rank continuava subindo/descendo com o dinheiro dos outros).
+// Meta pode vir de duas fontes: manual por lote (botão direito, sempre sem
+// limite de quantos lotes podem bater) ou a meta global do leilão
+// (Configurações → corrida, com limite de quantas vagas bônus ela concede
+// -- meta manual sempre tem prioridade sobre a global pro mesmo lote, pra
+// poder customizar um caso específico sem mexer na config geral). Enquanto
+// o total do lote continuar >= a própria meta, a trava fica de pé; se cair
+// abaixo (sabotagem), destrava e ele volta pra fila normal por dinheiro --
+// se bater a meta de novo depois, ganha uma trava NOVA (pode ser outra
+// posição, não necessariamente a mesma de antes).
+function computeRaceRanks(store, rows) {
+  const globalGoalCents = Number(store.getState("raceGlobalGoalCents", 0)) || null;
+  const globalMaxWinners = Number(store.getState("raceGlobalMaxWinners", 0)) || null;
+
+  const naturalRankByKey = new Map(rows.map((row, i) => [row.key, i + 1]));
+
+  const meta = new Map();
+  for (const row of rows) {
+    const hasManualGoal = row.raceGoalCents != null;
+    const effectiveGoalCents = hasManualGoal ? row.raceGoalCents : globalGoalCents;
+    const reached = !!(effectiveGoalCents && row.total_cents >= effectiveGoalCents);
+    meta.set(row.key, { hasManualGoal, effectiveGoalCents, reached });
+  }
+
+  // vaga concedida por meta manual nunca conta pro teto -- só a meta
+  // global do leilão tem número limitado de vencedores
+  let activeGlobalLocks = 0;
+  for (const row of rows) {
+    const m = meta.get(row.key);
+    if (!m.hasManualGoal && row.race_locked_rank != null && m.reached) activeGlobalLocks++;
+  }
+
+  for (const row of rows) {
+    const m = meta.get(row.key);
+    if (!m.reached) {
+      if (row.race_locked_rank != null) {
+        store.clearRaceLockedRank(row.key);
+        row.race_locked_rank = null;
+      }
+      continue;
+    }
+    if (row.race_locked_rank != null) continue; // já travado nessa posição, mantém
+    if (!m.hasManualGoal) {
+      if (globalMaxWinners && activeGlobalLocks >= globalMaxWinners) continue; // sem vaga bônus sobrando
+      activeGlobalLocks++;
+    }
+    const rank = naturalRankByKey.get(row.key);
+    store.setRaceLockedRank(row.key, rank);
+    row.race_locked_rank = rank;
+  }
+
+  // posição final: quem tá travado mantém o número; o resto preenche as
+  // vagas que sobraram, em ordem de dinheiro, pulando os números já presos
+  const lockedRanks = new Set();
+  const finalRank = new Map();
+  for (const row of rows) {
+    if (row.race_locked_rank != null) {
+      lockedRanks.add(row.race_locked_rank);
+      finalRank.set(row.key, row.race_locked_rank);
+    }
+  }
+  let next = 1;
+  for (const row of rows) {
+    if (finalRank.has(row.key)) continue;
+    while (lockedRanks.has(next)) next++;
+    finalRank.set(row.key, next);
+    next++;
+  }
+
+  return { finalRank, naturalRankByKey, meta };
+}
+
 function serializeLeaderboard(store, leilaoId) {
   const onAvatarResolved = leilaoId ? getAvatarResolvedCallback(leilaoId) : undefined;
   const rows = store.getLeaderboard();
@@ -388,28 +463,31 @@ function serializeLeaderboard(store, leilaoId) {
   const funding = store.getFundingBreakdown();
   const topDonorByGame = store.getTopDonorByGame();
   const qualifyCount = getQualifyCount(store);
-  const items = rows.map((row, index) => {
+  const { finalRank, naturalRankByKey, meta } = computeRaceRanks(store, rows);
+  const items = rows.map((row) => {
     const rowFunding = funding[row.key] || { added_cents: 0, removed_cents: 0 };
     const topDonor = topDonorByGame[row.key];
-    // modo corrida: meta manual definida pelo apresentador (botão direito no
-    // card) -- bater a meta abre uma vaga EXTRA de classificado (não troca
-    // quem já tava classificado por dinheiro, só soma +1), mesmo que o jogo
-    // não esteja entre os `qualifyCount` primeiros por valor. O rank/ordem
-    // do catálogo continua 100% por dinheiro -- só o "winning" muda.
-    const raceGoalCents = row.raceGoalCents || null;
-    const raceGoalReached = !!(raceGoalCents && row.total_cents >= raceGoalCents);
-    const naturallyWinning = index < qualifyCount;
+    const rowMeta = meta.get(row.key);
+    const raceGoalCents = rowMeta.effectiveGoalCents;
+    const raceGoalReached = rowMeta.reached;
+    // "naturalmente classificado" é sempre por dinheiro puro (posição sem
+    // nenhuma trava de corrida no meio) -- separado do rank exibido, que já
+    // incorpora as travas (ver computeRaceRanks). Sem essa separação, um
+    // lote forte por dinheiro podia "perder" a vaga natural pra um número
+    // travado abaixo dele, mesmo sendo mais forte que os outros por valor.
+    const naturallyWinning = naturalRankByKey.get(row.key) <= qualifyCount;
     return {
       key: row.key,
       name: row.name,
       total: centsToNumber(row.total_cents),
       added: centsToNumber(rowFunding.added_cents),
       removed: centsToNumber(rowFunding.removed_cents),
-      rank: index + 1,
+      rank: finalRank.get(row.key),
       winning: naturallyWinning || raceGoalReached,
       qualifiedByRace: !naturallyWinning && raceGoalReached,
       raceGoal: raceGoalCents ? centsToNumber(raceGoalCents) : null,
       raceGoalReached,
+      raceLocked: row.race_locked_rank != null,
       image: row.image_url || null,
       topDonor: topDonor
         ? { username: topDonor.username, total: centsToNumber(topDonor.total_cents), avatar: getDonorAvatar(topDonor.username, onAvatarResolved) }
@@ -417,7 +495,7 @@ function serializeLeaderboard(store, leilaoId) {
       combo: { count: row.comboCount || 0, expiresAt: row.comboExpiresAt || 0 },
       likes: row.likes || 0,
     };
-  });
+  }).sort((a, b) => a.rank - b.rank);
 
   const donors = store.getTopDonors(10).map((d, index) => ({
     username: d.username,
@@ -471,6 +549,8 @@ function serializeLeaderboard(store, leilaoId) {
     theme: store.getState("theme", "cinza"),
     backgroundImageUrl: store.getState("backgroundImageUrl", null),
     qualifyCount,
+    raceGoal: centsToNumber(Number(store.getState("raceGlobalGoalCents", 0)) || 0) || null,
+    raceMaxWinners: Number(store.getState("raceGlobalMaxWinners", 0)) || null,
     open: isOpen,
     paused: isPaused,
     items,
@@ -2193,6 +2273,33 @@ app.delete("/api/l/:id/admin/race-goal/:key", loadLeilao, requireLeilaoAdmin, (r
   if (!game) return res.status(404).json({ error: "Jogo não encontrado" });
   broadcastUpdate(req.leilaoId, req.store, { type: "race-goal" });
   res.json({ ok: true, game });
+});
+
+// meta global de corrida (Configurações/mini-menu do apresentador): um valor
+// só pro leilão inteiro, com número máximo de vagas bônus que ela concede --
+// vale pra qualquer lote que não tenha meta manual própria (ver
+// computeRaceRanks). Zerar/remover é só mandar amount=0 ou DELETE.
+app.post("/api/l/:id/admin/race-config", loadLeilao, requireLeilaoAdmin, (req, res) => {
+  const { amount, maxWinners } = req.body || {};
+  const amountCents = Math.round(Number(amount) * 100);
+  const winners = Number(maxWinners);
+  if (!Number.isFinite(amountCents) || amountCents <= 0) {
+    return res.status(400).json({ error: "Informe um valor válido pra meta" });
+  }
+  if (!Number.isFinite(winners) || winners < 1 || winners > 20) {
+    return res.status(400).json({ error: "Informe um número de vagas entre 1 e 20" });
+  }
+  req.store.setState("raceGlobalGoalCents", amountCents);
+  req.store.setState("raceGlobalMaxWinners", Math.floor(winners));
+  broadcastUpdate(req.leilaoId, req.store, { type: "race-config" });
+  res.json({ ok: true });
+});
+
+app.delete("/api/l/:id/admin/race-config", loadLeilao, requireLeilaoAdmin, (req, res) => {
+  req.store.setState("raceGlobalGoalCents", 0);
+  req.store.setState("raceGlobalMaxWinners", 0);
+  broadcastUpdate(req.leilaoId, req.store, { type: "race-config" });
+  res.json({ ok: true });
 });
 
 app.post("/api/l/:id/admin/merge", loadLeilao, requireLeilaoAdmin, (req, res) => {
