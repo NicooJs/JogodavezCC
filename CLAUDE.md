@@ -548,22 +548,39 @@ visualmente. Mitigação: `transform: translateZ(0)` (força compositing
 layer próprio) + `contain: layout style`. **Confirmado pelo cliente que
 NÃO resolveu** ("continua a mesma coisa") -- descartada.
 
-2ª tentativa (atual): troca de teoria -- forçar uma layer de compositing
-própria (exatamente o que a 1ª tentativa fazia) é mais provavelmente o que
-DISPARA esse bug conhecido do Chromium, não o que evita: `filter: blur()`
-num elemento dentro de um ancestral com `overflow: hidden` pode ignorar
-esse clip quando esse ancestral (ou o próprio elemento) é promovido a
-layer de GPU própria (via `transform`/`contain: layout`) -- a lógica de
-"expandir área pro blur" do compositor às vezes calcula contra o rect
-errado nesse cenário, e piora com reflow (redimensionar), batendo com o
-sintoma relatado. `transform: translateZ(0)` e `contain: layout` saíram
-de `.lot-card`; no lugar, `clip-path: inset(0 round var(--radius))` --
-reforça o corte no compositor (não só no layout do `overflow: hidden`,
-que sozinho não bastou) e não depende de nenhuma promoção de layer pra
-funcionar. Usa `var(--radius)` (6px) fixo em vez do raio assimétrico
-específico de cada card (`:nth-of-type(3n+1/2/3)`, 5-9px) -- diferença
-pequena o bastante (1-3px) pra não ficar perceptível com o blur+gradiente
-por cima. **Não confirmado em produção ainda.**
+2ª tentativa: troca de teoria pra forçar o clip no compositor
+(`clip-path: inset(0 round var(--radius))` em `.lot-card` no lugar de
+`transform`/`contain`) -- **também não era a causa raiz**, só um chute em
+cima do sintoma errado (ficou no CSS de qualquer forma, é reforço
+inofensivo, mas não foi isso que resolveu).
+
+**Causa raiz de verdade (achada ao vivo, com o cliente reproduzindo o bug
+na hora testando o Modo Corrida)**: não é bug de renderização/CSS nenhum
+-- é lógica quebrada em `computeRaceRanks` (`server.js`), a função nova do
+Modo Corrida (trava de posição) escrita no mesmo dia. Quando um lote bate a
+meta, ele trava (`race_locked_rank`) no próprio rank "natural" (por
+dinheiro) do momento -- só que esse rank natural é recalculado do zero a
+cada chamada, sem saber que aquele número JÁ está preso por outro lote de
+uma trava anterior. Se o dinheiro mover um lote pra cima até ocupar a
+posição natural de quem já travou, e esse lote TAMBÉM bater a própria meta
+nesse instante, ele travava em cima do número já ocupado -- dois lotes
+com `rank: 1` ao mesmo tempo. Como o CSS gigante do rank-1
+(`.lot-card.rank-1`, min-height 210px, capa 178px, fonte 28-36px) é
+aplicado por CLASSE, não por posição no DOM, e só o `:first-child` de
+verdade ganha `grid-column: 1/-1`, o segundo lote com `rank-1` ficava com
+a capa/fonte gigante espremida numa célula de grid normal (meia largura)
+-- exatamente o "esticado"/"vazando"/"cortado" que várias screenshots ao
+longo do dia relataram, sempre em formas ligeiramente diferentes. Fix:
+`computeRaceRanks` agora mantém um `Set` de ranks já travados construído
+ANTES de travar qualquer lote novo, e ao travar um lote empurra pro
+próximo número livre acima do natural se o natural já estiver ocupado --
+nunca mais deixa dois lotes travarem no mesmo número. O mesmo loop também
+AUTO-CURA qualquer trava duplicada que já estivesse salva em disco de
+antes desse fix (`rows` vem ordenado por dinheiro; entre dois lotes com o
+mesmo número travado, o mais forte por dinheiro mantém a trava, o outro
+destrava e volta a competir pela fila normal) -- não precisa de migração
+manual nem de desativar/reativar a corrida em nenhum leilão já afetado,
+resolve sozinho na próxima vez que o leaderboard for montado.
 
 **Adicionar jogo/filme manualmente pelo catálogo (2026-08-30)**: botão
 direito no `.arena-grid` **fora** de qualquer `.lot-card` (inclusive com o

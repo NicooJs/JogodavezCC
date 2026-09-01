@@ -413,10 +413,38 @@ function computeRaceRanks(store, rows) {
     if (!m.hasManualGoal && row.race_locked_rank != null && m.reached) activeGlobalLocks++;
   }
 
+  // números já presos por travas de passes anteriores -- construído ANTES
+  // de travar qualquer lote novo nesse passe, e atualizado a cada trava
+  // nova (ver abaixo), pra nunca deixar dois lotes travarem no mesmo
+  // número. Bug real visto em produção: o rank "natural" (por dinheiro) é
+  // recalculado do zero a cada passe, sem saber que um número já tá preso
+  // por outro lote travado antes -- se o dinheiro mover um lote pra cima
+  // pra ocupar a posição natural de quem já travou, e esse lote TAMBÉM
+  // bater a própria meta nesse momento, ele travava em cima do número já
+  // ocupado (dois lotes com rank exibido "01" ao mesmo tempo, e o CSS
+  // gigante do rank-1 aplicado nos dois -- um deles sobra espremido numa
+  // célula de grid normal já que só o primeiro filho do DOM ganha a
+  // largura cheia). Esse loop também limpa sozinho qualquer trava
+  // duplicada que já esteja salva no disco de antes desse fix -- `rows`
+  // vem ordenado por dinheiro, então o primeiro lote a reivindicar um
+  // número (o mais forte dos dois) fica com ele, o outro destrava e volta
+  // a competir pela fila normal.
+  const lockedRanks = new Set();
+  for (const row of rows) {
+    if (row.race_locked_rank == null) continue;
+    if (lockedRanks.has(row.race_locked_rank)) {
+      store.clearRaceLockedRank(row.key);
+      row.race_locked_rank = null;
+      continue;
+    }
+    lockedRanks.add(row.race_locked_rank);
+  }
+
   for (const row of rows) {
     const m = meta.get(row.key);
     if (!m.reached) {
       if (row.race_locked_rank != null) {
+        lockedRanks.delete(row.race_locked_rank);
         store.clearRaceLockedRank(row.key);
         row.race_locked_rank = null;
       }
@@ -427,18 +455,21 @@ function computeRaceRanks(store, rows) {
       if (globalMaxWinners && activeGlobalLocks >= globalMaxWinners) continue; // sem vaga bônus sobrando
       activeGlobalLocks++;
     }
-    const rank = naturalRankByKey.get(row.key);
+    // trava o mais perto possível da posição natural por dinheiro, mas
+    // nunca em cima de um número que outro lote já tem preso -- empurra
+    // pro próximo número livre acima nesse caso.
+    let rank = naturalRankByKey.get(row.key);
+    while (lockedRanks.has(rank)) rank++;
+    lockedRanks.add(rank);
     store.setRaceLockedRank(row.key, rank);
     row.race_locked_rank = rank;
   }
 
   // posição final: quem tá travado mantém o número; o resto preenche as
   // vagas que sobraram, em ordem de dinheiro, pulando os números já presos
-  const lockedRanks = new Set();
   const finalRank = new Map();
   for (const row of rows) {
     if (row.race_locked_rank != null) {
-      lockedRanks.add(row.race_locked_rank);
       finalRank.set(row.key, row.race_locked_rank);
     }
   }
