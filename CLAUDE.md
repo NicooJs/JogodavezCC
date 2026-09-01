@@ -482,8 +482,8 @@ capa encontrada quanto "quadro" da live que não é jogo/filme de verdade
 (nunca vai ter capa nenhuma pra achar).
 
 **Card com corrida+duelo ficava alto demais, esticando a capa e o vizinho da
-mesma linha (corrigido 2026-09-01, 3 tentativas até achar a causa raiz de
-verdade)**: bug real visto num card em disputa de última vaga E com meta de
+mesma linha (corrigido 2026-09-01, 4 tentativas até achar a divisão certa)**:
+bug real visto num card em disputa de última vaga E com meta de
 corrida batida ao mesmo tempo (barra de corrida + repasse + top doador
 empilhados embaixo do nome/valor, bem mais alto que o normal).
 1ª tentativa: dar altura fixa pra `.lot-card-bg` (a capa desfocada de fundo,
@@ -498,18 +498,26 @@ card alto do lado. `align-items: start` resolvia esse sintoma, mas o
 cliente não gostou do resultado (cards da mesma linha com alturas bem
 diferentes -- pediu pra não esticar o card, e sim colocar a info que não
 coubesse do lado, não embaixo).
-Fix definitivo: barra de corrida + repasse (+/−) + top doador saíram de
-dentro de `.lot-info` (empilhados abaixo de nome/valor) pra uma coluna
-irmã nova, `.lot-extras`, ao lado da capa (mesma ideia de `.lot-card-content`
-já ser um flex row com capa+nome/valor -- agora ganha uma 3ª coluna opcional).
-Como a altura desses três chips somados (~90px) cabe dentro da altura da
-própria capa (112px comum, 178px rank 1), o card não precisa mais crescer
-pra caber corrida+duelo -- nome/valor continuam do jeito que sempre foram
-(`.lot-total` embaixo do nome, pedido explícito antigo, não mexeu nisso).
+3ª tentativa: valor + repasse + top doador + barra de corrida TODOS saíram
+de `.lot-info` pra uma coluna irmã nova, `.lot-extras`, ao lado da capa.
+Card não crescia mais, mas o cliente achou o resultado esquisito -- nome
+ficava truncado demais (a coluna de valor/corrida/doador competindo por
+espaço com o nome, num card já compacto de 2 colunas) e valor/doador
+saindo do nome em TODO card (não só quando tinha corrida) fugia do padrão
+visual de sempre.
+Fix definitivo: só quando o lote **tem corrida ativa** que a divisão
+acontece -- a barra de corrida ocupa o lugar de sempre (embaixo do nome,
+dentro de `.lot-info`, no lugar onde o valor ficaria), e é o **valor** (+
+repasse + top doador) que vai pra `.lot-extras` ao lado da capa nesse caso
+específico. Sem corrida ativa, nada muda: nome, valor, repasse e top doador
+empilhados exatamente como sempre foram (`.lot-total` embaixo do nome,
+pedido explícito antigo). Como corrida+valor+doador (o que quer que esteja
+empilhado em `.lot-info` a cada momento) sempre cabe dentro da altura da
+capa (112px comum, 178px rank 1), o card nunca precisa crescer.
 `align-items: start` no Grid e a altura fixa da `.lot-card-bg` continuam
 valendo como redundância (não fazem mais diferença no caso comum agora que
 o card não cresce, mas evitam o mesmo sintoma se algum dia sobrar conteúdo
-demais mesmo com a nova coluna).
+demais mesmo com a nova divisão).
 
 **Adicionar jogo/filme manualmente pelo catálogo (2026-08-30)**: botão
 direito no `.arena-grid` **fora** de qualquer `.lot-card` (inclusive com o

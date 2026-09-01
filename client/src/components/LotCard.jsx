@@ -79,28 +79,48 @@ export default function LotCard({
         <Thumb item={item} />
         <div className="lot-info">
           <p className="lot-name">{item.name}</p>
-          <span className={`lot-total${changed ? ' tick' : ''}${item.total < 0 ? ' lot-total-negative' : ''}`}>
-            {formatBRL(item.total)}
-          </span>
-        </div>
-        {item.raceGoal || item.added > 0 || item.removed > 0 || (item.topDonor && item.topDonor.username) ? (
-          <div className="lot-extras">
-            {item.raceGoal ? (
-              <div className={`lot-race${item.raceGoalReached ? ' is-reached' : ''}`}>
-                <div className="lot-race-track">
-                  <div
-                    className="lot-race-fill"
-                    style={{ width: `${Math.max(0, Math.min(100, Math.round((item.total / item.raceGoal) * 100)))}%` }}
-                  />
-                </div>
-                <span className="lot-race-label">
-                  <FlagIcon />
-                  {item.raceGoalReached
-                    ? 'meta batida, classificado!'
-                    : `faltam ${formatBRL(Math.max(0, item.raceGoal - item.total))} pra classificar`}
-                </span>
+          {item.raceGoal ? (
+            <div className={`lot-race${item.raceGoalReached ? ' is-reached' : ''}`}>
+              <div className="lot-race-track">
+                <div
+                  className="lot-race-fill"
+                  style={{ width: `${Math.max(0, Math.min(100, Math.round((item.total / item.raceGoal) * 100)))}%` }}
+                />
               </div>
-            ) : null}
+              <span className="lot-race-label">
+                <FlagIcon />
+                {item.raceGoalReached
+                  ? 'meta batida, classificado!'
+                  : `faltam ${formatBRL(Math.max(0, item.raceGoal - item.total))} pra classificar`}
+              </span>
+            </div>
+          ) : (
+            <span className={`lot-total${changed ? ' tick' : ''}${item.total < 0 ? ' lot-total-negative' : ''}`}>
+              {formatBRL(item.total)}
+            </span>
+          )}
+          {!item.raceGoal && (item.added > 0 || item.removed > 0) ? (
+            <div className="lot-funding">
+              {item.added > 0 ? <span className="lot-funding-add">+{formatBRL(item.added)}</span> : null}
+              {item.removed > 0 ? <span className="lot-funding-remove">−{formatBRL(item.removed)}</span> : null}
+            </div>
+          ) : null}
+          {!item.raceGoal && item.topDonor && item.topDonor.username ? (
+            <div className="lot-top-donor" title={`Quem mais apoiou este ${mediaLabel}`}>
+              {item.topDonor.avatar ? (
+                <img className="lot-top-donor-avatar" src={item.topDonor.avatar} alt="" loading="lazy" />
+              ) : (
+                <span className="lot-top-donor-avatar lot-top-donor-avatar-placeholder">{initial(item.topDonor.username)}</span>
+              )}
+              <span className="lot-top-donor-name">{item.topDonor.username}</span>
+            </div>
+          ) : null}
+        </div>
+        {item.raceGoal ? (
+          <div className="lot-extras">
+            <span className={`lot-total${changed ? ' tick' : ''}${item.total < 0 ? ' lot-total-negative' : ''}`}>
+              {formatBRL(item.total)}
+            </span>
             {item.added > 0 || item.removed > 0 ? (
               <div className="lot-funding">
                 {item.added > 0 ? <span className="lot-funding-add">+{formatBRL(item.added)}</span> : null}
