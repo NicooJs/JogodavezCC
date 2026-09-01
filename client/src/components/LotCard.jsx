@@ -80,7 +80,7 @@ export default function LotCard({
         <div className="lot-info">
           <p className="lot-name">{item.name}</p>
           {item.raceGoal ? (
-            <div className={`lot-race${item.raceGoalReached ? ' is-reached' : ''}`}>
+            <div className={`lot-race${item.raceGoalReached && item.winning ? ' is-reached' : ''}`}>
               <div className="lot-race-track">
                 <div
                   className="lot-race-fill"
@@ -89,9 +89,11 @@ export default function LotCard({
               </div>
               <span className="lot-race-label">
                 <FlagIcon />
-                {item.raceGoalReached
+                {item.raceGoalReached && item.winning
                   ? 'meta batida, classificado!'
-                  : `faltam ${formatBRL(Math.max(0, item.raceGoal - item.total))} pra classificar`}
+                  : item.raceGoalReached
+                    ? 'meta batida, mas sem vaga sobrando'
+                    : `faltam ${formatBRL(Math.max(0, item.raceGoal - item.total))} pra classificar`}
               </span>
             </div>
           ) : (
