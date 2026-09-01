@@ -2991,13 +2991,14 @@ body.presenter-mode .page-embedded {
   flex: 1;
 }
 
-/* corrida/repasse/top doador ficam do lado da capa (coluna própria), não
-   empilhados embaixo do nome/valor -- empilhado ali fazia o card crescer
-   além da altura da capa toda vez que um lote tinha corrida ativa + repasse
-   + top doador ao mesmo tempo (o vizinho da mesma linha do Grid esticava
-   junto por causa do align-items:stretch, ver histórico no CLAUDE.md).
-   flex-shrink:0 + max-width pra não competir por espaço com .lot-info
-   (nome longo precisa de mais lugar que esses chips compactos). */
+/* só existe quando o lote tem corrida ativa: a barra de corrida fica no
+   lugar de sempre (embaixo do nome, dentro de .lot-info), e valor/repasse/
+   top doador saem pra essa coluna do lado -- empilhado tudo junto embaixo
+   do nome fazia o card crescer além da altura da capa (o vizinho da mesma
+   linha do Grid esticava junto por causa do align-items:stretch, ver
+   histórico no CLAUDE.md). flex-shrink:0 + max-width pra não competir por
+   espaço com .lot-info (nome longo precisa de mais lugar que esses chips
+   compactos). */
 .lot-extras {
   display: flex;
   flex-direction: column;

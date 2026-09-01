@@ -481,11 +481,19 @@ function raceQualifiedBadgeHtml(item) {
   return `<span class="badge-race-qualified" title="Classificado pela meta da corrida, não pelo valor"><svg class="icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 2.5v15"/><path d="M4 3.5c2-1 3.5 1 5.5 0s3.5-1 5.5 0v6c-2-1-3.5 1-5.5 0s-3.5-1-5.5 0z"/></svg>classificado</span>`;
 }
 
+function lotTotalHtml(item, changed) {
+  return `<span class="lot-total${changed ? " tick" : ""}${item.total < 0 ? " lot-total-negative" : ""}">${formatBRL(item.total)}</span>`;
+}
+
+// modo corrida ativo: a barra fica no lugar de sempre (embaixo do nome), e
+// valor/repasse/top doador (que dariam mais altura empilhados ali) saem pro
+// lado -- card não cresce só porque o lote tem meta de corrida.
 function lotCardInnerHtml(item, barPct, hitBadge, changed, streakBadge, duelGlow, duelBadge) {
   const thumb = thumbHtml(item, "lot-thumb");
   const bg = item.image
     ? `<div class="lot-card-bg" style="background-image:url('${escapeHtml(item.image)}')"></div>`
     : "";
+  const racing = !!item.raceGoal;
   return `
     ${bg}
     <div class="lot-card-fill"></div>
@@ -495,11 +503,13 @@ function lotCardInnerHtml(item, barPct, hitBadge, changed, streakBadge, duelGlow
       ${thumb}
       <div class="lot-info">
         <p class="lot-name">${escapeHtml(item.name)}</p>
-        <span class="lot-total${changed ? " tick" : ""}${item.total < 0 ? " lot-total-negative" : ""}">${formatBRL(item.total)}</span>
+        ${racing ? lotRaceHtml(item) : lotTotalHtml(item, changed)}
+        ${racing ? "" : lotFundingHtml(item)}
+        ${racing ? "" : lotTopDonorHtml(item)}
       </div>
-      ${item.raceGoal || item.added > 0 || item.removed > 0 || (item.topDonor && item.topDonor.username) ? `
+      ${racing ? `
         <div class="lot-extras">
-          ${lotRaceHtml(item)}
+          ${lotTotalHtml(item, changed)}
           ${lotFundingHtml(item)}
           ${lotTopDonorHtml(item)}
         </div>
