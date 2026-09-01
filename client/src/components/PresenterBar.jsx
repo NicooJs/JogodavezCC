@@ -3,9 +3,17 @@ import { presenterFetch } from '../lib/api.js'
 import { mediaLabel, mediaLabelCap } from '../lib/media.js'
 import { initial } from '../lib/format.js'
 import { useDialogs } from '../hooks/useDialogs.jsx'
+import RaceConfigModal from './RaceConfigModal.jsx'
 
+// lápis vira um mini-menu vertical (ícones empilhados acima do botão) em vez
+// de abrir direto a busca -- corrida/zerar/histórico ganharam acesso de 1
+// clique a mais, sem competir espaço com o campo de busca no mesmo popover.
+// Cada item some o menu e abre a própria coisa (busca continua sendo o
+// mesmo popover de sempre, corrida abre modal simples).
 export default function PresenterBar({ leilaoId, leaderboard, items, onOpenLotModal, onOpenHistory }) {
-  const [drawerOpen, setDrawerOpen] = useState(false)
+  const [menuOpen, setMenuOpen] = useState(false)
+  const [searchOpen, setSearchOpen] = useState(false)
+  const [raceConfigOpen, setRaceConfigOpen] = useState(false)
   const [query, setQuery] = useState('')
   const [results, setResults] = useState(null)
   const [loading, setLoading] = useState(false)
@@ -54,6 +62,7 @@ export default function PresenterBar({ leilaoId, leaderboard, items, onOpenLotMo
   const pick = (name, image) => {
     setQuery('')
     setResults(null)
+    setSearchOpen(false)
     onOpenLotModal(findExisting(name) || { name, image: image || null })
   }
 
@@ -64,6 +73,7 @@ export default function PresenterBar({ leilaoId, leaderboard, items, onOpenLotMo
   }
 
   const reset = async () => {
+    setMenuOpen(false)
     const ok = await confirmDialog({
       title: 'Zerar leilão',
       message: `Isso apaga TODOS os ${media}s e o histórico desse leilão. Título e host continuam os mesmos. Tem certeza?`,
@@ -102,15 +112,15 @@ export default function PresenterBar({ leilaoId, leaderboard, items, onOpenLotMo
         type="button"
         title="Ferramentas do apresentador"
         aria-label="Ferramentas do apresentador"
-        aria-expanded={String(drawerOpen)}
-        onClick={() => setDrawerOpen((v) => !v)}
+        aria-expanded={String(menuOpen)}
+        onClick={() => setMenuOpen((v) => !v)}
       >
         <svg className="icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M12.5 3.5a3 3 0 0 1 3.9 3.9l-7.6 7.6-4.3 1 1-4.3 7-7z" /><path d="M11 5l3.5 3.5" /></svg>
       </button>
 
-      {/* fora do drawer de propósito -- trocar de modalidade é uma ação
-          rara e importante (zera catálogo/histórico), não devia ficar
-          escondida atrás do lápis junto com "adicionar lote"/"zerar" */}
+      {/* fora do menu de propósito -- trocar de modalidade é uma ação rara
+          e importante (zera catálogo/histórico), não devia ficar escondida
+          atrás do lápis junto com as ferramentas menores */}
       <button
         className="mode-toggle"
         type="button"
@@ -128,18 +138,48 @@ export default function PresenterBar({ leilaoId, leaderboard, items, onOpenLotMo
         </span>
       </button>
 
-      {drawerOpen ? (
+      {menuOpen ? (
+        <div className="presenter-mini-menu" role="menu">
+          <button className="presenter-mini-menu-item" type="button" role="menuitem" onClick={() => { setMenuOpen(false); setSearchOpen(true) }}>
+            <span className="presenter-mini-menu-icon">
+              <svg className="icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M10 4.5v11M4.5 10h11" /></svg>
+            </span>
+            Adicionar lote
+          </button>
+          <button className="presenter-mini-menu-item" type="button" role="menuitem" onClick={() => { setMenuOpen(false); setRaceConfigOpen(true) }}>
+            <span className="presenter-mini-menu-icon">
+              <svg className="icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M4 2.5v15" /><path d="M4 3.5c2-1 3.5 1 5.5 0s3.5-1 5.5 0v6c-2-1-3.5 1-5.5 0s-3.5-1-5.5 0z" /></svg>
+            </span>
+            Modo corrida
+          </button>
+          <button className="presenter-mini-menu-item" type="button" role="menuitem" onClick={() => { setMenuOpen(false); onOpenHistory() }}>
+            <span className="presenter-mini-menu-icon">
+              <svg className="icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M10 5.5V10l3 2" /><circle cx="10" cy="10" r="7" /></svg>
+            </span>
+            Histórico
+          </button>
+          <button className="presenter-mini-menu-item danger" type="button" role="menuitem" onClick={reset}>
+            <span className="presenter-mini-menu-icon">
+              <svg className="icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M5 6h10M8.5 6V4.5h3V6M6.5 6l.6 9a1 1 0 0 0 1 .9h3.8a1 1 0 0 0 1-.9l.6-9" /></svg>
+            </span>
+            Zerar leilão
+          </button>
+        </div>
+      ) : null}
+
+      {searchOpen ? (
         <section className="presenter-bar presenter-popover">
           <div className="field-wrap presenter-search">
             <svg className="field-icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><circle cx="8.5" cy="8.5" r="6" /><path d="M13 13l5 5" /></svg>
             <input
+              autoFocus
               type="text"
               placeholder={`Buscar um ${media} pra lançar…`}
               autoComplete="off"
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               onKeyDown={(e) => {
-                if (e.key === 'Escape') setResults(null)
+                if (e.key === 'Escape') setSearchOpen(false)
                 else if (e.key === 'Enter') submitManual()
               }}
             />
@@ -173,14 +213,20 @@ export default function PresenterBar({ leilaoId, leaderboard, items, onOpenLotMo
             <svg className="icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true"><path d="M10 4.5v11M4.5 10h11" /></svg>
             Adicionar lote
           </button>
-          <button className="pbar-btn pbar-btn-danger pbar-btn-icon-only" type="button" title="Apaga todos os jogos e o histórico (mantém título e host)" aria-label="Zerar leilão" onClick={reset}>
-            <svg className="icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M5 6h10M8.5 6V4.5h3V6M6.5 6l.6 9a1 1 0 0 0 1 .9h3.8a1 1 0 0 0 1-.9l.6-9" /></svg>
-          </button>
-          <button className="pbar-btn pbar-btn-ghost pbar-btn-icon-only" type="button" title="Ver rounds anteriores" aria-label="Histórico" onClick={onOpenHistory}>
-            <svg className="icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M10 5.5V10l3 2" /><circle cx="10" cy="10" r="7" /></svg>
+          <button className="pbar-btn pbar-btn-ghost pbar-btn-icon-only" type="button" title="Fechar" aria-label="Fechar" onClick={() => setSearchOpen(false)}>
+            <svg className="icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M5 5l10 10M15 5L5 15" /></svg>
           </button>
         </section>
       ) : null}
+
+      <RaceConfigModal
+        leilaoId={leilaoId}
+        open={raceConfigOpen}
+        raceGoal={leaderboard.raceGoal}
+        raceMaxWinners={leaderboard.raceMaxWinners}
+        mediaLabel={media}
+        onClose={() => setRaceConfigOpen(false)}
+      />
     </>
   )
 }

@@ -1084,6 +1084,56 @@ button.nav-rail-footer { cursor: pointer; }
   to { opacity: 1; transform: translateY(0); }
 }
 
+/* mini-menu do lápis: navegação simples, ícones empilhados aparecendo em
+   cima do botão ao clicar (corrida/histórico/zerar ganharam acesso de 1
+   clique a mais, sem competir espaço com o campo de busca no mesmo
+   popover -- "adicionar lote" ainda abre o popover de busca de sempre,
+   só que como um item deste menu em vez do lápis abrir ele direto). */
+.presenter-mini-menu {
+  position: fixed;
+  right: 26px;
+  bottom: 90px;
+  z-index: 40;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 6px;
+  box-shadow: 0 16px 40px -12px rgba(0, 0, 0, 0.5);
+  animation: drop-in 0.15s var(--ease);
+}
+
+.presenter-mini-menu-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  white-space: nowrap;
+  padding: 9px 14px 9px 10px;
+  border-radius: 8px;
+  background: none;
+  border: none;
+  color: var(--text);
+  font-family: var(--font-body);
+  font-size: 13.5px;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+.presenter-mini-menu-item:hover { background: var(--surface-2); }
+.presenter-mini-menu-item.danger { color: var(--danger); }
+.presenter-mini-menu-item.danger:hover { background: var(--danger-bg); }
+
+.presenter-mini-menu-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  flex-shrink: 0;
+}
+.presenter-mini-menu-icon .icon { width: 17px; height: 17px; }
+
 .presenter-bar[hidden] { display: none; }
 
 .presenter-bar input {
@@ -4672,6 +4722,8 @@ body.presenter-mode .page-embedded {
 
 .modal-thumb[hidden] { display: none; }
 .modal-head-text { min-width: 0; }
+
+.modal-hint { margin: 0 0 16px; font-size: 13px; line-height: 1.5; color: var(--muted); }
 
 .modal-eyebrow {
   margin: 0 0 2px;
