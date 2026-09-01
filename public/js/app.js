@@ -496,10 +496,14 @@ function lotCardInnerHtml(item, barPct, hitBadge, changed, streakBadge, duelGlow
       <div class="lot-info">
         <p class="lot-name">${escapeHtml(item.name)}</p>
         <span class="lot-total${changed ? " tick" : ""}${item.total < 0 ? " lot-total-negative" : ""}">${formatBRL(item.total)}</span>
-        ${lotRaceHtml(item)}
-        ${lotFundingHtml(item)}
-        ${lotTopDonorHtml(item)}
       </div>
+      ${item.raceGoal || item.added > 0 || item.removed > 0 || (item.topDonor && item.topDonor.username) ? `
+        <div class="lot-extras">
+          ${lotRaceHtml(item)}
+          ${lotFundingHtml(item)}
+          ${lotTopDonorHtml(item)}
+        </div>
+      ` : ""}
     </div>
     <div class="lot-corner">
       ${raceQualifiedBadgeHtml(item)}

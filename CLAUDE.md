@@ -481,25 +481,35 @@ glifo da Twitch usado em `.host-twitch-badge` (`TwitchIcon` em
 capa encontrada quanto "quadro" da live que não é jogo/filme de verdade
 (nunca vai ter capa nenhuma pra achar).
 
-**Fundo desfocado do card esticava demais em card alto (corrigido 2026-09-01,
-causa raiz achada depois de um fix incompleto)**: bug real visto num card em
-disputa de última vaga E com meta de corrida batida ao mesmo tempo (barra de
-corrida + badge de duelo empilhados, bem mais alto que o normal) -- a capa
-desfocada de fundo (`.lot-card-bg`) parecia esticada/borrada até embaixo do
-card. Primeira tentativa: dar altura fixa pra `.lot-card-bg` (que usava
-`inset: -10px`, esticando com a altura inteira do card via
-`background-size: cover`, forçando um zoom pesado na imagem). Isso não
-resolveu de verdade -- só trocou "imagem borrada esticada" por "espaço vazio
-de cor sólida", porque a causa raiz é outra: `.arena-grid` é CSS Grid sem
-`align-items` definido, que por padrão é `stretch` -- todo card **da mesma
-linha da grade** estica até a altura do mais alto dela. O card vizinho
-(conteúdo curto, sem corrida/duelo) tava sendo esticado pra combinar com o
-card alto do lado, sobrando espaço vazio embaixo dele -- o fix da altura fixa
-só deixou esse espaço vazio mais visível (antes a imagem esticada "escondia"
-o descompasso). Fix de verdade: `align-items: start` no `.arena-grid`, pra
-cada card ficar só do tamanho do próprio conteúdo, sem esticar por causa do
-vizinho. A altura fixa da `.lot-card-bg` continua valendo (ainda evita zoom
-pesado quando é o PRÓPRIO card que fica alto pelo seu conteúdo).
+**Card com corrida+duelo ficava alto demais, esticando a capa e o vizinho da
+mesma linha (corrigido 2026-09-01, 3 tentativas até achar a causa raiz de
+verdade)**: bug real visto num card em disputa de última vaga E com meta de
+corrida batida ao mesmo tempo (barra de corrida + repasse + top doador
+empilhados embaixo do nome/valor, bem mais alto que o normal).
+1ª tentativa: dar altura fixa pra `.lot-card-bg` (a capa desfocada de fundo,
+que usava `inset: -10px` esticando pra cobrir a altura inteira do card via
+`background-size: cover` -- card mais alto forçava um zoom pesado na
+imagem). Não resolveu de verdade: só trocou "imagem esticada" por "espaço
+vazio de cor sólida", porque a causa raiz era outra.
+2ª tentativa: `.arena-grid` é CSS Grid sem `align-items` definido (default
+`stretch`) -- todo card da mesma linha da grade estica até a altura do mais
+alto dela, então o vizinho (conteúdo curto) esticava só pra combinar com o
+card alto do lado. `align-items: start` resolvia esse sintoma, mas o
+cliente não gostou do resultado (cards da mesma linha com alturas bem
+diferentes -- pediu pra não esticar o card, e sim colocar a info que não
+coubesse do lado, não embaixo).
+Fix definitivo: barra de corrida + repasse (+/−) + top doador saíram de
+dentro de `.lot-info` (empilhados abaixo de nome/valor) pra uma coluna
+irmã nova, `.lot-extras`, ao lado da capa (mesma ideia de `.lot-card-content`
+já ser um flex row com capa+nome/valor -- agora ganha uma 3ª coluna opcional).
+Como a altura desses três chips somados (~90px) cabe dentro da altura da
+própria capa (112px comum, 178px rank 1), o card não precisa mais crescer
+pra caber corrida+duelo -- nome/valor continuam do jeito que sempre foram
+(`.lot-total` embaixo do nome, pedido explícito antigo, não mexeu nisso).
+`align-items: start` no Grid e a altura fixa da `.lot-card-bg` continuam
+valendo como redundância (não fazem mais diferença no caso comum agora que
+o card não cresce, mas evitam o mesmo sintoma se algum dia sobrar conteúdo
+demais mesmo com a nova coluna).
 
 **Adicionar jogo/filme manualmente pelo catálogo (2026-08-30)**: botão
 direito no `.arena-grid` **fora** de qualquer `.lot-card` (inclusive com o
