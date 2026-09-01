@@ -2991,6 +2991,23 @@ body.presenter-mode .page-embedded {
   flex: 1;
 }
 
+/* corrida/repasse/top doador ficam do lado da capa (coluna própria), não
+   empilhados embaixo do nome/valor -- empilhado ali fazia o card crescer
+   além da altura da capa toda vez que um lote tinha corrida ativa + repasse
+   + top doador ao mesmo tempo (o vizinho da mesma linha do Grid esticava
+   junto por causa do align-items:stretch, ver histórico no CLAUDE.md).
+   flex-shrink:0 + max-width pra não competir por espaço com .lot-info
+   (nome longo precisa de mais lugar que esses chips compactos). */
+.lot-extras {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 5px;
+  flex-shrink: 0;
+  max-width: 230px;
+  min-width: 0;
+}
+
 .lot-name {
   font-family: var(--font-display);
   font-size: 18.5px;
@@ -3180,6 +3197,7 @@ body.presenter-mode .page-embedded {
 .lot-race.is-reached .lot-race-label { color: var(--gold); }
 .lot-race.is-reached .lot-race-label .icon { color: var(--gold); }
 
+.lot-card.rank-1 .lot-extras { max-width: 320px; }
 .lot-card.rank-1 .lot-race { max-width: 320px; padding: 9px 12px; }
 .lot-card.rank-1 .lot-race-track { height: 8px; }
 .lot-card.rank-1 .lot-race-label { font-size: 12.5px; }
