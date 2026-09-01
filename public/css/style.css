@@ -2790,6 +2790,16 @@ body.presenter-mode .page-embedded {
   overflow: hidden;
   /* overflow != visible zera a altura mínima automática do item no Grid; sem isso o conteúdo cortava. */
   min-height: 148px;
+  /* força o próprio compositing layer -- sem isso, o navegador às vezes
+     "esquece" de repintar um card quando ele reordena de posição no Grid
+     (dispara toda hora via Socket.IO), deixando o .lot-card-bg (borrado,
+     filter:blur) de um card vazar visualmente por baixo do vizinho até
+     algo forçar um repaint manual (scroll, resize) -- bug conhecido do
+     Chromium com filter:blur dentro de Grid que reordena. Não usa
+     `contain: paint` porque isso cortaria o glow do :hover (box-shadow
+     de propósito bem maior que o card, ver .lot-card:hover). */
+  transform: translateZ(0);
+  contain: layout style;
   transition: border-color 0.2s ease, box-shadow 0.3s ease;
   animation: card-in 0.25s var(--ease);
 }
@@ -2819,7 +2829,7 @@ body.presenter-mode .page-embedded {
 .lot-card.drop-target {
   border-color: var(--accent);
   box-shadow: 0 0 0 2px var(--accent), 0 0 0 6px var(--accent-bg);
-  transform: scale(1.02);
+  transform: scale(1.02) translateZ(0);
 }
 
 /* voltou a ser `inset` (cobre a altura inteira do card) depois de ter virado
