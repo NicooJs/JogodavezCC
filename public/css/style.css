@@ -2669,6 +2669,12 @@ body.presenter-mode .page-embedded {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(460px, 1fr));
   align-content: start;
+  /* sem isso, o Grid estica todo card de uma linha até a altura do mais alto
+     dela (default align-items:stretch) -- card com corrida+duelo empilhados
+     fica bem mais alto que o normal, e o vizinho da mesma linha (conteúdo
+     curto) esticava junto, sobrando espaço vazio embaixo dele. Cada card
+     agora fica só do tamanho do próprio conteúdo. */
+  align-items: start;
   /* respiro bem maior entre os cards -- eles são cartões soltos agora,
      não linhas de uma lista grudada. */
   gap: 18px;
