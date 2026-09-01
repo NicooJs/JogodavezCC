@@ -513,11 +513,18 @@ específico. Sem corrida ativa, nada muda: nome, valor, repasse e top doador
 empilhados exatamente como sempre foram (`.lot-total` embaixo do nome,
 pedido explícito antigo). Como corrida+valor+doador (o que quer que esteja
 empilhado em `.lot-info` a cada momento) sempre cabe dentro da altura da
-capa (112px comum, 178px rank 1), o card nunca precisa crescer.
-`align-items: start` no Grid e a altura fixa da `.lot-card-bg` continuam
-valendo como redundância (não fazem mais diferença no caso comum agora que
-o card não cresce, mas evitam o mesmo sintoma se algum dia sobrar conteúdo
-demais mesmo com a nova divisão).
+capa (112px comum, 178px rank 1), o card nunca precisa crescer por causa
+disso. `align-items: start` no Grid continua valendo como redundância.
+
+A altura fixa da `.lot-card-bg` (1ª tentativa) **voltou atrás** depois disso:
+um número fixo (168px/230px) não acompanha nome que quebra linha (rank 1,
+`white-space: normal`) nem repasse+top doador um pouco mais alto que a
+média -- sobrava um pedaço de fundo sólido visível embaixo da capa nesses
+casos (bug novo visto no rank 1 com nome longo, "Gretchen Filme Estrada").
+Como a causa raiz de verdade (corrida empilhando junto com repasse/top
+doador) já foi resolvida direto no conteúdo, `.lot-card-bg` não precisa
+mais se proteger do caso extremo que não existe mais -- voltou a ser
+`inset: -10px` (acompanha a altura real do card) como era originalmente.
 
 **Adicionar jogo/filme manualmente pelo catálogo (2026-08-30)**: botão
 direito no `.arena-grid` **fora** de qualquer `.lot-card` (inclusive com o
