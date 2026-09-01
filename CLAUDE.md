@@ -481,6 +481,20 @@ glifo da Twitch usado em `.host-twitch-badge` (`TwitchIcon` em
 capa encontrada quanto "quadro" da live que não é jogo/filme de verdade
 (nunca vai ter capa nenhuma pra achar).
 
+**Fundo desfocado do card esticava demais em card alto (corrigido 2026-09-01)**:
+`.lot-card-bg` (a capa desfocada de fundo, atrás de `.lot-card-content`) usava
+`inset: -10px`, esticando pra cobrir a altura INTEIRA do card via
+`background-size: cover`. Card com barra de corrida + badge de duelo/likes/
+top doador empilhados fica bem mais alto que o normal -- `cover` numa altura
+tão maior forçava um zoom pesado na imagem, que parecia esticada/borrada até
+embaixo do card (bug real visto num card em disputa de última vaga E com
+meta de corrida batida ao mesmo tempo, então bem mais alto que o comum).
+Fix: `.lot-card-bg` ganhou altura fixa (168px comum, 230px pro rank 1 --
+os mesmos números que já cobriam um card sem conteúdo extra, `min-height`
+148px/210px + 10px de sangria dos dois lados), em vez de esticar junto com
+o card. O que sobra do card abaixo dessa faixa mostra o fundo sólido normal,
+que já é legível o bastante pras barras/badges que ficam ali.
+
 **Adicionar jogo/filme manualmente pelo catálogo (2026-08-30)**: botão
 direito no `.arena-grid` **fora** de qualquer `.lot-card` (inclusive com o
 catálogo vazio) abre "Adicionar {jogo/filme} manualmente" (`LotContextMenu.jsx`,
