@@ -526,6 +526,28 @@ doador) já foi resolvida direto no conteúdo, `.lot-card-bg` não precisa
 mais se proteger do caso extremo que não existe mais -- voltou a ser
 `inset: -10px` (acompanha a altura real do card) como era originalmente.
 
+**Card do rank 1 "vazando" visualmente por baixo dos vizinhos (2026-09-01,
+hipótese, não reproduzido localmente)**: cliente reportou (com print
+circulado) o rank 1 aparentando não "terminar" -- um pedaço da borda/fundo
+continuava visível sobrepondo o topo dos cards 2/3 da linha seguinte.
+Reproduzi a estrutura exata (`.arena-grid` com rank 1 full-width + 2 cards
+na linha de baixo, mesmo CSS) num Chromium headless local via Playwright
+pra medir as posições reais (`getBoundingClientRect`) -- sem overlap
+nenhum, grid calculado certinho. Ou seja, não é erro de cálculo de
+layout: a hipótese mais provável é um bug de repaint do Chromium (comum
+com `filter: blur()` dentro de Grid que reordena com frequência, como
+aqui via Socket.IO a cada doação) -- o navegador "esquece" de repintar a
+região de um card quando ele muda de posição, deixando o `.lot-card-bg`
+borrado de um card antigo vazar visualmente até algo forçar um repaint
+manual (scroll, resize). Mitigação: `.lot-card` ganhou `transform:
+translateZ(0)` (força compositing layer próprio, fix conhecido pra essa
+classe de bug) + `contain: layout style` (isola cálculo de layout do
+card, sem cortar o glow do `:hover`, que já é `box-shadow` de propósito
+maior que o card -- por isso não usa `contain: paint`, que cortaria
+isso). **Não confirmado em produção ainda** -- é a explicação mais
+plausível que sobrou depois de descartar erro de layout via reprodução
+real, não uma correção comprovada.
+
 **Adicionar jogo/filme manualmente pelo catálogo (2026-08-30)**: botão
 direito no `.arena-grid` **fora** de qualquer `.lot-card` (inclusive com o
 catálogo vazio) abre "Adicionar {jogo/filme} manualmente" (`LotContextMenu.jsx`,
