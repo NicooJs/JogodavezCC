@@ -481,19 +481,25 @@ glifo da Twitch usado em `.host-twitch-badge` (`TwitchIcon` em
 capa encontrada quanto "quadro" da live que não é jogo/filme de verdade
 (nunca vai ter capa nenhuma pra achar).
 
-**Fundo desfocado do card esticava demais em card alto (corrigido 2026-09-01)**:
-`.lot-card-bg` (a capa desfocada de fundo, atrás de `.lot-card-content`) usava
-`inset: -10px`, esticando pra cobrir a altura INTEIRA do card via
-`background-size: cover`. Card com barra de corrida + badge de duelo/likes/
-top doador empilhados fica bem mais alto que o normal -- `cover` numa altura
-tão maior forçava um zoom pesado na imagem, que parecia esticada/borrada até
-embaixo do card (bug real visto num card em disputa de última vaga E com
-meta de corrida batida ao mesmo tempo, então bem mais alto que o comum).
-Fix: `.lot-card-bg` ganhou altura fixa (168px comum, 230px pro rank 1 --
-os mesmos números que já cobriam um card sem conteúdo extra, `min-height`
-148px/210px + 10px de sangria dos dois lados), em vez de esticar junto com
-o card. O que sobra do card abaixo dessa faixa mostra o fundo sólido normal,
-que já é legível o bastante pras barras/badges que ficam ali.
+**Fundo desfocado do card esticava demais em card alto (corrigido 2026-09-01,
+causa raiz achada depois de um fix incompleto)**: bug real visto num card em
+disputa de última vaga E com meta de corrida batida ao mesmo tempo (barra de
+corrida + badge de duelo empilhados, bem mais alto que o normal) -- a capa
+desfocada de fundo (`.lot-card-bg`) parecia esticada/borrada até embaixo do
+card. Primeira tentativa: dar altura fixa pra `.lot-card-bg` (que usava
+`inset: -10px`, esticando com a altura inteira do card via
+`background-size: cover`, forçando um zoom pesado na imagem). Isso não
+resolveu de verdade -- só trocou "imagem borrada esticada" por "espaço vazio
+de cor sólida", porque a causa raiz é outra: `.arena-grid` é CSS Grid sem
+`align-items` definido, que por padrão é `stretch` -- todo card **da mesma
+linha da grade** estica até a altura do mais alto dela. O card vizinho
+(conteúdo curto, sem corrida/duelo) tava sendo esticado pra combinar com o
+card alto do lado, sobrando espaço vazio embaixo dele -- o fix da altura fixa
+só deixou esse espaço vazio mais visível (antes a imagem esticada "escondia"
+o descompasso). Fix de verdade: `align-items: start` no `.arena-grid`, pra
+cada card ficar só do tamanho do próprio conteúdo, sem esticar por causa do
+vizinho. A altura fixa da `.lot-card-bg` continua valendo (ainda evita zoom
+pesado quando é o PRÓPRIO card que fica alto pelo seu conteúdo).
 
 **Adicionar jogo/filme manualmente pelo catálogo (2026-08-30)**: botão
 direito no `.arena-grid` **fora** de qualquer `.lot-card` (inclusive com o
