@@ -465,11 +465,14 @@ function lotTopDonorHtml(item) {
 function lotRaceHtml(item) {
   if (!item.raceGoal) return "";
   const pct = Math.max(0, Math.min(100, Math.round((item.total / item.raceGoal) * 100)));
-  const label = item.raceGoalReached
-    ? "meta batida, classificado!"
-    : `faltam ${formatBRL(Math.max(0, item.raceGoal - item.total))} pra classificar`;
+  const label =
+    item.raceGoalReached && item.winning
+      ? "meta batida, classificado!"
+      : item.raceGoalReached
+        ? "meta batida, mas sem vaga sobrando"
+        : `faltam ${formatBRL(Math.max(0, item.raceGoal - item.total))} pra classificar`;
   return `
-    <div class="lot-race${item.raceGoalReached ? " is-reached" : ""}">
+    <div class="lot-race${item.raceGoalReached && item.winning ? " is-reached" : ""}">
       <div class="lot-race-track"><div class="lot-race-fill" style="width:${pct}%"></div></div>
       <span class="lot-race-label">${FLAG_ICON_SVG}${label}</span>
     </div>

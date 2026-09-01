@@ -514,8 +514,16 @@ function serializeLeaderboard(store, leilaoId) {
       added: centsToNumber(rowFunding.added_cents),
       removed: centsToNumber(rowFunding.removed_cents),
       rank: finalRank.get(row.key),
-      winning: naturallyWinning || raceGoalReached,
-      qualifiedByRace: !naturallyWinning && raceGoalReached,
+      // "vencendo"/"classificado pela corrida" nunca pode ser só "o valor
+      // bateu a meta" -- precisa ter vaga de verdade (trava conseguida) ou
+      // já estar naturalmente entre os classificados por dinheiro. Sem essa
+      // checagem, um lote que bate o número da meta DEPOIS que o teto de
+      // vagas bônus já foi todo usado por outros aparecia como "classificado"
+      // igual, mesmo sem ter garantido nada (bug real: streamer limitou a
+      // corrida a 3 vagas, 6 jogos bateram o valor, os 6 apareciam como
+      // classificados).
+      winning: naturallyWinning || row.race_locked_rank != null,
+      qualifiedByRace: !naturallyWinning && row.race_locked_rank != null,
       raceGoal: raceGoalCents ? centsToNumber(raceGoalCents) : null,
       raceGoalReached,
       raceLocked: row.race_locked_rank != null,
