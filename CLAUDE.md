@@ -385,34 +385,57 @@ Validações client-side (jogo precisa estar "confirmado" via shelf ou botão
 também decide mensagens de erro específicas (chave Pix não cadastrada, conta
 restrita/bloqueada, token expirado).
 
-### Board/apresentador (`board.html` + `app.js`, sendo substituído por React)
+### Board/apresentador (`client/src/App.jsx` React, `board.html`/`app.js` só como fallback)
 
-**Migração pro React em andamento desde 2026-08-14, canário por leilão**
-(`client/src/App.jsx` + `client/src/components/*.jsx`, mesmo backend
-Express/Socket.IO, sem mudança de rota de API). `server.js` decide qual
-versão servir em `GET /l/:id`: se o id do leilão está na env var
-`REACT_BOARD_CANARY_IDS` (lista separada por vírgula, editável no Railway
-sem redeploy de código) **e** o build de `public/board-app/index.html`
-existe, serve a versão React; senão, serve o `board.html` vanilla abaixo,
-inalterado. Reiniciar o serviço (redeploy, sem rebuild) é necessário pra um
-novo id entrar em vigor -- só editar a variável não basta enquanto o
-processo já está de pé. Estado em 2026-08-21: **os 2 leilões com atividade
-real hoje (`ec333f9059e5`/nicolebaz, `d954607a933e`/sabrinoca) estão no
-canário** -- 12 dos 13 modais do vanilla já têm par React (`SettingsModal`,
-`RankingModal`, `RecapModal`, `RaceModal`, `LotModal`, `ModCodeModal`,
-`PresenterLoginModal`, `ExtratoModal`, `HistoryOverlay`, `SoldOverlay`,
-`TopbarMenu`, `LotContextMenu`). O `donate-modal` (gerar QR Pix direto,
-Efí) foi **decidido não portar**: além de já estar com o botão de entrada
-oculto de propósito (doação hoje é só via link `/l/:id/doar`, nunca
-embutida no board -- ver comentário em `board.html` junto do
-`donate-open-btn`), ele reflete um fluxo de pagamento (QR Efí + confirmação
-por socket) que `doar.js` já não usa mais (ponte pixgg.com fez esse branch
-virar código morto, ver seção de pagamento acima) -- portar agora seria
-recriar uma arquitetura obsoleta que precisará ser refeita quando a Efí for
-aprovada de verdade. Roteiro completo (terminar a migração, aposentar
-`public/perfil.html` standalone em cima do hub, limpar resíduo de "conta
-podia ter mais de 1 leilão") em
-`C:\Users\User\.claude\plans\dapper-singing-chipmunk.md`.
+**Migração pro React terminada em 2026-09-02** (começou 2026-08-14, canário
+por leilão até aqui). `server.js` (`GET /l/:id`) agora serve a versão React
+(`public/board-app/index.html`, build do `client/`) **pra todo leilão por
+padrão**, contanto que o build exista de verdade (`fs.existsSync` -- rede de
+segurança: se o build falhar silenciosamente em produção, ver
+`package.json` `"build"`, cai pro `board.html` vanilla em vez de dar 404
+pra todo mundo). `REACT_BOARD_DISABLED_IDS` (env var, lista de ids separada
+por vírgula) é a válvula de escape que sobrou do período de canário --
+virou lista de **exclusão**, não mais de inclusão: força um leilão
+específico de volta pro vanilla sem precisar reverter o deploy inteiro, se
+aparecer um bug que só afete um streamer. Editar a variável ainda exige
+reiniciar o serviço pra valer (não é hot-reload). `public/board.html` +
+`public/js/app.js` + `public/js/settings.js` continuam no repo intactos de
+propósito, não foram apagados -- são o fallback, decisão consciente de não
+fazer essa limpeza ainda (ver auditoria de paridade abaixo antes de
+considerar apagar).
+
+Antes de virar padrão pra todo mundo, foi feita uma auditoria completa de
+paridade vanilla → React (2026-09-02): nenhuma feature do vanilla se perde
+ao aposentá-lo. 12 dos 13 modais do vanilla já tinham par React
+(`SettingsModal`, `RankingModal`, `RecapModal`, `RaceModal`, `LotModal`,
+`ModCodeModal`, `PresenterLoginModal`, `ExtratoModal`, `HistoryOverlay`,
+`SoldOverlay`, `TopbarMenu`, `LotContextMenu`); o único que ficou de fora
+foi o `donate-modal` (gerar QR Pix direto, Efí), **decidido não portar**:
+além de já estar com o botão de entrada oculto de propósito (doação hoje é
+só via link `/l/:id/doar`, nunca embutida no board), ele reflete um fluxo
+de pagamento (QR Efí + confirmação por socket) que `doar.js` já não usa
+mais (ponte pixgg.com fez esse branch virar código morto, ver seção de
+pagamento acima) -- portar agora seria recriar uma arquitetura obsoleta que
+precisará ser refeita quando a Efí for aprovada de verdade. O React ganhou
+3 coisas que o vanilla nunca teve (aditivo, não regressão): config de meta
+**global** da corrida (`RaceConfigModal.jsx`, vanilla só tinha meta manual
+por lote), "adicionar manualmente" clicando fora de qualquer card no
+catálogo vazio, e o glow/contador de `!hype` do chat (`.lot-likes`/
+`.is-firing`) -- esse último já existia no backend (`src/twitchChatBot.js`)
+rodando pra QUALQUER leilão, só nunca tinha sido desenhado no vanilla, então
+streamers que só conheciam o board antigo veem esse efeito pela primeira
+vez depois da virada.
+
+**Pendências conhecidas, deliberadamente fora dessa virada**: a sidebar do
+board standalone (`/l/:id`, `SystemSwitch.jsx`, 6 ícones: voltar, ranking,
+alternar Leilão/Reacts, config, histórico) e a do board embutido no hub
+(`/painel/leilao`, sidebar do próprio hub, 4 ícones: início/perfil/config/
+histórico) continuam visualmente diferentes -- reaproveitam o mesmo
+componente `NavRail` mas com conjuntos de itens distintos, nunca foram
+reconciliadas. Decisão consciente de deixar pra depois (pedido do cliente),
+não é bug. Apagar de vez `board.html`/`app.js`/`settings.js` do repo também
+ficou de fora -- só depois de um tempo confirmando que ninguém precisou do
+fallback.
 
 Grid 3 colunas: host+doadores (esquerda), catálogo de lotes (`.lot-card`,
 centro), timer+histórico (direita). `.presenter-bar` só aparece em modo
@@ -607,6 +630,29 @@ manual por lote (botão direito no card, nunca vaza pros outros). Orientei
 o cliente nesse sentido ao vivo, mas não confirmei se ele já mudou o uso
 -- se a reclamação voltar mesmo com meta manual (não geral), aí sim
 investigar de novo. Nenhuma mudança de código pendente nesse ponto.
+
+**Card do rank 1 sobrepondo a linha seguinte, causa raiz DIFERENTE das
+tentativas acima (2026-09-01, corrigido)**: bug irmão dos dois anteriores
+só na aparência (card 1 "maior", cobrindo os cards de baixo), causa raiz
+nova. Reproduzido ao vivo em produção (`ec333f9059e5`, board React) com 6-7
+lotes e meta de corrida ativa: o rank 1 renderiza 236px de altura (card
+normal é 148-154px, rank 1 tem `min-height: 210px` fixo + a barra de meta
+da corrida empurra mais) mas a LINHA do CSS Grid que contém ele era
+calculada com só 210px -- confirmado ao vivo injetando JS na página de
+produção e lendo `getComputedStyle(.arena-grid).gridTemplateRows` (linha 1
+saía "210px", não "236px"). Causa: `.arena-grid` nunca definia
+`grid-auto-rows`, caindo no `auto` padrão do navegador -- que, testado ao
+vivo trocando por `min-content`/`max-content` na própria página (revertido
+depois), corrige a conta pra bater com a altura real do conteúdo. Sem essa
+propriedade, o Chrome dimensiona a linha implícita pelo `min-height` do
+item (210px) em vez da altura de fato renderizada quando o conteúdo cresce
+além dele -- o card ultrapassa a própria linha por baixo, sobrepondo a
+linha seguinte por alguns pixels (confirmado: card 1 terminava em y=499,
+card 2 começava em y=491, 8px de sobreposição real, não só visual/
+percepção). Fix: `grid-auto-rows: min-content` em `.arena-grid`
+(`style.css`). Diferente dos bugs de rank-1 documentados acima (que eram
+lógica de `computeRaceRanks` duplicando trava), esse é puramente CSS de
+layout -- não mexe em `computeRaceRanks` nem em nada de servidor.
 
 **Estado ao fim da sessão de 2026-09-01 (corrida)**: os 3 PRs acima (#8
 clip-path -- não era a causa raiz mas ficou, inofensivo; #9 travas

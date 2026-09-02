@@ -2718,6 +2718,16 @@ body.presenter-mode .page-embedded {
   flex: 1;
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(460px, 1fr));
+  /* sem isso, linha implícita usa o "auto" padrão -- que, combinado com
+     align-items:start + min-height no item (rank 1 tem 210px fixo),
+     calculava a altura da linha pelo min-height em vez da altura real
+     renderizada (measured ao vivo: 210px de linha pra um card de 236px de
+     conteúdo real, por causa da barra de meta da corrida). Card
+     ultrapassava a própria linha por baixo e sobrepunha a linha seguinte
+     (bug real visto em produção, reproduzido e confirmado testando
+     grid-auto-rows ao vivo antes desse fix). min-content faz a linha
+     acompanhar a altura de verdade do conteúdo. */
+  grid-auto-rows: min-content;
   align-content: start;
   /* sem isso, o Grid estica todo card de uma linha até a altura do mais alto
      dela (default align-items:stretch) -- card com corrida+duelo empilhados
