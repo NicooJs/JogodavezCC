@@ -26,13 +26,17 @@ export default function LotCard({
   const streakActive = streakTier > 0
   const isDuelDefender = duelRole === 'defender'
   const isDuelChallenger = duelRole === 'challenger'
-  // só mostra a barra/tag de corrida em quem já bateu a meta ou tá perto
-  // dela (65%+, mesmo limiar do duelo pela última vaga) -- lote muito
-  // longe da meta não precisa de aviso, já é óbvio que não vai classificar
-  // por ali (pedido do cliente: evita poluir o catálogo inteiro de tag
-  // quando a meta é global e vale pra todo mundo)
+  // só mostra a barra/tag de corrida em quem DEPENDE dela pra classificar
+  // -- vencedor natural (por dinheiro) que também bate a meta não precisa
+  // de aviso nenhum, a classificação dele não tem nada a ver com a
+  // corrida (mostrar a barra nele só confundia, parecia que TODO mundo
+  // tava "na corrida"). Mostra em quem já garantiu (raceLocked, sempre,
+  // mesmo que sabotagem tenha derrubado o total atual depois -- a trava é
+  // permanente) ou tá perto o suficiente (65%+, mesmo limiar do duelo)
+  // ainda competindo pela vaga bônus.
   const raceProgress = item.raceGoal ? item.total / item.raceGoal : 0
-  const showRaceUi = !!item.raceGoal && (item.raceGoalReached || raceProgress >= 0.65)
+  const dependsOnRace = !item.winning || item.qualifiedByRace
+  const showRaceUi = !!item.raceGoal && dependsOnRace && (item.raceLocked || item.raceGoalReached || raceProgress >= 0.65)
   const [dragging, setDragging] = useState(false)
   const [dropTarget, setDropTarget] = useState(false)
 
@@ -87,16 +91,16 @@ export default function LotCard({
         <div className="lot-info">
           <p className="lot-name">{item.name}</p>
           {showRaceUi ? (
-            <div className={`lot-race${item.raceGoalReached && item.winning ? ' is-reached' : ''}`}>
+            <div className={`lot-race${item.raceLocked ? ' is-reached' : ''}`}>
               <div className="lot-race-track">
                 <div
                   className="lot-race-fill"
-                  style={{ width: `${Math.max(0, Math.min(100, Math.round((item.total / item.raceGoal) * 100)))}%` }}
+                  style={{ width: `${item.raceLocked ? 100 : Math.max(0, Math.min(100, Math.round((item.total / item.raceGoal) * 100)))}%` }}
                 />
               </div>
               <span className="lot-race-label">
                 <FlagIcon />
-                {item.raceGoalReached && item.winning
+                {item.raceLocked
                   ? 'meta batida, classificado!'
                   : item.raceGoalReached
                     ? 'meta batida, mas sem vaga sobrando'

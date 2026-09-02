@@ -100,6 +100,22 @@ export default function ArenaPanel({ leilaoId, leaderboard, lastEvent, presenter
     }
   }
 
+  // linha "classificados até aqui" fica depois do ÚLTIMO item ainda
+  // classificado (winning), não numa posição fixa de rank -- rank sozinho
+  // não reflete mais o corte de verdade depois que a corrida pode
+  // classificar um lote fora do topo natural (esse lote entra winning mas
+  // pode ficar em qualquer posição, inclusive depois do corte natural de
+  // qualifyCount). Bug real visto em produção: com a linha fixa em
+  // rank===qualifyCount, um lote classificado pela corrida numa posição
+  // maior aparecia visualmente "fora" da própria linha de classificados.
+  let qualifyBoundaryKey = null
+  for (let i = items.length - 1; i >= 0; i--) {
+    if (items[i].winning) {
+      qualifyBoundaryKey = i < items.length - 1 ? items[i].key : null
+      break
+    }
+  }
+
   if (isReacts) {
     return <ReactsPlayer leilaoId={leilaoId} leaderboard={leaderboard} presenterActive={presenterActive} />
   }
@@ -151,7 +167,7 @@ export default function ArenaPanel({ leilaoId, leaderboard, lastEvent, presenter
                 : duelChallenger && item.key === duelChallenger.key
                   ? 'challenger'
                   : null
-            const isQualifyBoundary = item.rank === qualifyCount && items.length > qualifyCount
+            const isQualifyBoundary = item.key === qualifyBoundaryKey
             return (
               <Fragment key={item.key}>
                 <LotCard

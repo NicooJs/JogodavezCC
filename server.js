@@ -386,11 +386,14 @@ async function resolveParsedGame(store, parsed) {
 // limite de quantos lotes podem bater) ou a meta global do leilão
 // (Configurações → corrida, com limite de quantas vagas bônus ela concede
 // -- meta manual sempre tem prioridade sobre a global pro mesmo lote, pra
-// poder customizar um caso específico sem mexer na config geral). Enquanto
-// o total do lote continuar >= a própria meta, a trava fica de pé; se cair
-// abaixo (sabotagem), destrava e ele volta pra fila normal por dinheiro --
-// se bater a meta de novo depois, ganha uma trava NOVA (pode ser outra
-// posição, não necessariamente a mesma de antes).
+// poder customizar um caso específico sem mexer na config geral). Trava é
+// PERMANENTE (2026-09-02, pedido explícito do cliente): a ideia inteira do
+// modo corrida é doar sem dar chance de sabotagem tirar a classificação
+// depois -- uma vez batida a meta, nada faz o lote perder a posição, nem
+// sabotagem derrubando o total até R$0. Antes disso a trava sumia se o
+// total caísse abaixo da meta de novo; mudou porque isso contrariava o
+// propósito declarado da feature (proteção contra sabotagem só valendo
+// enquanto o valor se mantivesse alto não é proteção nenhuma).
 function computeRaceRanks(store, rows, qualifyCount) {
   const globalGoalCents = Number(store.getState("raceGlobalGoalCents", 0)) || null;
   const globalMaxWinners = Number(store.getState("raceGlobalMaxWinners", 0)) || null;
@@ -419,7 +422,12 @@ function computeRaceRanks(store, rows, qualifyCount) {
   let activeGlobalLocks = 0;
   for (const row of rows) {
     const m = meta.get(row.key);
-    if (!m.hasManualGoal && row.race_locked_rank != null && m.reached && !isNaturallyWinning(row)) activeGlobalLocks++;
+    // sem checar m.reached aqui de propósito: a trava é permanente, então
+    // continua consumindo a vaga bônus mesmo que sabotagem tenha derrubado
+    // o total abaixo da meta depois -- soltar a vaga nesse caso deixaria
+    // outro lote roubar a vaga de quem já tinha garantido, quebrando a
+    // permanência.
+    if (!m.hasManualGoal && row.race_locked_rank != null && !isNaturallyWinning(row)) activeGlobalLocks++;
   }
 
   // números já presos por travas de passes anteriores -- construído ANTES
@@ -450,16 +458,13 @@ function computeRaceRanks(store, rows, qualifyCount) {
   }
 
   for (const row of rows) {
+    // trava permanente: uma vez travado, nunca destrava, nem se sabotagem
+    // derrubar o total abaixo da meta depois (checagem vem antes de
+    // m.reached de propósito -- reached só importa pra decidir se GANHA
+    // uma trava nova, não pra manter uma que já existe)
+    if (row.race_locked_rank != null) continue;
     const m = meta.get(row.key);
-    if (!m.reached) {
-      if (row.race_locked_rank != null) {
-        lockedRanks.delete(row.race_locked_rank);
-        store.clearRaceLockedRank(row.key);
-        row.race_locked_rank = null;
-      }
-      continue;
-    }
-    if (row.race_locked_rank != null) continue; // já travado nessa posição, mantém
+    if (!m.reached) continue;
     if (!m.hasManualGoal && !isNaturallyWinning(row)) {
       if (globalMaxWinners && activeGlobalLocks >= globalMaxWinners) continue; // sem vaga bônus sobrando
       activeGlobalLocks++;
