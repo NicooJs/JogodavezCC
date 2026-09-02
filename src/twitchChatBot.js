@@ -75,31 +75,34 @@ function init({ getStore, registry, onHypeAccepted: callback }) {
   onHypeAccepted = callback;
 
   // uma conta Twitch pode ter mais de 1 leilão no registro (resíduo de
-  // leilão antigo desvinculado, por exemplo) -- só o mais recente
-  // (createdAt, já salvo no state de cada leilão desde a criação) entra
+  // leilão antigo desvinculado, por exemplo) -- só o mais recente entra
   // no chat, mesmo critério já usado em outros lugares pra escolher "o
-  // leilão representante" de uma conta (Perfil, link do widget OBS). Bug
-  // real visto em produção: sem esse desempate, channelToLeilaoId ficava
-  // com o ÚLTIMO id processado (ordem arbitrária do registro), não
-  // necessariamente o leilão que o streamer tava usando de verdade -- o
-  // !hype reconhecia a mensagem certinho mas mirava um leilão errado e
-  // vazio, então nunca achava o jogo.
-  const bestByLogin = new Map(); // login -> { leilaoId, createdAt }
+  // leilão representante" de uma conta (Perfil, link do widget OBS).
+  // Agrupa por ownerTwitchUserId usando o REGISTRO (createdAt sempre
+  // confiável ali, escrito na criação do leilão) -- não a cópia
+  // espelhada de createdAt no state de cada leilão, que pode faltar num
+  // leilão antigo o suficiente (bug real visto em produção: desempatar
+  // pela cópia no state escolhia um leilão vazio e órfão só porque o
+  // leilão de verdade, mais antigo, sem essa cópia, sempre perdia a
+  // comparação contra uma string vazia).
+  const bestByOwner = new Map(); // ownerTwitchUserId -> { leilaoId, createdAt }
   for (const leilaoId of registry.listLeilaoIds()) {
-    const store = getStore(leilaoId);
-    const login = store.getState("hostTwitchLogin", null);
-    if (!login) continue;
-    const normalized = login.toLowerCase();
-    const createdAt = store.getState("createdAt", "");
-    const current = bestByLogin.get(normalized);
-    if (!current || createdAt > current.createdAt) bestByLogin.set(normalized, { leilaoId, createdAt });
+    const meta = registry.getLeilaoMeta(leilaoId);
+    if (!meta || !meta.ownerTwitchUserId) continue;
+    const current = bestByOwner.get(meta.ownerTwitchUserId);
+    if (!current || meta.createdAt > current.createdAt) {
+      bestByOwner.set(meta.ownerTwitchUserId, { leilaoId, createdAt: meta.createdAt });
+    }
   }
 
   const channels = [];
-  for (const [login, { leilaoId, createdAt }] of bestByLogin) {
-    channelToLeilaoId.set(login, leilaoId);
-    channels.push(login);
-    logHype(`canal #${login} -> leilaoId ${leilaoId} (createdAt ${createdAt})`);
+  for (const { leilaoId, createdAt } of bestByOwner.values()) {
+    const login = getStore(leilaoId).getState("hostTwitchLogin", null);
+    if (!login) continue;
+    const normalized = login.toLowerCase();
+    channelToLeilaoId.set(normalized, leilaoId);
+    channels.push(normalized);
+    logHype(`canal #${normalized} -> leilaoId ${leilaoId} (createdAt ${createdAt})`);
   }
 
   logHype(`boot: ${channels.length} canal(is) com Twitch vinculado -- ${channels.join(", ") || "(nenhum)"}`);
