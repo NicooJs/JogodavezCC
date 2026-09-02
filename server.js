@@ -2713,8 +2713,8 @@ require("./src/reconciliation").start();
 // criação/exclusão/desvínculo já se auto-atualiza (ver src/registry.js)
 require("./src/registryBackup").backupAll().catch((err) => console.error("[registryBackup] falha no backfill inicial:", err.message));
 
-// bot de chat da Twitch (!hype "jogo") -- lê o chat de cada leilão que já
-// tem dono com Twitch vinculado; leilões novos entram na hora (ver
+// bot de chat da Twitch (!hype nome do jogo) -- lê o chat de cada leilão
+// que já tem dono com Twitch vinculado; leilões novos entram na hora (ver
 // twitchChatBot.registerChannel em POST /api/leiloes)
 twitchChatBot.init({
   getStore,
