@@ -582,6 +582,41 @@ destrava e volta a competir pela fila normal) -- não precisa de migração
 manual nem de desativar/reativar a corrida em nenhum leilão já afetado,
 resolve sozinho na próxima vez que o leaderboard for montado.
 
+**"Classificado" aparecendo pra lote sem vaga de corrida sobrando
+(2026-09-01, corrigido, PR #10)**: bug irmão do anterior, achado na mesma
+sessão de teste ao vivo. Streamer configurou a meta GERAL do leilão
+(mini-menu → Modo corrida) com 3 vagas bônus, foi adicionando jogos, e
+TODOS os que cruzavam o valor apareciam como "classificado" -- não só os
+3 primeiros. Causa: `qualifiedByRace`/`winning` (`server.js`,
+`serializeLeaderboard`) eram calculados só checando `raceGoalReached`
+(o valor bateu a meta), sem checar se o lote de fato conseguiu a vaga
+(`race_locked_rank != null`) -- uma vez que o teto de vagas já tinha sido
+usado por outros lotes, um lote novo que cruzasse o mesmo valor continuava
+marcado como classificado mesmo sem ter garantido nada. Fix: os dois
+campos agora só contam quem realmente tem a trava ou já está
+naturalmente entre os classificados por dinheiro puro; quem bate o valor
+sem vaga sobrando mostra "meta batida, mas sem vaga sobrando" em vez de
+"classificado!" (`LotCard.jsx` e `app.js`, mesma condição nos dois).
+
+**Confusão de uso ainda não resolvida (não é bug de código)**: o cliente
+queria que só um punhado de jogos escolhidos a dedo entrasse na corrida,
+mas configurou pela meta GERAL do leilão -- que por design vale pra
+QUALQUER lote sem meta manual própria, não pra uma lista escolhida. Pra
+"só alguns jogos específicos com meta", o caminho certo já existe: meta
+manual por lote (botão direito no card, nunca vaza pros outros). Orientei
+o cliente nesse sentido ao vivo, mas não confirmei se ele já mudou o uso
+-- se a reclamação voltar mesmo com meta manual (não geral), aí sim
+investigar de novo. Nenhuma mudança de código pendente nesse ponto.
+
+**Estado ao fim da sessão de 2026-09-01 (corrida)**: os 3 PRs acima (#8
+clip-path -- não era a causa raiz mas ficou, inofensivo; #9 travas
+duplicadas; #10 teto de vagas) foram todos mergeados em `master` e
+confirmados com deploy SUCCESS no Railway. Nenhum foi reconfirmado ao
+vivo pelo cliente depois do deploy (a sessão foi encerrada logo em
+seguida) -- primeira coisa a checar numa sessão futura se o Modo Corrida
+voltar a ser mencionado: pedir print atual do leilão de teste
+(`ec333f9059e5`/nicolebaz) antes de assumir que ainda há bug.
+
 **Adicionar jogo/filme manualmente pelo catálogo (2026-08-30)**: botão
 direito no `.arena-grid` **fora** de qualquer `.lot-card` (inclusive com o
 catálogo vazio) abre "Adicionar {jogo/filme} manualmente" (`LotContextMenu.jsx`,
