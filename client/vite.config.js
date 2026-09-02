@@ -32,6 +32,7 @@ export default defineConfig(({ command }) => ({
         perfil: path.resolve(import.meta.dirname, 'perfil.html'),
         sidebar: path.resolve(import.meta.dirname, 'sidebar.html'),
         board: path.resolve(import.meta.dirname, 'board.html'),
+        painel: path.resolve(import.meta.dirname, 'painel.html'),
       },
     },
   },

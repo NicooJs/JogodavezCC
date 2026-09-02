@@ -1414,10 +1414,16 @@ app.get("/api/meus-leiloes", (req, res) => {
   res.json({ leiloes: rows });
 });
 
-// cada view do hub (Início/Perfil/Configurações/Histórico) tem seu próprio
-// caminho pra sobreviver a um F5 -- todos servem o mesmo painel.html, quem
-// decide qual view mostrar é o próprio painel.js lendo location.pathname
+// cada view do hub (Início/Leilão/Perfil/Configurações/Histórico) tem seu
+// próprio caminho pra sobreviver a um F5 -- todos servem o mesmo
+// painel.html, quem decide qual view mostrar é o próprio PainelApp lendo
+// location.pathname. Casca do hub virou React de verdade (2026-09-02,
+// mesmo padrão do board): serve o build (client/painel.html) quando existe,
+// com a mesma rede de segurança do board -- cai pro painel.html vanilla se
+// o build falhar silenciosamente em produção, em vez de dar 404.
+const REACT_PAINEL_INDEX_PATH = path.join(__dirname, "public", "board-app", "painel.html");
 app.get(["/painel", "/painel/leilao", "/painel/perfil", "/painel/config", "/painel/historico"], (req, res) => {
+  if (fs.existsSync(REACT_PAINEL_INDEX_PATH)) return res.sendFile(REACT_PAINEL_INDEX_PATH);
   res.sendFile(path.join(__dirname, "public", "painel.html"));
 });
 

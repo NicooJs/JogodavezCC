@@ -191,7 +191,7 @@ automático e força o formulário a aparecer -- é o que o link "criar novo"
 do hub usa, já que sem isso ele simplesmente devolvia o streamer pro
 leilão que ele já tinha.
 
-### Hub (`painel.html` + `painel.js`)
+### Hub (`client/src/PainelApp.jsx`, casca virou React em 2026-09-02 -- `public/painel.html`/`painel.js` viram fallback, mesmo padrão do board)
 
 Tela de entrada depois do login -- **por conta, não por leilão** (visual OP.GG
 copiado de propósito, paleta roxa própria em `hub.css`, `--hub-accent`
@@ -203,22 +203,23 @@ cards de "ferramentas" (hoje só Leilão e Reacts, mais vem depois).
 -- o cliente achou confuso e pediu pra trocar). Cada ícone da sidebar
 (Início/Perfil/Configurações/Histórico -- não tem Ranking aqui, isso é
 coisa do board, ver mais abaixo) troca o conteúdo de `.hub-main` no lugar:
-`showView(name)` em `painel.js` esconde todos os `.hub-view` e mostra só o
-escolhido -- sem overlay por cima do resto da tela, sem "sair da tela".
+`showView(name)` em `PainelApp.jsx` esconde todos os `.hub-view` (prop
+`hidden` reagindo ao state `activeView`) e mostra só o escolhido -- sem
+overlay por cima do resto da tela, sem "sair da tela".
 
 **A sidebar em si virou React (2026-08-21)**, `NavRail` (ver "Componentes
 reutilizáveis" acima) -- mesmo componente que o board usa em
 `SystemSwitch.jsx`, montado via um 5º entry standalone do Vite
 (`client/sidebar.html`, mesmo padrão de Configurações/Histórico/Perfil,
 ver abaixo). `painel.html` só tem um container vazio
-(`<aside id="sidebar-root">`); `painel.js` chama
+(`<aside id="sidebar-root">`); `PainelApp.jsx` chama
 `window.JogodaVezSidebar.mount("sidebar-root", {activeView, avatarUrl,
-onNavigate, onLogout})` assim que a sessão carrega (diferente das outras
-3 views, que montam só na primeira abertura -- a sidebar precisa estar
-visível desde o início) e de novo a cada troca de view, só pra atualizar
-`activeView` (reusa a mesma raiz React, não recria). `showView(name)`
-continua existindo e fazendo a troca de verdade; o clique agora chega nela
-via callback (`onNavigate`) em vez de listener direto num `<button>` vanilla.
+onNavigate, onLogout})` num `useEffect` assim que a sessão carrega
+(diferente das outras 3 views, que montam só na primeira abertura -- a
+sidebar precisa estar visível desde o início) e de novo a cada troca de
+view, só pra atualizar `activeView` (reusa a mesma raiz React, não
+recria). `showView(name)` continua existindo e fazendo a troca de
+verdade; o clique chega nela via callback (`onNavigate`).
 **Regra de CSS importante aprendida aqui, vale pra qualquer elemento
 escondido por `[hidden]` daqui pra frente**: se o elemento também tem
 `display` fixado por classe (ex: `.hub-shell { display: flex }`), essa
@@ -229,25 +230,26 @@ em `hub.css`). Já causou um bug real (tela de deslogado aparecendo
 "desformatada", com a sidebar/grid vazando por trás do aviso de login).
 
 **Cada view tem seu próprio caminho (2026-08-20), pra sobreviver a um F5**
-(`/painel`, `/painel/perfil`, `/painel/config`, `/painel/historico`) --
-antes disso um F5 em qualquer view que não fosse Início sempre voltava pro
-começo, já que a troca é 100% client-side. `server.js` serve o mesmo
-`painel.html` pras 4 rotas (`app.get(["/painel", "/painel/perfil", ...])`);
-quem decide qual view mostrar continua sendo `painel.js`, lendo
-`location.pathname` (`viewForPath()`) em vez de sempre cair no Início.
-`showView(name)` agora também dá `history.pushState` pro caminho
-correspondente, e um listener de `popstate` restaura a view certa no
-botão voltar/avançar do navegador -- sem isso o F5 funcionaria mas
-voltar/avançar ficaria quebrado. Config/Histórico continuam exigindo um
-leilão (mesma guarda que já existia no clique da sidebar); acessar essas
-URLs direto sem leilão cai silenciosamente pro Início via
-`history.replaceState` (sem o `alert()`, que é só pro clique explícito no
-meio da navegação). O link de login (`#hub-login-link`, mostrado só pra
-deslogado) agora aponta o `returnTo` pro caminho atual em vez de sempre
-`/painel`, então um F5 numa view específica sem sessão volta pra ela
-depois do OAuth -- `ALLOWED_RETURN_PATHS` em `server.js` precisou ganhar
-as 3 rotas novas (allowlist contra open-redirect, não aceita path
-arbitrário).
+(`/painel`, `/painel/leilao`, `/painel/perfil`, `/painel/config`,
+`/painel/historico`) -- antes disso um F5 em qualquer view que não fosse
+Início sempre voltava pro começo, já que a troca é 100% client-side.
+`server.js` serve o mesmo `painel.html` (build React, com fallback pro
+vanilla se o build faltar -- ver início desta seção) pras 5 rotas
+(`app.get(["/painel", "/painel/leilao", "/painel/perfil", ...])`); quem
+decide qual view mostrar é `PainelApp.jsx`, lendo `location.pathname`
+(`viewForPath()`) em vez de sempre cair no Início. `showView(name)`
+também dá `history.pushState` pro caminho correspondente, e um listener
+de `popstate` (`useEffect`) restaura a view certa no botão voltar/avançar
+do navegador -- sem isso o F5 funcionaria mas voltar/avançar ficaria
+quebrado. Config/Histórico/Leilão continuam exigindo um leilão (mesma
+guarda que já existia no clique da sidebar); acessar essas URLs direto
+sem leilão cai silenciosamente pro Início via `history.replaceState`
+(sem o `alert()`, que é só pro clique explícito no meio da navegação). O
+link de login (`#hub-login-link`, mostrado só pra deslogado) aponta o
+`returnTo` pro caminho atual em vez de sempre `/painel`, então um F5 numa
+view específica sem sessão volta pra ela depois do OAuth --
+`ALLOWED_RETURN_PATHS` em `server.js` inclui as 5 rotas do hub (allowlist
+contra open-redirect, não aceita path arbitrário).
 
 **Avatar da conta (canto inferior da sidebar) desloga ao clicar** (com
 confirmação nativa `confirm()` -- não é `confirmDialog`, é uma exceção
@@ -278,8 +280,9 @@ server -- só não é mais usada pelo hub, o board (`RankingModal.jsx`,
 **Histórico** (`client/historico.html` + `historico-main.jsx` +
 `HistoricoStandalone.jsx`) segue o mesmo padrão de entry-point standalone
 que Configurações -- terceiro *entry* do Vite, mesmo mecanismo de
-fetch-and-inject em `painel.js` (`loadStandaloneEntry()`, fatorado depois
-que o Histórico virou o segundo consumidor do mesmo truque). Visual
+fetch-and-inject (`loadStandaloneEntry()`, `client/src/lib/standaloneEntry.js`,
+chamado por `PainelApp.jsx`; fatorado desse módulo compartilhado quando a
+casca do hub virou React, 2026-09-02). Visual
 inspirado no histórico de partidas do OP.GG: cada round vira uma linha
 com data relativa, duração, jogo vencedor em destaque, "roster" dos
 outros jogos que competeram naquele round e os top doadores -- tudo já
@@ -355,7 +358,7 @@ Vite (`client/settings.html` + `client/src/settings-main.jsx`, ver
 `public/board-app/`. Reaproveita o componente React de verdade
 (`SettingsPanelContent`, extraído de `SettingsModal.jsx` -- o modal do
 board só embrulha esse mesmo conteúdo num `.modal-overlay`) sem nunca
-montar `App.jsx`/o board inteiro. `painel.js` busca `/board-app/settings.html`
+montar `App.jsx`/o board inteiro. `PainelApp.jsx` busca `/board-app/settings.html`
 sob demanda (só na primeira abertura), extrai o `<script type="module">`
 com hash já resolvido pelo Vite e injeta no próprio DOM do hub -- o
 `#settings-root` é um container **permanente** dentro da view "config"
