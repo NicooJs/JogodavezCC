@@ -3,9 +3,14 @@ const { findExistingGameInText } = require("./parser");
 
 // bot compartilhado, só leitura -- conecta anônimo (sem identity/token),
 // nenhuma autorização por streamer é necessária pra LER o chat público.
-// !hype "nome do jogo" dá 1 like no lote correspondente; a cada 10 likes
+// !hype nome do jogo dá 1 like no lote correspondente; a cada 10 likes
 // server.js dispara a animação de fogo via broadcastUpdate (ver init()).
-const HYPE_PATTERN = /^!hype\s+"([^"]+)"/i;
+// Sem aspas de propósito (2026-09-02, corrigido): exigir aspas literais
+// era inútil, nenhum viewer digita `!hype "Elden Ring"` de verdade no
+// chat -- captura o resto da mensagem cru e deixa findExistingGameInText
+// (mesmo fuzzy match já usado na doação por texto livre) achar o jogo,
+// tolerando erro de digitação e palavras extras em volta.
+const HYPE_PATTERN = /^!hype\s+(.+)$/i;
 const HYPE_COOLDOWN_MS = 10 * 60 * 1000; // 1 hype por espectador a cada 10min, qualquer jogo
 
 let client = null;
