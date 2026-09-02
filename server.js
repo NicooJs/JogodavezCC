@@ -391,11 +391,12 @@ async function resolveParsedGame(store, parsed) {
 // abaixo (sabotagem), destrava e ele volta pra fila normal por dinheiro --
 // se bater a meta de novo depois, ganha uma trava NOVA (pode ser outra
 // posição, não necessariamente a mesma de antes).
-function computeRaceRanks(store, rows) {
+function computeRaceRanks(store, rows, qualifyCount) {
   const globalGoalCents = Number(store.getState("raceGlobalGoalCents", 0)) || null;
   const globalMaxWinners = Number(store.getState("raceGlobalMaxWinners", 0)) || null;
 
   const naturalRankByKey = new Map(rows.map((row, i) => [row.key, i + 1]));
+  const isNaturallyWinning = (row) => naturalRankByKey.get(row.key) <= qualifyCount;
 
   const meta = new Map();
   for (const row of rows) {
@@ -406,11 +407,19 @@ function computeRaceRanks(store, rows) {
   }
 
   // vaga concedida por meta manual nunca conta pro teto -- só a meta
-  // global do leilão tem número limitado de vencedores
+  // global do leilão tem número limitado de vencedores. Trava de quem já é
+  // classificado por dinheiro TAMBÉM não conta: essa trava só garante a
+  // posição dele contra quem passar em dinheiro depois, não usa vaga
+  // nenhuma (ele já ia estar classificado de qualquer jeito). Bug real
+  // visto em produção: com a meta baixa o suficiente pra todo o top
+  // natural bater ela também, cada um deles consumia uma vaga da cota só
+  // por ter travado a posição -- esgotava o teto antes de sobrar vaga pro
+  // primeiro lote de FORA do top que também bateu a meta (o único caso que
+  // "vaga bônus" deveria realmente limitar).
   let activeGlobalLocks = 0;
   for (const row of rows) {
     const m = meta.get(row.key);
-    if (!m.hasManualGoal && row.race_locked_rank != null && m.reached) activeGlobalLocks++;
+    if (!m.hasManualGoal && row.race_locked_rank != null && m.reached && !isNaturallyWinning(row)) activeGlobalLocks++;
   }
 
   // números já presos por travas de passes anteriores -- construído ANTES
@@ -451,7 +460,7 @@ function computeRaceRanks(store, rows) {
       continue;
     }
     if (row.race_locked_rank != null) continue; // já travado nessa posição, mantém
-    if (!m.hasManualGoal) {
+    if (!m.hasManualGoal && !isNaturallyWinning(row)) {
       if (globalMaxWinners && activeGlobalLocks >= globalMaxWinners) continue; // sem vaga bônus sobrando
       activeGlobalLocks++;
     }
@@ -494,7 +503,7 @@ function serializeLeaderboard(store, leilaoId) {
   const funding = store.getFundingBreakdown();
   const topDonorByGame = store.getTopDonorByGame();
   const qualifyCount = getQualifyCount(store);
-  const { finalRank, naturalRankByKey, meta } = computeRaceRanks(store, rows);
+  const { finalRank, naturalRankByKey, meta } = computeRaceRanks(store, rows, qualifyCount);
   const items = rows.map((row) => {
     const rowFunding = funding[row.key] || { added_cents: 0, removed_cents: 0 };
     const topDonor = topDonorByGame[row.key];
