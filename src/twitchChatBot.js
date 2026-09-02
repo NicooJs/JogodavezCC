@@ -74,13 +74,31 @@ function init({ getStore, registry, onHypeAccepted: callback }) {
   getStoreFn = getStore;
   onHypeAccepted = callback;
 
-  const channels = [];
+  // uma conta Twitch pode ter mais de 1 leilão no registro (resíduo de
+  // leilão antigo desvinculado, por exemplo) -- só o mais recente
+  // (createdAt, já salvo no state de cada leilão desde a criação) entra
+  // no chat, mesmo critério já usado em outros lugares pra escolher "o
+  // leilão representante" de uma conta (Perfil, link do widget OBS). Bug
+  // real visto em produção: sem esse desempate, channelToLeilaoId ficava
+  // com o ÚLTIMO id processado (ordem arbitrária do registro), não
+  // necessariamente o leilão que o streamer tava usando de verdade -- o
+  // !hype reconhecia a mensagem certinho mas mirava um leilão errado e
+  // vazio, então nunca achava o jogo.
+  const bestByLogin = new Map(); // login -> { leilaoId, createdAt }
   for (const leilaoId of registry.listLeilaoIds()) {
-    const login = getStore(leilaoId).getState("hostTwitchLogin", null);
+    const store = getStore(leilaoId);
+    const login = store.getState("hostTwitchLogin", null);
     if (!login) continue;
     const normalized = login.toLowerCase();
-    channelToLeilaoId.set(normalized, leilaoId);
-    channels.push(normalized);
+    const createdAt = store.getState("createdAt", "");
+    const current = bestByLogin.get(normalized);
+    if (!current || createdAt > current.createdAt) bestByLogin.set(normalized, { leilaoId, createdAt });
+  }
+
+  const channels = [];
+  for (const [login, { leilaoId }] of bestByLogin) {
+    channelToLeilaoId.set(login, leilaoId);
+    channels.push(login);
   }
 
   logHype(`boot: ${channels.length} canal(is) com Twitch vinculado -- ${channels.join(", ") || "(nenhum)"}`);
