@@ -399,7 +399,6 @@ function computeRaceRanks(store, rows, qualifyCount) {
   const globalMaxWinners = Number(store.getState("raceGlobalMaxWinners", 0)) || null;
 
   const naturalRankByKey = new Map(rows.map((row, i) => [row.key, i + 1]));
-  const isNaturallyWinning = (row) => naturalRankByKey.get(row.key) <= qualifyCount;
 
   const meta = new Map();
   for (const row of rows) {
@@ -409,43 +408,28 @@ function computeRaceRanks(store, rows, qualifyCount) {
     meta.set(row.key, { hasManualGoal, effectiveGoalCents, reached });
   }
 
-  // vaga concedida por meta manual nunca conta pro teto -- só a meta
-  // global do leilão tem número limitado de vencedores. Trava de quem já é
-  // classificado por dinheiro TAMBÉM não conta: essa trava só garante a
-  // posição dele contra quem passar em dinheiro depois, não usa vaga
-  // nenhuma (ele já ia estar classificado de qualquer jeito). Bug real
-  // visto em produção: com a meta baixa o suficiente pra todo o top
-  // natural bater ela também, cada um deles consumia uma vaga da cota só
-  // por ter travado a posição -- esgotava o teto antes de sobrar vaga pro
-  // primeiro lote de FORA do top que também bateu a meta (o único caso que
-  // "vaga bônus" deveria realmente limitar).
-  let activeGlobalLocks = 0;
+  // marca o instante em que cada lote bateu a meta pela PRIMEIRA vez --
+  // markRaceGoalReached (src/db.js) é idempotente, só grava uma vez.
+  // Precisa disso pra decidir quem fica com uma vaga limitada quando vários
+  // lotes cruzam a meta quase juntos: sem isso a única ordem disponível
+  // seria a de dinheiro atual, que não é a mesma coisa que "quem chegou
+  // primeiro" (pedido explícito do cliente, 2026-09-02).
+  const now = Date.now();
   for (const row of rows) {
-    const m = meta.get(row.key);
-    // sem checar m.reached aqui de propósito: a trava é permanente, então
-    // continua consumindo a vaga bônus mesmo que sabotagem tenha derrubado
-    // o total abaixo da meta depois -- soltar a vaga nesse caso deixaria
-    // outro lote roubar a vaga de quem já tinha garantido, quebrando a
-    // permanência.
-    if (!m.hasManualGoal && row.race_locked_rank != null && !isNaturallyWinning(row)) activeGlobalLocks++;
+    if (meta.get(row.key).reached && row.race_goal_reached_at == null) {
+      store.markRaceGoalReached(row.key, now);
+      row.race_goal_reached_at = now;
+    }
   }
 
   // números já presos por travas de passes anteriores -- construído ANTES
   // de travar qualquer lote novo nesse passe, e atualizado a cada trava
   // nova (ver abaixo), pra nunca deixar dois lotes travarem no mesmo
-  // número. Bug real visto em produção: o rank "natural" (por dinheiro) é
-  // recalculado do zero a cada passe, sem saber que um número já tá preso
-  // por outro lote travado antes -- se o dinheiro mover um lote pra cima
-  // pra ocupar a posição natural de quem já travou, e esse lote TAMBÉM
-  // bater a própria meta nesse momento, ele travava em cima do número já
-  // ocupado (dois lotes com rank exibido "01" ao mesmo tempo, e o CSS
-  // gigante do rank-1 aplicado nos dois -- um deles sobra espremido numa
-  // célula de grid normal já que só o primeiro filho do DOM ganha a
-  // largura cheia). Esse loop também limpa sozinho qualquer trava
-  // duplicada que já esteja salva no disco de antes desse fix -- `rows`
-  // vem ordenado por dinheiro, então o primeiro lote a reivindicar um
-  // número (o mais forte dos dois) fica com ele, o outro destrava e volta
-  // a competir pela fila normal.
+  // número. `rows` vem ordenado por dinheiro, então o primeiro lote a
+  // reivindicar um número (o mais forte dos dois) fica com ele, o outro
+  // destrava e volta a competir pela fila normal -- limpa sozinho qualquer
+  // trava duplicada que já esteja salva em disco de antes desse mecanismo
+  // existir.
   const lockedRanks = new Set();
   for (const row of rows) {
     if (row.race_locked_rank == null) continue;
@@ -457,26 +441,42 @@ function computeRaceRanks(store, rows, qualifyCount) {
     lockedRanks.add(row.race_locked_rank);
   }
 
-  for (const row of rows) {
-    // trava permanente: uma vez travado, nunca destrava, nem se sabotagem
-    // derrubar o total abaixo da meta depois (checagem vem antes de
-    // m.reached de propósito -- reached só importa pra decidir se GANHA
-    // uma trava nova, não pra manter uma que já existe)
-    if (row.race_locked_rank != null) continue;
-    const m = meta.get(row.key);
-    if (!m.reached) continue;
-    if (!m.hasManualGoal && !isNaturallyWinning(row)) {
-      if (globalMaxWinners && activeGlobalLocks >= globalMaxWinners) continue; // sem vaga bônus sobrando
-      activeGlobalLocks++;
-    }
-    // trava o mais perto possível da posição natural por dinheiro, mas
-    // nunca em cima de um número que outro lote já tem preso -- empurra
-    // pro próximo número livre acima nesse caso.
+  // trava o lote no rank mais perto possível da posição natural por
+  // dinheiro, empurrando pro próximo número livre em caso de colisão.
+  function lockRow(row) {
     let rank = naturalRankByKey.get(row.key);
     while (lockedRanks.has(rank)) rank++;
     lockedRanks.add(rank);
     store.setRaceLockedRank(row.key, rank);
     row.race_locked_rank = rank;
+  }
+
+  // meta manual nunca tem teto -- trava todo mundo que bateu, sem
+  // competir por vaga com ninguém (ordem entre eles não importa).
+  for (const row of rows) {
+    if (row.race_locked_rank != null) continue;
+    const m = meta.get(row.key);
+    if (m.reached && m.hasManualGoal) lockRow(row);
+  }
+
+  // meta global TEM teto (raceGlobalMaxWinners), e o teto vale igual pra
+  // todo mundo -- sem isenção pra quem já seria vencedor natural por
+  // dinheiro. Bug real visto em produção: uma tentativa anterior isentava
+  // vencedor natural achando que a trava dele "não gastava vaga", só que
+  // isso deixava travar mais gente do que o número configurado (o cliente
+  // configurou 3 vagas, doou em 6 jogos, os 6 travaram). Trava já existente
+  // de um passe anterior também consome o teto pra sempre (é permanente).
+  // Candidatos são ordenados por QUEM BATEU A META PRIMEIRO
+  // (race_goal_reached_at), não por dinheiro atual -- senão quem tem mais
+  // grana agora rouba a vaga de quem chegou primeiro de verdade.
+  let activeGlobalLocks = rows.filter((row) => !meta.get(row.key).hasManualGoal && row.race_locked_rank != null).length;
+  const globalCandidates = rows
+    .filter((row) => row.race_locked_rank == null && meta.get(row.key).reached && !meta.get(row.key).hasManualGoal)
+    .sort((a, b) => (a.race_goal_reached_at || 0) - (b.race_goal_reached_at || 0) || b.total_cents - a.total_cents);
+  for (const row of globalCandidates) {
+    if (globalMaxWinners && activeGlobalLocks >= globalMaxWinners) break; // sem vaga sobrando -- quem chegou depois na fila também não cabe
+    activeGlobalLocks++;
+    lockRow(row);
   }
 
   // posição final: quem tá travado mantém o número; o resto preenche as

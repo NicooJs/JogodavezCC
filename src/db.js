@@ -232,17 +232,18 @@ function createStore(filePath) {
     if (!data.games[key]) return null;
     delete data.games[key].raceGoalCents;
     // sem meta nenhuma, não faz sentido continuar com a posição travada de
-    // uma meta que não existe mais
+    // uma meta que não existe mais, nem com o instante em que bateu ela
     delete data.games[key].race_locked_rank;
+    delete data.games[key].race_goal_reached_at;
     save();
     return { ...data.games[key] };
   }
 
   // posição travada pra sempre no rank em que o lote bateu a meta de
   // corrida (pedido explícito do cliente: não é só uma vaga extra de
-  // classificado, o NÚMERO do rank também não pode mais mudar enquanto o
-  // total continuar acima da meta) -- ver computeRaceRanks em server.js,
-  // que decide quando travar/destravar e chama essas duas funções.
+  // classificado, o NÚMERO do rank também não pode mais mudar -- e a
+  // trava em si também é permanente, sabotagem derrubando o total depois
+  // não tira mais, ver computeRaceRanks em server.js).
   function setRaceLockedRank(key, rank) {
     if (!data.games[key]) return null;
     data.games[key].race_locked_rank = rank;
@@ -253,6 +254,20 @@ function createStore(filePath) {
   function clearRaceLockedRank(key) {
     if (!data.games[key]) return null;
     delete data.games[key].race_locked_rank;
+    save();
+    return { ...data.games[key] };
+  }
+
+  // instante (epoch ms) em que o lote bateu a meta de corrida PELA
+  // PRIMEIRA vez -- idempotente de propósito, só grava uma vez e nunca
+  // sobrescreve depois. Existe pra decidir quem fica com uma vaga limitada
+  // (raceGlobalMaxWinners) quando vários lotes cruzam a meta quase juntos:
+  // sem isso, computeRaceRanks só teria a ordem por dinheiro atual pra
+  // desempatar, que não é a mesma coisa que "quem chegou primeiro" (pedido
+  // explícito do cliente).
+  function markRaceGoalReached(key, timestamp) {
+    if (!data.games[key] || data.games[key].race_goal_reached_at != null) return null;
+    data.games[key].race_goal_reached_at = timestamp;
     save();
     return { ...data.games[key] };
   }
@@ -698,6 +713,7 @@ function createStore(filePath) {
     clearRaceGoal,
     setRaceLockedRank,
     clearRaceLockedRank,
+    markRaceGoalReached,
     adjustGame,
     setGameTotal,
     renameGame,
