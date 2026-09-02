@@ -19,8 +19,19 @@ let onHypeAccepted = null;
 const channelToLeilaoId = new Map(); // twitch login (lowercase, sem #) -> leilaoId
 const lastHypeAt = new Map(); // `${viewerId}:${leilaoId}` -> timestamp do último hype aceito
 
+// log temporário de diagnóstico (2026-09-02) -- só imprime pra mensagem
+// que já bate o prefixo !hype, então não polui o log com chat normal.
+// Tirar depois de confirmar que o fluxo tá funcionando ponta a ponta em
+// produção (cliente reportou !hype não registrando, nenhum erro nos
+// logs até agora -- precisa ver em qual passo trava de verdade).
+function logHype(...args) {
+  console.log("[twitch-chat-bot]", ...args);
+}
+
 function connect(channels) {
   client = new tmi.Client({ channels });
+  client.on("connected", (addr, port) => logHype("conectado:", addr, port, "| canais:", channels.join(", ")));
+  client.on("disconnected", (reason) => logHype("desconectado:", reason));
   client.on("message", handleMessage);
   client.connect().catch((err) => console.error("[twitch-chat-bot] erro ao conectar:", err.message));
 }
@@ -29,26 +40,30 @@ function handleMessage(channel, tags, message, self) {
   if (self) return;
   const match = HYPE_PATTERN.exec(message.trim());
   if (!match) return;
+  logHype(`mensagem recebida em ${channel} de ${tags.username}:`, JSON.stringify(message));
 
   const login = channel.replace(/^#/, "").toLowerCase();
   const leilaoId = channelToLeilaoId.get(login);
-  if (!leilaoId) return;
+  if (!leilaoId) return logHype(`canal ${login} não tem leilaoId mapeado, ignorando`);
 
   const viewerId = tags["user-id"] || tags.username;
-  if (!viewerId) return;
+  if (!viewerId) return logHype("sem viewerId (user-id/username), ignorando");
   const cooldownKey = `${viewerId}:${leilaoId}`;
   const now = Date.now();
   const lastAt = lastHypeAt.get(cooldownKey);
-  if (lastAt && now - lastAt < HYPE_COOLDOWN_MS) return;
+  if (lastAt && now - lastAt < HYPE_COOLDOWN_MS) {
+    return logHype(`${viewerId} em cooldown ainda (faltam ${Math.ceil((HYPE_COOLDOWN_MS - (now - lastAt)) / 1000)}s)`);
+  }
 
   const store = getStoreFn(leilaoId);
   const existingGames = store.getLeaderboard().map((g) => ({ key: g.key, name: g.name }));
   const matched = findExistingGameInText(match[1], existingGames);
-  if (!matched) return;
+  if (!matched) return logHype(`"${match[1]}" não bateu com nenhum jogo do catálogo (${existingGames.map((g) => g.key).join(", ")})`);
 
   const likes = store.likeGame(matched.key);
-  if (likes == null) return;
+  if (likes == null) return logHype(`likeGame(${matched.key}) retornou null, jogo sumiu?`);
   lastHypeAt.set(cooldownKey, now);
+  logHype(`hype aceito: ${matched.name} (${leilaoId}), likes agora = ${likes}`);
   onHypeAccepted?.(leilaoId, store, { key: matched.key, name: matched.name, likes });
 }
 
@@ -68,6 +83,7 @@ function init({ getStore, registry, onHypeAccepted: callback }) {
     channels.push(normalized);
   }
 
+  logHype(`boot: ${channels.length} canal(is) com Twitch vinculado -- ${channels.join(", ") || "(nenhum)"}`);
   if (channels.length) connect(channels);
 }
 
