@@ -26,6 +26,13 @@ export default function LotCard({
   const streakActive = streakTier > 0
   const isDuelDefender = duelRole === 'defender'
   const isDuelChallenger = duelRole === 'challenger'
+  // só mostra a barra/tag de corrida em quem já bateu a meta ou tá perto
+  // dela (65%+, mesmo limiar do duelo pela última vaga) -- lote muito
+  // longe da meta não precisa de aviso, já é óbvio que não vai classificar
+  // por ali (pedido do cliente: evita poluir o catálogo inteiro de tag
+  // quando a meta é global e vale pra todo mundo)
+  const raceProgress = item.raceGoal ? item.total / item.raceGoal : 0
+  const showRaceUi = !!item.raceGoal && (item.raceGoalReached || raceProgress >= 0.65)
   const [dragging, setDragging] = useState(false)
   const [dropTarget, setDropTarget] = useState(false)
 
@@ -79,7 +86,7 @@ export default function LotCard({
         <Thumb item={item} />
         <div className="lot-info">
           <p className="lot-name">{item.name}</p>
-          {item.raceGoal ? (
+          {showRaceUi ? (
             <div className={`lot-race${item.raceGoalReached && item.winning ? ' is-reached' : ''}`}>
               <div className="lot-race-track">
                 <div
@@ -101,13 +108,13 @@ export default function LotCard({
               {formatBRL(item.total)}
             </span>
           )}
-          {!item.raceGoal && (item.added > 0 || item.removed > 0) ? (
+          {!showRaceUi && (item.added > 0 || item.removed > 0) ? (
             <div className="lot-funding">
               {item.added > 0 ? <span className="lot-funding-add">+{formatBRL(item.added)}</span> : null}
               {item.removed > 0 ? <span className="lot-funding-remove">−{formatBRL(item.removed)}</span> : null}
             </div>
           ) : null}
-          {!item.raceGoal && item.topDonor && item.topDonor.username ? (
+          {!showRaceUi && item.topDonor && item.topDonor.username ? (
             <div className="lot-top-donor" title={`Quem mais apoiou este ${mediaLabel}`}>
               {item.topDonor.avatar ? (
                 <img className="lot-top-donor-avatar" src={item.topDonor.avatar} alt="" loading="lazy" />
@@ -118,7 +125,7 @@ export default function LotCard({
             </div>
           ) : null}
         </div>
-        {item.raceGoal ? (
+        {showRaceUi ? (
           <div className="lot-extras">
             <span className={`lot-total${changed ? ' tick' : ''}${item.total < 0 ? ' lot-total-negative' : ''}`}>
               {formatBRL(item.total)}

@@ -73,8 +73,24 @@ export default function ArenaPanel({ leilaoId, leaderboard, lastEvent, presenter
   let duelDefender = null
   let duelChallenger = null
   if (items.length > qualifyCount) {
-    const defenderCandidate = items.find((i) => i.rank === qualifyCount) || null
-    const challengerCandidate = items.find((i) => i.rank === qualifyCount + 1) || null
+    // baseado na posição NATURAL por dinheiro, não em item.rank -- rank já
+    // incorpora travas de corrida, que podem congelar um lote numa posição
+    // bem diferente do que ele vale de verdade em dinheiro (bug real visto
+    // em produção: o lote com o MAIOR valor do catálogo aparecia como
+    // "defendendo" uma vaga que não corria risco nenhum, só porque tinha
+    // sido travado ali antes de virar o líder). "natural" não vem pronto
+    // da API, mas dá pra derivar: qualifiedByRace só é true quando o lote
+    // é bônus (não natural) e sempre implica winning=true -- então
+    // "natural" é ganhar sem ser via bônus. Defensor travado também não
+    // entra: quem já tem trava própria não corre risco de verdade, não
+    // faz sentido "defender" uma vaga já garantida.
+    const naturalWinnerKeys = new Set(items.filter((i) => i.winning && !i.qualifiedByRace).map((i) => i.key))
+    const defenderCandidate = items
+      .filter((i) => naturalWinnerKeys.has(i.key) && !i.raceLocked)
+      .reduce((weakest, i) => (!weakest || i.total < weakest.total ? i : weakest), null)
+    const challengerCandidate = items
+      .filter((i) => !naturalWinnerKeys.has(i.key))
+      .reduce((strongest, i) => (!strongest || i.total > strongest.total ? i : strongest), null)
     if (defenderCandidate && challengerCandidate && defenderCandidate.total > 0) {
       const ratio = challengerCandidate.total / defenderCandidate.total
       if (ratio >= 0.65) {
