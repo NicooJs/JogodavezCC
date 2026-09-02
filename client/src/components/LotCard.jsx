@@ -28,16 +28,18 @@ export default function LotCard({
   const isDuelChallenger = duelRole === 'challenger'
   // a tag/barra de corrida sinaliza "não pode mais ser sabotado", não
   // "só classificou por bônus" -- por isso mostra em QUALQUER lote que
-  // trava (raceLocked), seja ele vencedor natural por dinheiro ou não. Uma
-  // tentativa anterior escondia isso de quem já era vencedor natural
-  // (pensando que seria só ruído visual), mas isso escondia a informação
-  // mais importante da feature: pedido explícito do cliente, a trava
-  // precisa aparecer no instante em que qualquer lote bate a meta, pra
-  // avisar que ele não corre mais risco de sabotagem -- inclusive o
-  // líder. Continua também mostrando em quem tá perto (65%+, mesmo
-  // limiar do duelo) mesmo sem ter travado ainda.
+  // trava (raceLocked), seja ele vencedor natural por dinheiro ou não.
+  // Pedido explícito do cliente: a trava precisa aparecer no instante em
+  // que qualquer lote bate a meta, pra avisar que ele não corre mais risco
+  // de sabotagem -- inclusive o líder. Mostra também em quem tá perto
+  // (65%+, mesmo limiar do duelo) MAS AINDA NÃO bateu a meta -- ainda tem
+  // chance real de vaga. Uma vez que bateu a meta sem conseguir vaga
+  // (raceGoalReached mas não raceLocked, teto de vagas já esgotado por
+  // quem chegou antes), some com a barra -- não tem mais chance nenhuma
+  // ali, mostrar "meta batida, mas sem vaga sobrando" só deixava o card
+  // parecendo classificado sem estar (pedido explícito do cliente).
   const raceProgress = item.raceGoal ? item.total / item.raceGoal : 0
-  const showRaceUi = !!item.raceGoal && (item.raceLocked || item.raceGoalReached || raceProgress >= 0.65)
+  const showRaceUi = !!item.raceGoal && (item.raceLocked || (!item.raceGoalReached && raceProgress >= 0.65))
   const [dragging, setDragging] = useState(false)
   const [dropTarget, setDropTarget] = useState(false)
 
@@ -103,9 +105,7 @@ export default function LotCard({
                 <FlagIcon />
                 {item.raceLocked
                   ? 'meta batida, classificado!'
-                  : item.raceGoalReached
-                    ? 'meta batida, mas sem vaga sobrando'
-                    : `faltam ${formatBRL(Math.max(0, item.raceGoal - item.total))} pra classificar`}
+                  : `faltam ${formatBRL(Math.max(0, item.raceGoal - item.total))} pra classificar`}
               </span>
             </div>
           ) : (

@@ -81,15 +81,20 @@ export default function ArenaPanel({ leilaoId, leaderboard, lastEvent, presenter
     // sido travado ali antes de virar o líder). "natural" não vem pronto
     // da API, mas dá pra derivar: qualifiedByRace só é true quando o lote
     // é bônus (não natural) e sempre implica winning=true -- então
-    // "natural" é ganhar sem ser via bônus. Defensor travado também não
-    // entra: quem já tem trava própria não corre risco de verdade, não
-    // faz sentido "defender" uma vaga já garantida.
+    // "natural" é ganhar sem ser via bônus. NENHUM dos dois lados do duelo
+    // pode ser um lote já travado (raceLocked) -- travado não corre risco
+    // (não pode perder a vaga) nem ameaça ninguém (já tem a própria vaga
+    // garantida, não precisa "roubar" a de mais ninguém). Bug real visto
+    // em produção: um lote travado só por bônus (fora do top natural, mas
+    // com a própria trava permanente) aparecia como "desafiante" de quem
+    // já era vencedor natural, mesmo sem correr risco nenhum de perder
+    // essa trava -- o duelo ficava sem sentido nenhum pros dois lados.
     const naturalWinnerKeys = new Set(items.filter((i) => i.winning && !i.qualifiedByRace).map((i) => i.key))
     const defenderCandidate = items
       .filter((i) => naturalWinnerKeys.has(i.key) && !i.raceLocked)
       .reduce((weakest, i) => (!weakest || i.total < weakest.total ? i : weakest), null)
     const challengerCandidate = items
-      .filter((i) => !naturalWinnerKeys.has(i.key))
+      .filter((i) => !naturalWinnerKeys.has(i.key) && !i.raceLocked)
       .reduce((strongest, i) => (!strongest || i.total > strongest.total ? i : strongest), null)
     if (defenderCandidate && challengerCandidate && defenderCandidate.total > 0) {
       const ratio = challengerCandidate.total / defenderCandidate.total
