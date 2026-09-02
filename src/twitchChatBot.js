@@ -96,9 +96,10 @@ function init({ getStore, registry, onHypeAccepted: callback }) {
   }
 
   const channels = [];
-  for (const [login, { leilaoId }] of bestByLogin) {
+  for (const [login, { leilaoId, createdAt }] of bestByLogin) {
     channelToLeilaoId.set(login, leilaoId);
     channels.push(login);
+    logHype(`canal #${login} -> leilaoId ${leilaoId} (createdAt ${createdAt})`);
   }
 
   logHype(`boot: ${channels.length} canal(is) com Twitch vinculado -- ${channels.join(", ") || "(nenhum)"}`);
