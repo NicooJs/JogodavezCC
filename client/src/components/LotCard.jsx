@@ -26,17 +26,18 @@ export default function LotCard({
   const streakActive = streakTier > 0
   const isDuelDefender = duelRole === 'defender'
   const isDuelChallenger = duelRole === 'challenger'
-  // só mostra a barra/tag de corrida em quem DEPENDE dela pra classificar
-  // -- vencedor natural (por dinheiro) que também bate a meta não precisa
-  // de aviso nenhum, a classificação dele não tem nada a ver com a
-  // corrida (mostrar a barra nele só confundia, parecia que TODO mundo
-  // tava "na corrida"). Mostra em quem já garantiu (raceLocked, sempre,
-  // mesmo que sabotagem tenha derrubado o total atual depois -- a trava é
-  // permanente) ou tá perto o suficiente (65%+, mesmo limiar do duelo)
-  // ainda competindo pela vaga bônus.
+  // a tag/barra de corrida sinaliza "não pode mais ser sabotado", não
+  // "só classificou por bônus" -- por isso mostra em QUALQUER lote que
+  // trava (raceLocked), seja ele vencedor natural por dinheiro ou não. Uma
+  // tentativa anterior escondia isso de quem já era vencedor natural
+  // (pensando que seria só ruído visual), mas isso escondia a informação
+  // mais importante da feature: pedido explícito do cliente, a trava
+  // precisa aparecer no instante em que qualquer lote bate a meta, pra
+  // avisar que ele não corre mais risco de sabotagem -- inclusive o
+  // líder. Continua também mostrando em quem tá perto (65%+, mesmo
+  // limiar do duelo) mesmo sem ter travado ainda.
   const raceProgress = item.raceGoal ? item.total / item.raceGoal : 0
-  const dependsOnRace = !item.winning || item.qualifiedByRace
-  const showRaceUi = !!item.raceGoal && dependsOnRace && (item.raceLocked || item.raceGoalReached || raceProgress >= 0.65)
+  const showRaceUi = !!item.raceGoal && (item.raceLocked || item.raceGoalReached || raceProgress >= 0.65)
   const [dragging, setDragging] = useState(false)
   const [dropTarget, setDropTarget] = useState(false)
 
