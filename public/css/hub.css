@@ -5,7 +5,6 @@
    tela é por conta, não por leilão, então não usa o :root[data-theme]. */
 :root {
   --hub-bg: #0c0c12;
-  --hub-sidebar-bg: #111117;
   --hub-surface: #17171f;
   --hub-surface-2: #1e1e29;
   --hub-border: #2a2a3a;
@@ -40,31 +39,22 @@ body.hub-body::before { display: none; }
 
 /* caixa/posição da sidebar -- conteúdo interno (marca, itens, rodapé) é o
    NavRail compartilhado com o board (ver client/src/components/NavRail.jsx
-   e as regras genéricas `.nav-rail-*` em style.css). Aqui só sobrescreve
-   cor/hover pra bater com a paleta própria do hub (--hub-*, independente
-   de tema de leilão), já que o NavRail sozinho usa os tokens do site. */
+   e as regras genéricas `.nav-rail-*` em style.css). Tamanho/fundo batem
+   de propósito com `.system-switch` do board (mesma técnica de degradê
+   tingido de destaque, só trocando --surface por --hub-surface porque o
+   hub não tem tema por leilão) -- unificação pedida pelo cliente depois
+   de perceber a trilha do hub "desatualizada" ao lado da do board. Só a
+   cor de hover/active abaixo continua sendo paleta própria do hub. */
 .hub-sidebar {
   flex-shrink: 0;
-  width: 76px;
-  background: var(--hub-sidebar-bg);
+  width: 68px;
+  background:
+    linear-gradient(180deg, var(--nav-accent-glow), transparent 40%),
+    color-mix(in srgb, var(--hub-surface) 88%, transparent);
   border-right: 1px solid var(--hub-border-soft);
-  padding: 18px 0 14px;
+  padding: 18px 10px;
 }
 
-/* proporções do design antigo do hub (76px/48px, gap 4px), maiores que o
-   board (68px/46px, gap 6px) -- mesmo NavRail dos dois, só o tamanho
-   difere por contexto */
-.hub-sidebar .nav-rail { gap: 4px; }
-.hub-sidebar .nav-rail-brand {
-  width: 40px;
-  height: 40px;
-  margin: 0 auto 18px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-.hub-sidebar .nav-rail-brand img { width: 32px; height: 32px; border-radius: 8px; }
-.hub-sidebar .nav-rail-item { width: 48px; height: 48px; border-radius: 12px; }
 .hub-sidebar .nav-rail-item:hover { background: var(--hub-surface); color: var(--hub-text); }
 .hub-sidebar .nav-rail-item.active { background: var(--hub-accent); color: var(--hub-accent-ink); }
 .hub-sidebar .nav-rail-item.active:hover { background: var(--hub-accent-hover); }
@@ -73,8 +63,6 @@ body.hub-body::before { display: none; }
    próprio na nav) -- o selo vermelho no canto deixa a função óbvia sem
    precisar trocar a foto por um ícone genérico */
 .hub-sidebar .nav-rail-footer {
-  width: 40px;
-  height: 40px;
   background: var(--hub-surface-2);
   border-color: var(--hub-border);
 }
@@ -89,7 +77,7 @@ body.hub-body::before { display: none; }
   border-radius: 50%;
   background: var(--danger);
   color: #fff;
-  border: 2px solid var(--hub-sidebar-bg);
+  border: 2px solid var(--hub-surface);
 }
 .hub-sidebar .nav-rail-avatar-exit .icon { width: 10px; height: 10px; }
 
