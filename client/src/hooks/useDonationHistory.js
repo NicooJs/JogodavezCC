@@ -43,6 +43,14 @@ export function useDonationHistory(leilaoId, lastEvent) {
   useEffect(() => {
     if (!lastEvent || lastEvent === lastSeenEvent.current) return
     lastSeenEvent.current = lastEvent
+    // "zerar leilão" já limpa data.events no servidor, mas essa lista só
+    // empilhava (nunca recarregava sozinha pro mesmo leilaoId) -- sem isso
+    // o "recentes" continuava mostrando doação de antes do reset até um F5
+    if (lastEvent.type === 'reset') {
+      itemsRef.current = []
+      setItems([])
+      return
+    }
     const isHistoryType = ['add', 'remove', 'manual', 'pending', 'ignored', 'closed'].includes(lastEvent.type)
     if (!isHistoryType) return
     const next = [{ ...lastEvent, time: Date.now() }, ...itemsRef.current].slice(0, 50)
