@@ -2441,16 +2441,11 @@ app.delete("/api/l/:id/admin/game/:key", loadLeilao, requireLeilaoAdmin, (req, r
   res.json({ ok: true });
 });
 
-// "Zerar leilão" -- diferente do reset por troca de modalidade (set-mode
-// logo abaixo, que preserva o histórico de propósito), esse apaga o
-// histórico junto: os dois diálogos de confirmação na UI já avisam disso
-// ("isso apaga TODOS os jogos e o histórico"), não precisa arquivar a
-// rodada aberta antes já que ela seria apagada de qualquer jeito no passo
-// seguinte.
 app.post("/api/l/:id/admin/reset", loadLeilao, requireLeilaoAdmin, (req, res) => {
   const { store, leilaoId } = req;
+  const recap = buildRecap(store);
+  if (recap.totalGames > 0) store.archiveAuction(recap, { openRound: false });
   store.resetAll();
-  store.clearPastAuctions();
   broadcastUpdate(leilaoId, store, { type: "reset" });
   res.json({ ok: true });
 });
