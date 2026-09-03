@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 
 const FINAL_COUNTDOWN_SECONDS = 90
 
@@ -11,11 +11,15 @@ function clockText(totalSeconds) {
 // mesma lógica de tickTimer() do app.js vanilla, só que devolve um objeto
 // de estado em vez de escrever direto no DOM -- recalcula a cada segundo
 // porque o servidor não avisa a cada tick, só timerEndsAt/timerRemainingMs.
-function computeTimerState(leaderboard) {
+// timerEndsAt aqui é SEMPRE o valor recalculado no relógio do cliente (ver
+// useTimer abaixo), nunca leaderboard.timerEndsAt (timestamp absoluto do
+// servidor) direto -- comparar relógio de duas máquinas diferentes vaza
+// qualquer dessincronia de horário entre elas.
+function computeTimerState(leaderboard, timerEndsAt) {
   if (!leaderboard) {
     return { label: 'encerra em', clock: '--:--', fraction: 0, urgent: false, closed: false, paused: false }
   }
-  const { open, paused, timerEndsAt, timerRemainingMs, timerDurationMs } = leaderboard
+  const { open, paused, timerRemainingMs, timerDurationMs } = leaderboard
 
   if (!open) {
     return { label: 'leilão', clock: 'ENCERRADO', fraction: 0, urgent: false, closed: true, paused: false }
@@ -53,11 +57,21 @@ function computeTimerState(leaderboard) {
 }
 
 export function useTimer(leaderboard) {
-  const [state, setState] = useState(() => computeTimerState(leaderboard))
+  // deadline recalculado no relógio do próprio cliente toda vez que o
+  // servidor manda leaderboard novo (Date.now() local + timerRemainingMs,
+  // que já vem certo do servidor) -- nunca usa leaderboard.timerEndsAt
+  // direto, mesmo bug já corrigido antes em doar.js/app.js, só que o
+  // useTimer.js do board React nunca tinha recebido o fix (bug real
+  // reportado: streamer definia 5min mas a contagem saía errada quando o
+  // relógio do PC de quem via estava dessincronizado).
+  const timerEndsAtRef = useRef(null)
+  const [state, setState] = useState(() => computeTimerState(leaderboard, null))
 
   useEffect(() => {
-    setState(computeTimerState(leaderboard))
-    const id = setInterval(() => setState(computeTimerState(leaderboard)), 1000)
+    timerEndsAtRef.current =
+      leaderboard && leaderboard.timerRemainingMs != null ? Date.now() + leaderboard.timerRemainingMs : null
+    setState(computeTimerState(leaderboard, timerEndsAtRef.current))
+    const id = setInterval(() => setState(computeTimerState(leaderboard, timerEndsAtRef.current)), 1000)
     return () => clearInterval(id)
   }, [leaderboard])
 
