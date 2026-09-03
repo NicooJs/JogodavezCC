@@ -642,6 +642,18 @@ function createStore(filePath) {
     return data.pastAuctions.slice();
   }
 
+  // "Zerar leilão" (POST /admin/reset) apaga o histórico junto -- os dois
+  // diálogos de confirmação da UI (PresenterBar.jsx, AdvancedTab.jsx) já
+  // avisam "isso apaga TODOS os jogos e o histórico", mas resetAll()
+  // sozinho preservava pastAuctions de propósito (usado também por
+  // set-mode, que troca Jogos<->Filmes e não deveria apagar histórico só
+  // por trocar modalidade) -- função separada pra só o botão de reset de
+  // verdade zerar o histórico, sem mudar o comportamento de set-mode.
+  function clearPastAuctions() {
+    data.pastAuctions = [];
+    save();
+  }
+
   // só pra rede de segurança no Postgres (ver src/stateBackup.js) -- não usar
   // pra mais nada, é a referência viva de `data`, não uma cópia
   function getRawSnapshot() {
@@ -724,6 +736,7 @@ function createStore(filePath) {
     resetAll,
     archiveAuction,
     getPastAuctions,
+    clearPastAuctions,
     getRawSnapshot,
     registerGameCombo,
     setGameGenre,
