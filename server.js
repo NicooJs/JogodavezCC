@@ -481,6 +481,8 @@ function computeRaceRanks(store, rows, qualifyCount) {
 
   // posição final: quem tá travado mantém o número; o resto preenche as
   // vagas que sobraram, em ordem de dinheiro, pulando os números já presos
+  // (isso é só ORDEM DE EXIBIÇÃO no catálogo -- não decide quem é
+  // classificado, ver competitorRankByKey abaixo)
   const finalRank = new Map();
   for (const row of rows) {
     if (row.race_locked_rank != null) {
@@ -495,7 +497,23 @@ function computeRaceRanks(store, rows, qualifyCount) {
     next++;
   }
 
-  return { finalRank, naturalRankByKey, meta };
+  // rank "de disputa" -- quem já travou a corrida SAI inteiramente do
+  // cálculo de quem compete pelas qualifyCount vagas normais (não é mais
+  // "top N por dinheiro incluindo quem já travou", é "top N por dinheiro
+  // ENTRE QUEM SOBROU"). Pedido explícito do cliente, 2026-09-04: a
+  // corrida é um grupo separado da disputa por dinheiro -- os N primeiros
+  // a bater a meta ficam classificados e IMUNES, ponto final, e só quem
+  // não travou disputa as vagas normais entre si. Antes disso,
+  // `naturalRankByKey` (que inclui todo mundo) decidia quem "já seria
+  // vencedor natural" -- um lote travado que também ocupava um rank
+  // natural baixo (ex: 2º/3º lugar em dinheiro) não abria vaga nenhuma,
+  // só coincidia com uma vaga que já ia ter -- fazendo o teto de vagas
+  // bônus ser "gasto" em quem não precisava dele.
+  const competitorRankByKey = new Map(
+    rows.filter((row) => row.race_locked_rank == null).map((row, i) => [row.key, i + 1]),
+  );
+
+  return { finalRank, competitorRankByKey, meta };
 }
 
 function serializeLeaderboard(store, leilaoId) {
@@ -508,19 +526,20 @@ function serializeLeaderboard(store, leilaoId) {
   const funding = store.getFundingBreakdown();
   const topDonorByGame = store.getTopDonorByGame();
   const qualifyCount = getQualifyCount(store);
-  const { finalRank, naturalRankByKey, meta } = computeRaceRanks(store, rows, qualifyCount);
+  const { finalRank, competitorRankByKey, meta } = computeRaceRanks(store, rows, qualifyCount);
   const items = rows.map((row) => {
     const rowFunding = funding[row.key] || { added_cents: 0, removed_cents: 0 };
     const topDonor = topDonorByGame[row.key];
     const rowMeta = meta.get(row.key);
     const raceGoalCents = rowMeta.effectiveGoalCents;
     const raceGoalReached = rowMeta.reached;
-    // "naturalmente classificado" é sempre por dinheiro puro (posição sem
-    // nenhuma trava de corrida no meio) -- separado do rank exibido, que já
-    // incorpora as travas (ver computeRaceRanks). Sem essa separação, um
-    // lote forte por dinheiro podia "perder" a vaga natural pra um número
-    // travado abaixo dele, mesmo sendo mais forte que os outros por valor.
-    const naturallyWinning = naturalRankByKey.get(row.key) <= qualifyCount;
+    const raceLocked = row.race_locked_rank != null;
+    // quem já travou a corrida sai do cálculo de quem disputa as
+    // qualifyCount vagas normais -- são grupos separados (pedido explícito
+    // do cliente, 2026-09-04): a corrida garante vaga e sai da disputa por
+    // dinheiro, só quem sobrou compete pelas vagas normais entre si.
+    // competitorRank (computeRaceRanks) já exclui quem travou desse cálculo.
+    const isCompeting = competitorRankByKey.get(row.key) <= qualifyCount;
     return {
       key: row.key,
       name: row.name,
@@ -528,19 +547,17 @@ function serializeLeaderboard(store, leilaoId) {
       added: centsToNumber(rowFunding.added_cents),
       removed: centsToNumber(rowFunding.removed_cents),
       rank: finalRank.get(row.key),
-      // "vencendo"/"classificado pela corrida" nunca pode ser só "o valor
-      // bateu a meta" -- precisa ter vaga de verdade (trava conseguida) ou
-      // já estar naturalmente entre os classificados por dinheiro. Sem essa
-      // checagem, um lote que bate o número da meta DEPOIS que o teto de
-      // vagas bônus já foi todo usado por outros aparecia como "classificado"
-      // igual, mesmo sem ter garantido nada (bug real: streamer limitou a
-      // corrida a 3 vagas, 6 jogos bateram o valor, os 6 apareciam como
-      // classificados).
-      winning: naturallyWinning || row.race_locked_rank != null,
-      qualifiedByRace: !naturallyWinning && row.race_locked_rank != null,
+      // "vencendo" é: travou a corrida (garantido, ponto final) OU tá entre
+      // os melhores por dinheiro dentre quem NÃO travou. Nunca os dois
+      // grupos disputando o mesmo número de vagas.
+      winning: raceLocked || isCompeting,
+      // todo mundo que trava mostra o selo "classificado pela corrida" --
+      // não faz mais sentido diferenciar "travou mas já seria natural",
+      // porque quem trava nem entra mais no cálculo natural.
+      qualifiedByRace: raceLocked,
       raceGoal: raceGoalCents ? centsToNumber(raceGoalCents) : null,
       raceGoalReached,
-      raceLocked: row.race_locked_rank != null,
+      raceLocked,
       image: row.image_url || null,
       topDonor: topDonor
         ? { username: topDonor.username, total: centsToNumber(topDonor.total_cents), avatar: getDonorAvatar(topDonor.username, onAvatarResolved) }
@@ -636,7 +653,7 @@ function buildRecap(store) {
   // usa finalRank (mesma lógica de serializeLeaderboard) em vez de só
   // dinheiro puro -- sem isso, um jogo que travou vaga por corrida mas caiu
   // de posição em dinheiro depois podia ficar de fora do top do recap.
-  const { finalRank, naturalRankByKey, meta } = computeRaceRanks(store, rows, qualifyCount);
+  const { finalRank, competitorRankByKey, meta } = computeRaceRanks(store, rows, qualifyCount);
   const raceActive = rows.some((row) => meta.get(row.key).effectiveGoalCents != null);
   const rankedRows = [...rows].sort((a, b) => finalRank.get(a.key) - finalRank.get(b.key));
   // até 10 sempre, independente do qualifyCount (que só decide quem tá
@@ -644,26 +661,20 @@ function buildRecap(store) {
   // mais contexto do round, não só sobre quem venceu.
   const topRows = rankedRows.slice(0, Math.min(10, rankedRows.length));
 
-  function isNaturallyWinning(row) {
-    return naturalRankByKey.get(row.key) <= qualifyCount;
-  }
-  function isQualifiedByRace(row) {
-    return !isNaturallyWinning(row) && row.race_locked_rank != null;
-  }
-
-  // posição na fila de quem bateu a meta da corrida primeiro -- só entre os
-  // que estão classificados PELA corrida (não por dinheiro puro), ordenado
-  // por race_goal_reached_at (quem chegou primeiro joga primeiro), pedido
-  // explícito do cliente pra saber a ordem de jogar os vencedores da corrida
+  // posição na fila de quem bateu a meta da corrida primeiro -- entre TODOS
+  // os travados (grupo separado da disputa por dinheiro, ver
+  // computeRaceRanks), ordenado por race_goal_reached_at (quem chegou
+  // primeiro joga primeiro), pedido explícito do cliente pra saber a ordem
+  // de jogar os vencedores da corrida
   const raceOrderByKey = new Map();
   topRows
-    .filter(isQualifiedByRace)
+    .filter((row) => row.race_locked_rank != null)
     .sort((a, b) => (a.race_goal_reached_at || 0) - (b.race_goal_reached_at || 0))
     .forEach((row, i) => raceOrderByKey.set(row.key, i + 1));
 
   const topGames = topRows.map((row) => {
     const topDonor = topDonorByGame[row.key];
-    const qualifiedByRace = isQualifiedByRace(row);
+    const raceLocked = row.race_locked_rank != null;
     return {
       rank: finalRank.get(row.key),
       key: row.key,
@@ -674,15 +685,16 @@ function buildRecap(store) {
       topDonor: topDonor
         ? { username: topDonor.username, total: centsToNumber(topDonor.total_cents), avatar: getDonorAvatar(topDonor.username) }
         : null,
-      // mesma semântica de serializeLeaderboard: "qualifiedByRace" só quando
-      // a vaga veio da trava, não de estar naturalmente entre os primeiros
-      qualifiedByRace,
-      raceOrder: qualifiedByRace ? raceOrderByKey.get(row.key) : null,
-      // classificado de verdade (natural OU travado pela corrida) -- não é
-      // o mesmo que "rank <= qualifyCount", um lote travado pode ocupar um
-      // rank fora do corte natural (mesma lógica de serializeLeaderboard,
-      // usada pro divisor "classificados até aqui" no client)
-      winning: isNaturallyWinning(row) || row.race_locked_rank != null,
+      // todo mundo que travou a corrida mostra o selo -- grupo separado da
+      // disputa por dinheiro, não faz mais sentido diferenciar "só travou
+      // mas já seria natural" (esse lote nem entra mais no cálculo natural)
+      qualifiedByRace: raceLocked,
+      raceOrder: raceLocked ? raceOrderByKey.get(row.key) : null,
+      // classificado de verdade: travou a corrida (garantido) OU tá entre
+      // os melhores por dinheiro dentre quem NÃO travou (competitorRank já
+      // exclui quem travou desse cálculo -- mesma lógica de
+      // serializeLeaderboard, usada pro divisor "classificados até aqui")
+      winning: raceLocked || competitorRankByKey.get(row.key) <= qualifyCount,
     };
   });
 

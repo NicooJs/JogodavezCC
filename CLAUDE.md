@@ -634,50 +634,60 @@ o cliente nesse sentido ao vivo, mas não confirmei se ele já mudou o uso
 -- se a reclamação voltar mesmo com meta manual (não geral), aí sim
 investigar de novo. Nenhuma mudança de código pendente nesse ponto.
 
-**Modo corrida: semântica pretendida pelo cliente é DIFERENTE da atual
-(2026-09-04, confirmado ao vivo testando `ec333f9059e5`, AINDA NÃO
-IMPLEMENTADO -- só documentado por pedido explícito, "documente essa
-lógica pra não esquecer")**. Cenário de teste que expôs a diferença:
-`qualifyCount=3`, corrida com meta R$300 e `raceMaxWinners=3`. Dinheiro:
-Uncharted4=1000, GTA V=500, Last of Us=500, LoL=500, GTA4=400 -- os 3
-primeiros a bater R$300 (na ordem) foram GTA V, Last of Us e LoL.
+**Modo corrida vira dois grupos separados (2026-09-04, corrigido)**:
+`computeRaceRanks` (`server.js:397`) misturava trava e disputa por
+dinheiro no MESMO ranking -- um lote que travava a corrida MAS já seria
+naturalmente top-`qualifyCount` por dinheiro não abria vaga nova
+nenhuma, só "coincidia" com uma vaga que já ia ter de qualquer jeito.
+Isso fazia o teto de `raceMaxWinners` ser "gasto" em quem não precisava
+dele, sobrando menos vaga de verdade pra quem batia a meta depois.
 
-O que o cliente espera (a regra de verdade do modo corrida): as
-`raceMaxWinners` vagas da corrida são um **grupo totalmente separado** da
-disputa por dinheiro. Os primeiros N a bater a meta ficam classificados
-e imunes à sabotagem, PONTO -- saem inteiramente do cálculo de quem
-disputa as `qualifyCount` vagas normais. Só quem NÃO bateu a meta
-primeiro compete entre si pelas vagas normais, por dinheiro, podendo ser
-ultrapassado/desclassificado. Total esperado: até `qualifyCount +
-raceMaxWinners` classificados, dois grupos que nunca se misturam (no
-cenário de teste, isso daria os 3 da corrida + até 3 dentre {Uncharted4,
-GTA4, ...} por dinheiro puro -- GTA4 com R$400 deveria entrar).
+Cenário de teste que expôs isso (`ec333f9059e5`): `qualifyCount=3`,
+corrida meta R$300, `raceMaxWinners=3`. Dinheiro: Uncharted4=1000, GTA
+V=500, Last of Us=500, LoL=500, GTA4=400 -- os 3 primeiros a bater
+R$300 foram GTA V, Last of Us e LoL (nessa ordem). Como GTA V e Last of
+Us já eram naturalmente top-3 por dinheiro (rank 2º/3º), suas travas
+não abriam vaga nova -- só sobrou 1 vaga de corrida "de verdade" (a do
+LoL). Quando o GTA4 bateu a meta depois, o teto de 3 já tinha sido
+consumido por travas redundantes -- ficava de fora tanto da corrida
+(sem vaga) quanto do natural (rank 5º > qualifyCount 3º), mesmo tendo
+R$400 e só 5 jogos existindo no catálogo.
 
-O que o código faz hoje (`computeRaceRanks`, `server.js:397`): trava e
-disputa vivem no MESMO ranking, não em grupos separados. Um lote que
-trava a corrida MAS já seria naturalmente top-`qualifyCount` por
-dinheiro (era o caso do GTA V e do Last of Us, rank natural 2º/3º) não
-abre vaga nova nenhuma -- a trava dele só "coincide" com uma vaga que
-ele já ia ter de qualquer jeito. No teste, isso fez sobrar só 1 vaga de
-corrida "de verdade" (a do LoL, que sem a corrida ficaria de fora), e
-quando o GTA4 bateu a meta depois, o teto de 3 já tinha sido consumido
-por travas redundantes -- ele ficou de fora tanto da corrida (sem vaga)
-quanto do natural (rank 5º > qualifyCount 3º).
+**Regra de verdade, pedido explícito do cliente**: as `raceMaxWinners`
+vagas da corrida são um grupo TOTALMENTE separado da disputa por
+dinheiro. Os primeiros N a bater a meta ficam classificados e imunes à
+sabotagem, ponto final -- saem inteiramente do cálculo de quem disputa
+as `qualifyCount` vagas normais. Só quem NÃO bateu a meta primeiro
+compete entre si pelas vagas normais, por dinheiro, podendo ser
+ultrapassado/desclassificado. Total possível: até `qualifyCount +
+raceMaxWinners` classificados, os dois grupos nunca se misturam.
 
-Essa diferença é justamente o motivo da trava não isentar vencedor
-natural hoje (ver "Bug real visto em produção" logo acima, PR #10,
-2026-09-01) -- aquele fix evitou que o teto de vagas fosse ultrapassado
-isentando quem já ganhava por dinheiro, mas como efeito colateral abriu
-esse outro problema: o teto pode ser "gasto" em quem não precisava dele.
-**Não dá pra resolver os dois ao mesmo tempo sem separar os grupos de
-verdade** -- pra implementar a semântica que o cliente quer, precisa
-que `computeRaceRanks` primeiro decida quem trava a corrida (os N
-primeiros por `race_goal_reached_at`, cheio o teto e pronto, IGNORANDO
-se esses lotes já seriam natural winners) e DEPOIS calcule o top-
-`qualifyCount` natural só entre quem sobrou (excluindo os já travados
-do cálculo de rank natural inteiro, não só do resultado final) --
-mudança real na função, não um ajuste pequeno. Pendente, sem código
-escrito ainda.
+**Fix**: `computeRaceRanks` ganhou `competitorRankByKey` -- calculado
+só entre quem NÃO travou a corrida (`rows.filter(row =>
+race_locked_rank == null)`), substituindo o antigo `naturalRankByKey`
+(que incluía todo mundo) na decisão de `winning`. `winning` agora é
+`raceLocked || competitorRank <= qualifyCount` em vez de `naturalRank
+<= qualifyCount || raceLocked` -- a diferença é que quem já travou
+NUNCA entra no cálculo de rank dos concorrentes, então não "rouba"
+posição de ninguém nem tem a própria trava desperdiçada.
+`qualifiedByRace` também mudou de sentido: antes só era `true` quando a
+trava "fazia diferença de verdade" (lote não seria natural winner sem
+ela); agora é sinônimo de `raceLocked` -- todo mundo que trava mostra o
+selo "classificado pela corrida" (`LotCard.jsx`/`RecapLotCard.jsx`,
+`.badge-race-qualified`), porque nenhum lote travado disputa mais o
+natural pra ter "sido desnecessário". `raceOrder` (posição na fila de
+quem bateu a meta primeiro, usado no selo "1º/2º a jogar" do recap)
+também passou a valer pra TODOS os travados, não só os que
+"precisavam" -- mesma lógica. `finalRank`/ordem de exibição no
+catálogo **não mudou** -- só a decisão de quem é `winning` (a lógica de
+posicionar a trava perto do rank natural continua igual, é só
+apresentação visual, nunca decidiu classificação).
+
+Verificado com um script isolado (`computeRaceRanks` extraída, mock de
+`store`) reproduzindo o cenário exato acima: GTA4 passa a sair
+`winning:true` (antes `false`), e um segundo cenário com 3 travados +
+6 concorrentes por 3 vagas normais confirma que desclassificação
+continua funcionando certinho entre quem sobrou fora da corrida.
 
 **Card do rank 1 sobrepondo a linha seguinte, causa raiz DIFERENTE das
 tentativas acima (2026-09-01, corrigido)**: bug irmão dos dois anteriores
@@ -832,13 +842,15 @@ entrada (não tem "revelação" pra fazer de um round que já passou).
 
 `buildRecap()` (`server.js`) ganhou campos novos: `raceActive` (round
 teve modo corrida configurado, meta global ou manual), e por jogo em
-`topGames`: `qualifiedByRace` (a vaga veio da trava de corrida, não de
-estar naturalmente entre os mais arrecadadores), `winning` (classificado
-de verdade, natural OU travado -- mesma semântica de
+`topGames`: `qualifiedByRace` (sinônimo de `raceLocked` desde o fix dos
+dois grupos separados, ver seção "Modo corrida" acima -- todo lote
+travado mostra o selo, não só quem "precisava" da trava), `winning`
+(classificado de verdade -- travou a corrida OU tá entre os melhores por
+dinheiro dentre quem não travou, mesma semântica de
 `serializeLeaderboard`/`computeRaceRanks`) e `raceOrder` (posição na fila
 de quem bateu a meta da corrida PRIMEIRO, `race_goal_reached_at`
-ascendente, só entre quem é `qualifiedByRace` -- pedido explícito do
-cliente: "colocar em ordem de qual jogo vai ser jogado primeiro"). O
+ascendente, entre TODOS os travados -- pedido explícito do cliente:
+"colocar em ordem de qual jogo vai ser jogado primeiro"). O
 recap também passou a montar `topGames` por `finalRank` (com as travas
 aplicadas) em vez de só dinheiro puro -- bug de quebra que existia desde
 sempre: um jogo que travou vaga por corrida mas caiu de posição em
