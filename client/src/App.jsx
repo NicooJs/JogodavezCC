@@ -99,7 +99,7 @@ function BoardContent({ leilaoId, embedded }) {
         if (data && (data.topGames || []).length) {
           setRevealTrigger({ recap: data, id: Date.now() })
         } else {
-          setTimeout(() => recap.openView(data, 'leilão encerrado'), 600)
+          setTimeout(() => recap.openView(data, 'leilão encerrado', false), 600)
         }
       })
     }
@@ -307,12 +307,13 @@ function BoardContent({ leilaoId, embedded }) {
       <SettingsModal open={settingsOpen} onClose={() => setSettingsOpen(false)} leilaoId={leilaoId} leaderboard={leaderboard} />
       <WinnerReveal
         trigger={revealTrigger}
-        onDone={() => revealTrigger && recap.openView(revealTrigger.recap, 'leilão encerrado')}
+        onDone={() => revealTrigger && recap.openView(revealTrigger.recap, 'leilão encerrado', true)}
       />
       <RecapModal
         leilaoId={leilaoId}
         recap={recap.view?.recap}
         eyebrow={recap.view?.eyebrow}
+        revealing={recap.view?.autoplay}
         onClose={recap.close}
       />
       <HistoryOverlay

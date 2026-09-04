@@ -724,9 +724,54 @@ outro passe na frente em dinheiro depois". Três mudanças juntas:
    popover antigo sem o item de corrida (meta global só dá pra configurar
    pelo board React até isso ser portado).
 
-**Recap**: estatísticas + pódio + download de imagem (canvas 2D, ver seção
-de animações) + compartilhar no X. Histórico de recaps acessível via modal e
-na aba Avançado das Configurações.
+**Recap (React, 2026-09-03/04)**: quando o leilão fecha, `WinnerReveal.jsx`
+(corredor 3D → pódio triangular, capas de verdade dos jogos convergindo pro
+centro, confete no campeão) toca fullscreen e, ao terminar, vira o próprio
+`RecapModal.jsx` num único painel persistente (nunca some sozinho, só fecha
+por clique no ✕ ou no fundo) -- não é mais "animação rápida seguida de um
+modal diferente por cima", é a MESMA linguagem visual virando o resultado
+final. A transição é um crossfade (o overlay fullscreen encolhe/some
+exatamente quando o `RecapModal` aparece por baixo, `revealing`/`is-settled`
+em `style.css`, `max-width`/`max-height` animados), não uma migração
+literal do mesmo nó DOM entre os dois sistemas de layout (perspectiva 3D
+fullscreen vs painel normal) -- decisão consciente pra evitar a fragilidade
+de tentar morphar os dois. O pódio "assentado" do `RecapModal` reaproveita
+as MESMAS classes CSS do card do `WinnerReveal`
+(`winner-reveal-thumb/-info/-name/-total/-rank`) só que em layout flex
+normal em vez de `position:absolute`, pra manter a leitura visual idêntica
+nos dois momentos.
+
+Histórico (`recap.showHistorical`, via modal ou aba Avançado das
+Configurações) usa o **mesmo** `RecapModal`, só que sem o `WinnerReveal` --
+monta direto no estado assentado (`revealing=false`), sem o corredor de
+entrada (não tem "revelação" pra fazer de um round que já passou).
+
+`buildRecap()` (`server.js`) ganhou dois campos novos: `raceActive`
+(round teve modo corrida configurado, meta global ou manual) e
+`qualifiedByRace` por jogo (a vaga veio da trava de corrida, não de estar
+naturalmente entre os mais arrecadadores -- mesma semântica de
+`serializeLeaderboard`/`computeRaceRanks`). O recap também passou a montar
+`topGames` por `finalRank` (com as travas aplicadas) em vez de só dinheiro
+puro -- bug de quebra que existia desde sempre: um jogo que travou vaga por
+corrida mas caiu de posição em dinheiro depois podia ficar de fora do top
+do recap. `RecapModal` mostra uma bandeirinha (`RaceBadge`, ícone
+`FlagIcon`) nos jogos com `qualifiedByRace` quando `raceActive` é true;
+rounds arquivados antes dessa mudança não têm esses campos, então nunca
+mostram bandeira (mesmo padrão de "não migra retroativamente" já usado
+pra tema/gênero).
+
+Download de imagem (canvas 2D) e compartilhar no X continuam exatamente
+como eram (`buildRecapCanvas`/`downloadCanvasAsPng` em `client/src/lib/
+effects.js`) -- decisão consciente de não recriar o efeito 3D no canvas de
+download, só a experiência ao vivo na tela ganhou o visual novo.
+
+O vanilla (`board.html`/`app.js`, fallback) **não foi tocado** -- continua
+com o swirl genérico antigo + `RecapModal` separado de sempre. As classes
+CSS antigas do pódio plano (`.recap-podium-card`/`-thumb`/`-donors`/
+`-top-donor`) continuam no `style.css` por causa disso (e porque
+`RankingModal.jsx`, ranking de leilões do streamer, não de jogos de um
+round, também reaproveita `.recap-podium`/`-card`/`-rank`/`-name`/`-total`
+-- só não tem capa/doador, não usa as variantes de thumb).
 
 **Configurações** continua sendo modal (`.settings-overlay`/`.settings-modal`
 em `board.html`, lógica em `settings.js`), não página própria — decisão

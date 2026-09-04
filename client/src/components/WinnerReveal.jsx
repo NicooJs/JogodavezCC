@@ -39,14 +39,24 @@ export default function WinnerReveal({ trigger, onDone }) {
   const timersRef = useRef([])
   const doneRef = useRef(onDone)
   const confettiFiredRef = useRef(false)
+  const doneSignaledRef = useRef(false)
 
   doneRef.current = onDone
+
+  // sinaliza o pai (App.jsx) que já pode assentar o recap por baixo --
+  // idempotente porque tanto o fim natural da sequência quanto "pular"/Esc
+  // podem chamar isso.
+  const signalDone = () => {
+    if (doneSignaledRef.current) return
+    doneSignaledRef.current = true
+    doneRef.current?.()
+  }
 
   const finish = () => {
     timersRef.current.forEach(clearTimeout)
     timersRef.current = []
+    signalDone()
     setVisible(false)
-    doneRef.current?.()
   }
 
   useEffect(() => {
@@ -54,6 +64,7 @@ export default function WinnerReveal({ trigger, onDone }) {
     timersRef.current.forEach(clearTimeout)
     timersRef.current = []
     confettiFiredRef.current = false
+    doneSignaledRef.current = false
     setShowSkip(false)
     setVisible(true)
 
@@ -68,8 +79,16 @@ export default function WinnerReveal({ trigger, onDone }) {
     timersRef.current.push(
       setTimeout(() => setShowSkip(true), SKIP_APPEARS_AFTER_MS),
       setTimeout(() => setPhase('podium'), CORRIDOR_MS),
-      setTimeout(() => setPhase('exiting'), CORRIDOR_MS + PODIUM_MS + CELEBRATE_MS),
-      setTimeout(finish, CORRIDOR_MS + PODIUM_MS + CELEBRATE_MS + EXIT_MS),
+      // sinaliza o pai já ao ENTRAR na saída (não só depois dela terminar)
+      // -- o recap monta e começa a aparecer por baixo enquanto esse
+      // overlay ainda tá no meio do próprio fade, dando a sobreposição que
+      // faz o corredor parecer que "vira" o recap em vez de só sumir e
+      // deixar outra tela aparecer depois.
+      setTimeout(() => {
+        setPhase('exiting')
+        signalDone()
+      }, CORRIDOR_MS + PODIUM_MS + CELEBRATE_MS),
+      setTimeout(() => setVisible(false), CORRIDOR_MS + PODIUM_MS + CELEBRATE_MS + EXIT_MS),
     )
 
     return () => timersRef.current.forEach(clearTimeout)

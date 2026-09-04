@@ -1644,6 +1644,12 @@ body.presenter-mode .page-embedded {
   gap: 2px;
   margin-top: 8px;
   text-align: center;
+}
+
+/* fica escondido/fade-in-tardio só dentro do palco fullscreen do corredor
+   -- fora daí (ex: pódio assentado do recap, .recap-hero-podium) o texto
+   já nasce visível, sem ancestral ".winner-reveal-podium" pra revelar */
+.winner-reveal-stage .winner-reveal-info {
   transform: translateY(8px);
   opacity: 0;
   transition: transform 0.5s var(--ease), opacity 0.5s ease;
@@ -1655,8 +1661,8 @@ body.presenter-mode .page-embedded {
   transform: translateY(0);
   opacity: 1;
 }
-.winner-reveal-card.rank-2 .winner-reveal-info { transition-delay: 0.68s; }
-.winner-reveal-card.rank-3 .winner-reveal-info { transition-delay: 0.68s; }
+.winner-reveal-stage .winner-reveal-card.rank-2 .winner-reveal-info { transition-delay: 0.68s; }
+.winner-reveal-stage .winner-reveal-card.rank-3 .winner-reveal-info { transition-delay: 0.68s; }
 
 .winner-reveal-rank .medal-icon { width: 22px; height: 22px; }
 .winner-reveal-card.rank-1 .winner-reveal-rank { color: var(--accent-text); }
@@ -1730,7 +1736,7 @@ body.presenter-mode .page-embedded {
   .winner-reveal-podium .winner-reveal-card.rank-1 { transform: translate3d(0, -48px, 0) scale(1.18); }
   .winner-reveal-podium .winner-reveal-card.rank-2 { transform: translate3d(-172px, 10px, 0) scale(0.9); }
   .winner-reveal-podium .winner-reveal-card.rank-3 { transform: translate3d(172px, 26px, 0) scale(0.84); }
-  .winner-reveal-info { transition: none; transform: translateY(0); opacity: 1; }
+  .winner-reveal-stage .winner-reveal-info { transition: none; transform: translateY(0); opacity: 1; }
   .winner-reveal-headline { transition: none; opacity: 1; }
 }
 
@@ -1907,12 +1913,6 @@ body.presenter-mode .page-embedded {
 .recap-highlight-icon svg { width: 100%; height: 100%; }
 .recap-highlight-icon-bolt { color: var(--bronze); }
 
-.recap-podium-top-donor {
-  margin: 2px 0 0;
-  font-size: 10.5px;
-  color: var(--muted);
-}
-
 .recap-section-label {
   margin: 0 0 12px;
   font-family: var(--font-mono);
@@ -1923,6 +1923,11 @@ body.presenter-mode .page-embedded {
   text-align: center;
 }
 
+/* grid de pódio simples (rank+nome+valor, sem capa/doador) -- só o
+   RankingModal usa isso hoje (ranking de leilões do streamer, não de
+   jogos de um round). O recap por round trocou pro pódio "assentado"
+   logo abaixo (winner-reveal-*), mas essas classes continuam vivas aqui
+   porque o Ranking nunca teve capa pra mostrar. */
 .recap-podium {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
@@ -1958,25 +1963,6 @@ body.presenter-mode .page-embedded {
 .recap-podium-card.rank-2 .medal-icon { transform: rotate(4deg); }
 .recap-podium-card.rank-3 .medal-icon { transform: rotate(-3deg); }
 
-.recap-podium-thumb {
-  width: 64px;
-  height: 64px;
-  border-radius: 8px;
-  object-fit: cover;
-  background: var(--surface);
-  margin-top: 4px;
-}
-
-.recap-podium-thumb-placeholder {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: var(--muted);
-  font-family: var(--font-display);
-  font-style: italic;
-  font-size: 24px;
-}
-
 .recap-podium-name {
   margin: 4px 0 0;
   font-family: var(--font-display);
@@ -1998,12 +1984,119 @@ body.presenter-mode .page-embedded {
   font-variant-numeric: tabular-nums;
 }
 
+/* capa/doador do card -- só o recap do board VANILLA usa isso ainda
+   (public/js/app.js, fallback), o RankingModal (React e vanilla) nunca
+   teve capa/doador pra mostrar */
+.recap-podium-thumb {
+  width: 64px;
+  height: 64px;
+  border-radius: 8px;
+  object-fit: cover;
+  background: var(--surface);
+  margin-top: 4px;
+}
+.recap-podium-thumb-placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--muted);
+  font-family: var(--font-display);
+  font-style: italic;
+  font-size: 24px;
+}
 .recap-podium-donors {
   margin: 0;
   font-size: 11px;
   color: var(--muted);
 }
+.recap-podium-top-donor {
+  margin: 2px 0 0;
+  font-size: 10.5px;
+  color: var(--muted);
+}
 
+@media (max-width: 640px) {
+  .recap-podium { grid-template-columns: 1fr; }
+  .recap-podium-card.rank-1 { transform: none; }
+}
+
+/* pódio "assentado" do recap -- reaproveita as classes visuais do card do
+   WinnerReveal (winner-reveal-thumb/-info/-name/-total/-rank, glow do
+   rank-1) só que num layout flex normal (sem position:absolute/3D), já
+   que aqui é conteúdo de painel de verdade, não overlay fullscreen. O
+   handoff visual do corredor pra cá é um crossfade (nunca os dois visíveis
+   ao mesmo tempo), não uma migração literal do mesmo nó DOM. */
+.recap-hero-podium {
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  gap: 16px;
+  margin: 4px 0 26px;
+}
+
+.recap-hero-card.winner-reveal-card {
+  position: static;
+  opacity: 1;
+  transform: none;
+  animation: none;
+  z-index: auto;
+  width: 118px;
+}
+.recap-hero-card.rank-1 { width: 152px; order: 2; }
+.recap-hero-card.rank-2 { order: 1; margin-bottom: 10px; }
+.recap-hero-card.rank-3 { order: 3; margin-bottom: 18px; }
+
+.recap-hero-donors {
+  margin: 4px 0 0;
+  font-size: 11px;
+  color: var(--muted);
+}
+.recap-hero-top-donor {
+  margin: 2px 0 0;
+  font-size: 10.5px;
+  color: var(--muted);
+}
+
+.recap-race-badge {
+  display: inline-flex;
+  margin-left: 4px;
+  color: var(--accent-text);
+  vertical-align: -2px;
+}
+.recap-race-badge .icon { width: 12px; height: 12px; }
+
+@media (max-width: 640px) {
+  .recap-hero-podium { gap: 8px; }
+  .recap-hero-card.winner-reveal-card { width: 92px; }
+  .recap-hero-card.rank-1 { width: 118px; }
+}
+
+/* transição de "assentando" -- só existe na abertura ao vivo (revealing),
+   histórico já monta com essas classes ausentes (largura final, conteúdo
+   visível). is-settled é ligada por JS ~60ms depois de montar, dando
+   tempo do navegador pintar o estado compacto antes de animar pro final. */
+.recap-modal-revealing {
+  max-width: 420px;
+  transition: max-width 0.5s var(--ease);
+}
+.recap-modal-revealing.is-settled { max-width: 680px; }
+
+.recap-below-hero { max-height: none; opacity: 1; }
+.recap-modal-revealing .recap-below-hero {
+  overflow: hidden;
+  max-height: 0;
+  opacity: 0;
+  transition: max-height 0.6s var(--ease), opacity 0.5s ease 0.15s;
+}
+.recap-modal-revealing.is-settled .recap-below-hero {
+  max-height: 3000px;
+  opacity: 1;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .recap-modal-revealing { transition: none; max-width: 680px; }
+  .recap-modal-revealing .recap-below-hero { transition: none; max-height: 3000px; opacity: 1; }
+}
 
 .ranking-modal {
   position: relative;
@@ -2195,8 +2288,6 @@ body.presenter-mode .page-embedded {
   .recap-modal { padding: 28px 20px 24px; }
   .recap-title { font-size: 24px; }
   .recap-stats { grid-template-columns: repeat(2, 1fr); }
-  .recap-podium { grid-template-columns: 1fr; }
-  .recap-podium-card.rank-1 { transform: none; }
 }
 
 .history-overlay {

@@ -7,18 +7,9 @@ export function useRecap(leilaoId) {
   const [view, setView] = useState(null)
   const openedFromUrl = useRef(false)
 
-  const showCurrent = useCallback(async () => {
-    try {
-      const recap = await fetch(`/api/l/${leilaoId}/recap`).then((r) => r.json())
-      setView({ recap, eyebrow: 'leilão encerrado' })
-    } catch (err) {
-      console.error('Erro ao buscar recap:', err.message)
-    }
-  }, [leilaoId])
-
-  // igual showCurrent, mas só devolve os dados -- não abre o modal. Usado
-  // pelo WinnerReveal pra ter o topGames (capa/nome/valor) disponível já no
-  // fechamento do leilão, antes do momento de abrir o RecapModal de verdade.
+  // busca os dados do recap sem abrir o painel -- usado pelo WinnerReveal
+  // pra ter o topGames (capa/nome/valor) disponível já no fechamento do
+  // leilão, antes do momento de assentar o RecapModal de verdade.
   const prefetchCurrent = useCallback(async () => {
     try {
       return await fetch(`/api/l/${leilaoId}/recap`).then((r) => r.json())
@@ -28,10 +19,12 @@ export function useRecap(leilaoId) {
     }
   }, [leilaoId])
 
-  // abre o modal com um recap já buscado (ex: pelo prefetchCurrent acima),
-  // sem repetir o fetch.
-  const openView = useCallback((recap, eyebrow) => {
-    setView({ recap, eyebrow })
+  // abre o painel com um recap já buscado (ex: pelo prefetchCurrent acima),
+  // sem repetir o fetch. `autoplay` diz se é a abertura ao vivo (o
+  // WinnerReveal acabou de tocar, o painel entra em modo "assentando") ou
+  // uma consulta parada (histórico, já monta no estado final).
+  const openView = useCallback((recap, eyebrow, autoplay = false) => {
+    setView({ recap, eyebrow, autoplay })
   }, [])
 
   const showHistorical = useCallback(
@@ -43,7 +36,7 @@ export function useRecap(leilaoId) {
         const when = recap.archivedAt
           ? new Date(recap.archivedAt).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' })
           : ''
-        setView({ recap, eyebrow: when ? `round encerrado em ${when}` : 'round anterior' })
+        setView({ recap, eyebrow: when ? `round encerrado em ${when}` : 'round anterior', autoplay: false })
       } catch (err) {
         console.error('Erro ao buscar recap histórico:', err.message)
       }
@@ -62,5 +55,5 @@ export function useRecap(leilaoId) {
     }
   }, [leilaoId, showHistorical])
 
-  return { view, showCurrent, prefetchCurrent, openView, showHistorical, close }
+  return { view, prefetchCurrent, openView, showHistorical, close }
 }

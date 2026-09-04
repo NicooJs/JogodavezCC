@@ -1,5 +1,6 @@
+import { useEffect, useState } from 'react'
 import { formatBRL, initial } from '../lib/format.js'
-import { RankBadge } from './icons.jsx'
+import { RankBadge, FlagIcon } from './icons.jsx'
 import { buildRecapCanvas, downloadCanvasAsPng } from '../lib/effects.js'
 
 const RECORD_BOLT_ICON_SVG = (
@@ -27,24 +28,62 @@ function formatDuration(ms) {
   return `${h}h${String(m).padStart(2, '0')}`
 }
 
-function PodiumCard({ game }) {
+// bandeirinha que marca um jogo que garantiu a vaga pela trava do modo
+// corrida (não por ser naturalmente um dos mais arrecadadores) -- só
+// aparece se o round teve corrida ativa (recap.raceActive)
+function RaceBadge() {
   return (
-    <div className={`recap-podium-card rank-${game.rank}`}>
-      <span className="recap-podium-rank"><RankBadge rank={game.rank} /></span>
+    <span className="recap-race-badge" title="Vaga garantida pelo modo corrida">
+      <FlagIcon />
+    </span>
+  )
+}
+
+// pódio "assentado" do recap -- reaproveita a mesma linguagem visual do
+// card do WinnerReveal (capa + medalha + nome + valor, glow no rank 1),
+// só que em layout flex normal em vez do overlay fullscreen em
+// perspectiva 3D (ver .recap-hero-podium em style.css)
+function HeroPodiumCard({ game, raceActive }) {
+  return (
+    <div className={`winner-reveal-card recap-hero-card rank-${game.rank}`}>
       {game.image ? (
-        <img className="recap-podium-thumb" src={game.image} alt="" />
+        <img className="winner-reveal-thumb" src={game.image} alt="" />
       ) : (
-        <div className="recap-podium-thumb recap-podium-thumb-placeholder">{initial(game.name)}</div>
+        <div className="winner-reveal-thumb winner-reveal-thumb-placeholder">{initial(game.name)}</div>
       )}
-      <p className="recap-podium-name">{game.name}</p>
-      <p className="recap-podium-total">{formatBRL(game.total)}</p>
-      <p className="recap-podium-donors">{game.donorCount} {game.donorCount === 1 ? 'apoiador' : 'apoiadores'}</p>
-      {game.topDonor ? <p className="recap-podium-top-donor">apoiador: {game.topDonor.username}</p> : null}
+      <div className="winner-reveal-info">
+        <span className="winner-reveal-rank">
+          <RankBadge rank={game.rank} />
+          {raceActive && game.qualifiedByRace ? <RaceBadge /> : null}
+        </span>
+        <p className="winner-reveal-name">{game.name}</p>
+        <p className="winner-reveal-total">{formatBRL(game.total)}</p>
+        <p className="recap-hero-donors">{game.donorCount} {game.donorCount === 1 ? 'apoiador' : 'apoiadores'}</p>
+        {game.topDonor ? <p className="recap-hero-top-donor">apoiador: {game.topDonor.username}</p> : null}
+      </div>
     </div>
   )
 }
 
-export default function RecapModal({ leilaoId, recap, eyebrow, onClose }) {
+export default function RecapModal({ leilaoId, recap, eyebrow, revealing, onClose }) {
+  // `revealing` só é true na abertura ao vivo, logo depois do WinnerReveal
+  // -- o painel monta "compacto" (sem as seções de baixo) e expande pro
+  // tamanho final ~60ms depois (dá tempo do navegador pintar o estado
+  // inicial antes de animar). Histórico nunca passa por isso, já monta
+  // assentado.
+  const [settled, setSettled] = useState(!revealing)
+
+  useEffect(() => {
+    if (!recap) return
+    if (!revealing) {
+      setSettled(true)
+      return
+    }
+    setSettled(false)
+    const id = setTimeout(() => setSettled(true), 60)
+    return () => clearTimeout(id)
+  }, [recap, revealing])
+
   if (!recap) return null
 
   const shareText = recap.totalRaised === null
@@ -92,9 +131,13 @@ export default function RecapModal({ leilaoId, recap, eyebrow, onClose }) {
     else window.open(intentUrl, '_blank')
   }
 
+  const modalClass = ['recap-modal', revealing ? 'recap-modal-revealing' : '', settled ? 'is-settled' : '']
+    .filter(Boolean)
+    .join(' ')
+
   return (
     <div className="recap-overlay" onClick={(e) => e.target === e.currentTarget && onClose()}>
-      <div className="recap-modal" role="dialog" aria-modal="true">
+      <div className={modalClass} role="dialog" aria-modal="true">
         <button className="recap-close" type="button" aria-label="Fechar" onClick={onClose}>✕</button>
         <div className="recap-share-corner">
           <a className="recap-share-icon-btn" href="#" title="Compartilhar no X" aria-label="Compartilhar no X" onClick={shareX}>
@@ -109,86 +152,91 @@ export default function RecapModal({ leilaoId, recap, eyebrow, onClose }) {
         <p className="recap-eyebrow">{eyebrow}</p>
         <h2 className="recap-title">{recap.title || 'JogodaVez'}</h2>
 
-        <div className="recap-stats">
-          <div className="recap-stat">
-            <span className="recap-stat-value">{recap.totalRaised === null ? 'oculto' : formatBRL(recap.totalRaised || 0)}</span>
-            <span className="recap-stat-label">arrecadado</span>
-          </div>
-          <div className="recap-stat">
-            <span className="recap-stat-value">{formatDuration(recap.durationMs)}</span>
-            <span className="recap-stat-label">duração</span>
-          </div>
-          <div className="recap-stat">
-            <span className="recap-stat-value">{recap.totalDonors || 0}</span>
-            <span className="recap-stat-label">apoiadores</span>
-          </div>
-          <div className="recap-stat">
-            <span className="recap-stat-value">{recap.totalGames || 0}</span>
-            <span className="recap-stat-label">lotes disputados</span>
-          </div>
-        </div>
-
-        {champion || recap.biggestDonation ? (
-          <div className="recap-highlight">
-            {champion ? (
-              <p className="recap-highlight-line">
-                <span className="recap-highlight-icon">{TROPHY_ICON_SVG}</span>
-                <strong>{champion.name}</strong> foi o campeão, arrecadando {formatBRL(champion.total)}
-              </p>
-            ) : null}
-            {recap.biggestDonation ? (
-              <p className="recap-highlight-line">
-                <span className="recap-highlight-icon recap-highlight-icon-bolt">{RECORD_BOLT_ICON_SVG}</span>
-                recorde de doação: <strong>{recap.biggestDonation.username || 'Anônimo'}</strong> mandou {formatBRL(recap.biggestDonation.amount)} em {recap.biggestDonation.gameName || ''}
-              </p>
-            ) : null}
-          </div>
-        ) : null}
-
         <p className="recap-section-label">TOP 3</p>
-        <div className="recap-podium">
-          {top3.map((game) => <PodiumCard game={game} key={game.key} />)}
+        <div className="recap-hero-podium">
+          {top3.map((game) => <HeroPodiumCard game={game} raceActive={!!recap.raceActive} key={game.key} />)}
         </div>
 
-        {extraGames.length > 0 ? (
-          <div className="recap-extra">
-            <p className="recap-section-label">também classificados</p>
-            <div className="recap-extra-list">
-              {extraGames.map((game) => (
-                <div className="recap-extra-row" key={game.key}>
-                  <span className="recap-extra-rank">{String(game.rank).padStart(2, '0')}</span>
-                  {game.image ? (
-                    <img className="recap-extra-thumb" src={game.image} alt="" loading="lazy" />
-                  ) : (
-                    <span className="recap-extra-thumb recap-extra-thumb-placeholder">{initial(game.name)}</span>
-                  )}
-                  <span className="recap-extra-name">{game.name}</span>
-                  <span className="recap-extra-total">{formatBRL(game.total)}</span>
-                </div>
-              ))}
+        <div className="recap-below-hero">
+          <div className="recap-stats">
+            <div className="recap-stat">
+              <span className="recap-stat-value">{recap.totalRaised === null ? 'oculto' : formatBRL(recap.totalRaised || 0)}</span>
+              <span className="recap-stat-label">arrecadado</span>
+            </div>
+            <div className="recap-stat">
+              <span className="recap-stat-value">{formatDuration(recap.durationMs)}</span>
+              <span className="recap-stat-label">duração</span>
+            </div>
+            <div className="recap-stat">
+              <span className="recap-stat-value">{recap.totalDonors || 0}</span>
+              <span className="recap-stat-label">apoiadores</span>
+            </div>
+            <div className="recap-stat">
+              <span className="recap-stat-value">{recap.totalGames || 0}</span>
+              <span className="recap-stat-label">lotes disputados</span>
             </div>
           </div>
-        ) : null}
 
-        {topDonors.length > 0 ? (
-          <>
-            <p className="recap-section-label">maiores apoiadores</p>
-            <div className="recap-donor-list">
-              {topDonors.map((d) => (
-                <div className={`recap-donor-row rank-${d.rank}`} key={d.username + d.rank}>
-                  <span className="recap-donor-rank"><RankBadge rank={d.rank} /></span>
-                  {d.avatar ? (
-                    <img className="recap-donor-avatar" src={d.avatar} alt="" loading="lazy" />
-                  ) : (
-                    <span className="recap-donor-avatar recap-donor-avatar-placeholder">{initial(d.username)}</span>
-                  )}
-                  <span className="recap-donor-name">{d.username || 'Anônimo'}</span>
-                  <span className="recap-donor-total">{formatBRL(d.total)}</span>
-                </div>
-              ))}
+          {champion || recap.biggestDonation ? (
+            <div className="recap-highlight">
+              {champion ? (
+                <p className="recap-highlight-line">
+                  <span className="recap-highlight-icon">{TROPHY_ICON_SVG}</span>
+                  <strong>{champion.name}</strong> foi o campeão, arrecadando {formatBRL(champion.total)}
+                </p>
+              ) : null}
+              {recap.biggestDonation ? (
+                <p className="recap-highlight-line">
+                  <span className="recap-highlight-icon recap-highlight-icon-bolt">{RECORD_BOLT_ICON_SVG}</span>
+                  recorde de doação: <strong>{recap.biggestDonation.username || 'Anônimo'}</strong> mandou {formatBRL(recap.biggestDonation.amount)} em {recap.biggestDonation.gameName || ''}
+                </p>
+              ) : null}
             </div>
-          </>
-        ) : null}
+          ) : null}
+
+          {extraGames.length > 0 ? (
+            <div className="recap-extra">
+              <p className="recap-section-label">também classificados</p>
+              <div className="recap-extra-list">
+                {extraGames.map((game) => (
+                  <div className="recap-extra-row" key={game.key}>
+                    <span className="recap-extra-rank">{String(game.rank).padStart(2, '0')}</span>
+                    {game.image ? (
+                      <img className="recap-extra-thumb" src={game.image} alt="" loading="lazy" />
+                    ) : (
+                      <span className="recap-extra-thumb recap-extra-thumb-placeholder">{initial(game.name)}</span>
+                    )}
+                    <span className="recap-extra-name">
+                      {game.name}
+                      {recap.raceActive && game.qualifiedByRace ? <RaceBadge /> : null}
+                    </span>
+                    <span className="recap-extra-total">{formatBRL(game.total)}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ) : null}
+
+          {topDonors.length > 0 ? (
+            <>
+              <p className="recap-section-label">maiores apoiadores</p>
+              <div className="recap-donor-list">
+                {topDonors.map((d) => (
+                  <div className={`recap-donor-row rank-${d.rank}`} key={d.username + d.rank}>
+                    <span className="recap-donor-rank"><RankBadge rank={d.rank} /></span>
+                    {d.avatar ? (
+                      <img className="recap-donor-avatar" src={d.avatar} alt="" loading="lazy" />
+                    ) : (
+                      <span className="recap-donor-avatar recap-donor-avatar-placeholder">{initial(d.username)}</span>
+                    )}
+                    <span className="recap-donor-name">{d.username || 'Anônimo'}</span>
+                    <span className="recap-donor-total">{formatBRL(d.total)}</span>
+                  </div>
+                ))}
+              </div>
+            </>
+          ) : null}
+        </div>
       </div>
     </div>
   )

@@ -632,10 +632,18 @@ function buildRecap(store) {
   const rows = store.getLeaderboard();
   const donorCounts = store.getDonorCountByGame();
   const topDonorByGame = store.getTopDonorByGame();
-  const topGames = rows.slice(0, getQualifyCount(store)).map((row, index) => {
+  const qualifyCount = getQualifyCount(store);
+  // usa finalRank (mesma lógica de serializeLeaderboard) em vez de só
+  // dinheiro puro -- sem isso, um jogo que travou vaga por corrida mas caiu
+  // de posição em dinheiro depois podia ficar de fora do top do recap.
+  const { finalRank, naturalRankByKey, meta } = computeRaceRanks(store, rows, qualifyCount);
+  const raceActive = rows.some((row) => meta.get(row.key).effectiveGoalCents != null);
+  const rankedRows = [...rows].sort((a, b) => finalRank.get(a.key) - finalRank.get(b.key));
+  const topGames = rankedRows.slice(0, qualifyCount).map((row) => {
     const topDonor = topDonorByGame[row.key];
+    const naturallyWinning = naturalRankByKey.get(row.key) <= qualifyCount;
     return {
-      rank: index + 1,
+      rank: finalRank.get(row.key),
       key: row.key,
       name: row.name,
       total: centsToNumber(row.total_cents),
@@ -644,6 +652,9 @@ function buildRecap(store) {
       topDonor: topDonor
         ? { username: topDonor.username, total: centsToNumber(topDonor.total_cents), avatar: getDonorAvatar(topDonor.username) }
         : null,
+      // mesma semântica de serializeLeaderboard: "qualifiedByRace" só quando
+      // a vaga veio da trava, não de estar naturalmente entre os primeiros
+      qualifiedByRace: !naturallyWinning && row.race_locked_rank != null,
     };
   });
 
@@ -687,6 +698,7 @@ function buildRecap(store) {
     topDonors,
     biggestDonation,
     genreBreakdown: genreBreakdownList,
+    raceActive,
   };
 }
 
