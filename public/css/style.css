@@ -2091,11 +2091,10 @@ body.presenter-mode .page-embedded {
    pódio de dentro do quadrado principal. */
 .recap-catalog-panel {
   position: relative;
-  width: 420px;
-  max-width: 100%;
+  flex: 1 1 auto;
+  min-width: 360px;
   max-height: 92vh;
   overflow-y: auto;
-  flex-shrink: 0;
   background-color: var(--surface);
   background-image: var(--grain);
   background-blend-mode: overlay;
