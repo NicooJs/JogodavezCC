@@ -634,6 +634,51 @@ o cliente nesse sentido ao vivo, mas não confirmei se ele já mudou o uso
 -- se a reclamação voltar mesmo com meta manual (não geral), aí sim
 investigar de novo. Nenhuma mudança de código pendente nesse ponto.
 
+**Modo corrida: semântica pretendida pelo cliente é DIFERENTE da atual
+(2026-09-04, confirmado ao vivo testando `ec333f9059e5`, AINDA NÃO
+IMPLEMENTADO -- só documentado por pedido explícito, "documente essa
+lógica pra não esquecer")**. Cenário de teste que expôs a diferença:
+`qualifyCount=3`, corrida com meta R$300 e `raceMaxWinners=3`. Dinheiro:
+Uncharted4=1000, GTA V=500, Last of Us=500, LoL=500, GTA4=400 -- os 3
+primeiros a bater R$300 (na ordem) foram GTA V, Last of Us e LoL.
+
+O que o cliente espera (a regra de verdade do modo corrida): as
+`raceMaxWinners` vagas da corrida são um **grupo totalmente separado** da
+disputa por dinheiro. Os primeiros N a bater a meta ficam classificados
+e imunes à sabotagem, PONTO -- saem inteiramente do cálculo de quem
+disputa as `qualifyCount` vagas normais. Só quem NÃO bateu a meta
+primeiro compete entre si pelas vagas normais, por dinheiro, podendo ser
+ultrapassado/desclassificado. Total esperado: até `qualifyCount +
+raceMaxWinners` classificados, dois grupos que nunca se misturam (no
+cenário de teste, isso daria os 3 da corrida + até 3 dentre {Uncharted4,
+GTA4, ...} por dinheiro puro -- GTA4 com R$400 deveria entrar).
+
+O que o código faz hoje (`computeRaceRanks`, `server.js:397`): trava e
+disputa vivem no MESMO ranking, não em grupos separados. Um lote que
+trava a corrida MAS já seria naturalmente top-`qualifyCount` por
+dinheiro (era o caso do GTA V e do Last of Us, rank natural 2º/3º) não
+abre vaga nova nenhuma -- a trava dele só "coincide" com uma vaga que
+ele já ia ter de qualquer jeito. No teste, isso fez sobrar só 1 vaga de
+corrida "de verdade" (a do LoL, que sem a corrida ficaria de fora), e
+quando o GTA4 bateu a meta depois, o teto de 3 já tinha sido consumido
+por travas redundantes -- ele ficou de fora tanto da corrida (sem vaga)
+quanto do natural (rank 5º > qualifyCount 3º).
+
+Essa diferença é justamente o motivo da trava não isentar vencedor
+natural hoje (ver "Bug real visto em produção" logo acima, PR #10,
+2026-09-01) -- aquele fix evitou que o teto de vagas fosse ultrapassado
+isentando quem já ganhava por dinheiro, mas como efeito colateral abriu
+esse outro problema: o teto pode ser "gasto" em quem não precisava dele.
+**Não dá pra resolver os dois ao mesmo tempo sem separar os grupos de
+verdade** -- pra implementar a semântica que o cliente quer, precisa
+que `computeRaceRanks` primeiro decida quem trava a corrida (os N
+primeiros por `race_goal_reached_at`, cheio o teto e pronto, IGNORANDO
+se esses lotes já seriam natural winners) e DEPOIS calcule o top-
+`qualifyCount` natural só entre quem sobrou (excluindo os já travados
+do cálculo de rank natural inteiro, não só do resultado final) --
+mudança real na função, não um ajuste pequeno. Pendente, sem código
+escrito ainda.
+
 **Card do rank 1 sobrepondo a linha seguinte, causa raiz DIFERENTE das
 tentativas acima (2026-09-01, corrigido)**: bug irmão dos dois anteriores
 só na aparência (card 1 "maior", cobrindo os cards de baixo), causa raiz
@@ -723,6 +768,18 @@ outro passe na frente em dinheiro depois". Três mudanças juntas:
    React por enquanto -- o vanilla (`app.js`/`board.html`) continua com o
    popover antigo sem o item de corrida (meta global só dá pra configurar
    pelo board React até isso ser portado).
+
+**Vagas classificadas ganhou atalho no mini-menu (2026-09-04)**: o
+`qualifyCount` (quantos lotes contam como classificados por dinheiro,
+1-10) só dava pra mudar lá no fundo de Configurações → Geral -- pedido
+explícito do cliente pra facilitar acesso durante a live, já que ele
+mexe nisso junto com o modo corrida na hora de testar. Novo item
+**Vagas classificadas** no mini-menu (5º item, entre Modo corrida e
+Histórico) abre `QualifyCountModal.jsx`, mesmo slider (`.qualify-slider`,
+CSS já existente em `settings.css`, carregado no board via
+`client/index.html`) e mesmo endpoint (`POST /admin/qualify-count`) que
+`GeneralTab.jsx` já usava -- não duplica lógica nova, só dá um caminho
+mais curto até o mesmo dado.
 
 **Recap (React, 2026-09-03/04)**: quando o leilão fecha, `WinnerReveal.jsx`
 (corredor 3D → pódio triangular, capas de verdade dos jogos convergindo pro

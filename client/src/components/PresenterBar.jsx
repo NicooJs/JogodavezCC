@@ -4,6 +4,7 @@ import { mediaLabel, mediaLabelCap } from '../lib/media.js'
 import { initial } from '../lib/format.js'
 import { useDialogs } from '../hooks/useDialogs.jsx'
 import RaceConfigModal from './RaceConfigModal.jsx'
+import QualifyCountModal from './QualifyCountModal.jsx'
 
 // lápis vira um mini-menu vertical (ícones empilhados acima do botão) em vez
 // de abrir direto a busca -- corrida/zerar/histórico ganharam acesso de 1
@@ -14,6 +15,7 @@ export default function PresenterBar({ leilaoId, leaderboard, items, onOpenLotMo
   const [menuOpen, setMenuOpen] = useState(false)
   const [searchOpen, setSearchOpen] = useState(false)
   const [raceConfigOpen, setRaceConfigOpen] = useState(false)
+  const [qualifyCountOpen, setQualifyCountOpen] = useState(false)
   const [query, setQuery] = useState('')
   const [results, setResults] = useState(null)
   const [loading, setLoading] = useState(false)
@@ -152,6 +154,12 @@ export default function PresenterBar({ leilaoId, leaderboard, items, onOpenLotMo
             </span>
             Modo corrida
           </button>
+          <button className="presenter-mini-menu-item" type="button" role="menuitem" onClick={() => { setMenuOpen(false); setQualifyCountOpen(true) }}>
+            <span className="presenter-mini-menu-icon">
+              <svg className="icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><circle cx="10" cy="10" r="7" /><circle cx="10" cy="10" r="4" /><circle cx="10" cy="10" r="1" fill="currentColor" stroke="none" /></svg>
+            </span>
+            Vagas classificadas
+          </button>
           <button className="presenter-mini-menu-item" type="button" role="menuitem" onClick={() => { setMenuOpen(false); onOpenHistory() }}>
             <span className="presenter-mini-menu-icon">
               <svg className="icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M10 5.5V10l3 2" /><circle cx="10" cy="10" r="7" /></svg>
@@ -226,6 +234,13 @@ export default function PresenterBar({ leilaoId, leaderboard, items, onOpenLotMo
         raceMaxWinners={leaderboard.raceMaxWinners}
         mediaLabel={media}
         onClose={() => setRaceConfigOpen(false)}
+      />
+      <QualifyCountModal
+        leilaoId={leilaoId}
+        open={qualifyCountOpen}
+        qualifyCount={leaderboard.qualifyCount}
+        mediaLabel={media}
+        onClose={() => setQualifyCountOpen(false)}
       />
     </>
   )
