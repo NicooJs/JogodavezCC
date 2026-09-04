@@ -1647,8 +1647,8 @@ body.presenter-mode .page-embedded {
 }
 
 /* fica escondido/fade-in-tardio só dentro do palco fullscreen do corredor
-   -- fora daí (ex: pódio assentado do recap, .recap-hero-podium) o texto
-   já nasce visível, sem ancestral ".winner-reveal-podium" pra revelar */
+   (.winner-reveal-stage, ver WinnerReveal.jsx) -- fora daí o texto já
+   nasce visível, sem ancestral ".winner-reveal-podium" pra revelar */
 .winner-reveal-stage .winner-reveal-info {
   transform: translateY(8px);
   opacity: 0;
@@ -1754,6 +1754,16 @@ body.presenter-mode .page-embedded {
 }
 .recap-overlay[hidden] { display: none; }
 
+/* board React (.page) só -- pedido explícito do cliente pra deslocar o
+   recap mais pra esquerda agora que o pódio virou lista de cards do
+   catálogo (mais largo, precisa de mais espaço). O board vanilla
+   (fallback, board.html/app.js) reaproveita a mesma classe .recap-overlay
+   pro próprio recap mais simples e continua centralizado -- não mexe nele. */
+.page .recap-overlay {
+  justify-content: flex-start;
+  padding-left: clamp(24px, 8vw, 140px);
+}
+
 .recap-modal {
   position: relative;
   width: 100%;
@@ -1767,6 +1777,10 @@ body.presenter-mode .page-embedded {
   box-shadow: 0 32px 80px -20px rgba(0, 0, 0, 0.8);
   animation: modal-in 0.3s var(--ease);
 }
+
+/* board React só -- mais largo pra caber a lista de cards do catálogo
+   (.recap-lot-list) confortavelmente; vanilla mantém 680px acima. */
+.page .recap-modal { max-width: 760px; }
 
 .recap-close {
   position: absolute;
@@ -2020,56 +2034,22 @@ body.presenter-mode .page-embedded {
   .recap-podium-card.rank-1 { transform: none; }
 }
 
-/* pódio "assentado" do recap -- reaproveita as classes visuais do card do
-   WinnerReveal (winner-reveal-thumb/-info/-name/-total/-rank, glow do
-   rank-1) só que num layout flex normal (sem position:absolute/3D), já
-   que aqui é conteúdo de painel de verdade, não overlay fullscreen. O
-   handoff visual do corredor pra cá é um crossfade (nunca os dois visíveis
-   ao mesmo tempo), não uma migração literal do mesmo nó DOM. */
-.recap-hero-podium {
+/* lista de cards do recap -- pedido explícito do cliente pra usar os
+   MESMOS cards do catálogo ao vivo (.lot-card, RecapLotCard.jsx) em vez
+   de um desenho próprio, agora mostrando até 10 (não só top 3). Lista
+   vertical simples, sem tentar replicar o grid auto-fill/rank-1
+   full-width da arena -- desnecessário numa lista que já rola dentro do
+   modal. O handoff visual do corredor (WinnerReveal) pra cá é um
+   crossfade (nunca os dois visíveis ao mesmo tempo), não uma migração
+   literal do mesmo nó DOM. */
+.recap-lot-list {
   display: flex;
-  align-items: flex-end;
-  justify-content: center;
-  gap: 16px;
-  margin: 4px 0 26px;
+  flex-direction: column;
+  gap: 10px;
+  margin-bottom: 22px;
 }
-
-.recap-hero-card.winner-reveal-card {
-  position: static;
-  opacity: 1;
-  transform: none;
-  animation: none;
-  z-index: auto;
-  width: 118px;
-}
-.recap-hero-card.rank-1 { width: 152px; order: 2; }
-.recap-hero-card.rank-2 { order: 1; margin-bottom: 10px; }
-.recap-hero-card.rank-3 { order: 3; margin-bottom: 18px; }
-
-.recap-hero-donors {
-  margin: 4px 0 0;
-  font-size: 11px;
-  color: var(--muted);
-}
-.recap-hero-top-donor {
-  margin: 2px 0 0;
-  font-size: 10.5px;
-  color: var(--muted);
-}
-
-.recap-race-badge {
-  display: inline-flex;
-  margin-left: 4px;
-  color: var(--accent-text);
-  vertical-align: -2px;
-}
-.recap-race-badge .icon { width: 12px; height: 12px; }
-
-@media (max-width: 640px) {
-  .recap-hero-podium { gap: 8px; }
-  .recap-hero-card.winner-reveal-card { width: 92px; }
-  .recap-hero-card.rank-1 { width: 118px; }
-}
+.recap-lot-list .lot-card { min-height: auto; }
+.recap-lot-list .qualify-divider { margin: 2px 0; }
 
 /* transição de "assentando" -- só existe na abertura ao vivo (revealing),
    histórico já monta com essas classes ausentes (largura final, conteúdo
@@ -2079,7 +2059,7 @@ body.presenter-mode .page-embedded {
   max-width: 420px;
   transition: max-width 0.5s var(--ease);
 }
-.recap-modal-revealing.is-settled { max-width: 680px; }
+.recap-modal-revealing.is-settled { max-width: 760px; }
 
 .recap-below-hero { max-height: none; opacity: 1; }
 .recap-modal-revealing .recap-below-hero {
@@ -2094,7 +2074,7 @@ body.presenter-mode .page-embedded {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .recap-modal-revealing { transition: none; max-width: 680px; }
+  .recap-modal-revealing { transition: none; max-width: 760px; }
   .recap-modal-revealing .recap-below-hero { transition: none; max-height: 3000px; opacity: 1; }
 }
 

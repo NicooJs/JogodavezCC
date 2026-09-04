@@ -639,9 +639,31 @@ function buildRecap(store) {
   const { finalRank, naturalRankByKey, meta } = computeRaceRanks(store, rows, qualifyCount);
   const raceActive = rows.some((row) => meta.get(row.key).effectiveGoalCents != null);
   const rankedRows = [...rows].sort((a, b) => finalRank.get(a.key) - finalRank.get(b.key));
-  const topGames = rankedRows.slice(0, qualifyCount).map((row) => {
+  // até 10 sempre, independente do qualifyCount (que só decide quem tá
+  // "classificado de verdade", ver winning/raceOrder abaixo) -- é sobre dar
+  // mais contexto do round, não só sobre quem venceu.
+  const topRows = rankedRows.slice(0, Math.min(10, rankedRows.length));
+
+  function isNaturallyWinning(row) {
+    return naturalRankByKey.get(row.key) <= qualifyCount;
+  }
+  function isQualifiedByRace(row) {
+    return !isNaturallyWinning(row) && row.race_locked_rank != null;
+  }
+
+  // posição na fila de quem bateu a meta da corrida primeiro -- só entre os
+  // que estão classificados PELA corrida (não por dinheiro puro), ordenado
+  // por race_goal_reached_at (quem chegou primeiro joga primeiro), pedido
+  // explícito do cliente pra saber a ordem de jogar os vencedores da corrida
+  const raceOrderByKey = new Map();
+  topRows
+    .filter(isQualifiedByRace)
+    .sort((a, b) => (a.race_goal_reached_at || 0) - (b.race_goal_reached_at || 0))
+    .forEach((row, i) => raceOrderByKey.set(row.key, i + 1));
+
+  const topGames = topRows.map((row) => {
     const topDonor = topDonorByGame[row.key];
-    const naturallyWinning = naturalRankByKey.get(row.key) <= qualifyCount;
+    const qualifiedByRace = isQualifiedByRace(row);
     return {
       rank: finalRank.get(row.key),
       key: row.key,
@@ -654,7 +676,13 @@ function buildRecap(store) {
         : null,
       // mesma semântica de serializeLeaderboard: "qualifiedByRace" só quando
       // a vaga veio da trava, não de estar naturalmente entre os primeiros
-      qualifiedByRace: !naturallyWinning && row.race_locked_rank != null,
+      qualifiedByRace,
+      raceOrder: qualifiedByRace ? raceOrderByKey.get(row.key) : null,
+      // classificado de verdade (natural OU travado pela corrida) -- não é
+      // o mesmo que "rank <= qualifyCount", um lote travado pode ocupar um
+      // rank fora do corte natural (mesma lógica de serializeLeaderboard,
+      // usada pro divisor "classificados até aqui" no client)
+      winning: isNaturallyWinning(row) || row.race_locked_rank != null,
     };
   });
 

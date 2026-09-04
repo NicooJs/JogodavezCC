@@ -735,30 +735,58 @@ exatamente quando o `RecapModal` aparece por baixo, `revealing`/`is-settled`
 em `style.css`, `max-width`/`max-height` animados), não uma migração
 literal do mesmo nó DOM entre os dois sistemas de layout (perspectiva 3D
 fullscreen vs painel normal) -- decisão consciente pra evitar a fragilidade
-de tentar morphar os dois. O pódio "assentado" do `RecapModal` reaproveita
-as MESMAS classes CSS do card do `WinnerReveal`
-(`winner-reveal-thumb/-info/-name/-total/-rank`) só que em layout flex
-normal em vez de `position:absolute`, pra manter a leitura visual idêntica
-nos dois momentos.
+de tentar morphar os dois.
+
+**Segunda iteração (mesmo dia, feedback do cliente ao vivo)**: o "pódio
+assentado" original do `RecapModal` (3 cards tipo pôster, visual próprio)
+foi trocado por uma **lista de até 10 cards idênticos ao do catálogo ao
+vivo** (`RecapLotCard.jsx`, reaproveita as classes CSS de `.lot-card`/
+`LotCard.jsx` sem o componente inteiro -- sem `draggable`/handlers de
+drag/context-menu/`.lot-edit`/streak/duel/firing/barra de progresso ao
+vivo, essas só fazem sentido num leilão rodando). Pedido explícito: "os
+exatos cards que estavam no catálogo... mas top 10". `.recap-lot-list`
+(`style.css`) é uma lista vertical simples, sem tentar replicar o grid
+auto-fill/rank-1 full-width da arena ao vivo (desnecessário numa lista
+que já rola dentro do modal). Um `.qualify-divider` (mesma classe que a
+arena ao vivo já usa) separa quem tá classificado de verdade
+(`winning:true`) do resto, mostrado só pra dar contexto do round -- a
+posição do divisor usa a MESMA lógica de `qualifyBoundaryKey` que
+`ArenaPanel.jsx:108-122` já tinha (último item `winning`, não um corte
+fixo em `rank <= qualifyCount`, porque um lote travado pela corrida pode
+ocupar um rank fora do corte natural). O painel React (`.page
+.recap-overlay`/`.page .recap-modal` em `style.css`) ficou mais largo
+(760px) e alinhado à esquerda (não mais centralizado) pra caber a lista
+confortavelmente -- só o board React, o vanilla (`board.html`/`app.js`)
+reaproveita a mesma classe `.recap-overlay` pro próprio recap mais
+simples e continua centralizado, propositalmente intocado.
 
 Histórico (`recap.showHistorical`, via modal ou aba Avançado das
 Configurações) usa o **mesmo** `RecapModal`, só que sem o `WinnerReveal` --
 monta direto no estado assentado (`revealing=false`), sem o corredor de
 entrada (não tem "revelação" pra fazer de um round que já passou).
 
-`buildRecap()` (`server.js`) ganhou dois campos novos: `raceActive`
-(round teve modo corrida configurado, meta global ou manual) e
-`qualifiedByRace` por jogo (a vaga veio da trava de corrida, não de estar
-naturalmente entre os mais arrecadadores -- mesma semântica de
-`serializeLeaderboard`/`computeRaceRanks`). O recap também passou a montar
-`topGames` por `finalRank` (com as travas aplicadas) em vez de só dinheiro
-puro -- bug de quebra que existia desde sempre: um jogo que travou vaga por
-corrida mas caiu de posição em dinheiro depois podia ficar de fora do top
-do recap. `RecapModal` mostra uma bandeirinha (`RaceBadge`, ícone
-`FlagIcon`) nos jogos com `qualifiedByRace` quando `raceActive` é true;
-rounds arquivados antes dessa mudança não têm esses campos, então nunca
-mostram bandeira (mesmo padrão de "não migra retroativamente" já usado
-pra tema/gênero).
+`buildRecap()` (`server.js`) ganhou campos novos: `raceActive` (round
+teve modo corrida configurado, meta global ou manual), e por jogo em
+`topGames`: `qualifiedByRace` (a vaga veio da trava de corrida, não de
+estar naturalmente entre os mais arrecadadores), `winning` (classificado
+de verdade, natural OU travado -- mesma semântica de
+`serializeLeaderboard`/`computeRaceRanks`) e `raceOrder` (posição na fila
+de quem bateu a meta da corrida PRIMEIRO, `race_goal_reached_at`
+ascendente, só entre quem é `qualifiedByRace` -- pedido explícito do
+cliente: "colocar em ordem de qual jogo vai ser jogado primeiro"). O
+recap também passou a montar `topGames` por `finalRank` (com as travas
+aplicadas) em vez de só dinheiro puro -- bug de quebra que existia desde
+sempre: um jogo que travou vaga por corrida mas caiu de posição em
+dinheiro depois podia ficar de fora do top do recap. `topGames` mostra
+até **10** jogos sempre, independente do `qualifyCount` configurado pro
+round (é sobre dar mais contexto do round inteiro, não só sobre quem
+"venceu" -- `winning`/o divisor continuam controlando quem é
+classificado de verdade dentro desses até-10). `RecapLotCard` mostra o
+mesmo selo `.badge-race-qualified` que a arena ao vivo já tem
+(`LotCard.jsx`), com o texto trocado pra incluir a posição da fila
+("1º a jogar") quando `raceOrder` existir. Rounds arquivados antes dessa
+mudança não têm esses campos, então nunca mostram o selo (mesmo padrão
+de "não migra retroativamente" já usado pra tema/gênero).
 
 Download de imagem (canvas 2D) e compartilhar no X continuam exatamente
 como eram (`buildRecapCanvas`/`downloadCanvasAsPng` em `client/src/lib/
