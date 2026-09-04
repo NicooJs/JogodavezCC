@@ -1,7 +1,7 @@
-// canvas/confete/swirl -- porte quase literal das funções imperativas do
-// app.js vanilla (buildRecapCanvas, drawSwirlFrame, triggerBigWinCelebration
-// etc.), só parametrizadas em vez de ler globais do módulo. Decisão do
-// plano de migração: essa camada é embrulhada, não reescrita.
+// canvas/confete -- porte quase literal das funções imperativas do app.js
+// vanilla (buildRecapCanvas, triggerBigWinCelebration etc.), só
+// parametrizadas em vez de ler globais do módulo. Decisão do plano de
+// migração: essa camada é embrulhada, não reescrita.
 import { formatBRL } from './format.js'
 
 const MEDAL_ICON_SVG_RAW =
@@ -417,56 +417,6 @@ export function downloadCanvasAsPng(canvas, leilaoId) {
   link.download = `recap-${leilaoId}.png`
   link.href = canvas.toDataURL('image/png')
   link.click()
-}
-
-// swirl "Vencedor!" -- desenha um dithering radial pixelado, mesma lógica
-// do drawSwirlFrame/startSwirl do app.js, só recebe o canvas por parâmetro
-export function drawSwirlFrame(ctx, w, h, time, colorFront, colorBack, pxSize) {
-  ctx.fillStyle = colorBack
-  ctx.fillRect(0, 0, w, h)
-  const cx = w / 2
-  const cy = h / 2
-  const maxRadius = Math.hypot(cx, cy)
-  ctx.fillStyle = colorFront
-  for (let y = pxSize / 2; y < h; y += pxSize) {
-    for (let x = pxSize / 2; x < w; x += pxSize) {
-      const dx = x - cx
-      const dy = y - cy
-      const radius = Math.hypot(dx, dy)
-      const angle = Math.atan2(dy, dx)
-      const wave = Math.sin(radius * 0.07 - time * 2.4 + Math.sin(angle * 3 + time * 0.6) * 1.8)
-      const falloff = Math.max(0, 1 - radius / maxRadius)
-      const strength = Math.max(0, wave) * falloff
-      if (strength <= 0.12) continue
-      const size = pxSize * Math.min(1, strength * 1.4)
-      ctx.globalAlpha = Math.min(1, strength * 1.6)
-      ctx.fillRect(x - size / 2, y - size / 2, size, size)
-    }
-  }
-  ctx.globalAlpha = 1
-}
-
-export function startSwirl(canvas) {
-  if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return () => {}
-  const ctx = canvas.getContext('2d')
-  const dpr = Math.min(window.devicePixelRatio || 1, 1.5)
-  canvas.width = Math.round(window.innerWidth * dpr)
-  canvas.height = Math.round(window.innerHeight * dpr)
-  ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
-  const rootStyle = getComputedStyle(document.documentElement)
-  const colorFront = rootStyle.getPropertyValue('--accent-text').trim() || '#d1b3fa'
-  const colorBack = rootStyle.getPropertyValue('--bg').trim() || '#17131f'
-  const start = performance.now()
-  let raf = null
-  function frame(now) {
-    const t = (now - start) / 1000
-    drawSwirlFrame(ctx, window.innerWidth, window.innerHeight, t, colorFront, colorBack, 7)
-    if (t < 2.3) raf = requestAnimationFrame(frame)
-  }
-  raf = requestAnimationFrame(frame)
-  return () => {
-    if (raf) cancelAnimationFrame(raf)
-  }
 }
 
 // confete/faíscas -- mesma lógica de triggerBigWinCelebration/

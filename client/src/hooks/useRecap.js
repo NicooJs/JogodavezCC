@@ -16,6 +16,24 @@ export function useRecap(leilaoId) {
     }
   }, [leilaoId])
 
+  // igual showCurrent, mas só devolve os dados -- não abre o modal. Usado
+  // pelo WinnerReveal pra ter o topGames (capa/nome/valor) disponível já no
+  // fechamento do leilão, antes do momento de abrir o RecapModal de verdade.
+  const prefetchCurrent = useCallback(async () => {
+    try {
+      return await fetch(`/api/l/${leilaoId}/recap`).then((r) => r.json())
+    } catch (err) {
+      console.error('Erro ao pré-buscar recap:', err.message)
+      return null
+    }
+  }, [leilaoId])
+
+  // abre o modal com um recap já buscado (ex: pelo prefetchCurrent acima),
+  // sem repetir o fetch.
+  const openView = useCallback((recap, eyebrow) => {
+    setView({ recap, eyebrow })
+  }, [])
+
   const showHistorical = useCallback(
     async (index) => {
       try {
@@ -44,5 +62,5 @@ export function useRecap(leilaoId) {
     }
   }, [leilaoId, showHistorical])
 
-  return { view, showCurrent, showHistorical, close }
+  return { view, showCurrent, prefetchCurrent, openView, showHistorical, close }
 }

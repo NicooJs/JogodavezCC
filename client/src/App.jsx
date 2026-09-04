@@ -21,7 +21,7 @@ import LotContextMenu from './components/LotContextMenu.jsx'
 import RaceModal from './components/RaceModal.jsx'
 import SettingsModal from './components/SettingsModal.jsx'
 import RecapModal from './components/RecapModal.jsx'
-import SoldOverlay from './components/SoldOverlay.jsx'
+import WinnerReveal from './components/WinnerReveal.jsx'
 import HistoryOverlay from './components/HistoryOverlay.jsx'
 import LoadingSplash from './components/LoadingSplash.jsx'
 import RankingModal from './components/RankingModal.jsx'
@@ -48,7 +48,7 @@ function BoardContent({ leilaoId, embedded }) {
   const [contextMenuTarget, setContextMenuTarget] = useState(null)
   const [raceModalItem, setRaceModalItem] = useState(null)
   const [settingsOpen, setSettingsOpen] = useState(false)
-  const [soldTrigger, setSoldTrigger] = useState(null)
+  const [revealTrigger, setRevealTrigger] = useState(null)
   const [rankingOpen, setRankingOpen] = useState(false)
   const [historyOverlayOpen, setHistoryOverlayOpen] = useState(false)
   const [lotModalGame, setLotModalGame] = useState(null)
@@ -95,10 +95,15 @@ function BoardContent({ leilaoId, embedded }) {
     const wasOpen = wasOpenRef.current
     wasOpenRef.current = leaderboard.open
     if (wasOpen === true && leaderboard.open === false) {
-      const leader = (leaderboard.items || [])[0]
-      setSoldTrigger({ leaderName: leader ? leader.name : null, id: Date.now() })
-      setTimeout(() => recap.showCurrent(), 2400)
+      recap.prefetchCurrent().then((data) => {
+        if (data && (data.topGames || []).length) {
+          setRevealTrigger({ recap: data, id: Date.now() })
+        } else {
+          setTimeout(() => recap.openView(data, 'leilão encerrado'), 600)
+        }
+      })
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [leaderboard?.open])
 
   useEffect(() => {
@@ -300,7 +305,10 @@ function BoardContent({ leilaoId, embedded }) {
       />
       <RaceModal leilaoId={leilaoId} item={raceModalItem} onClose={() => setRaceModalItem(null)} />
       <SettingsModal open={settingsOpen} onClose={() => setSettingsOpen(false)} leilaoId={leilaoId} leaderboard={leaderboard} />
-      <SoldOverlay trigger={soldTrigger} />
+      <WinnerReveal
+        trigger={revealTrigger}
+        onDone={() => revealTrigger && recap.openView(revealTrigger.recap, 'leilão encerrado')}
+      />
       <RecapModal
         leilaoId={leilaoId}
         recap={recap.view?.recap}
