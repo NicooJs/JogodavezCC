@@ -1576,9 +1576,6 @@ body.presenter-mode .page-embedded {
   --depth: 0;
   position: absolute;
   width: 176px;
-  border-radius: var(--radius);
-  overflow: hidden;
-  box-shadow: 0 24px 60px -18px rgba(0, 0, 0, 0.85);
   opacity: 0;
   transform:
     translate3d(calc(var(--i) * 96px), 26px, calc(var(--depth) * -160px))
@@ -1590,8 +1587,8 @@ body.presenter-mode .page-embedded {
   animation-delay: calc(0.07s * var(--depth) + 0.05s);
 }
 
-.winner-reveal-card:nth-of-type(3n+1) { border-radius: 7px 9px 7px 8px; }
-.winner-reveal-card:nth-of-type(3n+2) { border-radius: 9px 7px 8px 7px; }
+.winner-reveal-card:nth-of-type(3n+1) .winner-reveal-thumb { border-radius: 7px 9px 7px 8px; }
+.winner-reveal-card:nth-of-type(3n+2) .winner-reveal-thumb { border-radius: 9px 7px 8px 7px; }
 .winner-reveal-card.rank-1 { width: 228px; }
 
 @keyframes winner-reveal-card-in {
@@ -1623,6 +1620,8 @@ body.presenter-mode .page-embedded {
   aspect-ratio: 3 / 4;
   object-fit: cover;
   background: var(--surface);
+  border-radius: var(--radius);
+  box-shadow: 0 24px 60px -18px rgba(0, 0, 0, 0.85);
 }
 
 .winner-reveal-thumb-placeholder {
@@ -1635,16 +1634,15 @@ body.presenter-mode .page-embedded {
   font-size: 36px;
 }
 
+/* fica embaixo da capa em fluxo normal (nunca sobreposto/cortado -- já foi
+   overlay absoluto por cima da imagem e o valor ficava invisível, cortado
+   pelo overflow:hidden do card antigo) */
 .winner-reveal-info {
-  position: absolute;
-  left: 0;
-  right: 0;
-  bottom: -6px;
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: 2px;
-  padding: 10px 8px 0;
+  margin-top: 8px;
   text-align: center;
   transform: translateY(8px);
   opacity: 0;
