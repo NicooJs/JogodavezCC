@@ -1,6 +1,6 @@
 import { Fragment, useEffect, useState } from 'react'
 import { formatBRL, initial } from '../lib/format.js'
-import { RankBadge } from './icons.jsx'
+import { RankBadge, FlagIcon } from './icons.jsx'
 import { buildRecapCanvas, downloadCanvasAsPng } from '../lib/effects.js'
 import { mediaLabel as getMediaLabel } from '../lib/media.js'
 import RecapLotCard from './RecapLotCard.jsx'
@@ -30,6 +30,43 @@ function formatDuration(ms) {
   return `${h}h${String(m).padStart(2, '0')}`
 }
 
+// bandeirinha que marca um jogo que garantiu a vaga pela trava do modo
+// corrida (não por ser naturalmente um dos mais arrecadadores) -- só
+// aparece se o round teve corrida ativa (recap.raceActive)
+function RaceBadge() {
+  return (
+    <span className="recap-race-badge" title="Vaga garantida pelo modo corrida">
+      <FlagIcon />
+    </span>
+  )
+}
+
+// pódio "assentado" do recap -- reaproveita a mesma linguagem visual do
+// card do WinnerReveal (capa + medalha + nome + valor, glow no rank 1),
+// só que em layout flex normal em vez do overlay fullscreen em
+// perspectiva 3D (ver .recap-hero-podium em style.css)
+function HeroPodiumCard({ game, raceActive }) {
+  return (
+    <div className={`winner-reveal-card recap-hero-card rank-${game.rank}`}>
+      {game.image ? (
+        <img className="winner-reveal-thumb" src={game.image} alt="" />
+      ) : (
+        <div className="winner-reveal-thumb winner-reveal-thumb-placeholder">{initial(game.name)}</div>
+      )}
+      <div className="winner-reveal-info">
+        <span className="winner-reveal-rank">
+          <RankBadge rank={game.rank} />
+          {raceActive && game.qualifiedByRace ? <RaceBadge /> : null}
+        </span>
+        <p className="winner-reveal-name">{game.name}</p>
+        <p className="winner-reveal-total">{formatBRL(game.total)}</p>
+        <p className="recap-hero-donors">{game.donorCount} {game.donorCount === 1 ? 'apoiador' : 'apoiadores'}</p>
+        {game.topDonor ? <p className="recap-hero-top-donor">apoiador: {game.topDonor.username}</p> : null}
+      </div>
+    </div>
+  )
+}
+
 export default function RecapModal({ leilaoId, recap, eyebrow, revealing, onClose }) {
   // `revealing` só é true na abertura ao vivo, logo depois do WinnerReveal
   // -- o painel monta "compacto" (sem as seções de baixo) e expande pro
@@ -55,19 +92,25 @@ export default function RecapModal({ leilaoId, recap, eyebrow, revealing, onClos
     ? 'Acabei de fazer um leilão de jogos com a galera! Dá uma olhada:'
     : `Acabei de arrecadar ${formatBRL(recap.totalRaised || 0)} num leilão de jogos com a galera! Dá uma olhada:`
 
-  const topGames = recap.topGames || []
+  const allGames = recap.topGames || []
+  // o quadrado principal (pódio + "também classificados") só considera
+  // quem tá classificado de verdade -- allGames pode ter até 10 pra
+  // alimentar o painel do catálogo ao lado, mas o quadrado em si não muda
+  // de tamanho/conteúdo por causa disso.
+  const winningGames = allGames.filter((g) => g.winning)
+  const top3 = winningGames.slice(0, 3)
+  const extraGames = winningGames.slice(3)
   const topDonors = recap.topDonors || []
-  const champion = topGames[0]
+  const champion = top3[0]
   const label = getMediaLabel(recap.mode)
 
-  // divisor "classificados até aqui" depois do ÚLTIMO item ainda
-  // classificado (winning) -- rank sozinho não reflete o corte de verdade
-  // quando a corrida classifica um lote fora do topo natural (mesma lógica
-  // de qualifyBoundaryKey em ArenaPanel.jsx, portada pro recap)
+  // divisor "classificados até aqui" no painel do catálogo (lado direito),
+  // depois do ÚLTIMO item ainda classificado (winning) -- mesma lógica de
+  // qualifyBoundaryKey em ArenaPanel.jsx, portada pro recap
   let qualifyBoundaryKey = null
-  for (let i = topGames.length - 1; i >= 0; i--) {
-    if (topGames[i].winning) {
-      qualifyBoundaryKey = i < topGames.length - 1 ? topGames[i].key : null
+  for (let i = allGames.length - 1; i >= 0; i--) {
+    if (allGames[i].winning) {
+      qualifyBoundaryKey = i < allGames.length - 1 ? allGames[i].key : null
       break
     }
   }
@@ -128,6 +171,11 @@ export default function RecapModal({ leilaoId, recap, eyebrow, revealing, onClos
         <p className="recap-eyebrow">{eyebrow}</p>
         <h2 className="recap-title">{recap.title || 'JogodaVez'}</h2>
 
+        <p className="recap-section-label">TOP 3</p>
+        <div className="recap-hero-podium">
+          {top3.map((game) => <HeroPodiumCard game={game} raceActive={!!recap.raceActive} key={game.key} />)}
+        </div>
+
         <div className="recap-below-hero">
           <div className="recap-stats">
             <div className="recap-stat">
@@ -165,22 +213,27 @@ export default function RecapModal({ leilaoId, recap, eyebrow, revealing, onClos
             </div>
           ) : null}
 
-          {topGames.length > 0 ? (
-            <>
-              <p className="recap-section-label">catálogo</p>
-              <div className="recap-lot-list">
-                {topGames.map((game) => (
-                  <Fragment key={game.key}>
-                    <RecapLotCard item={game} mediaLabel={label} />
-                    {game.key === qualifyBoundaryKey ? (
-                      <div className="qualify-divider">
-                        <span>classificados até aqui</span>
-                      </div>
-                    ) : null}
-                  </Fragment>
+          {extraGames.length > 0 ? (
+            <div className="recap-extra">
+              <p className="recap-section-label">também classificados</p>
+              <div className="recap-extra-list">
+                {extraGames.map((game) => (
+                  <div className="recap-extra-row" key={game.key}>
+                    <span className="recap-extra-rank">{String(game.rank).padStart(2, '0')}</span>
+                    {game.image ? (
+                      <img className="recap-extra-thumb" src={game.image} alt="" loading="lazy" />
+                    ) : (
+                      <span className="recap-extra-thumb recap-extra-thumb-placeholder">{initial(game.name)}</span>
+                    )}
+                    <span className="recap-extra-name">
+                      {game.name}
+                      {recap.raceActive && game.qualifiedByRace ? <RaceBadge /> : null}
+                    </span>
+                    <span className="recap-extra-total">{formatBRL(game.total)}</span>
+                  </div>
                 ))}
               </div>
-            </>
+            </div>
           ) : null}
 
           {topDonors.length > 0 ? (
@@ -204,6 +257,24 @@ export default function RecapModal({ leilaoId, recap, eyebrow, revealing, onClos
           ) : null}
         </div>
       </div>
+
+      {allGames.length > 0 ? (
+        <div className="recap-catalog-panel" onClick={(e) => e.stopPropagation()}>
+          <p className="recap-section-label">catálogo</p>
+          <div className="recap-lot-list">
+            {allGames.map((game) => (
+              <Fragment key={game.key}>
+                <RecapLotCard item={game} mediaLabel={label} />
+                {game.key === qualifyBoundaryKey ? (
+                  <div className="qualify-divider">
+                    <span>classificados até aqui</span>
+                  </div>
+                ) : null}
+              </Fragment>
+            ))}
+          </div>
+        </div>
+      ) : null}
     </div>
   )
 }

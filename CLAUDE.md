@@ -737,28 +737,36 @@ literal do mesmo nó DOM entre os dois sistemas de layout (perspectiva 3D
 fullscreen vs painel normal) -- decisão consciente pra evitar a fragilidade
 de tentar morphar os dois.
 
-**Segunda iteração (mesmo dia, feedback do cliente ao vivo)**: o "pódio
-assentado" original do `RecapModal` (3 cards tipo pôster, visual próprio)
-foi trocado por uma **lista de até 10 cards idênticos ao do catálogo ao
-vivo** (`RecapLotCard.jsx`, reaproveita as classes CSS de `.lot-card`/
+**Segunda iteração (mesmo dia, feedback do cliente ao vivo)**: tentativa
+inicial trocou o "pódio assentado" (3 cards tipo pôster) por uma lista de
+até 10 cards estilo catálogo DENTRO do próprio `.recap-modal` -- **errado**,
+corrigido na hora (cliente: "ERA PRA DEIXAR O QUADRADO DO RECAP EXATAMENTE
+COMO ESTAVA... OS CARDS DO LADO DIREITO"). O pedido de verdade era um
+**painel novo e separado ao lado** do quadrado de sempre, não substituir o
+conteúdo de dentro dele. `.recap-modal` (pódio de 3 + stats + "também
+classificados" + apoiadores) voltou a ser exatamente como era antes dessa
+sessão de feedback -- só ganhou um vizinho, `.recap-catalog-panel`
+(`style.css`), com a lista de até 10 cards idênticos ao do catálogo ao
+vivo (`RecapLotCard.jsx`, reaproveita as classes CSS de `.lot-card`/
 `LotCard.jsx` sem o componente inteiro -- sem `draggable`/handlers de
 drag/context-menu/`.lot-edit`/streak/duel/firing/barra de progresso ao
-vivo, essas só fazem sentido num leilão rodando). Pedido explícito: "os
-exatos cards que estavam no catálogo... mas top 10". `.recap-lot-list`
-(`style.css`) é uma lista vertical simples, sem tentar replicar o grid
-auto-fill/rank-1 full-width da arena ao vivo (desnecessário numa lista
-que já rola dentro do modal). Um `.qualify-divider` (mesma classe que a
-arena ao vivo já usa) separa quem tá classificado de verdade
-(`winning:true`) do resto, mostrado só pra dar contexto do round -- a
-posição do divisor usa a MESMA lógica de `qualifyBoundaryKey` que
+vivo, essas só fazem sentido num leilão rodando). `.recap-lot-list`
+dentro desse painel é uma lista vertical simples, sem tentar replicar o
+grid auto-fill/rank-1 full-width da arena ao vivo. Um `.qualify-divider`
+(mesma classe que a arena ao vivo já usa) separa quem tá classificado de
+verdade (`winning:true`) do resto, mostrado só pra dar contexto do round
+-- a posição do divisor usa a MESMA lógica de `qualifyBoundaryKey` que
 `ArenaPanel.jsx:108-122` já tinha (último item `winning`, não um corte
 fixo em `rank <= qualifyCount`, porque um lote travado pela corrida pode
-ocupar um rank fora do corte natural). O painel React (`.page
-.recap-overlay`/`.page .recap-modal` em `style.css`) ficou mais largo
-(760px) e alinhado à esquerda (não mais centralizado) pra caber a lista
-confortavelmente -- só o board React, o vanilla (`board.html`/`app.js`)
+ocupar um rank fora do corte natural). `.recap-overlay` (`.page
+.recap-overlay` em `style.css`) virou flex-row com `gap`, alinhado à
+esquerda (não mais centralizado) pra abrir espaço pro painel novo do
+lado direito -- `.recap-catalog-panel` some inteiro abaixo de 1100px de
+viewport (não cabe os dois lado a lado, e o quadrado principal sozinho
+continua funcionando normalmente). Vanilla (`board.html`/`app.js`)
 reaproveita a mesma classe `.recap-overlay` pro próprio recap mais
-simples e continua centralizado, propositalmente intocado.
+simples (sem painel de catálogo nenhum) e continua centralizado,
+propositalmente intocado.
 
 Histórico (`recap.showHistorical`, via modal ou aba Avançado das
 Configurações) usa o **mesmo** `RecapModal`, só que sem o `WinnerReveal` --
