@@ -24,6 +24,10 @@ export default function Topbar({
   return (
     <header className="topbar">
       <div className="topbar-left">
+        <div className="topbar-mascot" aria-hidden="true">
+          <span className="topbar-mascot-glow" />
+          <img className="topbar-mascot-img" src="/img/loading-mascot.png" alt="" />
+        </div>
         <p className="topbar-mark">
           <span className="brand-word">{title}</span>
         </p>

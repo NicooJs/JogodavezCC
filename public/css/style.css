@@ -339,6 +339,50 @@ body.board-body.has-bg-image .board-cover-bg, body.hub-body.has-bg-image .board-
   position: relative;
 }
 
+/* mascote ancorado à esquerda do nome -- pedido explícito do cliente pra
+   servir de ponto de partida da leitura da tela. Wrapper fica pequeno
+   (46x46, entra na altura normal da topbar-left) mas a imagem e o glow
+   de fundo dentro dele são maiores e SEM overflow:hidden no caminho até
+   .page, então vazam de propósito pra baixo por cima do que tiver logo
+   abaixo (o card "apoio da comunidade", primeiro item de .col-left) --
+   quebra a rigidez de tudo preso em caixinha (pedido explícito). z-index
+   mais alto que o padrão pra vencer .col-left mesmo estando antes dele
+   no DOM (empilhamento dentro do mesmo contexto de .page). */
+.topbar-mascot {
+  position: relative;
+  width: 46px;
+  height: 46px;
+  flex-shrink: 0;
+  z-index: 5;
+}
+.topbar-mascot-img {
+  position: absolute;
+  left: 50%;
+  top: 46%;
+  width: 88px;
+  height: auto;
+  transform: translate(-50%, -40%);
+  filter: drop-shadow(0 8px 14px rgba(0, 0, 0, 0.55));
+  pointer-events: none;
+}
+/* luz radial difusa atrás do mascote -- separa ele do mosaico de capas
+   (fundo cheio de informação) e integra com o resto da paleta usando a
+   cor de destaque do próprio tema (--accent-glow), não uma cor fixa. */
+.topbar-mascot-glow {
+  position: absolute;
+  left: 50%;
+  top: 42%;
+  width: 150px;
+  height: 150px;
+  transform: translate(-50%, -50%);
+  border-radius: 50%;
+  background: radial-gradient(circle, var(--accent) 0%, color-mix(in srgb, var(--accent) 70%, transparent) 35%, transparent 68%);
+  filter: blur(10px);
+  mix-blend-mode: screen;
+  opacity: 0.85;
+  z-index: -1;
+}
+
 /* board embutido no hub: toggle Leilão/Reacts + Ranking sobem pro topo em
    vez de ficar numa trilha própria (essa some quando embutido, a sidebar
    do hub já cobre o resto -- ver App.jsx `embedded`) */
@@ -3686,16 +3730,25 @@ body.presenter-mode .page-embedded {
   gap: 8px;
 }
 .lot-race-live .lot-race-track { flex: 1; min-width: 0; }
+/* fundo semitransparente + sombra no texto -- os valores nas pontas da
+   barra ficavam pequenos demais e se perdiam na capa do jogo atrás
+   (pedido explícito do cliente). O .lot-race em volta já tem um fundo
+   escuro translúcido, mas essa segunda camada, só atrás do número, dá o
+   contraste que faltava sem pesar a barra inteira. */
 .lot-race-value {
   font-family: var(--font-mono);
   font-variant-numeric: tabular-nums;
-  font-size: 10.5px;
-  font-weight: 600;
+  font-size: 12px;
+  font-weight: 700;
   color: var(--text);
   flex-shrink: 0;
   white-space: nowrap;
+  background: rgba(0, 0, 0, 0.4);
+  padding: 2px 6px;
+  border-radius: 5px;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.7);
 }
-.lot-race-value-goal { display: flex; align-items: center; }
+.lot-race-value-goal { display: flex; align-items: center; padding: 3px 6px; }
 .lot-race-value-goal .icon { width: 12px; height: 12px; color: var(--gold); }
 .lot-race-live.is-reached .lot-race-value { color: var(--gold); }
 
@@ -3704,6 +3757,7 @@ body.presenter-mode .page-embedded {
 .lot-card.rank-1 .lot-race-track { height: 8px; }
 .lot-card.rank-1 .lot-race-label { font-size: 12.5px; }
 .lot-card.rank-1 .lot-race-label .icon { width: 13px; height: 13px; }
+.lot-card.rank-1 .lot-race-value { font-size: 13.5px; }
 
 .badge-race-qualified {
   display: inline-flex;
