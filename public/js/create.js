@@ -107,7 +107,7 @@ form.addEventListener("submit", async (e) => {
     errorEl.hidden = false;
   } finally {
     submitBtn.disabled = false;
-    submitBtn.textContent = "Criar leilão";
+    submitBtn.textContent = "Criar meu leilão";
   }
 });
 

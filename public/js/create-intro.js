@@ -1,8 +1,5 @@
 const titleEl = document.getElementById("create-title");
 const revealEls = [...document.querySelectorAll(".reveal-item")];
-const proofEl = document.getElementById("create-proof");
-const proofAvatarsEl = document.getElementById("create-proof-avatars");
-const proofTextEl = document.getElementById("create-proof-text");
 
 function splitTitleIntoWords(el) {
   const words = el.textContent.trim().split(/\s+/);
@@ -17,31 +14,8 @@ function revealInstantly(els) {
   });
 }
 
-async function loadProof() {
-  try {
-    const res = await fetch("/api/ranking");
-    if (!res.ok) return;
-    const { ranking } = await res.json();
-    if (!ranking || ranking.length === 0) return;
-
-    const top = ranking.slice(0, 5);
-    proofAvatarsEl.innerHTML = top
-      .filter((row) => row.hostAvatar)
-      .map((row) => `<img src="${row.hostAvatar.replace(/"/g, "&quot;")}" alt="" loading="lazy" />`)
-      .join("");
-
-    const streamerWord = ranking.length === 1 ? "streamer" : "streamers";
-    proofTextEl.innerHTML = `<strong>${ranking.length} ${streamerWord}</strong> já estão usando o site`;
-
-    proofEl.hidden = false;
-  } catch (err) {
-    console.error("Falha ao carregar prova social:", err.message);
-  }
-}
-
 async function run() {
   const words = titleEl ? splitTitleIntoWords(titleEl) : [];
-  await loadProof();
 
   const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
   if (reduceMotion) {

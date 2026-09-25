@@ -65,34 +65,26 @@ body.create-body.has-covers .board-cover-bg { opacity: 1; }
 
 .create-lede strong { color: var(--accent-text); }
 
-.create-proof {
+.create-kicker {
   display: flex;
   align-items: center;
-  gap: 12px;
-}
-.create-proof[hidden] { display: none; }
-
-.create-proof-avatars {
-  display: flex;
-}
-
-.create-proof-avatars img {
-  width: 30px;
-  height: 30px;
-  border-radius: 50%;
-  object-fit: cover;
-  border: 2px solid var(--bg);
-  background: var(--surface-2);
-  margin-left: -10px;
-}
-.create-proof-avatars img:first-child { margin-left: 0; }
-
-.create-proof-text {
+  gap: 10px;
   margin: 0;
-  font-size: 12.5px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
   color: var(--muted);
 }
-.create-proof-text strong { color: var(--accent-text); font-weight: 600; }
+
+.create-kicker-free {
+  padding: 3px 9px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--positive) 15%, var(--surface));
+  border: 1px solid color-mix(in srgb, var(--positive) 35%, transparent);
+  color: var(--positive);
+  font-weight: 700;
+}
 
 .create-steps {
   list-style: none;
