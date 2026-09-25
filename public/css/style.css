@@ -325,11 +325,18 @@ body.board-body.has-bg-image .board-cover-bg, body.hub-body.has-bg-image .board-
   min-width: 0;
 }
 
+/* position:relative por causa do .board-cover-bg (mosaico de capas de
+   fundo, position:absolute/z-index:0 -- ver mais abaixo): sem estar
+   posicionado, o nome do leilão é conteúdo estático e pinta ATRÁS do
+   mosaico assim que ele termina de carregar e o véu escuro entra
+   (has-covers), sumindo mesmo com o texto certinho no DOM -- mesmo motivo
+   .topbar-total (chip do total arrecadado) já tinha isso, só faltava aqui. */
 .topbar-mark {
   display: flex;
   align-items: baseline;
   gap: 11px;
   margin: 0;
+  position: relative;
 }
 
 /* board embutido no hub: toggle Leilão/Reacts + Ranking sobem pro topo em
