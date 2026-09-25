@@ -320,7 +320,7 @@ body.board-body.has-bg-image .board-cover-bg, body.hub-body.has-bg-image .board-
 .topbar-left {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 18px;
   flex-wrap: wrap;
   min-width: 0;
 }
@@ -354,16 +354,15 @@ body.board-body.has-bg-image .board-cover-bg, body.hub-body.has-bg-image .board-
   height: 46px;
   flex-shrink: 0;
   z-index: 5;
-  margin-right: 2px;
 }
 .topbar-mascot-img {
   position: absolute;
-  left: 54%;
+  left: 48%;
   top: 46%;
-  width: 80px;
+  width: 78px;
   height: auto;
   transform: translate(-50%, -40%);
-  filter: drop-shadow(0 8px 14px rgba(0, 0, 0, 0.55));
+  filter: drop-shadow(0 6px 4px rgba(0, 0, 0, 0.45)) drop-shadow(0 10px 18px rgba(0, 0, 0, 0.5));
   pointer-events: none;
 }
 /* luz radial difusa atrás do mascote -- separa ele do mosaico de capas
@@ -371,7 +370,7 @@ body.board-body.has-bg-image .board-cover-bg, body.hub-body.has-bg-image .board-
    cor de destaque do próprio tema (--accent-glow), não uma cor fixa. */
 .topbar-mascot-glow {
   position: absolute;
-  left: 54%;
+  left: 48%;
   top: 42%;
   width: 150px;
   height: 150px;
@@ -416,16 +415,19 @@ body.board-body.has-bg-image .board-cover-bg, body.hub-body.has-bg-image .board-
    hub (body.hub-body -- ver board-main.jsx, que nunca marca o body com
    board-body) -- só o brand-word da tela de criação usa body.create-body,
    então essa regra não vaza pra lá. Cor trocada de --accent-text (que
-   muda por tema) pro roxo fixo do mascote (--nav-accent, mesmo roxo da
-   navegação/marca da plataforma) -- pedido explícito do cliente pra
-   combinar nome e mascote, que é sempre roxo independente do tema do
-   leilão escolhido. */
+   muda por tema) pra uma variação MAIS CLARA do roxo do mascote (--nav-accent,
+   clareado com color-mix) -- o roxo idêntico ao mascote (usado numa
+   primeira tentativa) fazia texto e ilustração se fundirem num bloco só,
+   sem hierarquia de quem chama atenção primeiro (pedido explícito do
+   cliente pra ter contraste entre os dois, não a mesma cor exata).
+   text-shadow dá profundidade e separa o nome do mosaico de capas atrás. */
 .board-body .brand-word,
 .hub-body .brand-word {
   --font-title: "Fredoka", sans-serif;
   font-weight: 700;
   font-size: 34px;
-  color: var(--nav-accent, #7c5cfc);
+  color: color-mix(in srgb, var(--nav-accent, #7c5cfc) 65%, white);
+  text-shadow: 0 3px 10px rgba(0, 0, 0, 0.65);
 }
 
 .brand-word {
