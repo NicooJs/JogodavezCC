@@ -2781,20 +2781,22 @@ twitchChatBot.init({
   onHypeAccepted: (leilaoId, store, game) => {
     broadcastUpdate(leilaoId, store, {
       type: "hype",
-      game: { key: game.key, name: game.name, likes: game.likes },
+      // "by" é o nome de exibição de quem deu o hype no chat -- usado pro
+      // toast "fulano deu hype em tal jogo" no DonorsPanel (pedido
+      // explícito do cliente)
+      game: { key: game.key, name: game.name, likes: game.likes, by: game.by },
       // a cada 5 likes (era 10) -- pedido explícito do cliente pra disparar
       // o efeito de destaque com mais frequência
       fire: game.likes > 0 && game.likes % 5 === 0,
     });
   },
-  // !dislike não dispara nenhum efeito visual pontual (pedido explícito do
-  // cliente: só o contador, sem chama/glow negativo) -- broadcastUpdate
-  // ainda é necessário pra sincronizar o número em tempo real em quem tá
-  // assistindo o board.
+  // !dislike não dispara nenhum efeito visual pontual no CARD (pedido
+  // explícito do cliente: só o contador, sem chama/glow negativo) -- ainda
+  // participa do toast "fulano deu dislike em tal jogo" (ver "by" acima).
   onDislikeAccepted: (leilaoId, store, game) => {
     broadcastUpdate(leilaoId, store, {
       type: "dislike",
-      game: { key: game.key, name: game.name, dislikes: game.dislikes },
+      game: { key: game.key, name: game.name, dislikes: game.dislikes, by: game.by },
     });
   },
 });

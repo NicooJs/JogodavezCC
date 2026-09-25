@@ -247,6 +247,7 @@ function BoardContent({ leilaoId, embedded }) {
               donors={donors || []}
               totalRaised={leaderboard.totalRaised || 0}
               onMergeDonors={presenter.active ? mergeDonors : undefined}
+              lastEvent={lastEvent}
             />
           )}
         </div>

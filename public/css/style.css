@@ -2666,7 +2666,7 @@ body.presenter-mode .page-embedded {
 .host-twitch-badge:hover { transform: scale(1.1); }
 .host-twitch-badge[hidden] { display: none; }
 
-.donors-panel { flex: 1; min-height: 160px; }
+.donors-panel { flex: 1; min-height: 160px; position: relative; }
 
 .donor-list {
   flex: 1;
@@ -2674,6 +2674,44 @@ body.presenter-mode .page-embedded {
   min-height: 0;
   margin: 0 -4px;
   padding: 0 4px;
+}
+
+/* toast de 3s "fulano deu hype/dislike em tal jogo" (pedido explícito do
+   cliente) -- ancorado no rodapé do Quadro de Honra, aparece pra QUALQUER
+   !hype/!dislike aceito no chat, entra/sai com fade+slide ao longo dos
+   3s inteiros (bate com o timeout em DonorsPanel.jsx). */
+.donor-reaction-toast {
+  position: absolute;
+  left: 12px;
+  right: 12px;
+  bottom: 12px;
+  z-index: 3;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
+  border-radius: var(--radius);
+  background: color-mix(in srgb, var(--surface-2) 92%, transparent);
+  border: 1px solid var(--border);
+  backdrop-filter: blur(8px);
+  font-size: 13px;
+  line-height: 1.3;
+  color: var(--text);
+  animation: donor-reaction-toast 3s ease-in-out forwards;
+}
+.donor-reaction-toast .icon { width: 16px; height: 16px; flex-shrink: 0; }
+.donor-reaction-toast.is-hype .icon { color: #ff6f91; }
+.donor-reaction-toast.is-dislike .icon { color: var(--muted); }
+.donor-reaction-toast b { color: var(--accent-text); font-weight: 700; }
+
+@keyframes donor-reaction-toast {
+  0% { opacity: 0; transform: translateY(8px); }
+  10%, 88% { opacity: 1; transform: translateY(0); }
+  100% { opacity: 0; transform: translateY(8px); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .donor-reaction-toast { animation: none; }
 }
 
 .empty-state {

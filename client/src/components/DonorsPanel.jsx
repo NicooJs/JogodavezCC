@@ -1,12 +1,26 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { formatBRL, initial } from '../lib/format.js'
 import { RankBadge } from './icons.jsx'
 
-export default function DonorsPanel({ donors, totalRaised, onMergeDonors }) {
+export default function DonorsPanel({ donors, totalRaised, onMergeDonors, lastEvent }) {
   const [leader, ...rest] = donors
   const maxTotal = Math.max(...rest.map((d) => d.total), 1)
   const dominance =
     leader && totalRaised > 0 ? Math.max(2, Math.min(100, Math.round((leader.total / totalRaised) * 100))) : null
+
+  // toast de 3s "fulano deu hype/dislike em tal jogo" no rodapé do painel
+  // (pedido explícito do cliente) -- reage a QUALQUER !hype/!dislike
+  // aceito no chat da Twitch, não só o marco de 5 (esse marco só decide a
+  // chama grande no card, ver ArenaPanel.jsx)
+  const [reactionToast, setReactionToast] = useState(null)
+  const reactionTimer = useRef(null)
+  useEffect(() => {
+    if (!lastEvent || (lastEvent.type !== 'hype' && lastEvent.type !== 'dislike') || !lastEvent.game) return
+    clearTimeout(reactionTimer.current)
+    setReactionToast({ type: lastEvent.type, gameName: lastEvent.game.name, by: lastEvent.game.by || 'alguém' })
+    reactionTimer.current = setTimeout(() => setReactionToast(null), 3000)
+    return () => clearTimeout(reactionTimer.current)
+  }, [lastEvent])
 
   // arrastar um apoiador sobre outro mescla os dois (mesmo apoiador digitou
   // o nome diferente em 2 doações) -- só ativo em modo apresentador
@@ -110,6 +124,18 @@ export default function DonorsPanel({ donors, totalRaised, onMergeDonors }) {
           )
         })}
       </div>
+      {reactionToast ? (
+        <div className={`donor-reaction-toast is-${reactionToast.type}`}>
+          {reactionToast.type === 'hype' ? (
+            <svg className="icon" viewBox="0 0 20 20" fill="currentColor" stroke="none" aria-hidden="true"><path d="M10 17.3l-1.1-1C4.4 12.4 2 10.2 2 7.4 2 5.2 3.7 3.5 5.9 3.5c1.3 0 2.6.6 3.4 1.6.8-1 2.1-1.6 3.4-1.6C15 3.5 16.7 5.2 16.7 7.4c0 2.8-2.4 5-6.9 8.9l-.8.7z" /></svg>
+          ) : (
+            <svg className="icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M6 11V3.5h7.2c1 0 1.8.8 1.6 1.8l-.9 5.5c-.1.7-.7 1.2-1.5 1.2H6z" /><path d="M6 11l-2.3 4.5c-.5 1 .2 2 1.3 2 .6 0 1.2-.4 1.4-1l1.6-4v-1.5H6z" /></svg>
+          )}
+          <span>
+            <b>{reactionToast.by}</b> deu {reactionToast.type === 'hype' ? 'hype' : 'dislike'} em <b>{reactionToast.gameName}</b>
+          </span>
+        </div>
+      ) : null}
     </section>
   )
 }

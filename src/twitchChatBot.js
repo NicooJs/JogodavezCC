@@ -1,8 +1,11 @@
 const tmi = require("tmi.js");
 const { findExistingGameInText } = require("./parser");
 
-// bot compartilhado, só leitura -- conecta anônimo (sem identity/token),
-// nenhuma autorização por streamer é necessária pra LER o chat público.
+// bot compartilhado -- LER o chat público sempre foi anônimo (sem
+// identity/token), nenhuma autorização por streamer é necessária pra
+// isso. ESCREVER (avisar cooldown, ver replyCooldown/canReply abaixo) é
+// opcional, só liga se TWITCH_BOT_USERNAME/TWITCH_BOT_OAUTH_TOKEN
+// existirem -- sem eles, continua puro leitura como sempre foi.
 // !hype nome do jogo dá 1 like no lote correspondente; a cada 5 likes
 // server.js dispara a animação de fogo via broadcastUpdate (ver init()).
 // !dislike nome do jogo é o irmão negativo -- mesma mecânica, contador
@@ -15,10 +18,23 @@ const { findExistingGameInText } = require("./parser");
 // tolerando erro de digitação e palavras extras em volta. Mesma lógica
 // vale pro !dislike.
 const REACTIONS = {
-  hype: { pattern: /^!hype\s+(.+)$/i, storeMethod: "likeGame", cooldownMap: new Map() },
-  dislike: { pattern: /^!dislike\s+(.+)$/i, storeMethod: "dislikeGame", cooldownMap: new Map() },
+  hype: { pattern: /^!hype\s+(.+)$/i, storeMethod: "likeGame", cooldownMap: new Map(), replyThrottle: new Map() },
+  dislike: { pattern: /^!dislike\s+(.+)$/i, storeMethod: "dislikeGame", cooldownMap: new Map(), replyThrottle: new Map() },
 };
 const REACTION_COOLDOWN_MS = 10 * 60 * 1000; // 1 reação por tipo por espectador a cada 10min, qualquer jogo
+// aviso de cooldown no chat não repete a cada tentativa (viewer insistindo
+// !hype/!hype/!hype enquanto ainda em cooldown spammaria o bot) -- só
+// responde de novo pro mesmo viewer depois desse intervalo
+const COOLDOWN_REPLY_THROTTLE_MS = 30 * 1000;
+
+// bot só ganha permissão de ESCREVER no chat (avisar cooldown) se as duas
+// variáveis abaixo existirem -- sem elas, continua 100% leitura como
+// sempre foi, sem nenhuma mudança de comportamento. TWITCH_BOT_USERNAME é
+// o login da conta do bot, TWITCH_BOT_OAUTH_TOKEN é um token no formato
+// "oauth:xxxx" com escopo chat:edit pra essa conta -- não é algo que o
+// servidor consegue gerar sozinho, precisa de autorização manual da conta
+// do bot na Twitch (feito fora daqui, uma vez).
+const canReply = !!(process.env.TWITCH_BOT_USERNAME && process.env.TWITCH_BOT_OAUTH_TOKEN);
 
 let client = null;
 let getStoreFn = null;
@@ -36,11 +52,22 @@ function logHype(...args) {
 }
 
 function connect(channels) {
-  client = new tmi.Client({ channels });
-  client.on("connected", (addr, port) => logHype("conectado:", addr, port, "| canais:", channels.join(", ")));
+  const options = { channels };
+  if (canReply) {
+    options.identity = { username: process.env.TWITCH_BOT_USERNAME, password: process.env.TWITCH_BOT_OAUTH_TOKEN };
+  }
+  client = new tmi.Client(options);
+  client.on("connected", (addr, port) =>
+    logHype("conectado:", addr, port, "| canais:", channels.join(", "), "| modo:", canReply ? "leitura+escrita" : "só leitura")
+  );
   client.on("disconnected", (reason) => logHype("desconectado:", reason));
   client.on("message", handleMessage);
   client.connect().catch((err) => console.error("[twitch-chat-bot] erro ao conectar:", err.message));
+}
+
+function formatRemaining(ms) {
+  const minutes = Math.ceil(ms / 60000);
+  return minutes <= 1 ? "menos de 1min" : `${minutes}min`;
 }
 
 function handleMessage(channel, tags, message, self) {
@@ -67,7 +94,9 @@ function handleReaction(kind, reaction, gameText, channel, tags) {
   const now = Date.now();
   const lastAt = reaction.cooldownMap.get(cooldownKey);
   if (lastAt && now - lastAt < REACTION_COOLDOWN_MS) {
-    return logHype(`${viewerId} em cooldown ainda pro !${kind} (faltam ${Math.ceil((REACTION_COOLDOWN_MS - (now - lastAt)) / 1000)}s)`);
+    const remainingMs = REACTION_COOLDOWN_MS - (now - lastAt);
+    logHype(`${viewerId} em cooldown ainda pro !${kind} (faltam ${Math.ceil(remainingMs / 1000)}s)`);
+    return replyCooldown(reaction, kind, channel, tags, cooldownKey, remainingMs, now);
   }
 
   const store = getStoreFn(leilaoId);
@@ -80,8 +109,25 @@ function handleReaction(kind, reaction, gameText, channel, tags) {
   reaction.cooldownMap.set(cooldownKey, now);
   logHype(`!${kind} aceito: ${matched.name} (${leilaoId}), contador agora = ${count}`);
 
-  if (kind === "hype") onHypeAccepted?.(leilaoId, store, { key: matched.key, name: matched.name, likes: count });
-  else onDislikeAccepted?.(leilaoId, store, { key: matched.key, name: matched.name, dislikes: count });
+  const by = tags["display-name"] || tags.username;
+  if (kind === "hype") onHypeAccepted?.(leilaoId, store, { key: matched.key, name: matched.name, likes: count, by });
+  else onDislikeAccepted?.(leilaoId, store, { key: matched.key, name: matched.name, dislikes: count, by });
+}
+
+// só existe efeito se canReply (bot com identidade própria, ver connect())
+// -- sem isso, client.say nem existe direito (client conectado anônimo não
+// consegue escrever, tmi.js rejeitaria a chamada). Throttle por
+// viewer+tipo pra não spammar o chat se alguém insistir no comando várias
+// vezes seguidas enquanto ainda em cooldown.
+function replyCooldown(reaction, kind, channel, tags, cooldownKey, remainingMs, now) {
+  if (!canReply) return;
+  const lastReplyAt = reaction.replyThrottle.get(cooldownKey);
+  if (lastReplyAt && now - lastReplyAt < COOLDOWN_REPLY_THROTTLE_MS) return;
+  reaction.replyThrottle.set(cooldownKey, now);
+  const mention = tags.username;
+  client
+    .say(channel, `@${mention} calma, ainda faltam ${formatRemaining(remainingMs)} pro próximo !${kind}.`)
+    .catch((err) => console.error(`[twitch-chat-bot] erro ao responder cooldown em ${channel}:`, err.message));
 }
 
 // chamado uma vez no boot do server.js -- junta todos os leilões que já
