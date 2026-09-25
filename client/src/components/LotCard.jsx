@@ -187,7 +187,7 @@ export default function LotCard({
           ) : null}
           {item.dislikes > 0 ? (
             <div className="lot-dislikes" title={`${item.dislikes} dislike no chat da Twitch`}>
-              <svg className="icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M6 11V3.5h7.2c1 0 1.8.8 1.6 1.8l-.9 5.5c-.1.7-.7 1.2-1.5 1.2H6z" /><path d="M6 11l-2.3 4.5c-.5 1 .2 2 1.3 2 .6 0 1.2-.4 1.4-1l1.6-4v-1.5H6z" /></svg>
+              <svg className="icon" viewBox="0 0 20 20" fill="currentColor" stroke="none" aria-hidden="true"><rect x="5.5" y="3" width="9" height="6.5" rx="1.2" /><rect x="6" y="9" width="4.5" height="7.5" rx="2.25" transform="rotate(20 8.25 9)" /></svg>
               <span>{item.dislikes}</span>
             </div>
           ) : null}
