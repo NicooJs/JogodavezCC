@@ -320,7 +320,7 @@ body.board-body.has-bg-image .board-cover-bg, body.hub-body.has-bg-image .board-
 .topbar-left {
   display: flex;
   align-items: center;
-  gap: 20px;
+  gap: 12px;
   flex-wrap: wrap;
   min-width: 0;
 }
@@ -350,16 +350,17 @@ body.board-body.has-bg-image .board-cover-bg, body.hub-body.has-bg-image .board-
    no DOM (empilhamento dentro do mesmo contexto de .page). */
 .topbar-mascot {
   position: relative;
-  width: 46px;
+  width: 40px;
   height: 46px;
   flex-shrink: 0;
   z-index: 5;
+  margin-right: 2px;
 }
 .topbar-mascot-img {
   position: absolute;
-  left: 50%;
+  left: 54%;
   top: 46%;
-  width: 88px;
+  width: 80px;
   height: auto;
   transform: translate(-50%, -40%);
   filter: drop-shadow(0 8px 14px rgba(0, 0, 0, 0.55));
@@ -370,7 +371,7 @@ body.board-body.has-bg-image .board-cover-bg, body.hub-body.has-bg-image .board-
    cor de destaque do próprio tema (--accent-glow), não uma cor fixa. */
 .topbar-mascot-glow {
   position: absolute;
-  left: 50%;
+  left: 54%;
   top: 42%;
   width: 150px;
   height: 150px;
@@ -401,6 +402,12 @@ body.board-body.has-bg-image .board-cover-bg, body.hub-body.has-bg-image .board-
   transform: rotate(45deg);
   flex-shrink: 0;
 }
+/* com o mascote como âncora visual do nome, o losango vira redundante
+   (os dois competindo pelo mesmo papel) -- pedido explícito do cliente
+   pra tirar só nesse caso. :has() em vez de mexer direto no ::before
+   porque a versão vanilla antiga do board (public/board.html, sem
+   mascote) continua usando esse mesmo losango normalmente. */
+.topbar-left:has(.topbar-mascot) .topbar-mark::before { display: none; }
 
 /* nome do leilão em destaque -- antes usava a mesma cor/tamanho do logo
    "JogodaVez" da tela de criação, ficava discreto demais perto do resto
@@ -408,13 +415,17 @@ body.board-body.has-bg-image .board-cover-bg, body.hub-body.has-bg-image .board-
    /l/:id standalone (body.board-body) quanto no board embutido dentro do
    hub (body.hub-body -- ver board-main.jsx, que nunca marca o body com
    board-body) -- só o brand-word da tela de criação usa body.create-body,
-   então essa regra não vaza pra lá. */
+   então essa regra não vaza pra lá. Cor trocada de --accent-text (que
+   muda por tema) pro roxo fixo do mascote (--nav-accent, mesmo roxo da
+   navegação/marca da plataforma) -- pedido explícito do cliente pra
+   combinar nome e mascote, que é sempre roxo independente do tema do
+   leilão escolhido. */
 .board-body .brand-word,
 .hub-body .brand-word {
   --font-title: "Fredoka", sans-serif;
   font-weight: 700;
   font-size: 34px;
-  color: var(--accent-text);
+  color: var(--nav-accent, #7c5cfc);
 }
 
 .brand-word {
