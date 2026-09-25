@@ -15,12 +15,7 @@ export default function Topbar({
   onModCodeGenerated,
   onOpenSettings,
   onOpenRanking,
-  embedded,
-  activeSystem,
-  onSwitchSystem,
 }) {
-  const isReacts = activeSystem === 'reacts'
-
   return (
     <header className="topbar">
       <div className="topbar-left">
@@ -31,15 +26,6 @@ export default function Topbar({
         <p className="topbar-mark">
           <span className="brand-word">{title}</span>
         </p>
-        {embedded && presenterActive ? (
-          <div className="topbar-embed-controls">
-            <div className="seg">
-              <button type="button" className={isReacts ? '' : 'active'} onClick={() => onSwitchSystem('leilao')}>Leilão</button>
-              <button type="button" className={isReacts ? 'active' : ''} onClick={() => onSwitchSystem('reacts')}>Reacts</button>
-            </div>
-            <button className="btn-mini" type="button" onClick={onOpenRanking}>Ranking</button>
-          </div>
-        ) : null}
       </div>
       <div className="topbar-right">
         <NotifBell leilaoId={leilaoId} active={presenterActive} historyItems={historyItems} />

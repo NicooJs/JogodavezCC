@@ -205,9 +205,6 @@ function BoardContent({ leilaoId, embedded }) {
         onModCodeGenerated={setModCode}
         onOpenSettings={() => setSettingsOpen(true)}
         onOpenRanking={() => setRankingOpen(true)}
-        embedded={embedded}
-        activeSystem={leaderboard.activeSystem}
-        onSwitchSystem={switchSystem}
       />
 
       {presenter.active ? (

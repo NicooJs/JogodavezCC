@@ -383,15 +383,6 @@ body.board-body.has-bg-image .board-cover-bg, body.hub-body.has-bg-image .board-
   z-index: -1;
 }
 
-/* board embutido no hub: toggle Leilão/Reacts + Ranking sobem pro topo em
-   vez de ficar numa trilha própria (essa some quando embutido, a sidebar
-   do hub já cobre o resto -- ver App.jsx `embedded`) */
-.topbar-embed-controls {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-
 .topbar-mark::before {
   content: "";
   width: 10px;
