@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { loadStandaloneEntry } from './lib/standaloneEntry.js'
+import { formatBRL } from './lib/format.js'
 
 // casca do hub (antes public/js/painel.js, JS puro) -- orquestra sessão,
 // roteamento entre views e montar/desmontar cada bundle React standalone
@@ -24,17 +25,33 @@ function viewForPath(pathname) {
   return Object.keys(VIEW_PATHS).find((name) => VIEW_PATHS[name] === pathname) || null
 }
 
+// martelo de leilão e balão de reação com play -- trocados dos ícones
+// genéricos de biblioteca (grade/TV) por algo com mais identidade própria,
+// pedido explícito do cliente
 const ICON_LEILAO = (
-  <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><rect x="2.5" y="4" width="6" height="6" rx="1" /><rect x="11.5" y="4" width="6" height="6" rx="1" /><rect x="2.5" y="12" width="6" height="4" rx="1" /><rect x="11.5" y="12" width="6" height="4" rx="1" /></svg>
+  <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <rect x="3" y="3.5" width="7" height="3.2" rx="1" transform="rotate(-40 6.5 5.1)" />
+    <line x1="8.2" y1="6.8" x2="14.5" y2="13" />
+    <line x1="3" y1="11.5" x2="6.3" y2="8.2" />
+    <line x1="6" y1="14.5" x2="9.3" y2="11.2" />
+    <line x1="4" y1="17" x2="12" y2="17" />
+  </svg>
 )
 const ICON_REACTS = (
-  <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><rect x="2.5" y="3.5" width="15" height="10.5" rx="1.5" /><path d="M8.2 8.1l4 2.1-4 2.1V8.1z" fill="currentColor" stroke="none" /><path d="M6 17h8" /></svg>
+  <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <path d="M2.5 5.5a2 2 0 012-2h11a2 2 0 012 2v6a2 2 0 01-2 2H8l-3.5 3v-3H4.5a2 2 0 01-2-2v-6z" />
+    <path d="M8.2 6.3l4 2.2-4 2.2V6.3z" fill="currentColor" stroke="none" />
+  </svg>
 )
 
 export default function PainelApp() {
   const [session, setSession] = useState(null) // null = carregando; depois {loggedIn, ...}
   const [leilao, setLeilao] = useState(null) // { id, url, title, activeSystem, ... } ou null
   const [activeView, setActiveView] = useState('home')
+  // resumo rápido do Início -- só os números que já vêm prontos de
+  // /api/perfil (mesma rota que a aba Visão geral do Perfil usa), sem rota
+  // nova nenhuma
+  const [summary, setSummary] = useState(null)
 
   const mountedRef = useRef({ board: false, settings: false, historico: false, perfil: false })
   const loadPromiseRef = useRef({}) // por painel: promise do script já injetado (só uma vez cada)
@@ -50,11 +67,18 @@ export default function PainelApp() {
       setSession(s)
       if (!s.loggedIn) return
 
-      const res = await fetch('/api/meus-leiloes')
-      const data = res.ok ? await res.json() : { leiloes: [] }
+      const [leiloesRes, perfilRes] = await Promise.all([
+        fetch('/api/meus-leiloes'),
+        fetch('/api/perfil').catch(() => null),
+      ])
+      const data = leiloesRes.ok ? await leiloesRes.json() : { leiloes: [] }
       if (cancelled) return
       const l = data.leiloes && data.leiloes.length ? data.leiloes[0] : null
       setLeilao(l)
+      if (perfilRes && perfilRes.ok) {
+        const p = await perfilRes.json()
+        if (!cancelled) setSummary(p)
+      }
 
       let initial = viewForPath(location.pathname) || 'home'
       if (!l && initial !== 'home' && initial !== 'perfil') {
@@ -243,39 +267,66 @@ export default function PainelApp() {
           </div>
 
           <p className="hub-section-label">Ferramentas</p>
-          <div className="hub-service-grid" id="hub-service-grid">
-            <a
-              className="hub-service-card"
-              id="hub-card-leilao"
-              href={leilaoHref}
-              onClick={leilao ? (e) => { e.preventDefault(); switchSystemAndOpen('leilao') } : undefined}
-            >
-              <div className="hub-service-art tone-leilao">
-                <span className="hub-service-art-icon">{ICON_LEILAO}</span>
+          <div className="hub-content">
+            <div className="hub-service-grid" id="hub-service-grid">
+              <a
+                className="hub-service-card"
+                id="hub-card-leilao"
+                href={leilaoHref}
+                onClick={leilao ? (e) => { e.preventDefault(); switchSystemAndOpen('leilao') } : undefined}
+              >
+                <div className="hub-service-art tone-leilao">
+                  <span className="hub-service-art-icon">{ICON_LEILAO}</span>
+                  <img className="hub-service-art-mascot" src="/img/loading-mascot.png" alt="" />
+                </div>
+                <div className="hub-service-body">
+                  <p className="hub-service-name">Leilão</p>
+                  <p className="hub-service-desc">{leilao ? 'Voltar pro seu leilão' : 'Ainda não criado -- criar agora'}</p>
+                </div>
+              </a>
+              <a
+                className="hub-service-card"
+                id="hub-card-reacts"
+                href={reactsHref}
+                onClick={leilao ? (e) => { e.preventDefault(); switchSystemAndOpen('reacts') } : undefined}
+              >
+                <div className="hub-service-art tone-reacts">
+                  <span className="hub-service-art-icon">{ICON_REACTS}</span>
+                  <img className="hub-service-art-mascot" src="/img/loading-mascot.png" alt="" />
+                </div>
+                <div className="hub-service-body">
+                  <p className="hub-service-name">Reacts</p>
+                  <p className="hub-service-desc">{leilao ? 'Voltar pros seus reacts' : 'Ainda não criado -- criar agora'}</p>
+                </div>
+              </a>
+              <div className="hub-soon-card">
+                <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><path d="M10 4v12M4 10h12" /></svg>
+                Mais ferramentas em breve
               </div>
-              <div className="hub-service-body">
-                <p className="hub-service-name">Leilão</p>
-                <p className="hub-service-desc">{leilao ? 'Continuar administrando' : 'Ainda não criado -- criar agora'}</p>
-              </div>
-            </a>
-            <a
-              className="hub-service-card"
-              id="hub-card-reacts"
-              href={reactsHref}
-              onClick={leilao ? (e) => { e.preventDefault(); switchSystemAndOpen('reacts') } : undefined}
-            >
-              <div className="hub-service-art tone-reacts">
-                <span className="hub-service-art-icon">{ICON_REACTS}</span>
-              </div>
-              <div className="hub-service-body">
-                <p className="hub-service-name">Reacts</p>
-                <p className="hub-service-desc">{leilao ? 'Continuar administrando' : 'Ainda não criado -- criar agora'}</p>
-              </div>
-            </a>
-            <div className="hub-soon-card">
-              <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><path d="M10 4v12M4 10h12" /></svg>
-              Mais ferramentas em breve
             </div>
+
+            {summary ? (
+              <div className="hub-summary">
+                <div className="hub-summary-card">
+                  <span className="hub-summary-icon">
+                    <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><circle cx="10" cy="10" r="7" /><path d="M12.3 7.8a2.3 2.3 0 00-2.3-1.3c-1.5 0-2.5.9-2.5 2s1 1.6 2.5 1.9 2.5.8 2.5 1.9-1 2-2.5 2a2.5 2.5 0 01-2.4-1.4" /><path d="M10 5.3v1.3M10 13.4v1.3" /></svg>
+                  </span>
+                  <div className="hub-summary-text">
+                    <p className="hub-summary-value">{formatBRL((summary.lifetimeEarnedCents || 0) / 100)}</p>
+                    <p className="hub-summary-label">arrecadado ao todo</p>
+                  </div>
+                </div>
+                <div className="hub-summary-card">
+                  <span className="hub-summary-icon">
+                    <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M10 17.3l-1.1-1C4.4 12.4 2 10.2 2 7.4 2 5.2 3.7 3.5 5.9 3.5c1.3 0 2.6.6 3.4 1.6.8-1 2.1-1.6 3.4-1.6C15 3.5 16.7 5.2 16.7 7.4c0 2.8-2.4 5-6.9 8.9l-.8.7z" /></svg>
+                  </span>
+                  <div className="hub-summary-text">
+                    <p className="hub-summary-value">{summary.donationCount30d || 0}</p>
+                    <p className="hub-summary-label">doações nos últimos 30 dias</p>
+                  </div>
+                </div>
+              </div>
+            ) : null}
           </div>
         </div>
 
