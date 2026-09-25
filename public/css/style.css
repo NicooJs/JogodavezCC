@@ -2676,10 +2676,13 @@ body.presenter-mode .page-embedded {
   padding: 0 4px;
 }
 
-/* toast de 3s "fulano deu hype/dislike em tal jogo" (pedido explícito do
-   cliente) -- ancorado no rodapé do Quadro de Honra, aparece pra QUALQUER
-   !hype/!dislike aceito no chat, entra/sai com fade+slide ao longo dos
-   3s inteiros (bate com o timeout em DonorsPanel.jsx). */
+/* toast de 5s "fulano deu hype/dislike em tal jogo" (pedido explícito do
+   cliente, versão detalhada -- a 1ª versão era um texto pequeno só, sem
+   foto nem botão de fechar) -- ancorado no rodapé do Quadro de Honra,
+   aparece pra QUALQUER !hype/!dislike aceito no chat, entra/sai com
+   fade+slide ao longo dos 5s inteiros (bate com o timeout em
+   DonorsPanel.jsx). Fechar manual (botão X) cancela o timer e some na
+   hora, sem esperar a animação. */
 .donor-reaction-toast {
   position: absolute;
   left: 12px;
@@ -2688,25 +2691,75 @@ body.presenter-mode .page-embedded {
   z-index: 3;
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 10px 14px;
+  gap: 10px;
+  padding: 12px 14px;
   border-radius: var(--radius);
-  background: color-mix(in srgb, var(--surface-2) 92%, transparent);
+  background: color-mix(in srgb, var(--surface-2) 94%, transparent);
   border: 1px solid var(--border);
   backdrop-filter: blur(8px);
-  font-size: 13px;
-  line-height: 1.3;
+  box-shadow: 0 8px 24px -8px rgba(0, 0, 0, 0.45);
   color: var(--text);
-  animation: donor-reaction-toast 3s ease-in-out forwards;
+  animation: donor-reaction-toast 5s ease-in-out forwards;
 }
-.donor-reaction-toast .icon { width: 16px; height: 16px; flex-shrink: 0; }
-.donor-reaction-toast.is-hype .icon { color: #ff6f91; }
-.donor-reaction-toast.is-dislike .icon { color: var(--muted); }
-.donor-reaction-toast b { color: var(--accent-text); font-weight: 700; }
+.donor-reaction-toast-avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  object-fit: cover;
+  background: var(--surface);
+  flex-shrink: 0;
+  font-size: 15px;
+}
+.donor-reaction-toast.is-hype .donor-reaction-toast-avatar { border: 2px solid #ff6f91; }
+.donor-reaction-toast.is-dislike .donor-reaction-toast-avatar { border: 2px solid var(--border-soft); }
+.donor-reaction-toast-body {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.donor-reaction-toast-name {
+  font-size: 13.5px;
+  font-weight: 700;
+  color: var(--text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.donor-reaction-toast-action {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 12.5px;
+  color: var(--muted);
+  line-height: 1.3;
+}
+.donor-reaction-toast-action b { color: var(--accent-text); font-weight: 700; }
+.donor-reaction-toast-action .icon { width: 14px; height: 14px; flex-shrink: 0; }
+.donor-reaction-toast.is-hype .donor-reaction-toast-action .icon { color: #ff6f91; }
+.donor-reaction-toast.is-dislike .donor-reaction-toast-action .icon { color: var(--muted); }
+.donor-reaction-toast-count { font-style: normal; color: var(--muted); margin-left: 2px; }
+.donor-reaction-toast-close {
+  flex-shrink: 0;
+  width: 22px;
+  height: 22px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+.donor-reaction-toast-close .icon { width: 12px; height: 12px; }
+.donor-reaction-toast-close:hover { background: color-mix(in srgb, var(--text) 12%, transparent); color: var(--text); }
 
 @keyframes donor-reaction-toast {
   0% { opacity: 0; transform: translateY(8px); }
-  10%, 88% { opacity: 1; transform: translateY(0); }
+  8%, 92% { opacity: 1; transform: translateY(0); }
   100% { opacity: 0; transform: translateY(8px); }
 }
 

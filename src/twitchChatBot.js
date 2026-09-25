@@ -9,8 +9,10 @@ const { findExistingGameInText } = require("./parser");
 // !hype nome do jogo dá 1 like no lote correspondente; a cada 5 likes
 // server.js dispara a animação de fogo via broadcastUpdate (ver init()).
 // !dislike nome do jogo é o irmão negativo -- mesma mecânica, contador
-// separado (dislikes), sem nenhum efeito visual disparado por ele (só o
-// contador no card, pedido explícito do cliente).
+// separado (dislikes), sem nenhum efeito visual no CARD do board (só o
+// contador, pedido explícito do cliente) -- mas participa igual do
+// !hype na confirmação/cooldown no chat (ver replyConfirmation/
+// replyCooldown abaixo).
 // Sem aspas de propósito (2026-09-02, corrigido): exigir aspas literais
 // era inútil, nenhum viewer digita `!hype "Elden Ring"` de verdade no
 // chat -- captura o resto da mensagem cru e deixa findExistingGameInText
@@ -21,7 +23,7 @@ const REACTIONS = {
   hype: { pattern: /^!hype\s+(.+)$/i, storeMethod: "likeGame", cooldownMap: new Map(), replyThrottle: new Map() },
   dislike: { pattern: /^!dislike\s+(.+)$/i, storeMethod: "dislikeGame", cooldownMap: new Map(), replyThrottle: new Map() },
 };
-const REACTION_COOLDOWN_MS = 10 * 60 * 1000; // 1 reação por tipo por espectador a cada 10min, qualquer jogo
+const REACTION_COOLDOWN_MS = 5 * 60 * 1000; // 1 reação por tipo por espectador a cada 5min (era 10), qualquer jogo
 // aviso de cooldown no chat não repete a cada tentativa (viewer insistindo
 // !hype/!hype/!hype enquanto ainda em cooldown spammaria o bot) -- só
 // responde de novo pro mesmo viewer depois desse intervalo
@@ -65,9 +67,15 @@ function connect(channels) {
   client.connect().catch((err) => console.error("[twitch-chat-bot] erro ao conectar:", err.message));
 }
 
+// precisão em segundos (pedido explícito do cliente) -- 1 mensagem só na
+// tentativa bloqueada, não uma contagem regressiva mensagem-a-mensagem
+// (isso spammaria o chat e esbarraria no limite de mensagens da Twitch).
 function formatRemaining(ms) {
-  const minutes = Math.ceil(ms / 60000);
-  return minutes <= 1 ? "menos de 1min" : `${minutes}min`;
+  const totalSeconds = Math.ceil(ms / 1000);
+  const minutes = Math.floor(totalSeconds / 60);
+  const seconds = totalSeconds % 60;
+  if (minutes === 0) return `${seconds}s`;
+  return seconds === 0 ? `${minutes}min` : `${minutes}min${seconds}s`;
 }
 
 function handleMessage(channel, tags, message, self) {
@@ -108,10 +116,26 @@ function handleReaction(kind, reaction, gameText, channel, tags) {
   if (count == null) return logHype(`${reaction.storeMethod}(${matched.key}) retornou null, jogo sumiu?`);
   reaction.cooldownMap.set(cooldownKey, now);
   logHype(`!${kind} aceito: ${matched.name} (${leilaoId}), contador agora = ${count}`);
+  replyConfirmation(kind, channel, tags, matched.name, count);
 
   const by = tags["display-name"] || tags.username;
   if (kind === "hype") onHypeAccepted?.(leilaoId, store, { key: matched.key, name: matched.name, likes: count, by });
   else onDislikeAccepted?.(leilaoId, store, { key: matched.key, name: matched.name, dislikes: count, by });
+}
+
+// confirmação de sucesso (pedido explícito do cliente) -- dispara em TODO
+// !hype/!dislike aceito, não só na tentativa bloqueada. Diferente de
+// replyCooldown, não precisa de throttle próprio: o cooldown da própria
+// reação (REACTION_COOLDOWN_MS) já impede a MESMA pessoa de gerar 2
+// confirmações em sequência -- só não impede várias PESSOAS diferentes
+// gerando várias mensagens seguidas se o jogo estiver bombando, o que é
+// esperado e aceito.
+function replyConfirmation(kind, channel, tags, gameName, count) {
+  if (!canReply) return;
+  const mention = tags.username;
+  client
+    .say(channel, `@${mention} ${kind} dado em ${gameName}! (${count} no total)`)
+    .catch((err) => console.error(`[twitch-chat-bot] erro ao confirmar !${kind} em ${channel}:`, err.message));
 }
 
 // só existe efeito se canReply (bot com identidade própria, ver connect())

@@ -8,17 +8,28 @@ export default function DonorsPanel({ donors, totalRaised, onMergeDonors, lastEv
   const dominance =
     leader && totalRaised > 0 ? Math.max(2, Math.min(100, Math.round((leader.total / totalRaised) * 100))) : null
 
-  // toast de 3s "fulano deu hype/dislike em tal jogo" no rodapé do painel
-  // (pedido explícito do cliente) -- reage a QUALQUER !hype/!dislike
-  // aceito no chat da Twitch, não só o marco de 5 (esse marco só decide a
-  // chama grande no card, ver ArenaPanel.jsx)
+  // toast de 5s "fulano deu hype/dislike em tal jogo" no rodapé do painel
+  // (pedido explícito do cliente, versão detalhada com foto + fechar
+  // manual -- a primeira versão era só texto pequeno) -- reage a QUALQUER
+  // !hype/!dislike aceito no chat da Twitch, não só o marco de 5 (esse
+  // marco só decide a chama grande no card, ver ArenaPanel.jsx)
   const [reactionToast, setReactionToast] = useState(null)
   const reactionTimer = useRef(null)
+  const dismissReactionToast = () => {
+    clearTimeout(reactionTimer.current)
+    setReactionToast(null)
+  }
   useEffect(() => {
     if (!lastEvent || (lastEvent.type !== 'hype' && lastEvent.type !== 'dislike') || !lastEvent.game) return
     clearTimeout(reactionTimer.current)
-    setReactionToast({ type: lastEvent.type, gameName: lastEvent.game.name, by: lastEvent.game.by || 'alguém' })
-    reactionTimer.current = setTimeout(() => setReactionToast(null), 3000)
+    setReactionToast({
+      type: lastEvent.type,
+      gameName: lastEvent.game.name,
+      by: lastEvent.game.by || 'alguém',
+      avatar: lastEvent.game.byAvatar || null,
+      count: lastEvent.type === 'hype' ? lastEvent.game.likes : lastEvent.game.dislikes,
+    })
+    reactionTimer.current = setTimeout(() => setReactionToast(null), 5000)
     return () => clearTimeout(reactionTimer.current)
   }, [lastEvent])
 
@@ -126,14 +137,26 @@ export default function DonorsPanel({ donors, totalRaised, onMergeDonors, lastEv
       </div>
       {reactionToast ? (
         <div className={`donor-reaction-toast is-${reactionToast.type}`}>
-          {reactionToast.type === 'hype' ? (
-            <svg className="icon" viewBox="0 0 20 20" fill="currentColor" stroke="none" aria-hidden="true"><path d="M10 17.3l-1.1-1C4.4 12.4 2 10.2 2 7.4 2 5.2 3.7 3.5 5.9 3.5c1.3 0 2.6.6 3.4 1.6.8-1 2.1-1.6 3.4-1.6C15 3.5 16.7 5.2 16.7 7.4c0 2.8-2.4 5-6.9 8.9l-.8.7z" /></svg>
+          {reactionToast.avatar ? (
+            <img className="donor-reaction-toast-avatar" src={reactionToast.avatar} alt="" loading="lazy" />
           ) : (
-            <svg className="icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M6 11V3.5h7.2c1 0 1.8.8 1.6 1.8l-.9 5.5c-.1.7-.7 1.2-1.5 1.2H6z" /><path d="M6 11l-2.3 4.5c-.5 1 .2 2 1.3 2 .6 0 1.2-.4 1.4-1l1.6-4v-1.5H6z" /></svg>
+            <span className="donor-reaction-toast-avatar donor-avatar-placeholder">{initial(reactionToast.by)}</span>
           )}
-          <span>
-            <b>{reactionToast.by}</b> deu {reactionToast.type === 'hype' ? 'hype' : 'dislike'} em <b>{reactionToast.gameName}</b>
-          </span>
+          <div className="donor-reaction-toast-body">
+            <span className="donor-reaction-toast-name">{reactionToast.by}</span>
+            <span className="donor-reaction-toast-action">
+              {reactionToast.type === 'hype' ? (
+                <svg className="icon" viewBox="0 0 20 20" fill="currentColor" stroke="none" aria-hidden="true"><path d="M10 17.3l-1.1-1C4.4 12.4 2 10.2 2 7.4 2 5.2 3.7 3.5 5.9 3.5c1.3 0 2.6.6 3.4 1.6.8-1 2.1-1.6 3.4-1.6C15 3.5 16.7 5.2 16.7 7.4c0 2.8-2.4 5-6.9 8.9l-.8.7z" /></svg>
+              ) : (
+                <svg className="icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M6 11V3.5h7.2c1 0 1.8.8 1.6 1.8l-.9 5.5c-.1.7-.7 1.2-1.5 1.2H6z" /><path d="M6 11l-2.3 4.5c-.5 1 .2 2 1.3 2 .6 0 1.2-.4 1.4-1l1.6-4v-1.5H6z" /></svg>
+              )}
+              deu {reactionToast.type === 'hype' ? 'hype' : 'dislike'} em <b>{reactionToast.gameName}</b>
+              {reactionToast.count != null ? <i className="donor-reaction-toast-count">({reactionToast.count})</i> : null}
+            </span>
+          </div>
+          <button type="button" className="donor-reaction-toast-close" aria-label="Fechar" onClick={dismissReactionToast}>
+            <svg className="icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true"><path d="M5 5l10 10M15 5L5 15" /></svg>
+          </button>
         </div>
       ) : null}
     </section>
