@@ -353,8 +353,18 @@ body.board-body.has-bg-image .board-cover-bg, body.hub-body.has-bg-image .board-
 
 /* nome do leilão em destaque -- antes usava a mesma cor/tamanho do logo
    "JogodaVez" da tela de criação, ficava discreto demais perto do resto
-   da topbar (pedido explícito do cliente) */
-.board-body .brand-word { --font-title: "Fredoka", sans-serif; font-weight: 700; font-size: 34px; color: var(--accent-text); }
+   da topbar (pedido explícito do cliente). Precisa valer tanto na página
+   /l/:id standalone (body.board-body) quanto no board embutido dentro do
+   hub (body.hub-body -- ver board-main.jsx, que nunca marca o body com
+   board-body) -- só o brand-word da tela de criação usa body.create-body,
+   então essa regra não vaza pra lá. */
+.board-body .brand-word,
+.hub-body .brand-word {
+  --font-title: "Fredoka", sans-serif;
+  font-weight: 700;
+  font-size: 34px;
+  color: var(--accent-text);
+}
 
 .brand-word {
   font-family: var(--font-title);
