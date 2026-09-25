@@ -174,19 +174,23 @@ export default function LotCard({
           </button>
         </div>
       </div>
-      {item.likes > 0 ? (
-        <div className={`lot-likes${spark ? ' is-sparking' : ''}`} title={`${item.likes} hype no chat da Twitch`}>
-          <svg className="icon" viewBox="0 0 20 20" fill="currentColor" stroke="none" aria-hidden="true"><path d="M10 17.3l-1.1-1C4.4 12.4 2 10.2 2 7.4 2 5.2 3.7 3.5 5.9 3.5c1.3 0 2.6.6 3.4 1.6.8-1 2.1-1.6 3.4-1.6C15 3.5 16.7 5.2 16.7 7.4c0 2.8-2.4 5-6.9 8.9l-.8.7z" /></svg>
-          <span>{item.likes}</span>
-          {spark ? (
-            <svg className="icon lot-hype-spark" viewBox="0 0 20 20" fill="currentColor" stroke="none" aria-hidden="true"><path d="M10 1.5c.6 2.4-.6 3.6-1.8 4.9C7 7.6 5.8 9 5.8 11.2a4.2 4.2 0 008.4 0c0-1.3-.5-2.2-1.1-3 .6 2-.4 3.3-1.6 3.3-1 0-1.7-.7-1.7-1.7 0-1 .8-1.5 1.3-2.3.8-1.2.9-2.9-1.1-6z" /></svg>
+      {item.likes > 0 || item.dislikes > 0 ? (
+        <div className="lot-reactions">
+          {item.likes > 0 ? (
+            <div className={`lot-likes${spark ? ' is-sparking' : ''}`} title={`${item.likes} hype no chat da Twitch`}>
+              <svg className="icon" viewBox="0 0 20 20" fill="currentColor" stroke="none" aria-hidden="true"><path d="M10 17.3l-1.1-1C4.4 12.4 2 10.2 2 7.4 2 5.2 3.7 3.5 5.9 3.5c1.3 0 2.6.6 3.4 1.6.8-1 2.1-1.6 3.4-1.6C15 3.5 16.7 5.2 16.7 7.4c0 2.8-2.4 5-6.9 8.9l-.8.7z" /></svg>
+              <span>{item.likes}</span>
+              {spark ? (
+                <svg className="icon lot-hype-spark" viewBox="0 0 20 20" fill="currentColor" stroke="none" aria-hidden="true"><path d="M10 1.5c.6 2.4-.6 3.6-1.8 4.9C7 7.6 5.8 9 5.8 11.2a4.2 4.2 0 008.4 0c0-1.3-.5-2.2-1.1-3 .6 2-.4 3.3-1.6 3.3-1 0-1.7-.7-1.7-1.7 0-1 .8-1.5 1.3-2.3.8-1.2.9-2.9-1.1-6z" /></svg>
+              ) : null}
+            </div>
           ) : null}
-        </div>
-      ) : null}
-      {item.dislikes > 0 ? (
-        <div className="lot-dislikes" title={`${item.dislikes} dislike no chat da Twitch`}>
-          <svg className="icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M6 11V3.5h7.2c1 0 1.8.8 1.6 1.8l-.9 5.5c-.1.7-.7 1.2-1.5 1.2H6z" /><path d="M6 11l-2.3 4.5c-.5 1 .2 2 1.3 2 .6 0 1.2-.4 1.4-1l1.6-4v-1.5H6z" /></svg>
-          <span>{item.dislikes}</span>
+          {item.dislikes > 0 ? (
+            <div className="lot-dislikes" title={`${item.dislikes} dislike no chat da Twitch`}>
+              <svg className="icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M6 11V3.5h7.2c1 0 1.8.8 1.6 1.8l-.9 5.5c-.1.7-.7 1.2-1.5 1.2H6z" /><path d="M6 11l-2.3 4.5c-.5 1 .2 2 1.3 2 .6 0 1.2-.4 1.4-1l1.6-4v-1.5H6z" /></svg>
+              <span>{item.dislikes}</span>
+            </div>
+          ) : null}
         </div>
       ) : null}
       {firing ? (

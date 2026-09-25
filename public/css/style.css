@@ -4464,29 +4464,41 @@ body.presenter-mode .page-embedded {
 .lot-edit button .icon { width: 12px; height: 12px; }
 .lot-edit button:hover { border-color: var(--accent); color: var(--accent-text); }
 
-/* !hype "jogo" no chat da Twitch (twitchChatBot.js) -- contador persistente
-   (sempre visível, canto inferior direito, não some entre re-renders) +
-   chama transitória a cada 5 likes (.is-firing/.lot-firing-flame, 6s,
-   intensificado a pedido do cliente -- era a cada 10 likes/5s) */
-.lot-likes {
+/* !hype/!dislike no chat da Twitch (twitchChatBot.js) -- os dois contadores
+   persistentes (sempre visíveis, não somem entre re-renders) juntos no
+   mesmo canto inferior direito (pedido explícito do cliente, antes o
+   dislike ficava no canto oposto) + chama transitória a cada 5 likes
+   (.is-firing/.lot-firing-flame, 6s, intensificado a pedido do cliente --
+   era a cada 10 likes/5s). Badges maiores que antes, mesmo pedido. */
+.lot-reactions {
   position: absolute;
   bottom: 10px;
   right: 10px;
   z-index: 2;
   display: flex;
   align-items: center;
-  gap: 4px;
-  padding: 3px 8px;
+  gap: 6px;
+}
+.lot-likes,
+.lot-dislikes {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 5px 11px;
   border-radius: 999px;
   background: rgba(10, 10, 14, 0.55);
   backdrop-filter: blur(4px);
-  color: #ff6f91;
   font-family: var(--font-mono);
-  font-size: 11.5px;
+  font-size: 14px;
   font-weight: 600;
 }
-.lot-likes .icon { width: 12px; height: 12px; }
-.lot-likes span { color: var(--text); }
+.lot-likes { color: #ff6f91; }
+.lot-dislikes { color: var(--muted); }
+.lot-likes .icon,
+.lot-dislikes .icon { width: 15px; height: 15px; }
+.lot-likes span,
+.lot-dislikes span { color: var(--text); }
 
 /* faísca por hype AVULSO (pedido explícito do cliente: sentir cada hype
    individual, não só o marco de 5 em 5 acima) -- camada menor e mais
@@ -4523,30 +4535,6 @@ body.presenter-mode .page-embedded {
   .lot-likes.is-sparking { animation: none; }
   .lot-hype-spark { animation: none; opacity: 0; }
 }
-
-/* !dislike "jogo" -- irmão negativo do hype, mesmo visual de contador
-   persistente, canto oposto (inferior esquerdo) pra nunca colidir com
-   .lot-likes. Sem chama/glow: pedido explícito do cliente foi só um
-   contador, nenhum efeito transitório disparado por dislike. */
-.lot-dislikes {
-  position: absolute;
-  bottom: 10px;
-  left: 10px;
-  z-index: 2;
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  padding: 3px 8px;
-  border-radius: 999px;
-  background: rgba(10, 10, 14, 0.55);
-  backdrop-filter: blur(4px);
-  color: var(--muted);
-  font-family: var(--font-mono);
-  font-size: 11.5px;
-  font-weight: 600;
-}
-.lot-dislikes .icon { width: 12px; height: 12px; }
-.lot-dislikes span { color: var(--text); }
 
 .lot-firing-flame {
   position: absolute;
