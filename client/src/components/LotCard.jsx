@@ -95,18 +95,16 @@ export default function LotCard({
         <div className="lot-info">
           <p className="lot-name">{item.name}</p>
           {showRaceUi ? (
-            <div className={`lot-race${item.raceLocked ? ' is-reached' : ''}`}>
+            <div className={`lot-race lot-race-live${item.raceLocked ? ' is-reached' : ''}`}>
+              <span className="lot-race-value">{formatBRL(item.total)}</span>
               <div className="lot-race-track">
                 <div
                   className="lot-race-fill"
                   style={{ width: `${item.raceLocked ? 100 : Math.max(0, Math.min(100, Math.round((item.total / item.raceGoal) * 100)))}%` }}
                 />
               </div>
-              <span className="lot-race-label">
-                <FlagIcon />
-                {item.raceLocked
-                  ? 'meta batida, classificado!'
-                  : `faltam ${formatBRL(Math.max(0, item.raceGoal - item.total))} pra classificar`}
+              <span className="lot-race-value lot-race-value-goal">
+                {item.raceLocked ? <FlagIcon /> : formatBRL(item.raceGoal)}
               </span>
             </div>
           ) : (

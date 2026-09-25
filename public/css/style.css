@@ -351,7 +351,10 @@ body.board-body.has-bg-image .board-cover-bg, body.hub-body.has-bg-image .board-
   flex-shrink: 0;
 }
 
-.board-body .brand-word { --font-title: "Fredoka", sans-serif; font-weight: 700; }
+/* nome do leilão em destaque -- antes usava a mesma cor/tamanho do logo
+   "JogodaVez" da tela de criação, ficava discreto demais perto do resto
+   da topbar (pedido explícito do cliente) */
+.board-body .brand-word { --font-title: "Fredoka", sans-serif; font-weight: 700; font-size: 34px; color: var(--accent-text); }
 
 .brand-word {
   font-family: var(--font-title);
@@ -2580,7 +2583,10 @@ body.presenter-mode .page-embedded {
 .host-card {
   position: relative;
   background: var(--surface-2);
-  border: 1px solid var(--border);
+  /* contorno roxo da Twitch (mesmo #9146ff do .host-twitch-badge) --
+     antes era a mesma borda cinza genérica de qualquer painel, o card do
+     streamer se camuflava no resto da tela (pedido explícito do cliente) */
+  border: 1px solid rgba(145, 70, 255, 0.45);
   border-radius: 12px;
   padding: 16px;
   animation: host-card-in 0.5s var(--ease);
@@ -3255,7 +3261,23 @@ body.presenter-mode .page-embedded {
 .lot-card.rank-2 .lot-card-fill,
 .lot-card.rank-3 .lot-card-fill { background: var(--accent-bg); }
 
-.lot-card.rank-1 { border-color: var(--accent); }
+/* dourado em vez da cor de destaque do tema (que em temas mais neutros como
+   o "cinza" fica sem graça pra sinalizar "vencedor") -- mesmo padrão de
+   glow pulsante já usado pro rank-2/3 do quadro de honra
+   (donor-row-glow-silver/bronze), pedido explícito do cliente pra
+   reforçar a gamificação do primeiro lugar */
+.lot-card.rank-1 {
+  border-color: var(--gold);
+  animation: lot-card-glow-gold 3.4s ease-in-out infinite;
+}
+
+@keyframes lot-card-glow-gold {
+  0%, 100% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--gold) 0%, transparent); }
+  50% { box-shadow: 0 0 24px 2px color-mix(in srgb, var(--gold) 40%, transparent); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .lot-card.rank-1 { animation: none; box-shadow: 0 0 0 1px color-mix(in srgb, var(--gold) 40%, transparent); }
+}
 
 .lot-card.rank-1::after {
   content: "";
@@ -3264,7 +3286,7 @@ body.presenter-mode .page-embedded {
   right: 0;
   border-style: solid;
   border-width: 0 16px 16px 0;
-  border-color: transparent var(--accent) transparent transparent;
+  border-color: transparent var(--gold) transparent transparent;
   z-index: 2;
 }
 
@@ -3390,7 +3412,7 @@ body.presenter-mode .page-embedded {
 .lot-card.rank-1 .lot-rank .medal-icon { width: 48px; height: 48px; }
 .lot-card.rank-1 .lot-rank { width: 52px; font-size: 14px; }
 
-.lot-card.rank-1 .lot-rank { color: var(--accent-text); }
+.lot-card.rank-1 .lot-rank { color: var(--gold); }
 .lot-card.rank-2 .lot-rank { color: var(--silver); }
 .lot-card.rank-3 .lot-rank { color: var(--bronze); }
 
@@ -3634,6 +3656,31 @@ body.presenter-mode .page-embedded {
 .lot-race-label .icon { width: 11px; height: 11px; color: var(--accent-text); flex-shrink: 0; }
 .lot-race.is-reached .lot-race-label { color: var(--gold); }
 .lot-race.is-reached .lot-race-label .icon { color: var(--gold); }
+
+/* card ao vivo do catálogo: valor atual/meta nas pontas da barra, sem
+   frase nenhuma no meio ("faltam RX pra classificar" duplicava o que a
+   própria barra já mostra visualmente) -- pedido explícito do cliente.
+   Classe própria (não mexe em .lot-race base) porque o preview do
+   RaceModal reusa .lot-race com o layout empilhado antigo (texto embaixo
+   da barra), esse aqui é só pro card de verdade no catálogo. */
+.lot-race-live {
+  flex-direction: row;
+  align-items: center;
+  gap: 8px;
+}
+.lot-race-live .lot-race-track { flex: 1; min-width: 0; }
+.lot-race-value {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  font-size: 10.5px;
+  font-weight: 600;
+  color: var(--text);
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+.lot-race-value-goal { display: flex; align-items: center; }
+.lot-race-value-goal .icon { width: 12px; height: 12px; color: var(--gold); }
+.lot-race-live.is-reached .lot-race-value { color: var(--gold); }
 
 .lot-card.rank-1 .lot-extras { max-width: 320px; }
 .lot-card.rank-1 .lot-race { max-width: 320px; padding: 9px 12px; }

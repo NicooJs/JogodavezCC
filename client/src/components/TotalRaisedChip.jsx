@@ -30,7 +30,7 @@ export default function TotalRaisedChip({ leilaoId, totalRaised, hideTotalRaised
         onKeyDown={(e) => (e.key === 'Enter' || e.key === ' ') && (e.preventDefault(), openExtrato(e))}
       >
         <svg className="icon topbar-total-icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M10 3.5v13" /><path d="M13.2 6.3c-.5-.9-1.6-1.4-3.2-1.4-2 0-3.4.9-3.4 2.4 0 3.1 6.8 1.3 6.8 4.4 0 1.5-1.4 2.4-3.4 2.4-1.6 0-2.7-.5-3.2-1.4" /></svg>
-        <span className="topbar-total-label">total arrecadado</span>
+        <span className="topbar-total-label">apoio da comunidade</span>
         <strong className="topbar-total-value">
           R$&nbsp;<span>{Math.round(totalRaised || 0).toLocaleString('pt-BR')}</span>
         </strong>

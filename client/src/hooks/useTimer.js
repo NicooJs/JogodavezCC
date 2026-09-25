@@ -22,7 +22,7 @@ function computeTimerState(leaderboard, timerEndsAt) {
   const { open, paused, timerRemainingMs, timerDurationMs } = leaderboard
 
   if (!open) {
-    return { label: 'leilão', clock: 'ENCERRADO', fraction: 0, urgent: false, closed: true, paused: false }
+    return { label: 'leilão', clock: 'TERMINADO', fraction: 0, urgent: false, closed: true, paused: false }
   }
 
   if (paused) {
@@ -43,7 +43,7 @@ function computeTimerState(leaderboard, timerEndsAt) {
 
   const msLeft = timerEndsAt - Date.now()
   if (msLeft <= 0) {
-    return { label: 'leilão', clock: 'ENCERRADO', fraction: 0, urgent: false, closed: true, paused: false }
+    return { label: 'leilão', clock: 'TERMINADO', fraction: 0, urgent: false, closed: true, paused: false }
   }
   const totalSeconds = Math.ceil(msLeft / 1000)
   return {
