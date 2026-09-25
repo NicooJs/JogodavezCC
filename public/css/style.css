@@ -347,13 +347,19 @@ body.board-body.has-bg-image .board-cover-bg, body.hub-body.has-bg-image .board-
    abaixo (o card "apoio da comunidade", primeiro item de .col-left) --
    quebra a rigidez de tudo preso em caixinha (pedido explícito). z-index
    mais alto que o padrão pra vencer .col-left mesmo estando antes dele
-   no DOM (empilhamento dentro do mesmo contexto de .page). */
+   no DOM (empilhamento dentro do mesmo contexto de .page). margin-left
+   generoso pra abrir uma margem vazia clara até a barra lateral (hub-sidebar
+   ou o rail fixo do modo apresentador): sem isso o glow (150px de
+   diâmetro, ver .topbar-mascot-glow) alcança/encosta na barra, já que o
+   padding-left do .page sozinho (24px) não é largo o suficiente pra
+   conter o raio do glow -- pedido explícito do cliente. */
 .topbar-mascot {
   position: relative;
   width: 40px;
   height: 46px;
   flex-shrink: 0;
   z-index: 5;
+  margin-left: 40px;
 }
 .topbar-mascot-img {
   position: absolute;
