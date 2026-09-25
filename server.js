@@ -564,6 +564,7 @@ function serializeLeaderboard(store, leilaoId) {
         : null,
       combo: { count: row.comboCount || 0, expiresAt: row.comboExpiresAt || 0 },
       likes: row.likes || 0,
+      dislikes: row.dislikes || 0,
     };
   }).sort((a, b) => a.rank - b.rank);
 
@@ -2771,9 +2772,9 @@ require("./src/reconciliation").start();
 // criação/exclusão/desvínculo já se auto-atualiza (ver src/registry.js)
 require("./src/registryBackup").backupAll().catch((err) => console.error("[registryBackup] falha no backfill inicial:", err.message));
 
-// bot de chat da Twitch (!hype nome do jogo) -- lê o chat de cada leilão
-// que já tem dono com Twitch vinculado; leilões novos entram na hora (ver
-// twitchChatBot.registerChannel em POST /api/leiloes)
+// bot de chat da Twitch (!hype/!dislike nome do jogo) -- lê o chat de cada
+// leilão que já tem dono com Twitch vinculado; leilões novos entram na
+// hora (ver twitchChatBot.registerChannel em POST /api/leiloes)
 twitchChatBot.init({
   getStore,
   registry,
@@ -2781,7 +2782,19 @@ twitchChatBot.init({
     broadcastUpdate(leilaoId, store, {
       type: "hype",
       game: { key: game.key, name: game.name, likes: game.likes },
-      fire: game.likes > 0 && game.likes % 10 === 0,
+      // a cada 5 likes (era 10) -- pedido explícito do cliente pra disparar
+      // o efeito de destaque com mais frequência
+      fire: game.likes > 0 && game.likes % 5 === 0,
+    });
+  },
+  // !dislike não dispara nenhum efeito visual pontual (pedido explícito do
+  // cliente: só o contador, sem chama/glow negativo) -- broadcastUpdate
+  // ainda é necessário pra sincronizar o número em tempo real em quem tá
+  // assistindo o board.
+  onDislikeAccepted: (leilaoId, store, game) => {
+    broadcastUpdate(leilaoId, store, {
+      type: "dislike",
+      game: { key: game.key, name: game.name, dislikes: game.dislikes },
     });
   },
 });

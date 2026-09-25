@@ -683,6 +683,17 @@ function createStore(filePath) {
     return game.likes;
   }
 
+  // !dislike "jogo" no chat da Twitch -- contador irmão do likeGame, mas
+  // separado (nunca subtrai de likes): os dois convivem lado a lado no
+  // card, sem se cancelar.
+  function dislikeGame(key) {
+    const game = data.games[key];
+    if (!game) return null;
+    game.dislikes = (game.dislikes || 0) + 1;
+    save();
+    return game.dislikes;
+  }
+
   return {
     getState,
     setState,
@@ -728,6 +739,7 @@ function createStore(filePath) {
     registerGameCombo,
     setGameGenre,
     likeGame,
+    dislikeGame,
     submitReactVideo,
     getPendingReactVideos,
     approveReactVideo,

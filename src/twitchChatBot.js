@@ -3,21 +3,28 @@ const { findExistingGameInText } = require("./parser");
 
 // bot compartilhado, só leitura -- conecta anônimo (sem identity/token),
 // nenhuma autorização por streamer é necessária pra LER o chat público.
-// !hype nome do jogo dá 1 like no lote correspondente; a cada 10 likes
+// !hype nome do jogo dá 1 like no lote correspondente; a cada 5 likes
 // server.js dispara a animação de fogo via broadcastUpdate (ver init()).
+// !dislike nome do jogo é o irmão negativo -- mesma mecânica, contador
+// separado (dislikes), sem nenhum efeito visual disparado por ele (só o
+// contador no card, pedido explícito do cliente).
 // Sem aspas de propósito (2026-09-02, corrigido): exigir aspas literais
 // era inútil, nenhum viewer digita `!hype "Elden Ring"` de verdade no
 // chat -- captura o resto da mensagem cru e deixa findExistingGameInText
 // (mesmo fuzzy match já usado na doação por texto livre) achar o jogo,
-// tolerando erro de digitação e palavras extras em volta.
-const HYPE_PATTERN = /^!hype\s+(.+)$/i;
-const HYPE_COOLDOWN_MS = 10 * 60 * 1000; // 1 hype por espectador a cada 10min, qualquer jogo
+// tolerando erro de digitação e palavras extras em volta. Mesma lógica
+// vale pro !dislike.
+const REACTIONS = {
+  hype: { pattern: /^!hype\s+(.+)$/i, storeMethod: "likeGame", cooldownMap: new Map() },
+  dislike: { pattern: /^!dislike\s+(.+)$/i, storeMethod: "dislikeGame", cooldownMap: new Map() },
+};
+const REACTION_COOLDOWN_MS = 10 * 60 * 1000; // 1 reação por tipo por espectador a cada 10min, qualquer jogo
 
 let client = null;
 let getStoreFn = null;
 let onHypeAccepted = null;
+let onDislikeAccepted = null;
 const channelToLeilaoId = new Map(); // twitch login (lowercase, sem #) -> leilaoId
-const lastHypeAt = new Map(); // `${viewerId}:${leilaoId}` -> timestamp do último hype aceito
 
 // log temporário de diagnóstico (2026-09-02) -- só imprime pra mensagem
 // que já bate o prefixo !hype, então não polui o log com chat normal.
@@ -38,9 +45,17 @@ function connect(channels) {
 
 function handleMessage(channel, tags, message, self) {
   if (self) return;
-  const match = HYPE_PATTERN.exec(message.trim());
-  if (!match) return;
-  logHype(`mensagem recebida em ${channel} de ${tags.username}:`, JSON.stringify(message));
+  const trimmed = message.trim();
+
+  for (const [kind, reaction] of Object.entries(REACTIONS)) {
+    const match = reaction.pattern.exec(trimmed);
+    if (!match) continue;
+    return handleReaction(kind, reaction, match[1], channel, tags);
+  }
+}
+
+function handleReaction(kind, reaction, gameText, channel, tags) {
+  logHype(`mensagem !${kind} recebida em ${channel} de ${tags.username}:`, JSON.stringify(gameText));
 
   const login = channel.replace(/^#/, "").toLowerCase();
   const leilaoId = channelToLeilaoId.get(login);
@@ -50,29 +65,32 @@ function handleMessage(channel, tags, message, self) {
   if (!viewerId) return logHype("sem viewerId (user-id/username), ignorando");
   const cooldownKey = `${viewerId}:${leilaoId}`;
   const now = Date.now();
-  const lastAt = lastHypeAt.get(cooldownKey);
-  if (lastAt && now - lastAt < HYPE_COOLDOWN_MS) {
-    return logHype(`${viewerId} em cooldown ainda (faltam ${Math.ceil((HYPE_COOLDOWN_MS - (now - lastAt)) / 1000)}s)`);
+  const lastAt = reaction.cooldownMap.get(cooldownKey);
+  if (lastAt && now - lastAt < REACTION_COOLDOWN_MS) {
+    return logHype(`${viewerId} em cooldown ainda pro !${kind} (faltam ${Math.ceil((REACTION_COOLDOWN_MS - (now - lastAt)) / 1000)}s)`);
   }
 
   const store = getStoreFn(leilaoId);
   const existingGames = store.getLeaderboard().map((g) => ({ key: g.key, name: g.name }));
-  const matched = findExistingGameInText(match[1], existingGames);
-  if (!matched) return logHype(`"${match[1]}" não bateu com nenhum jogo do catálogo (${existingGames.map((g) => g.key).join(", ")})`);
+  const matched = findExistingGameInText(gameText, existingGames);
+  if (!matched) return logHype(`"${gameText}" não bateu com nenhum jogo do catálogo (${existingGames.map((g) => g.key).join(", ")})`);
 
-  const likes = store.likeGame(matched.key);
-  if (likes == null) return logHype(`likeGame(${matched.key}) retornou null, jogo sumiu?`);
-  lastHypeAt.set(cooldownKey, now);
-  logHype(`hype aceito: ${matched.name} (${leilaoId}), likes agora = ${likes}`);
-  onHypeAccepted?.(leilaoId, store, { key: matched.key, name: matched.name, likes });
+  const count = store[reaction.storeMethod](matched.key);
+  if (count == null) return logHype(`${reaction.storeMethod}(${matched.key}) retornou null, jogo sumiu?`);
+  reaction.cooldownMap.set(cooldownKey, now);
+  logHype(`!${kind} aceito: ${matched.name} (${leilaoId}), contador agora = ${count}`);
+
+  if (kind === "hype") onHypeAccepted?.(leilaoId, store, { key: matched.key, name: matched.name, likes: count });
+  else onDislikeAccepted?.(leilaoId, store, { key: matched.key, name: matched.name, dislikes: count });
 }
 
 // chamado uma vez no boot do server.js -- junta todos os leilões que já
 // têm um dono com Twitch vinculado (hostTwitchLogin fica no state de cada
 // store, não no registry) e conecta num client tmi.js só, várias salas.
-function init({ getStore, registry, onHypeAccepted: callback }) {
+function init({ getStore, registry, onHypeAccepted: hypeCallback, onDislikeAccepted: dislikeCallback }) {
   getStoreFn = getStore;
-  onHypeAccepted = callback;
+  onHypeAccepted = hypeCallback;
+  onDislikeAccepted = dislikeCallback;
 
   // uma conta Twitch pode ter mais de 1 leilão no registro (resíduo de
   // leilão antigo desvinculado, por exemplo) -- só o mais recente entra

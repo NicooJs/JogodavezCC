@@ -59,14 +59,15 @@ export default function ArenaPanel({ leilaoId, leaderboard, lastEvent, presenter
     return () => clearTimeout(flashTimer.current)
   }, [lastEvent])
 
-  // !hype "jogo" a cada 10 likes (ver twitchChatBot.js) -- só o gatilho
-  // pontual, o contador em si (item.likes) já vem sempre no leaderboard,
-  // igual combo/streak
+  // !hype "jogo" a cada 5 likes (ver twitchChatBot.js, era a cada 10 --
+  // intensificado a pedido do cliente) -- só o gatilho pontual, o contador
+  // em si (item.likes) já vem sempre no leaderboard, igual combo/streak.
+  // 6000ms bate com a duração de lot-card-firing em style.css.
   useEffect(() => {
     if (!lastEvent || lastEvent.type !== 'hype' || !lastEvent.fire || !lastEvent.game) return
     clearTimeout(firingTimer.current)
     setFiringKey(lastEvent.game.key)
-    firingTimer.current = setTimeout(() => setFiringKey(null), 5000)
+    firingTimer.current = setTimeout(() => setFiringKey(null), 6000)
     return () => clearTimeout(firingTimer.current)
   }, [lastEvent])
 
