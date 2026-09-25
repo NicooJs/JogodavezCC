@@ -21,6 +21,8 @@ export default function ArenaPanel({ leilaoId, leaderboard, lastEvent, presenter
   const flashTimer = useRef(null)
   const [firingKey, setFiringKey] = useState(null)
   const firingTimer = useRef(null)
+  const [sparkKey, setSparkKey] = useState(null)
+  const sparkTimer = useRef(null)
   const cardNodes = useRef(new Map())
 
   useEffect(() => {
@@ -60,15 +62,34 @@ export default function ArenaPanel({ leilaoId, leaderboard, lastEvent, presenter
   }, [lastEvent])
 
   // !hype "jogo" a cada 5 likes (ver twitchChatBot.js, era a cada 10 --
-  // intensificado a pedido do cliente) -- só o gatilho pontual, o contador
-  // em si (item.likes) já vem sempre no leaderboard, igual combo/streak.
-  // 6000ms bate com a duração de lot-card-firing em style.css.
+  // intensificado a pedido do cliente) -- marco grande, chama+brilho no
+  // card inteiro. Só o gatilho pontual, o contador em si (item.likes) já
+  // vem sempre no leaderboard, igual combo/streak. 6000ms bate com a
+  // duração de lot-card-firing em style.css.
   useEffect(() => {
     if (!lastEvent || lastEvent.type !== 'hype' || !lastEvent.fire || !lastEvent.game) return
     clearTimeout(firingTimer.current)
     setFiringKey(lastEvent.game.key)
     firingTimer.current = setTimeout(() => setFiringKey(null), 6000)
     return () => clearTimeout(firingTimer.current)
+  }, [lastEvent])
+
+  // segunda camada, menor: TODO !hype aceito (não só a cada 5) dá uma
+  // faísca rápida perto do contador de likes -- pedido explícito do
+  // cliente pra sentir cada hype individual, não só o marco de 5 em 5.
+  // Independente do firingKey acima (podem disparar juntos sem conflito,
+  // são regiões visuais diferentes do card). 1100ms bate com
+  // lot-hype-spark em style.css.
+  useEffect(() => {
+    if (!lastEvent || lastEvent.type !== 'hype' || !lastEvent.game) return
+    clearTimeout(sparkTimer.current)
+    setSparkKey(null)
+    // reseta pra null primeiro pra reiniciar a animação CSS mesmo se o
+    // mesmo jogo receber 2 hypes seguidos rápido (troca de key sozinha não
+    // reinicia keyframe já em andamento no mesmo elemento)
+    requestAnimationFrame(() => setSparkKey(lastEvent.game.key))
+    sparkTimer.current = setTimeout(() => setSparkKey(null), 1100)
+    return () => clearTimeout(sparkTimer.current)
   }, [lastEvent])
 
   let duelDefender = null
@@ -183,6 +204,7 @@ export default function ArenaPanel({ leilaoId, leaderboard, lastEvent, presenter
                   hitBadge={hitBadge}
                   streakTier={streakActive ? streakTier(combo.count) : 0}
                   firing={firingKey === item.key}
+                  spark={sparkKey === item.key}
                   duelRole={duelRole}
                   duelChallengerDeficit={duelChallenger && item.key === duelChallenger.key ? duelDefender.total - item.total : 0}
                   mediaLabel={mediaLabel(leaderboard.mode)}

@@ -4488,6 +4488,42 @@ body.presenter-mode .page-embedded {
 .lot-likes .icon { width: 12px; height: 12px; }
 .lot-likes span { color: var(--text); }
 
+/* faísca por hype AVULSO (pedido explícito do cliente: sentir cada hype
+   individual, não só o marco de 5 em 5 acima) -- camada menor e mais
+   rápida, some sozinha em 1.1s (bate com o timer em ArenaPanel.jsx).
+   is-sparking dá um pulo rápido no badge inteiro; lot-hype-spark é uma
+   chaminha que nasce sobre o coração e sobe/some. */
+.lot-likes.is-sparking { animation: lot-likes-pop 0.4s ease-out; }
+
+@keyframes lot-likes-pop {
+  0% { transform: scale(1); }
+  40% { transform: scale(1.35); }
+  100% { transform: scale(1); }
+}
+
+.lot-hype-spark {
+  position: absolute;
+  top: -4px;
+  left: 6px;
+  width: 14px;
+  height: 14px;
+  color: #ff7a1a;
+  filter: drop-shadow(0 0 5px rgba(255, 122, 26, 0.85));
+  animation: lot-hype-spark-rise 1.1s ease-out forwards;
+  pointer-events: none;
+}
+
+@keyframes lot-hype-spark-rise {
+  0% { transform: translateY(0) scale(0.6); opacity: 0; }
+  20% { transform: translateY(-4px) scale(1.1); opacity: 1; }
+  100% { transform: translateY(-22px) scale(0.8); opacity: 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .lot-likes.is-sparking { animation: none; }
+  .lot-hype-spark { animation: none; opacity: 0; }
+}
+
 /* !dislike "jogo" -- irmão negativo do hype, mesmo visual de contador
    persistente, canto oposto (inferior esquerdo) pra nunca colidir com
    .lot-likes. Sem chama/glow: pedido explícito do cliente foi só um
