@@ -95,8 +95,8 @@ export default function PainelApp() {
   }
 
   // leilão desmonta de verdade ao sair (fecha o socket) -- as outras 3
-  // views React montam uma vez e ficam vivas escondidas, decisão já
-  // documentada (CLAUDE.md), não muda aqui
+  // views React montam uma vez e ficam vivas escondidas -- decisão
+  // deliberada, não muda aqui
   useEffect(() => {
     if (!session?.loggedIn || !leilao) return
     if (activeView === 'leilao') {

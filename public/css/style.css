@@ -2852,7 +2852,7 @@ body.presenter-mode .page-embedded {
 /* 2º e 3º lugar ganham um tom de medalha (prata/bronze) igual o líder já
    tem em dourado, pra não ficar tudo igual abaixo do card do 1º -- brilho
    ambiente bem lento pra tirar o aspecto parado da lista sem virar poluição
-   visual (mesmo espírito do --gold no .donor-leader, ver CLAUDE.md). */
+   visual (mesmo espírito do --gold no .donor-leader). */
 .donor-row.rank-2 {
   background: linear-gradient(135deg, color-mix(in srgb, var(--silver) 16%, transparent), transparent 70%);
   border-color: color-mix(in srgb, var(--silver) 30%, transparent);
@@ -3432,8 +3432,8 @@ body.presenter-mode .page-embedded {
    lugar de sempre (embaixo do nome, dentro de .lot-info), e valor/repasse/
    top doador saem pra essa coluna do lado -- empilhado tudo junto embaixo
    do nome fazia o card crescer além da altura da capa (o vizinho da mesma
-   linha do Grid esticava junto por causa do align-items:stretch, ver
-   histórico no CLAUDE.md). flex-shrink:0 + max-width pra não competir por
+   linha do Grid esticava junto por causa do align-items:stretch).
+   flex-shrink:0 + max-width pra não competir por
    espaço com .lot-info (nome longo precisa de mais lugar que esses chips
    compactos). */
 .lot-extras {

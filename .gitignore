@@ -3,5 +3,5 @@ node_modules/
 leilao-data.json
 data/
 *.bak
-.claude/
+.*/
 public/board-app/

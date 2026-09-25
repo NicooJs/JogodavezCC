@@ -19,7 +19,7 @@ CREATE TABLE IF NOT EXISTS fee_config (
 );
 INSERT INTO fee_config (id) VALUES (1) ON CONFLICT DO NOTHING;
 
--- só a chave Pix -- nada de CPF/nome, ver regra em CLAUDE.md
+-- só a chave Pix -- nada de CPF/nome
 CREATE TABLE IF NOT EXISTS streamer_pix_keys (
   streamer_id  BIGINT PRIMARY KEY REFERENCES streamers(id),
   pix_key      TEXT NOT NULL,
