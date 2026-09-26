@@ -200,7 +200,7 @@ export default function LotCard({
     </div>
     {item.rank === 1 ? (
       <div className="lot-card-mascot" aria-hidden="true">
-        <img src="/img/loading-mascot.png" alt="" />
+        <img src="/img/mascot-happy.png" alt="" />
       </div>
     ) : null}
     </div>
