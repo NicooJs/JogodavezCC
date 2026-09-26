@@ -45,6 +45,7 @@ export default function LotCard({
   const [dropTarget, setDropTarget] = useState(false)
 
   return (
+    <div className="lot-card-slot">
     <div
       ref={cardRef}
       className={`lot-card rank-${item.rank}${streakActive ? ' is-streaking' : ''}${isDuelDefender ? ' is-duel-defender' : ''}${isDuelChallenger ? ' is-duel-challenger' : ''}${dragging ? ' dragging' : ''}${dropTarget ? ' drop-target' : ''}${firing ? ' is-firing' : ''}`}
@@ -196,6 +197,12 @@ export default function LotCard({
           <svg className="icon" viewBox="0 0 20 20" fill="currentColor" stroke="none"><path d="M10 1.5c.6 2.4-.6 3.6-1.8 4.9C7 7.6 5.8 9 5.8 11.2a4.2 4.2 0 008.4 0c0-1.3-.5-2.2-1.1-3 .6 2-.4 3.3-1.6 3.3-1 0-1.7-.7-1.7-1.7 0-1 .8-1.5 1.3-2.3.8-1.2.9-2.9-1.1-6z" /></svg>
         </div>
       ) : null}
+    </div>
+    {item.rank === 1 ? (
+      <div className="lot-card-mascot" aria-hidden="true">
+        <img src="/img/loading-mascot.png" alt="" />
+      </div>
+    ) : null}
     </div>
   )
 }

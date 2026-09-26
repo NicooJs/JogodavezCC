@@ -3181,10 +3181,19 @@ body.presenter-mode .page-embedded {
      não linhas de uma lista grudada. */
   gap: 18px;
   margin: 0 -2px;
-  padding: 2px 2px 4px;
+  /* padding-top bem maior que o resto -- reserva espaço pro mascote do
+     rank-1 vazar pra cima do card (.lot-card-mascot) sem ser cortado
+     pelo overflow-y:auto desse grid. Fica dentro da própria caixa do
+     grid (padding não é clipado), então nunca precisa de scroll pra
+     aparecer inteiro mesmo com o catálogo cheio. */
+  padding: 48px 2px 4px;
 }
 
-.arena-grid > .lot-card:first-child {
+/* .lot-card-slot (não .lot-card) é o filho direto agora -- wrapper que
+   existe só pra hospedar o mascote do rank-1 fora da área com
+   overflow:hidden/clip-path do .lot-card (ver .lot-card-mascot), sem
+   wrapper o mascote seria cortado junto com o resto. */
+.arena-grid > .lot-card-slot:first-child {
   grid-column: 1 / -1;
 }
 
@@ -3232,6 +3241,15 @@ body.presenter-mode .page-embedded {
   border-radius: 999px;
 }
 
+/* wrapper fora do .lot-card só pra hospedar o mascote do rank-1 -- o
+   .lot-card tem overflow:hidden + clip-path (ver comentário lá dentro,
+   bug real de compositing que esse par resolve), então qualquer coisa
+   que precise vazar pra fora da caixa (pedido explícito do cliente) não
+   pode morar como filho dele. É o .lot-card-slot que agora é o item de
+   verdade do grid (ver .arena-grid > .lot-card-slot:first-child), o
+   .lot-card dentro dele continua com toda a lógica de sempre. */
+.lot-card-slot { position: relative; }
+
 .lot-card {
   position: relative;
   width: 100%;
@@ -3262,9 +3280,13 @@ body.presenter-mode .page-embedded {
 /* líder da rodada em destaque de verdade -- maior, capa maior, valor em
    tipografia grande, fica óbvio de longe qual jogo tá na frente. */
 .lot-card.rank-1 { min-height: 210px; }
-.arena-grid .lot-card:nth-of-type(3n+1) { border-radius: 8px 5px 8px 6px; }
-.arena-grid .lot-card:nth-of-type(3n+2) { border-radius: 5px 7px 5px 8px; }
-.arena-grid .lot-card:nth-of-type(3n+3) { border-radius: 7px 6px 9px 5px; }
+/* :nth-of-type conta por posição entre os .lot-card-slot (div, mesmo tipo
+   do .qualify-divider intercalado) -- por isso o seletor mudou pro slot
+   em vez do .lot-card em si, que agora está sempre sozinho dentro do seu
+   próprio slot (sempre "1º do tipo" ali, quebraria o rodízio 3n). */
+.arena-grid .lot-card-slot:nth-of-type(3n+1) .lot-card { border-radius: 8px 5px 8px 6px; }
+.arena-grid .lot-card-slot:nth-of-type(3n+2) .lot-card { border-radius: 5px 7px 5px 8px; }
+.arena-grid .lot-card-slot:nth-of-type(3n+3) .lot-card { border-radius: 7px 6px 9px 5px; }
 
 @keyframes card-in {
   from { opacity: 0; transform: translateY(3px); }
@@ -3339,26 +3361,40 @@ body.presenter-mode .page-embedded {
    reforçar a gamificação do primeiro lugar */
 .lot-card.rank-1 {
   border-color: var(--gold);
-  animation: lot-card-glow-gold 3.4s ease-in-out infinite;
+  border-width: 2px;
+  animation: lot-card-glow-gold 2.6s ease-in-out infinite;
 }
 
 @keyframes lot-card-glow-gold {
   0%, 100% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--gold) 0%, transparent); }
-  50% { box-shadow: 0 0 24px 2px color-mix(in srgb, var(--gold) 40%, transparent); }
+  50% { box-shadow: 0 0 32px 6px color-mix(in srgb, var(--gold) 55%, transparent); }
 }
 @media (prefers-reduced-motion: reduce) {
-  .lot-card.rank-1 { animation: none; box-shadow: 0 0 0 1px color-mix(in srgb, var(--gold) 40%, transparent); }
+  .lot-card.rank-1 { animation: none; box-shadow: 0 0 0 2px color-mix(in srgb, var(--gold) 55%, transparent); }
 }
 
-.lot-card.rank-1::after {
-  content: "";
+/* o cantinho dourado (ribbon) saiu daqui -- o mascote (.lot-card-mascot)
+   ocupa esse mesmo canto agora de um jeito bem mais chamativo, os dois
+   juntos ali virava poluição visual competindo pelo mesmo espaço. */
+
+/* mascote "sentado" no card do 1º lugar -- pedido explícito do cliente.
+   Mora no .lot-card-slot (fora do .lot-card, que corta overflow), no
+   canto superior direito, apoiado na borda: metade vazando pra fora por
+   cima (dá profundidade) e metade sobrepondo o card por baixo. */
+.lot-card-mascot {
   position: absolute;
   top: 0;
-  right: 0;
-  border-style: solid;
-  border-width: 0 16px 16px 0;
-  border-color: transparent var(--gold) transparent transparent;
-  z-index: 2;
+  right: 22px;
+  width: 84px;
+  height: 84px;
+  transform: translateY(-56%);
+  z-index: 3;
+  pointer-events: none;
+}
+.lot-card-mascot img {
+  width: 100%;
+  height: auto;
+  filter: drop-shadow(0 10px 16px rgba(0, 0, 0, 0.55));
 }
 
 .lot-card.lead-shift .lot-card-fill {
@@ -4501,9 +4537,9 @@ body.presenter-mode .page-embedded {
 .race-modal-preview.is-reached .lot-race-label { color: var(--gold); font-weight: 700; }
 
 .badge-hit { font-size: 10.5px; padding: 2px 6px; border-radius: 3px; background: var(--danger-bg); color: var(--danger); }
-.arena-grid .lot-card:nth-of-type(3n+1) .badge-hit { border-radius: 4px 2px 4px 3px; }
-.arena-grid .lot-card:nth-of-type(3n+2) .badge-hit { border-radius: 2px 3px 2px 4px; }
-.arena-grid .lot-card:nth-of-type(3n+3) .badge-hit { border-radius: 3px 4px 2px 3px; }
+.arena-grid .lot-card-slot:nth-of-type(3n+1) .badge-hit { border-radius: 4px 2px 4px 3px; }
+.arena-grid .lot-card-slot:nth-of-type(3n+2) .badge-hit { border-radius: 2px 3px 2px 4px; }
+.arena-grid .lot-card-slot:nth-of-type(3n+3) .badge-hit { border-radius: 3px 4px 2px 3px; }
 
 .badge-hit-last {
   background: transparent;
@@ -5211,6 +5247,10 @@ body.presenter-mode .page-embedded {
   .lot-card.rank-1 .lot-funding { font-size: 11px; }
   .lot-card.rank-1 .lot-top-donor-avatar,
   .lot-card.rank-1 .lot-top-donor-avatar-placeholder { width: 15px; height: 15px; }
+
+  /* mascote encolhe junto -- 84px original ficava quase do tamanho do
+     card inteiro nesse breakpoint (90px de altura mínima). */
+  .lot-card-mascot { width: 52px; height: 52px; right: 12px; transform: translateY(-48%); }
 }
 
 
