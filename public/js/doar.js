@@ -18,7 +18,7 @@ fetch(`/api/l/${LEILAO_ID}/pixgg-config`)
     // desligado enquanto DONATIONS_VIA_EFI_ENABLED estiver falso -- essa
     // frase é sobre custódia na Efí, nunca se aplica agora (ver docs/STATUS-EFI.md)
     document.getElementById("doar-footnote-payment").hidden = true;
-    // "seu nome"/"voz de IA" não têm efeito nenhum no caminho do pixgg.com
+    // "seu nome"/"voz sintetizada" não têm efeito nenhum no caminho do pixgg.com
     // (nome vem da conta do doador lá, voz é lida a partir do texto que ele
     // mesmo digita na página deles) -- esconder pra não prometer algo que
     // esse fluxo não entrega. HTML já nasce assumindo pixgg (caso comum
@@ -460,10 +460,11 @@ async function submitDonation(e) {
     // recado (se tiver) vai depois de " | " -- server.js separa os dois de
     // volta (parseMessage em src/parser.js). Não usa "." como separador
     // porque título de filme em pt-BR tem ponto com frequência (abreviação
-    // tipo "Sr.", "Dr."), o que cortava o nome no meio. "seu nome"/"voz de
-    // IA" não têm campo aqui de propósito: quem manda esses de verdade é o
-    // pixgg.com (nome do doador vem da conta dele lá, voz é lida a partir
-    // desse mesmo texto na página deles, não algo que a gente controle).
+    // tipo "Sr.", "Dr."), o que cortava o nome no meio. "seu nome"/"voz
+    // sintetizada" não têm campo aqui de propósito: quem manda esses de
+    // verdade é o pixgg.com (nome do doador vem da conta dele lá, voz é
+    // lida a partir desse mesmo texto na página deles, não algo que a
+    // gente controle).
     const note = noteEl.value.trim();
     const prefix = getAction() === "remove" ? "-" : "+";
     const message = activeSystemMode === "reacts" ? game : `${prefix}${game}${note ? ` | ${note}` : ""}`;
