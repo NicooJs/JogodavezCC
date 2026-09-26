@@ -17,6 +17,7 @@ inclusive no overlay do OBS. Tipo um StreamElements, só que de leilão.
   streamer/plataforma calculado em centavos inteiros.
 - Deploy: Railway, com volume persistente pro catálogo em JSON e
   Postgres gerenciado.
+- Uso de IA para documentação e organização.
 
 ## Partes que deram mais trabalho
 
